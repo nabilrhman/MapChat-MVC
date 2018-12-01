@@ -49,5 +49,5 @@ The project is fully open-sourced. Visit https://github.com/nabilrhman/MapChat-M
 
 ## Author
 
-Nabil Rahman
+Nabil Rahman | 
 http://nr-creation.com
