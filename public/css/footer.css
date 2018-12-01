@@ -1,0 +1,20 @@
+.footer {
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    background-color: #333333;
+    color: white;
+    text-align: right;
+    z-index: 999;
+    font-size: small;
+    padding-right: 30px;
+    border-top: 4px solid #ffc107;
+
+
+}
+
+.footer-link
+{
+    /*margin-right: 20px;*/
+}

@@ -1,0 +1,376 @@
+{% extends "base_new.html" %}
+
+{% block head %}
+<link rel="stylesheet" href="/css/profile.css"/>
+{% endblock %}
+
+{% block body %}
+
+
+<div class="row">
+    <div class="col s12">
+
+        <h4 class="animated fadeInDown">{% block title %}Profile{% endblock %}</h4>
+        <div class="divider" style="margin-bottom: 15px;"></div>
+
+
+    </div>
+
+    <div class="col s1 animated fadeInDownSubtle" id="col-avatar" style="min-width: 80px; margin-bottom: 30px;">
+        <div class="wrapper-avatar" id="wrapper-avatar">
+
+
+            {% if user.avatar is not empty %}
+            <img class="responsive-img circle" src="{{ user.avatar }}" alt="avatar" id="avatar"/>
+
+            {% else %}
+            <img class="responsive-img circle" src="../../res/avatar1.png" alt="avatar" id="avatar"/>
+
+            {% endif %}
+
+
+            <div class="overlay circle hover-grow" id="overlay">
+                <div class="bg-overlay">
+                    <span class="icon anchor-icon" id="icon" title="Upload">
+                        <i class="material-icons small">add</i>
+                    </span>
+
+                    <input name="file" id='file-upload' type="file" accept="image/x-png,image/gif,image/jpeg"
+                           style="position: absolute; left: -1000px;">
+
+
+                </div>
+            </div>
+
+        </div>
+
+
+    </div>
+
+    <form class="col s11 animated fadeInDownSubtle" action="/profile/update" method="post" id="formProfile">
+
+        <div class='row'>
+            <div class='input-field col s12'>
+                <input disabled type="text" id="inputName" name="name" autofocus value="{{ user.name }}"/>
+                <label for="inputName">Name</label>
+                <span id="error-msg-name" class="helper-text"></span>
+            </div>
+        </div>
+
+        <div class='row'>
+            <div class='input-field col s12'>
+                <input disabled type="email" id="inputEmail" name="email" value="{{ user.email }}"/>
+                <label for="inputEmail" data-error="Type your email">Email address</label>
+                <span id="error-msg-email" class="helper-text"></span>
+            </div>
+        </div>
+
+        <div class='row'>
+            <div class='input-field col s12'>
+                <input disabled type="password" id="inputPassword" name="password" class="inputPassword"/>
+                <label id="passwordLabel" for="inputPassword">Password</label>
+                <span id="error-msg-password" class="helper-text"></span>
+                <span class="helper-text">Leave blank to keep the current password.</span>
+            </div>
+        </div>
+
+
+        <div class='row' style="min-width: 650px;">
+
+            <a id="button-edit" class="col s1 waves-effect btn-small hover-grow"
+               style="text-align: left; letter-spacing: 3px;">Edit</a>
+
+            <button disabled type='submit' class='col s1 btn-small waves-effect purple hover-grow'
+                    id="submitButton" style="text-align: left; letter-spacing: 5px;">
+                Save
+            </button>
+        </div>
+
+    </form>
+
+</div>
+
+{% endblock %}
+
+
+{% block footer %}
+<script src="/js/hideShowPassword.min.js"></script>
+<script src="/js/validatorExtended.js"></script>
+<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+
+<script>
+    $(document).ready(function () {
+
+        var userId = '{{ user.id }}';
+
+        /**
+         * Validate the form
+         */
+        $('#formProfile').validate({
+            rules: {
+                name: 'required',
+                email: {
+                    required: true,
+                    email: true,
+                    remote: {
+                        url: '/account/validate-email',
+                        data: {
+                            ignore_id: function () {
+                                return userId;
+                            }
+                        }
+                    }
+                },
+                password: {
+                    minlength: 6,
+                    validPassword: true
+                }
+            },
+            messages: {
+                email: {
+                    remote: 'Email already registered.'
+                }
+            }
+        });
+
+
+        /**
+         * Show password toggle button
+         */
+        $('#inputPassword').hideShowPassword({
+            show: false,
+            innerToggle: 'focus',
+            // Options specific to the wrapper element, created
+            // when the innerToggle is initialized to help with
+            // positioning of that element.
+
+            // Event to trigger whenever the element is toggled.
+            // For example, if 'focus' it will focus the cursor in the
+            // input element after toggling.
+            triggerOnToggle: false,
+            wrapper: {
+                // Class name of element.
+                className: 'inputPassword',
+                // If true, the width of the wrapper will be set
+                // unless it is already the same width as the inner
+                // element. If false, the width will never be set. Any
+                // other value will be used as the width.
+                enforceWidth: true,
+                // Styles to add to the wrapper element. Does not
+                // include inherited styles or width if enforceWidth
+                // is not false.
+                styles: {position: 'relative'},
+                // Styles to "inherit" from the input element, allowing
+                // the wrapper to avoid disrupting page styles.
+                inheritStyles: [
+                    'verticalAlign',
+                    'marginTop',
+                    'marginRight',
+                    'marginBottom',
+                    'marginLeft',
+                    'width'
+                ],
+            },
+        });
+
+        $("input[name='password']").on("keyup click", (function () {
+            $('#passwordLabel').addClass('active');
+        }));
+
+        $("input[name='name']").on("click", (function () {
+            if ($("input[name='password']").val() == "") {
+                if ($('#passwordLabel').hasClass('active')) {
+                    $('#passwordLabel').removeClass('active');
+                }
+            }
+        }));
+
+        $("input[name='email']").on("click", (function () {
+            if ($("input[name='password']").val() == "") {
+                if ($('#passwordLabel').hasClass('active')) {
+                    $('#passwordLabel').removeClass('active');
+                }
+            }
+        }));
+
+        $("input[name='password']").keydown(function () {
+            if ($("input[name='password']").val() == "") {
+                if ($('#passwordLabel').hasClass('active')) {
+                    $('#passwordLabel').removeClass('active');
+                }
+            }
+        });
+
+        <!-- Compiled and minified JavaScript -->
+
+        $('#inputPassword').val('');
+        M.updateTextFields();
+
+        var avatarImgURL;
+
+        var CLOUDINARY_URL = 'https://api.cloudinary.com/v1_1/nabilr/image/upload';
+        var CLOUDINARY_UPLOAD_PRESET = 'eu0zgzwd';
+
+        var imgPreview = document.getElementById('avatar');
+        var fileUplaod = document.getElementById('file-upload');
+
+        fileUplaod.addEventListener('change', function (event) {
+
+                $("#avatar").attr("src","/res/loading.gif");
+                $("#avatar").css("margin","auto");
+                $('#overlay').hide();
+
+                var file = event.target.files[0];
+                var formData = new FormData();
+                formData.append('file', file);
+                formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+
+                axios(
+                    {
+                        url: CLOUDINARY_URL,
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded'
+                        },
+                        data: formData
+                    }
+                ).then(function (res) {
+                        console.log(res);
+
+                        imgPreview.src = res.data.secure_url;
+                        avatarImgURL = res.data.secure_url;
+                        $('#overlay').show();
+                    }
+                ).catch(function (err) {
+                    console.error(err);
+                    $('#overlay').show();
+                })
+            }
+        );
+
+
+        $('#formProfile').on('submit', function (e) {
+
+            $('#submitButton').html('<img src="/res/loading-white-32.gif" />');
+            if(avatarImgURL != null)
+            {
+                e.preventDefault();
+
+                $.ajax({
+
+                    type: 'POST',
+                    dataType: 'html',
+                    url: '/profile/update-avatar',
+                    data: {
+                        avatar: avatarImgURL,
+                        id: userId
+                    },
+                    success: function (response) {
+                        window.location.replace("/profile/update-success");
+
+                    }
+                });
+
+                $.ajax({
+
+                    type: 'POST',
+                    dataType: 'html',
+                    url: '/profile/update',
+                    data: {
+                        id: userId,
+                        email: $("#inputEmail").val(),
+                        name: $("#inputName").val(),
+                        password: $("#inputPassword").val()
+                    },
+                    success: function (response) {
+                        window.location.replace("/profile/update-success");
+                    }
+                });
+            }
+
+
+
+        });
+
+        /**
+         *  ICON ON CLICK (OVERLAY)
+         */
+
+        $('#overlay').hide();
+        $('#icon').on('click', function () {
+            $('#file-upload').trigger('click');
+        });
+
+        $('#button-edit').on('click', function () {
+            if(isCancelled)
+            {
+                window.location.replace("/profile/show");
+            }
+            else
+            {
+                toggleForm();
+            }
+
+        });
+
+        function enableInput(element, value)
+        {
+            $(element).prop('disabled', !value);
+        }
+
+        var isCancelled = false;
+
+
+        function toggleForm()
+        {
+            if($("#inputName")[0].disabled == true)
+            {
+
+                enableInput("#inputName", true);
+                enableInput("#inputEmail", true);
+                enableInput("#inputPassword", true);
+                enableInput("#submitButton", true)
+                $('#button-edit').css("background-color","red");
+                $('#button-edit').text("CANCEL");
+                isCancelled = true;
+                $('#overlay').show();
+
+            }
+            else
+            {
+                enableInput("#inputName", false);
+                enableInput("#inputEmail", false);
+                enableInput("#inputPassword", false);
+                enableInput("#submitButton", false)
+                $('#button-edit').css("background-color","#512da8");
+                $('#button-edit').text("EDIT");
+                $('#overlay').hide();
+            }
+        };
+
+        function updateAvatar()
+        {
+            if(avatarImgURL != null)
+            {
+                e.preventDefault();
+
+                $.ajax({
+
+                    type: 'POST',
+                    dataType: 'html',
+                    url: '/profile/update-avatar',
+                    data: {
+                        avatar: avatarImgURL,
+                        id: userId
+                    },
+                    success: function (response) {
+                        $('#submitButton').prop("disabled",true);
+                    }
+                });
+
+            }
+        }
+    });
+</script>
+
+{% endblock %}

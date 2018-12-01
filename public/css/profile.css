@@ -1,0 +1,115 @@
+#button-edit
+{
+    margin: 0px 10px;
+    min-width: 100px;
+
+}
+
+#submitButton
+{
+    min-width: 100px;
+}
+
+
+/* The overlay effect (full height and width) - lays on top of the container and over the image */
+.overlay {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 100%;
+    width: 100%;
+    opacity: 0;
+    transition: .3s ease;
+    background-color: rgba(0, 0, 0, 0.5);
+    border: #512da8 5px solid;
+
+}
+
+/* When you mouse over the container, fade in the overlay icon*/
+.wrapper-avatar:hover .overlay {
+    opacity: 1;
+}
+
+.wrapper-avatar{
+    border-radius: 50%;
+    position: relative;
+
+}
+
+/* The icon inside the overlay is positioned in the middle vertically and horizontally */
+.icon {
+    color: white;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    /* HACK */
+    padding: 50%;
+
+    transform: translate(-50%, -50%);
+    -ms-transform: translate(-50%, -50%);
+    text-align: center;
+    cursor: pointer;
+}
+
+img
+{
+    vertical-align: middle;
+    display:block;
+}
+
+.anchor-icon
+{
+    display:inline-block;
+    margin-top: 2px;
+}
+
+
+.inputPassword
+{
+    padding-right: 0px !important;
+}
+
+.hideShowPassword-toggle
+{
+    border: none !important;
+    background: none !important;
+}
+
+.hideShowPassword-toggle-show
+{
+
+}
+
+.hideShowPassword-toggle-hide
+{
+
+}
+
+.hideShowPassword-toggle:hover
+{
+    color: red;
+}
+
+
+#error-msg-name > label, #error-msg-email > label, #error-msg-password > label
+{
+    color: red !important;
+}
+
+.bg-overlay
+{
+    background-color: #0D47A1;
+}
+
+#button-edit:hover
+{
+    background-color: #512da8;
+}
+
+#col-avatar
+{
+    min-width: 100px !important;
+}
+

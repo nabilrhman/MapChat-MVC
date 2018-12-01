@@ -1,0 +1,16 @@
+MapChat
+http://www.map-chat.com
+
+Password Reset
+
+Hello
+
+{{ name }}
+
+You are receiving this email because we recently received a password reset request for your account. Go to the link to reset your password.
+
+RESET: {{ url }}
+
+Please ignore if you didn't request for it; your password will not change.
+
+- The MapChat Team

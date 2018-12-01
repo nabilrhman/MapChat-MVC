@@ -1,0 +1,154 @@
+[30-Nov-2018 21:44:08 UTC] Uncaught exception: 'Exception' with message 'No route matched.'
+Stack trace: #0 C:\wamp64\www\public\index.php(45): Core\Router->dispatch('logi')
+#1 {main}
+Thrown in 'C:\wamp64\www\Core\Router.php' on line 130
+[30-Nov-2018 21:44:59 UTC] Uncaught exception: 'Exception' with message 'No route matched.'
+Stack trace: #0 C:\wamp64\www\public\index.php(45): Core\Router->dispatch('logi')
+#1 {main}
+Thrown in 'C:\wamp64\www\Core\Router.php' on line 130
+[30-Nov-2018 21:47:22 UTC] Uncaught exception: 'Exception' with message 'No route matched.'
+Stack trace: #0 C:\wamp64\www\public\index.php(45): Core\Router->dispatch('q')
+#1 {main}
+Thrown in 'C:\wamp64\www\Core\Router.php' on line 130
+[30-Nov-2018 21:47:48 UTC] Uncaught exception: 'Exception' with message 'No route matched.'
+Stack trace: #0 C:\wamp64\www\public\index.php(45): Core\Router->dispatch('q')
+#1 {main}
+Thrown in 'C:\wamp64\www\Core\Router.php' on line 130
+[30-Nov-2018 21:48:52 UTC] Uncaught exception: 'Exception' with message 'No route matched.'
+Stack trace: #0 C:\wamp64\www\public\index.php(45): Core\Router->dispatch('q')
+#1 {main}
+Thrown in 'C:\wamp64\www\Core\Router.php' on line 130
+[30-Nov-2018 21:49:12 UTC] Uncaught exception: 'Exception' with message 'No route matched.'
+Stack trace: #0 C:\wamp64\www\public\index.php(45): Core\Router->dispatch('q')
+#1 {main}
+Thrown in 'C:\wamp64\www\Core\Router.php' on line 130
+[30-Nov-2018 21:49:24 UTC] Uncaught exception: 'Exception' with message 'No route matched.'
+Stack trace: #0 C:\wamp64\www\public\index.php(45): Core\Router->dispatch('q')
+#1 {main}
+Thrown in 'C:\wamp64\www\Core\Router.php' on line 130
+[30-Nov-2018 21:52:05 UTC] Uncaught exception: 'Exception' with message 'No route matched.'
+Stack trace: #0 C:\wamp64\www\public\index.php(45): Core\Router->dispatch('q')
+#1 {main}
+Thrown in 'C:\wamp64\www\Core\Router.php' on line 130
+[30-Nov-2018 21:52:49 UTC] Uncaught exception: 'Exception' with message 'No route matched.'
+Stack trace: #0 C:\wamp64\www\public\index.php(45): Core\Router->dispatch('ap')
+#1 {main}
+Thrown in 'C:\wamp64\www\Core\Router.php' on line 130
+[30-Nov-2018 21:53:08 UTC] Uncaught exception: 'Exception' with message 'No route matched.'
+Stack trace: #0 C:\wamp64\www\public\index.php(45): Core\Router->dispatch('ap')
+#1 {main}
+Thrown in 'C:\wamp64\www\Core\Router.php' on line 130
+[30-Nov-2018 21:53:43 UTC] Uncaught exception: 'Exception' with message 'No route matched.'
+Stack trace: #0 C:\wamp64\www\public\index.php(45): Core\Router->dispatch('ap')
+#1 {main}
+Thrown in 'C:\wamp64\www\Core\Router.php' on line 130
+[30-Nov-2018 21:53:56 UTC] Uncaught exception: 'Exception' with message 'No route matched.'
+Stack trace: #0 C:\wamp64\www\public\index.php(45): Core\Router->dispatch('ap')
+#1 {main}
+Thrown in 'C:\wamp64\www\Core\Router.php' on line 130
+[30-Nov-2018 21:54:06 UTC] Uncaught exception: 'Exception' with message 'No route matched.'
+Stack trace: #0 C:\wamp64\www\public\index.php(45): Core\Router->dispatch('ap')
+#1 {main}
+Thrown in 'C:\wamp64\www\Core\Router.php' on line 130
+[30-Nov-2018 21:54:22 UTC] Uncaught exception: 'Exception' with message 'No route matched.'
+Stack trace: #0 C:\wamp64\www\public\index.php(45): Core\Router->dispatch('ap')
+#1 {main}
+Thrown in 'C:\wamp64\www\Core\Router.php' on line 130
+[30-Nov-2018 21:54:30 UTC] Uncaught exception: 'ErrorException' with message 'session_destroy(): Session object destruction failed'
+Stack trace: #0 [internal function]: Core\Error::errorHandler(2, 'session_destroy...', 'C:\\wamp64\\www\\A...', 72, Array)
+#1 C:\wamp64\www\App\Auth.php(72): session_destroy()
+#2 C:\wamp64\www\App\Controllers\Login.php(92): App\Auth::logout()
+#3 [internal function]: App\Controllers\Login->destroyAction()
+#4 C:\wamp64\www\Core\Controller.php(51): call_user_func_array(Array, Array)
+#5 C:\wamp64\www\Core\Router.php(121): Core\Controller->__call('destroy', Array)
+#6 C:\wamp64\www\public\index.php(45): Core\Router->dispatch('logout')
+#7 {main}
+Thrown in 'C:\wamp64\www\App\Auth.php' on line 72
+[30-Nov-2018 21:54:56 UTC] Uncaught exception: 'ErrorException' with message 'session_destroy(): Session object destruction failed'
+Stack trace: #0 [internal function]: Core\Error::errorHandler(2, 'session_destroy...', 'C:\\wamp64\\www\\A...', 72, Array)
+#1 C:\wamp64\www\App\Auth.php(72): session_destroy()
+#2 C:\wamp64\www\App\Controllers\Login.php(92): App\Auth::logout()
+#3 [internal function]: App\Controllers\Login->destroyAction()
+#4 C:\wamp64\www\Core\Controller.php(51): call_user_func_array(Array, Array)
+#5 C:\wamp64\www\Core\Router.php(121): Core\Controller->__call('destroy', Array)
+#6 C:\wamp64\www\public\index.php(45): Core\Router->dispatch('logout')
+#7 {main}
+Thrown in 'C:\wamp64\www\App\Auth.php' on line 72
+[30-Nov-2018 21:56:42 UTC] Uncaught exception: 'ErrorException' with message 'session_regenerate_id(): Session object destruction failed.  ID: files (path: c:/wamp64/tmp)'
+Stack trace: #0 [internal function]: Core\Error::errorHandler(2, 'session_regener...', 'C:\\wamp64\\www\\A...', 25, Array)
+#1 C:\wamp64\www\App\Auth.php(25): session_regenerate_id(true)
+#2 C:\wamp64\www\App\Controllers\Login.php(48): App\Auth::login(Object(App\Models\User), false)
+#3 [internal function]: App\Controllers\Login->createAction()
+#4 C:\wamp64\www\Core\Controller.php(51): call_user_func_array(Array, Array)
+#5 C:\wamp64\www\Core\Router.php(121): Core\Controller->__call('create', Array)
+#6 C:\wamp64\www\public\index.php(45): Core\Router->dispatch('login/create')
+#7 {main}
+Thrown in 'C:\wamp64\www\App\Auth.php' on line 25
+[30-Nov-2018 21:56:57 UTC] Uncaught exception: 'ErrorException' with message 'session_regenerate_id(): Session object destruction failed.  ID: files (path: c:/wamp64/tmp)'
+Stack trace: #0 [internal function]: Core\Error::errorHandler(2, 'session_regener...', 'C:\\wamp64\\www\\A...', 25, Array)
+#1 C:\wamp64\www\App\Auth.php(25): session_regenerate_id(true)
+#2 C:\wamp64\www\App\Controllers\Login.php(48): App\Auth::login(Object(App\Models\User), false)
+#3 [internal function]: App\Controllers\Login->createAction()
+#4 C:\wamp64\www\Core\Controller.php(51): call_user_func_array(Array, Array)
+#5 C:\wamp64\www\Core\Router.php(121): Core\Controller->__call('create', Array)
+#6 C:\wamp64\www\public\index.php(45): Core\Router->dispatch('login/create')
+#7 {main}
+Thrown in 'C:\wamp64\www\App\Auth.php' on line 25
+[30-Nov-2018 21:58:25 UTC] Uncaught exception: 'ErrorException' with message 'session_destroy(): Session object destruction failed'
+Stack trace: #0 [internal function]: Core\Error::errorHandler(2, 'session_destroy...', 'C:\\wamp64\\www\\A...', 72, Array)
+#1 C:\wamp64\www\App\Auth.php(72): session_destroy()
+#2 C:\wamp64\www\App\Controllers\Login.php(92): App\Auth::logout()
+#3 [internal function]: App\Controllers\Login->destroyAction()
+#4 C:\wamp64\www\Core\Controller.php(51): call_user_func_array(Array, Array)
+#5 C:\wamp64\www\Core\Router.php(121): Core\Controller->__call('destroy', Array)
+#6 C:\wamp64\www\public\index.php(45): Core\Router->dispatch('logout')
+#7 {main}
+Thrown in 'C:\wamp64\www\App\Auth.php' on line 72
+[30-Nov-2018 21:58:44 UTC] Uncaught exception: 'ErrorException' with message 'session_destroy(): Session object destruction failed'
+Stack trace: #0 [internal function]: Core\Error::errorHandler(2, 'session_destroy...', 'C:\\wamp64\\www\\A...', 72, Array)
+#1 C:\wamp64\www\App\Auth.php(72): session_destroy()
+#2 C:\wamp64\www\App\Controllers\Login.php(92): App\Auth::logout()
+#3 [internal function]: App\Controllers\Login->destroyAction()
+#4 C:\wamp64\www\Core\Controller.php(51): call_user_func_array(Array, Array)
+#5 C:\wamp64\www\Core\Router.php(121): Core\Controller->__call('destroy', Array)
+#6 C:\wamp64\www\public\index.php(45): Core\Router->dispatch('logout')
+#7 {main}
+Thrown in 'C:\wamp64\www\App\Auth.php' on line 72
+[30-Nov-2018 21:59:10 UTC] Uncaught exception: 'ErrorException' with message 'session_regenerate_id(): Session object destruction failed.  ID: files (path: c:/wamp64/tmp)'
+Stack trace: #0 [internal function]: Core\Error::errorHandler(2, 'session_regener...', 'C:\\wamp64\\www\\A...', 25, Array)
+#1 C:\wamp64\www\App\Auth.php(25): session_regenerate_id(true)
+#2 C:\wamp64\www\App\Controllers\Login.php(48): App\Auth::login(Object(App\Models\User), false)
+#3 [internal function]: App\Controllers\Login->createAction()
+#4 C:\wamp64\www\Core\Controller.php(51): call_user_func_array(Array, Array)
+#5 C:\wamp64\www\Core\Router.php(121): Core\Controller->__call('create', Array)
+#6 C:\wamp64\www\public\index.php(45): Core\Router->dispatch('login/create')
+#7 {main}
+Thrown in 'C:\wamp64\www\App\Auth.php' on line 25
+[30-Nov-2018 22:00:06 UTC] Uncaught exception: 'ErrorException' with message 'Undefined index: email'
+Stack trace: #0 C:\wamp64\www\App\Controllers\Login.php(37): Core\Error::errorHandler(8, 'Undefined index...', 'C:\\wamp64\\www\\A...', 37, Array)
+#1 [internal function]: App\Controllers\Login->createAction()
+#2 C:\wamp64\www\Core\Controller.php(51): call_user_func_array(Array, Array)
+#3 C:\wamp64\www\Core\Router.php(121): Core\Controller->__call('create', Array)
+#4 C:\wamp64\www\public\index.php(45): Core\Router->dispatch('login/create')
+#5 {main}
+Thrown in 'C:\wamp64\www\App\Controllers\Login.php' on line 37
+[30-Nov-2018 22:05:07 UTC] Uncaught exception: 'ErrorException' with message 'Undefined index: email'
+Stack trace: #0 C:\wamp64\www\App\Controllers\Login.php(83): Core\Error::errorHandler(8, 'Undefined index...', 'C:\\wamp64\\www\\A...', 83, Array)
+#1 [internal function]: App\Controllers\Login->createAction()
+#2 C:\wamp64\www\Core\Controller.php(51): call_user_func_array(Array, Array)
+#3 C:\wamp64\www\Core\Router.php(121): Core\Controller->__call('create', Array)
+#4 C:\wamp64\www\public\index.php(45): Core\Router->dispatch('login/create')
+#5 {main}
+Thrown in 'C:\wamp64\www\App\Controllers\Login.php' on line 83
+[30-Nov-2018 22:06:24 UTC] Uncaught exception: 'Exception' with message 'No route matched.'
+Stack trace: #0 C:\wamp64\www\public\index.php(45): Core\Router->dispatch('lo')
+#1 {main}
+Thrown in 'C:\wamp64\www\Core\Router.php' on line 130
+[30-Nov-2018 22:43:25 UTC] Uncaught exception: 'ErrorException' with message 'Undefined variable: remember_me'
+Stack trace: #0 C:\wamp64\www\App\Controllers\Login.php(89): Core\Error::errorHandler(8, 'Undefined varia...', 'C:\\wamp64\\www\\A...', 89, Array)
+#1 [internal function]: App\Controllers\Login->createAction()
+#2 C:\wamp64\www\Core\Controller.php(51): call_user_func_array(Array, Array)
+#3 C:\wamp64\www\Core\Router.php(121): Core\Controller->__call('create', Array)
+#4 C:\wamp64\www\public\index.php(45): Core\Router->dispatch('login/create')
+#5 {main}
+Thrown in 'C:\wamp64\www\App\Controllers\Login.php' on line 89

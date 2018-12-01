@@ -1,0 +1,14 @@
+MapChat
+http://www.map-chat.com
+
+Account activation
+
+Welcome to MapChat
+
+{{ name }}
+
+Please activate your account
+
+ACTIVATE: {{ url }}
+
+- The MapChat Team

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}{% endblock %}</title>
+    <!-- <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous"> -->
+
+    <link href="https://fonts.googleapis.com/css?family=Montserrat" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/all.css" integrity="sha384-B4dIYHKNBt8Bc12p+WXckhzcICo0wtJAoU8YZTY5qE0Id1GSseTk6S+L3BlXeVIU" crossorigin="anonymous">
+
+
+    <link rel="stylesheet" href="/css/materialize.css">
+    <link rel="stylesheet" href="/css/animate.css" />
+
+    <!-- <link rel="stylesheet" href="/css/styles.css" /> -->
+
+    <!-- Styles for the header and footer -->
+    <link rel="stylesheet" href="/css/header.css" />
+    <link rel="stylesheet" href="/css/footer.css" />
+
+    <link rel="stylesheet" href="/css/styles.css" />
+
+    {% block head %}
+
+    {% endblock %}
+
+</head>
+
+<body class="animated fadeIn">
+
+<div class="header animated fadeIn">
+    <a href="/" class="logo hover-grow">MapChat</a>
+    <div class="nav-container pull-left animated fadeInDownSubtle">
+
+        {% if current_user %}
+        <a href="/logout">LOG OUT</a>
+        <a href="/profile/show">PROFILE</a>
+        {% else %}
+        <a href="/login">LOG IN</a>
+        <a href="/signup/new">SIGN UP</a>
+        {% endif %}
+        <a href="/about">ABOUT</a>
+
+    </div>
+</div>
+
+<div class="container" id="container-main">
+
+
+    {% for message in flash_messages %}
+    <div class="animated slideInDown alert alert-{{ message.type }}">
+        {{ message.body }}
+    </div>
+    {% endfor %}
+
+    {% block body %}
+
+    {% endblock %}
+
+
+</div>
+
+<div class="footer animated fadeIn">
+    <p class="footer-icon"><a href="https://github.com/nabilrhman/MapChat-MVC" class="white-text"><i class="fab fa-github"></i></a></p>
+    <p>MapChat &copy; {{ 'now'|date('Y') }} <span class="grey-text">|</span> <a href="http://www.nr-creation.com" class="amber-text">Nabil Rahman</a></p>
+</div>
+
+{% block chatmodule %}
+
+{% endblock %}
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+<!-- <script src="https://code.jquery.com/jquery-3.1.1.min.js" integrity="sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8=" crossorigin="anonymous"></script> -->
+<script src="http://ajax.aspnetcdn.com/ajax/jquery.validate/1.15.0/jquery.validate.min.js"></script>
+<!-- Compiled and minified JavaScript -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+
+<script src="/js/clearNotifications.js"></script>
+
+{% block footer %}
+
+{% endblock %}
+</body>
+</html>

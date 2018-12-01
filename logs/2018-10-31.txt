@@ -1,0 +1,35 @@
+[31-Oct-2018 06:25:45 UTC] Uncaught exception: 'Exception' with message 'No route matched.'
+Stack trace: #0 C:\wamp64\www\public\index.php(45): Core\Router->dispatch('about/')
+#1 {main}
+Thrown in 'C:\wamp64\www\Core\Router.php' on line 130
+[31-Oct-2018 06:29:04 UTC] Uncaught exception: 'Exception' with message 'No route matched.'
+Stack trace: #0 C:\wamp64\www\public\index.php(45): Core\Router->dispatch('about/')
+#1 {main}
+Thrown in 'C:\wamp64\www\Core\Router.php' on line 130
+[31-Oct-2018 06:30:37 UTC] Uncaught exception: 'Exception' with message 'No route matched.'
+Stack trace: #0 C:\wamp64\www\public\index.php(45): Core\Router->dispatch('profile')
+#1 {main}
+Thrown in 'C:\wamp64\www\Core\Router.php' on line 130
+[31-Oct-2018 06:30:42 UTC] Uncaught exception: 'Exception' with message 'No route matched.'
+Stack trace: #0 C:\wamp64\www\public\index.php(45): Core\Router->dispatch('profile/')
+#1 {main}
+Thrown in 'C:\wamp64\www\Core\Router.php' on line 130
+[31-Oct-2018 06:48:11 UTC] Uncaught exception: 'Twig_Error_Runtime' with message 'An exception has been thrown during the rendering of a template ("Object of class App\Models\User could not be converted to string").'
+Stack trace: #0 C:\wamp64\www\public\cache\templates\38\38b88f49921bb55a623db956062ed52edd527b6d13d9fc9c5f5b4a3ecc87412f.php(62): Twig_Template->displayBlock('body', Array, Array)
+#1 C:\wamp64\www\vendor\twig\twig\lib\Twig\Template.php(390): __TwigTemplate_497c3c7e0addb2df111b3ef5a9455790d494c06f196c5f1cfd2643bc46859755->doDisplay(Array, Array)
+#2 C:\wamp64\www\vendor\twig\twig\lib\Twig\Template.php(367): Twig_Template->displayWithErrorHandling(Array, Array)
+#3 C:\wamp64\www\public\cache\templates\b4\b487e5453f003b40b8b461e4731f98dd3bc5e13cbc2b7fd0416cd925d6abb884.php(29): Twig_Template->display(Array, Array)
+#4 C:\wamp64\www\vendor\twig\twig\lib\Twig\Template.php(390): __TwigTemplate_e61a7b34ce64b3084d76019e42604700f84b7f5b2ef4c93928b36e65b926ae82->doDisplay(Array, Array)
+#5 C:\wamp64\www\vendor\twig\twig\lib\Twig\Template.php(367): Twig_Template->displayWithErrorHandling(Array, Array)
+#6 C:\wamp64\www\vendor\twig\twig\lib\Twig\Template.php(375): Twig_Template->display(Array)
+#7 C:\wamp64\www\vendor\twig\twig\lib\Twig\Environment.php(289): Twig_Template->render(Array)
+#8 C:\wamp64\www\Core\View.php(72): Twig_Environment->render('Password/reset_...', Array)
+#9 C:\wamp64\www\App\Models\User.php(318): Core\View::getTemplate('Password/reset_...', Array)
+#10 C:\wamp64\www\App\Models\User.php(274): App\Models\User->sendPasswordResetEmail()
+#11 C:\wamp64\www\App\Controllers\Password.php(33): App\Models\User::sendPasswordReset('nabilr@outlook....')
+#12 [internal function]: App\Controllers\Password->requestResetAction()
+#13 C:\wamp64\www\Core\Controller.php(51): call_user_func_array(Array, Array)
+#14 C:\wamp64\www\Core\Router.php(121): Core\Controller->__call('requestReset', Array)
+#15 C:\wamp64\www\public\index.php(45): Core\Router->dispatch('password/reques...')
+#16 {main}
+Thrown in 'C:\wamp64\www\App\Views\Password\reset_email.html' on line 6

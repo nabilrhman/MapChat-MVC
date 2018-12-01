@@ -1,0 +1,26 @@
+{% extends 'base_email.html' %}
+{% block title %}Account Activation{% endblock %}
+{% block body %}
+<tr>
+    <td align="center" style="padding-bottom: 20px;"><p style="color: #512da8">Welcome to MapChat</p>
+        <p style="letter-spacing: 5px; text-transform: uppercase; font-weight: bold;">{{ name }}</p>
+        <p>Please activate your account</p>
+    </td>
+</tr>
+
+<tr>
+    <td align="center" >
+        <div><!--[if mso]>
+            <v:rect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="{{ url }}" style="height:40px;v-text-anchor:middle;width:100px;" stroke="f" fillcolor="#512da8">
+                <w:anchorlock/>
+                <center>
+            <![endif]-->
+            <a href="{{ url }}"
+               style="background-color:#512da8;color:#ffffff;display:inline-block;font-family:Montserrat, sans-serif;font-size:13px;font-weight:bold;line-height:40px;text-align:center;text-decoration:none;width:100px;-webkit-text-size-adjust:none;">ACTIVATE</a>
+            <!--[if mso]>
+            </center>
+            </v:rect>
+            <![endif]--></div>
+    </td>
+</tr>
+{% endblock %}

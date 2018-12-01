@@ -1,0 +1,48 @@
+{% extends 'base_login.html' %}
+
+{% block title %}Reset password{% endblock %}
+
+{% block heading %}RESET PASSWORD{% endblock %}
+
+
+{% block body %}
+
+<div class="container">
+    <div class="z-depth-1 grey lighten-4 row form-container form-container-custom">
+        <form method="post" id="formPassword" action="/password/reset-password">
+
+            <input type="hidden" name="token" value="{{ token }}"/>
+
+            <div class='row'>
+                <div class='input-field col s12'>
+                    <input type="password" id="inputPassword" name="password" class="inputPassword" required/>
+                    <label id="passwordLabel" for="inputPassword">Password</label>
+                    <span id="error-msg-password" class="helper-text"></span>
+                </div>
+            </div>
+
+        </form>
+
+        <center>
+            <div class='row' style="clear: both">
+                <button type='submit' class='col s12 btn btn-large waves-effect purple hover-grow' id="submitButton">
+                    RESET
+                </button>
+            </div>
+        </center>
+    </div>
+</div>
+
+{% endblock %}
+
+
+{% block footer %}
+
+<script src="http://ajax.aspnetcdn.com/ajax/jquery.validate/1.15.0/jquery.validate.min.js"></script>
+<script src="/js/validatorExtended.js"></script>
+<script src="/js/hideShowPassword.min.js"></script>
+<script src="/js/validatePasswordForgotPassword.js"></script>
+
+
+{% endblock %}
+

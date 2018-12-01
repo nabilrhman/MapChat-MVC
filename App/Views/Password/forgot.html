@@ -1,0 +1,41 @@
+{% extends 'base_login.html' %}
+
+{% block title %}Password reset{% endblock %}
+
+{% block heading %}REQUEST PASSWORD RESET{% endblock %}
+
+{% block body %}
+
+<div class="container" >
+    <div class="z-depth-1 grey lighten-4 row form-container form-container-custom" style="">
+
+        <form class="col s12" action="/password/request-reset" method="post" id="formForgot">
+
+            <div class='row'>
+                <div class='input-field col s12'>
+                    <input type="email" id="inputEmail" name="email" autofocus value="{{ email }}"/>
+                    <label for="inputEmail" data-error="Type your email">Email address</label>
+                    <span id="error-msg-email" class="helper-text"></span>
+                </div>
+            </div>
+
+            <center>
+                <div class='row' style="clear: both">
+                    <button type='submit' class='col s12 btn btn-large waves-effect purple hover-grow' id="submitButton">REQUEST</button>
+                </div>
+            </center>
+        </form>
+    </div>
+</div>
+
+<a href="/login/new" class="hover-grow-increased" id="link-signup-login-bottom">Sign in</a>
+
+{% endblock %}
+
+{% block footer %}
+
+<script src="http://ajax.aspnetcdn.com/ajax/jquery.validate/1.15.0/jquery.validate.min.js"></script>
+<script src="/js/validatorExtended.js"></script>
+<script src="/js/validateEmailForgotPassword.js"></script>
+
+{% endblock %}

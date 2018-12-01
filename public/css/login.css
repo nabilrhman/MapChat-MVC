@@ -1,0 +1,152 @@
+html {
+
+}
+
+*
+{
+    font-family: 'Montserrat', sans-serif;
+}
+
+
+body {
+    display: flex;
+    min-height: 100vh;
+    flex-direction: column;
+    position: relative;
+    background: url("../res/bg.png") no-repeat center center fixed;
+    -webkit-background-size: cover;
+    -moz-background-size: cover;
+    -o-background-size: cover;
+    background-size: cover;
+    overflow-y: auto;
+
+}
+
+main {
+    flex: 1 0 auto;
+    margin: 0;
+    position: absolute;
+    width: 100%;
+    margin-top: 5%;
+    margin-bottom: 5%;
+
+}
+
+#divLogo {
+    background-image: url("../res/logo.png");
+    width: 290px;
+    height: 68px;
+    cursor: pointer;
+
+}
+
+white-text {
+    color: white;
+}
+
+
+.input-field input[type=date]:focus + label,
+.input-field input[type=text]:focus + label,
+.input-field input[type=email]:focus + label,
+.input-field input[type=password]:focus + label {
+    color: #512da8;
+}
+
+.input-field input[type=date]:focus,
+.input-field input[type=text]:focus,
+.input-field input[type=email]:focus,
+.input-field input[type=password]:focus {
+    border-bottom: 2px solid #512da8;
+    border-bottom: 2px solid #512da8;
+    box-shadow: none;
+}
+
+#logo {
+    cursor: pointer;
+}
+
+#logo:hover {
+    transform: scale(1.1);
+}
+
+a {
+    color: #ffc107;
+}
+
+
+
+.form-container {
+    display: inline-block; padding: 32px 48px 0px 48px; border: 1px solid #EEE; border-top: 4px solid #ffc107;
+}
+
+
+
+.footer-login {
+    
+    width: 100%;
+    color: white;
+    text-align: center;
+    z-index: 999;
+    font-size: small;
+    margin-top: 30px;
+
+}
+
+button #login
+{
+    font-weight: 900;
+   
+}
+
+.form-container-custom
+{
+    width: 30%;
+    min-width: 390px;
+}
+
+.inputPassword
+{
+    padding-right: 0px !important;
+}
+
+.hideShowPassword-toggle
+{
+    border: none !important;
+    background: none !important;
+}
+
+.hideShowPassword-toggle-show
+{
+
+}
+
+.hideShowPassword-toggle-hide
+{
+
+}
+
+.hideShowPassword-toggle:hover
+{
+    color: red;
+}
+
+#error-msg-name, #error-msg-email, #error-msg-password
+{
+    float: left;
+}
+
+#error-msg-name > label, #error-msg-email > label, #error-msg-password > label
+{
+    color: red !important;
+}
+
+#heading, #submitButton
+{
+    letter-spacing: 5px;
+}
+
+#link-signup-login-bottom{
+    font-weight: 900;
+    text-transform: uppercase;
+    margin-top: 20px;
+}
