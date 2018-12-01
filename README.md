@@ -29,7 +29,7 @@ The project is fully open-sourced. Visit https://github.com/nabilrhman/MapChat-M
 -   Twig (A template engine for the PHP programming language)
 -   Composer (An application-level package manager for the PHP programming language)
 -   JetBrains PhpStorm IDE
-- 
+
 ## Developed features
 
 -   Converse real-time with people in a common group.
