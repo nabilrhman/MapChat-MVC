@@ -13,7 +13,8 @@ The project is fully open-sourced. Visit https://github.com/nabilrhman/MapChat-M
 
 ## Software specifications
 
-- The backend is developed in PHP..Utilizes MVC design pattern.
+- The backend is developed in PHP.
+- Utilizes MVC design pattern.
 - Uses Twig as it's templating engine to generate views.
 - Prevents vulnerabilities like cross-site scripting attack, SQL injection by implementing best practices.
 - Real-time communication is implemented through AJAX and in some places through Axios.
