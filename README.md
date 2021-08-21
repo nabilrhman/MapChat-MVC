@@ -7,7 +7,7 @@ MapChat is a location-based chatting application that lets you talk to people fr
 
 It is currently under development, but we are working hard to implement the features our users are interested in. If you have an idea about a feature that you want us to implement for better usage of the application, feel free to contact us.
 
-E-mail us at nabilr@outlook.com
+E-mail me at nabilr@outlook.com
 
 The project is fully open-sourced. Visit https://github.com/nabilrhman/MapChat-MVC
 
