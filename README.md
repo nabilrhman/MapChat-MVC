@@ -13,7 +13,10 @@ The project is fully open-sourced. Visit https://github.com/nabilrhman/MapChat-M
 
 ## Screenshot
 
-![Screenshot](screenshot.png)
+![MapChat App Screenshot](docs/images/mapchat-app.png)
+![MapChat Login](docs/images/mapchat-login.png)
+![MapChat Activation Email](docs/images/mapchat-activate.png)
+![MapChat Password Reset Email](docs/images/mapchat-reset.png)
 
 [More](https://www.flickr.com/gp/167070082@N02/L9h92j)
 
