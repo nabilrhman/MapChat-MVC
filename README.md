@@ -46,7 +46,7 @@ The project is fully open-sourced. Visit https://github.com/nabilrhman/MapChat-M
 -   Easy to use user experience.
 -   Create your profile along with your own avatar.- 
 
-## Coming soon
+## Stretch goals
 
 -   Create your own groups and invite your friends.
 -   Ability to share your location not only by your IP address but also through your GPS sensor.
