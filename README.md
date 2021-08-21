@@ -18,8 +18,6 @@ The project is fully open-sourced. Visit https://github.com/nabilrhman/MapChat-M
 ![MapChat Activation Email](docs/images/mapchat-activate.jpg)
 ![MapChat Password Reset Email](docs/images/mapchat-reset.jpg)
 
-[More](https://www.flickr.com/gp/167070082@N02/L9h92j)
-
 ## Software specifications
 
 - The backend is developed in PHP.
