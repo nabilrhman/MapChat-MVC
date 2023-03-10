@@ -1,8 +1,6 @@
 
 # MapChat
 
-http://themapchat.herokuapp.com
-
 MapChat is a location-based chatting application that lets you talk to people from all around the world. MapChat focuses on real-time interaction with people who don’t know each other. A common use case of the app could be to make new friends in your area or have a conversation with someone at the same event as you. You can also tap into the local knowledge of someone from somewhere else before you arrive on holiday in a foreign country perhaps.
 
 It is currently under development, but we are working hard to implement the features our users are interested in. If you have an idea about a feature that you want us to implement for better usage of the application, feel free to contact us.
