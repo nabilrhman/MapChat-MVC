@@ -1,7 +1,9 @@
 
 # MapChat
 
-MapChat is a location-based chatting application that lets you talk to people from all around the world. MapChat focuses on real-time interaction with people who don’t know each other. Using MapChat, you can make new friends in your area or have a conversation with someone at the same event as you. You can also tap into the local knowledge of someone from somewhere else before you arrive on holiday in a foreign country perhaps.
+MapChat is a unique location-based chatting application that enables real-time interactions between people from all around the world. With MapChat, you can make new friends in your area or strike up a conversation with someone at the same event as you. The app's key feature is its ability to facilitate seamless communication between strangers who share common interests or locations.
+
+MapChat not only helps you expand your social circle but also allows you to tap into the local knowledge of someone from another region or country before embarking on a trip. This feature can be particularly useful when planning a vacation to a foreign country, as you can get insider tips and recommendations from locals. Overall, MapChat offers a dynamic platform for spontaneous connections and memorable conversations.
 
 The project is fully open-sourced. Visit https://github.com/nabilrhman/MapChat-MVC
 
