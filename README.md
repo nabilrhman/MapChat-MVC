@@ -41,7 +41,7 @@ The project is fully open-sourced. Visit https://github.com/nabilrhman/MapChat-M
 -   See other people's locations, more specifically which cities they are from.
 -   Share your location by your IP address.
 -   Easy to use user experience.
--   Create your profile along with your own avatar.- 
+-   Create your profile along with your own avatar.
 
 ## Stretch goals
 
