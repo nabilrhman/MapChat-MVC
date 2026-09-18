@@ -55,4 +55,3 @@ The project is fully open-sourced.
 ## Author
 
 Nabil Rahman | [nabilr.com](https://nabilr.com)
-https://nabilr.com
