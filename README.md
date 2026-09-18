@@ -5,7 +5,7 @@ MapChat is a unique location-based chatting application that enables real-time i
 
 MapChat not only helps you expand your social circle but also allows you to tap into the local knowledge of someone from another region or country before embarking on a trip. This feature can be particularly useful when planning a vacation to a foreign country, as you can get insider tips and recommendations from locals. Overall, MapChat offers a dynamic platform for spontaneous connections and memorable conversations.
 
-The project is fully open-sourced. Visit https://github.com/nabilrhman/MapChat-MVC
+The project is fully open-sourced.
 
 ## Screenshot
 
@@ -54,5 +54,5 @@ The project is fully open-sourced. Visit https://github.com/nabilrhman/MapChat-M
 
 ## Author
 
-Nabil Rahman | 
+Nabil Rahman | [nabilr.com](https://nabilr.com)
 https://nabilr.com
