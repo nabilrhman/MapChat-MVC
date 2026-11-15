@@ -15,7 +15,8 @@ body
 
 }
 
-#map
+.map,
+.map.maplibregl-map /* maplibre-gl.css loads later and makes it position: relative */
 {
     /* Between the header and the footer, so neither covers it (or its credits) */
     position:fixed;
@@ -57,7 +58,7 @@ body
     text-align: center;
 }
 
-.pin-label strong
+.pin-label__name
 {
     display: block;
     color: #212121;
@@ -65,7 +66,7 @@ body
     font-weight: 600;
 }
 
-.pin-label > span /* the city line only, not the flag inside it */
+.pin-label__place
 {
     display: flex;
     align-items: center;
@@ -84,8 +85,8 @@ body
 }
 
 /* The map libraries set their own Helvetica; use the page's font like everything else */
-#map.leaflet-container,
-#map.maplibregl-map
+.map.leaflet-container,
+.map.maplibregl-map
 {
     font-family: inherit;
 }
@@ -96,8 +97,9 @@ body
 }
 
 
-/* Name shown when hovering a pin, like the old Google info window */
-#map .maplibregl-popup-content
+/* Name shown when hovering a pin, like the old Google info window. Three
+   classes, to beat maplibre-gl.css's corner rules, which load later */
+.map .maplibregl-popup .maplibregl-popup-content
 {
     font-family: inherit;
     padding: 8px 12px;
@@ -106,7 +108,7 @@ body
 
 }
 
-.chat-container
+.chat-panel
 {
     display: flex;
     flex-direction: column;
@@ -211,7 +213,7 @@ body
 }
 
 /* Same green as the dot on an online person's avatar */
-.chat-tab .tab-online
+.chat-tab__online
 {
     flex: none;
     width: 8px;
@@ -233,21 +235,21 @@ body
     to { opacity: 0; scale: 0.6; }
 }
 
-.chat-tab.tab-enter,
-.chat-tab .tab-online
+.chat-tab.is-entering,
+.chat-tab__online
 {
     animation: grow-in var(--dur) var(--ease-out) backwards;
 }
 
-.chat-tab.tab-leave,
-.chat-tab .tab-online.dot-leave
+.chat-tab.is-leaving,
+.chat-tab__online.is-leaving
 {
     animation: shrink-out var(--dur-fast) var(--ease-in) forwards;
     pointer-events: none;
 }
 
 /* Long names are cut short so more tabs fit */
-.chat-tab .tab-name
+.chat-tab__name
 {
     max-width: 180px;
     overflow: hidden;
@@ -260,14 +262,14 @@ body
     color: #512da8;
 }
 
-.chat-tab.active
+.chat-tab.is-active
 {
     background-color: #fafafa; /* same as the messages, so they join */
     color: #512da8;
     font-weight: 600;
 }
 
-.chat-tab .unread
+.chat-tab__unread
 {
     padding: 0 6px;
     border-radius: 10px;
@@ -277,7 +279,7 @@ body
     line-height: 18px;
 }
 
-.chat-tab .close-tab
+.chat-tab__close
 {
     color: #9e9e9e;
     font-size: 20px;
@@ -285,7 +287,7 @@ body
     padding-left: 2px; /* none on the right, so the tab's sides match */
 }
 
-.chat-tab .close-tab:hover
+.chat-tab__close:hover
 {
     color: #e53935;
 }
@@ -307,7 +309,7 @@ body
     display: none;
 }
 
-.private-note-label
+.private-note__label
 {
     display: inline-flex;
     align-items: center;
@@ -318,14 +320,14 @@ body
     line-height: 16px;
 }
 
-#private-note-text
+.private-note__text
 {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.private-note .material-icons
+.private-note__icon
 {
     font-size: 14px;
 }
@@ -348,24 +350,24 @@ body
 
 /* Held off screen until the page's script runs, so they slide in once the
    page is ready rather than while it loads */
-.slide-in-left
+.chat-panel
 {
     animation: panelInLeft var(--dur-slow) var(--ease-out) both paused;
 }
 
-.slide-in-right
+.people
 {
     animation: panelInRight var(--dur-slow) var(--ease-out) both paused;
 }
 
-.panels-in .slide-in-left,
-.panels-in .slide-in-right
+.is-ready .chat-panel,
+.is-ready .people
 {
     animation-play-state: running;
 }
 
 /* Closing the people list: slide out, then the page hides it */
-.panels-in .people.slide-out
+.is-ready .people.is-closing
 {
     animation: panelOutRight var(--dur) var(--ease-in) forwards;
 }
@@ -385,7 +387,7 @@ body
     box-shadow: -2px 0 8px rgba(0, 0, 0, 0.12);
 }
 
-.people-list
+.people__list
 {
     flex: 1;
     overflow-y: auto;
@@ -407,7 +409,7 @@ body
 }
 
 
-.people-heading
+.people__heading
 {
     margin: 0;
     padding: 16px 16px 8px;
@@ -420,7 +422,7 @@ body
 }
 
 /* Lines up with the chat tabs on the left */
-.people-heading.people-top
+.people__heading--top
 {
     flex: none;
     display: flex;
@@ -434,14 +436,14 @@ body
 }
 
 /* Count and "Online" sit on one baseline, so the digit and the letters line up */
-.people-title
+.people__title
 {
     display: flex;
     align-items: baseline;
     gap: 8px;
 }
 
-.people-close
+.people__close
 {
     margin-left: auto;
     color: #9e9e9e;
@@ -451,13 +453,13 @@ body
     cursor: pointer;
 }
 
-.people-close:hover
+.people__close:hover
 {
     color: #e53935;
 }
 
 /* Same look as the unread count on the tabs */
-.people-count
+.people__count
 {
     padding: 0 7px;
     border-radius: 10px;
@@ -479,7 +481,7 @@ body
     transition: background-color var(--dur-fast) var(--ease-out);
 }
 
-.person.can-message
+.person--can-message
 {
     cursor: pointer;
 }
@@ -489,14 +491,14 @@ body
     background-color: #ede7f6;
 }
 
-.person-avatar
+.person__avatar
 {
     position: relative;
     width: 28px;
     height: 28px;
 }
 
-.person-avatar img
+.person__photo
 {
     width: 28px;
     height: 28px;
@@ -506,13 +508,13 @@ body
 }
 
 /* Until the first reply */
-.people-loading
+.people__loading
 {
     padding: 12px 16px;
 }
 
 /* Green dot on the avatar of someone online */
-.person.online .person-avatar::after
+.person.is-online .person__avatar::after
 {
     content: '';
     position: absolute;
@@ -525,19 +527,19 @@ body
     background-color: #43a047;
 }
 
-.person:not(.online) img
+.person:not(.is-online) .person__photo
 {
     filter: grayscale(1);
     opacity: 0.6;
 }
 
-.person-text
+.person__text
 {
     min-width: 0;
 }
 
-.person-name,
-.person-city
+.person__name,
+.person__city
 {
     display: block;
     overflow: hidden;
@@ -546,7 +548,7 @@ body
 }
 
 /* Flag and city on one centre line, like the city line in the chat */
-.person-detail
+.person__detail
 {
     display: flex;
     align-items: center;
@@ -554,25 +556,25 @@ body
     min-width: 0;
 }
 
-.person-name
+.person__name
 {
     color: #424242;
     font-size: 13px;
 }
 
-.person:not(.online) .person-name
+.person:not(.is-online) .person__name
 {
     color: #9e9e9e;
 }
 
-.person-detail
+.person__detail
 {
     color: #9e9e9e;
     font-size: 12px;
     line-height: 16px; /* same as the city line in the chat */
 }
 
-.person-detail .fi
+.person__detail .fi
 {
     flex: none;
 }
@@ -588,36 +590,36 @@ body
     to { opacity: 0; transform: translateX(12px); }
 }
 
-.person.person-enter
+.person.is-entering
 {
     animation: person-in var(--dur) var(--ease-out) backwards;
 }
 
-.person.person-leave
+.person.is-leaving
 {
     animation: person-out var(--dur-fast) var(--ease-in) forwards;
     pointer-events: none;
 }
 
 /* Pins that come or go after the first load grow from their point */
-.map-pin.pin-enter svg
+.map-pin.is-entering .map-pin__icon
 {
     animation: grow-in var(--dur) var(--ease-out) backwards;
 }
 
-.map-pin.pin-leave svg
+.map-pin.is-leaving .map-pin__icon
 {
     animation: shrink-out var(--dur-fast) var(--ease-in) forwards;
 }
 
 /* The pin of the person hovered in the list */
-.map-pin svg
+.map-pin__icon
 {
     transition: transform var(--dur-fast) var(--ease-out);
     transform-origin: bottom center;
 }
 
-.map-pin.highlight svg
+.map-pin.is-highlighted .map-pin__icon
 {
     transform: scale(1.35);
 }
@@ -664,7 +666,7 @@ body
     box-shadow: 0 0 0 3px #d1c4e9;
 }
 
-.people-toggle .material-icons
+.people-toggle__icon
 {
     font-size: 20px;
 }
@@ -672,12 +674,12 @@ body
 /* Wide screens: the list shows unless it was closed */
 @media (min-width: 1101px)
 {
-    body.people-closed .people
+    .is-people-closed .people
     {
         display: none;
     }
 
-    body.people-closed .people-toggle
+    .is-people-closed .people-toggle
     {
         display: flex;
     }
@@ -703,7 +705,7 @@ body
         right: 0;
     }
 
-    .people.open
+    .people.is-open
     {
         display: flex;
     }
@@ -719,7 +721,7 @@ body
         height: 30vh;
     }
 
-    .chat-container
+    .chat-panel
     {
         top: calc(var(--header-height) + 30vh);
         max-width: none;
@@ -767,13 +769,13 @@ body
 }
 
 /* A message from the poll eases in (see App/chat.html) */
-.message-in
+.chat.is-entering
 {
     animation: fade-in-up var(--dur) var(--ease-out) backwards;
 }
 
 /* A quick fade when switching tabs */
-.chat-list.tab-in
+.chat-list.is-switching
 {
     animation: fade-in var(--dur) var(--ease-out);
 }
@@ -783,13 +785,13 @@ body
     background-color: #fff;
 }
 
-.chat-avatar-container
+.chat__avatar
 {
     width: 32px;
     height: 32px;
 }
 
-.chat .avatar
+.chat__photo
 {
     width: 32px;
     height: 32px;
@@ -800,31 +802,31 @@ body
 
 /* A soft circle while an uploaded photo loads; the photo then fades in
    (see chat.js) */
-.chat-avatar-container,
-.person-avatar
+.chat__avatar,
+.person__avatar
 {
     border-radius: 50%;
 }
 
-.chat .avatar,
-.person-avatar img
+.chat__photo,
+.person__photo
 {
     transition: opacity var(--dur) var(--ease-out);
 }
 
-.chat-avatar-container.photo-loading,
-.person-avatar.photo-loading
+.chat__avatar.is-loading,
+.person__avatar.is-loading
 {
     background-color: #ede7f6;
 }
 
-.chat-avatar-container.photo-loading img,
-.person-avatar.photo-loading img
+.chat__avatar.is-loading .chat__photo,
+.person__avatar.is-loading .person__photo
 {
     opacity: 0;
 }
 
-.chat-body-container
+.chat__content
 {
     display: grid;
     grid-template-columns: 1fr auto;
@@ -832,7 +834,7 @@ body
     min-width: 0;
 }
 
-.chat .name
+.chat__name
 {
     margin: 0;
     overflow: hidden;
@@ -845,17 +847,17 @@ body
     font-weight: 600;
 }
 
-.chat .name.can-message
+.chat__name--can-message
 {
     cursor: pointer;
 }
 
-.chat .name.can-message:hover
+.chat__name--can-message:hover
 {
     color: #512da8;
 }
 
-.chat-body
+.chat__body
 {
     grid-column: 1 / -1;
     margin: 4px 0 0;
@@ -866,7 +868,7 @@ body
     white-space: pre-line; /* keep line breaks people typed */
 }
 
-.chat .location
+.chat__location
 {
     grid-column: 1 / -1;
     display: flex;
@@ -887,7 +889,7 @@ body
     cursor: default; /* only reveals on hover, nothing to click or select */
 }
 
-.swap-track
+.swap__track
 {
     display: flex;
     flex-direction: column;
@@ -895,7 +897,7 @@ body
     transition: transform var(--dur) var(--ease-out);
 }
 
-.swap-track > *
+.swap__line
 {
     display: flex;
     align-items: center;
@@ -903,43 +905,43 @@ body
     height: 16px;
 }
 
-.swap:hover .swap-track
+.swap:hover .swap__track
 {
     transform: translateY(-16px);
 }
 
-.sender-time
+.chat__sender-time
 {
     color: #616161;
 }
 
 /* Smaller than flag-icons' default, to sit with 12px text */
-.chat .location .fi,
-.person-detail .fi
+.chat__location .fi,
+.person__detail .fi
 {
     width: 12px;
     height: 9px;
     line-height: 9px;
 }
 
-.chat .location .material-icons
+.chat__place-icon
 {
     font-size: 14px;
 }
 
 /* Sun or moon: day or night where the sender was */
-.chat .daylight
+.chat__daylight
 {
     font-size: 14px;
     line-height: 1;
 }
 
-.daylight.day
+.chat__daylight--day
 {
     color: #ffa000;
 }
 
-.daylight.night
+.chat__daylight--night
 {
     color: #5c6bc0;
 }
@@ -955,7 +957,7 @@ body
     background-color: #f5f1fb; /* a fainter version of the tab bar's purple */
 }
 
-.day-divider span
+.day-divider__label
 {
     color: #5e35b1;
     font-size: 11px;
@@ -965,7 +967,7 @@ body
     line-height: 16px;
 }
 
-.chat .time
+.chat__time
 {
     align-self: center; /* level with the name beside it */
     padding-left: 8px;
@@ -977,7 +979,7 @@ body
 
 /* Chat - ends */
 /* Message box - starts */
-.input-container
+.chat-composer
 {
     display: flex;
     align-items: flex-end;
@@ -987,7 +989,7 @@ body
     border-top: 1px solid #e0e0e0;
 }
 
-.input
+.chat-composer__input
 {
     flex: 1;
     min-width: 0;
@@ -995,7 +997,7 @@ body
 }
 
 /* A field that grows with the text up to five lines, then scrolls */
-.input-container textarea.materialize-textarea
+.chat-composer textarea.materialize-textarea
 {
     display: block; /* no inline gap under it, so it lines up with Send */
     box-sizing: border-box;
@@ -1017,14 +1019,14 @@ body
     transition: border-color var(--dur-fast) var(--ease-out);
 }
 
-.input-container textarea.materialize-textarea:focus
+.chat-composer textarea.materialize-textarea:focus
 {
     border: 1px solid #7e57c2;
     box-shadow: none;
 }
 
 /* Characters left, shown only when close to the limit */
-.char-count
+.chat-composer__count
 {
     position: absolute;
     right: 14px;
@@ -1033,12 +1035,13 @@ body
     color: #9e9e9e;
 }
 
-.char-count.over-soon
+.chat-composer__count.is-near-limit
 {
     color: #e53935;
 }
 
-#button-send
+.chat-composer__send,
+.chat-composer__send:focus /* materialize.css turns focused buttons teal */
 {
     flex: none;
     width: 42px;
@@ -1055,18 +1058,18 @@ body
     transition: background-color var(--dur-fast) var(--ease-out);
 }
 
-#button-send:hover
+.chat-composer__send:hover
 {
     background-color: #5e35b1;
 }
 
-#button-send:disabled
+.chat-composer__send:disabled
 {
     background-color: #d1c4e9;
     cursor: default;
 }
 
-#button-send .material-icons
+.chat-composer__send-icon
 {
     font-size: 20px;
     line-height: 1;
@@ -1101,14 +1104,14 @@ body
 
 
 /* Fallback map: overlap tiles by a pixel so no hairline seams show */
-#map .leaflet-tile
+.map .leaflet-tile
 {
     width: 257px !important;
     height: 257px !important;
 }
 
 /* Beyond the edge of the world (zoomed far out), show water rather than grey */
-#map.leaflet-container
+.map.leaflet-container
 {
     background: #c6b9ff;
 }
