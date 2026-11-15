@@ -71,11 +71,11 @@
     transform: scale(1.05);
 }
 
-/* Movement off for people who ask for less; the loading dots keep pulsing,
-   as they're the only sign something is happening */
+/* Movement off for people who ask for less; the loading dots and the
+   loading bar keep moving, as they're the only sign something is happening */
 @media (prefers-reduced-motion: reduce)
 {
-    *:not(.loading-dots__dot),
+    *:not(.loading-dots__dot):not(.loading-bar),
     *::before,
     *::after
     {

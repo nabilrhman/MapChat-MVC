@@ -396,3 +396,34 @@ label.error
     width: fit-content;   /* short messages get a short toast */
     margin-left: auto;    /* keep them against the right edge */
 }
+
+/* The thin bar across the top while the next page loads (loadingBar.js).
+   It jumps a little straight away so the click feels answered, then slows,
+   as it can't know how long is left; the next page fills the rest */
+.loading-bar
+{
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 10000;
+    width: 0;
+    height: 3px;
+    background-color: #ffc107;
+    box-shadow: 0 0 6px rgba(255, 193, 7, 0.7);
+    opacity: 0;
+    pointer-events: none;
+}
+
+.loading-bar--running
+{
+    opacity: 1;
+    animation: loading-bar-grow 10s linear forwards;
+}
+
+@keyframes loading-bar-grow
+{
+    0%   { width: 0; }
+    3%   { width: 30%; }
+    20%  { width: 60%; }
+    100% { width: 90%; }
+}
