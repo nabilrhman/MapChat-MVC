@@ -48,6 +48,11 @@ abstract class Controller
         $method = $name . 'Action';
 
         if (method_exists($this, $method)) {
+            if (!$this->isSameOrigin()) {
+                http_response_code(403);
+                exit;
+            }
+
             if ($this->before() !== false) {
                 call_user_func_array([$this, $method], $args);
                 $this->after();
@@ -73,6 +78,38 @@ abstract class Controller
      */
     protected function after()
     {
+    }
+
+    /**
+     * False for a post sent from another website (CSRF)
+     *
+     * @return boolean
+     */
+    protected function isSameOrigin()
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            return true;
+        }
+
+        $source = $_SERVER['HTTP_ORIGIN'] ?? $_SERVER['HTTP_REFERER'] ?? '';
+        if ($source === '' || $source === 'null') {
+            return $source === '';
+        }
+
+        return parse_url($source, PHP_URL_HOST) === parse_url('//' . ($_SERVER['HTTP_HOST'] ?? ''), PHP_URL_HOST);
+    }
+
+    /**
+     * Stop unless the request is a POST
+     *
+     * @return void
+     */
+    protected function requirePost()
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            exit;
+        }
     }
 
     /**

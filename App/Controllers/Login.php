@@ -54,17 +54,7 @@ class Login extends \Core\Controller
 
                     $this->saveLocation($user);
 
-                    /** Bugfix: Since AJAX keeps calling /app/get for chat sync, ignore if requested to return to the AJAX request page (same page) */
-                    if (Auth::getReturnToPage() == '/app/get')
-                    {
-                        $this->redirect('/app');
-                    }
-                    else
-                    {
-                        $this->redirect(Auth::getReturnToPage());
-                    }
-
-
+                    $this->redirect(Auth::getReturnToPage());
                 }
             }
             else

@@ -62,12 +62,14 @@ class View
         if ($twig === null)
         {
             $loader = new \Twig\Loader\FilesystemLoader(dirname(__DIR__) . '/App/Views');
-            $twig = new \Twig\Environment($loader);
+            // Escape by file type: HTML for .html, none for .txt emails
+            $twig = new \Twig\Environment($loader, ['autoescape' => 'name']);
             $twig->addGlobal('current_user', \App\Auth::getUser());
-            $twig->addGlobal('flash_messages', \App\Flash::getMessages());
+            // A function, so only the page that shows messages uses them up
+            $twig->addFunction(new \Twig\TwigFunction('flash_messages', [\App\Flash::class, 'getMessages']));
             $twig->addGlobal('app_url', \App\Config::appUrl());
-            $twig->addGlobal('cloudinary_cloud_name', \App\Config::get('CLOUDINARY_CLOUD_NAME'));
-            $twig->addGlobal('cloudinary_upload_preset', \App\Config::get('CLOUDINARY_UPLOAD_PRESET'));
+            $twig->addGlobal('cloudinary_cloud_name', \App\Config::cloudinaryCloudName());
+            $twig->addGlobal('cloudinary_upload_preset', \App\Config::cloudinaryUploadPreset());
 
         }
 

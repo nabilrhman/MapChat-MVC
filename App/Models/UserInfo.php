@@ -54,41 +54,12 @@ class UserInfo extends \Core\Model
      */
     public function saveIP()
     {
+        $stmt = static::getDB()->prepare('INSERT INTO userinfo (email, ip) VALUES (:email, :ip)
+                                          ON DUPLICATE KEY UPDATE ip = VALUES(ip)');
+        $stmt->bindValue(':email', $this->email, PDO::PARAM_STR);
+        $stmt->bindValue(':ip', $this->ip, PDO::PARAM_STR);
 
-        if (empty($this->errors))
-        {
-
-            if ($this->isIPAvailable())
-            {
-                $sql = 'UPDATE userinfo
-                    SET ip = :ip
-                    WHERE email = :email';
-
-                $db = static::getDB();
-                $stmt = $db->prepare($sql);
-
-                $stmt->bindValue(':email', $this->email, PDO::PARAM_STR);
-                $stmt->bindValue(':ip', $this->ip, PDO::PARAM_STR);
-
-                return $stmt->execute();
-            }
-            else
-            {
-                $sql = 'INSERT INTO userinfo (email, ip)
-                    VALUES (:email, :ip)';
-                $db = static::getDB();
-                $stmt = $db->prepare($sql);
-
-                $stmt->bindValue(':email', $this->email, PDO::PARAM_STR);
-                $stmt->bindValue(':ip', $this->ip, PDO::PARAM_STR);
-
-                return $stmt->execute();
-            }
-
-
-        }
-
-        return false;
+        return $stmt->execute();
     }
 
     /**
@@ -265,15 +236,20 @@ class UserInfo extends \Core\Model
     }
 
     /**
-     * The visitor's IP address. Behind a host's proxy the real address is the
-     * first entry of X-Forwarded-For.
+     * The visitor's IP: Cloudflare's header, which visitors can't fake, else
+     * the last X-Forwarded-For entry (the first is whatever the visitor sent)
      *
      * @return string
      */
     public static function getRealIP()
     {
+        if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
+            return trim($_SERVER['HTTP_CF_CONNECTING_IP']);
+        }
+
         if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-            return trim(explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0]);
+            $forwarded = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
+            return trim(end($forwarded));
         }
 
         return $_SERVER['REMOTE_ADDR'] ?? '';

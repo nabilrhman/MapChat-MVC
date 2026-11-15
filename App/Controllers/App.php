@@ -69,6 +69,8 @@ class App extends Authenticated
      */
     public function sendAction()
     {
+        $this->requirePost();
+
         $user = Auth::getUser();
         $body = trim($_POST['body'] ?? '');
 

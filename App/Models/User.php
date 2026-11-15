@@ -84,8 +84,11 @@ class User extends \Core\Model
     public function validate()
     {
         // Name
+        $this->name = trim($this->name ?? '');
         if ($this->name == '') {
             $this->errors[] = 'Name: Required';
+        } elseif (mb_strlen($this->name) > 50) {
+            $this->errors[] = 'Name: 50 characters at most';
         }
 
         // email address
@@ -374,8 +377,11 @@ class User extends \Core\Model
                                                   
             $stmt->bindValue(':id', $this->id, PDO::PARAM_INT);
             $stmt->bindValue(':password_hash', $password_hash, PDO::PARAM_STR);
-                                          
-            return $stmt->execute();
+
+            $stmt->execute();
+            $this->forgetRememberedLogins();
+
+            return true;
         }
 
         return false;
@@ -390,8 +396,8 @@ class User extends \Core\Model
     {
         $url = \App\Config::appUrl() . '/signup/activate/' . $this->activation_token;
 
-        $text = View::getTemplate('Signup/activation_email.txt', ['url' => $url, 'name' => User::getNameFromToken($this->activation_token)]);
-        $html = View::getTemplate('Signup/activation_email.html', ['url' => $url, 'name' => User::getNameFromToken($this->activation_token)]);
+        $text = View::getTemplate('Signup/activation_email.txt', ['url' => $url, 'name' => $this->name]);
+        $html = View::getTemplate('Signup/activation_email.html', ['url' => $url, 'name' => $this->name]);
 
         Mail::send($this->email, 'Activate your MapChat account', $text, $html);
     }
@@ -405,8 +411,8 @@ class User extends \Core\Model
     {
         $url = \App\Config::appUrl() . '/password/reset/' . $this->password_reset_token;
 
-        $text = View::getTemplate('Password/reset_email.txt', ['url' => $url, 'name' => User::findByPasswordReset($this->password_reset_token)->name]);
-        $html = View::getTemplate('Password/reset_email.html', ['url' => $url, 'name' => User::findByPasswordReset($this->password_reset_token)->name]);
+        $text = View::getTemplate('Password/reset_email.txt', ['url' => $url, 'name' => $this->name]);
+        $html = View::getTemplate('Password/reset_email.html', ['url' => $url, 'name' => $this->name]);
 
         Mail::send($this->email, 'Reset your MapChat password', $text, $html);
     }
@@ -416,7 +422,7 @@ class User extends \Core\Model
      *
      * @param string $value Activation token from the URL
      *
-     * @return void
+     * @return boolean  False if the link was wrong or already used
      */
     public static function activate($value)
     {
@@ -434,28 +440,10 @@ class User extends \Core\Model
         $stmt->bindValue(':hashed_token', $hashed_token, PDO::PARAM_STR);
 
         $stmt->execute();
+
+        return $stmt->rowCount() > 0;
     }
 
-    public static function getNameFromToken($value)
-    {
-        $token = new Token($value);
-        $hashed_token = $token->getHash();
-
-        $sql = 'SELECT name FROM users
-                WHERE activation_hash = :hashed_token';
-
-        $db = static::getDB();
-        $stmt = $db->prepare($sql);
-
-        $stmt->bindValue(':hashed_token', $hashed_token, PDO::PARAM_STR);
-
-        $stmt->execute();
-
-        $name = $stmt->fetchColumn();
-
-        return htmlspecialchars($name);
-    }
-    
     /**
      * Create a throwaway guest account, so visitors can try the chat without
      * signing up. Guests get a random name, an email address nobody can
@@ -586,41 +574,50 @@ class User extends \Core\Model
 
             }
 
-            return $stmt->execute();
+            $stmt->execute();
+
+            if (isset($this->password)) {
+                $this->forgetRememberedLogins();
+            }
+
+            return true;
         }
 
         return false;
     }
 
     /**
-     * Update the user's profile
+     * Set the user's photo (null for the letter avatar). Only our own
+     * Cloudinary uploads are accepted
      *
-     * @param array $data Data from the edit profile form
+     * @param string|null $avatar
      *
-     * @return boolean  True if the data was updated, false otherwise
+     * @return boolean  True if the photo was saved
      */
-    public function updateAvatar($data)
+    public function updateAvatar($avatar)
     {
-        $this->avatar = $data['avatar'];
+        $uploads = 'https://res.cloudinary.com/' . \App\Config::cloudinaryCloudName() . '/';
 
-        $this->validate();
-
-        if (empty($this->errors)) {
-
-            $sql = 'UPDATE users
-                    SET avatar = :avatar';
-
-            $sql .= "\nWHERE id = :id";
-
-            $db = static::getDB();
-            $stmt = $db->prepare($sql);
-
-            $stmt->bindValue(':avatar', $this->avatar, PDO::PARAM_STR);
-            $stmt->bindValue(':id', $this->id, PDO::PARAM_INT);
-
-            return $stmt->execute();
+        if ($avatar !== null && (!str_starts_with($avatar, $uploads) || strlen($avatar) > 2083)) {
+            return false;
         }
 
-        return false;
+        $stmt = static::getDB()->prepare('UPDATE users SET avatar = :avatar WHERE id = :id');
+        $stmt->bindValue(':avatar', $avatar, PDO::PARAM_STR);
+        $stmt->bindValue(':id', $this->id, PDO::PARAM_INT);
+
+        return $stmt->execute();
+    }
+
+    /**
+     * Log out every remembered device (after a password change)
+     *
+     * @return void
+     */
+    protected function forgetRememberedLogins()
+    {
+        $stmt = static::getDB()->prepare('DELETE FROM remembered_logins WHERE user_id = :id');
+        $stmt->bindValue(':id', $this->id, PDO::PARAM_INT);
+        $stmt->execute();
     }
 }

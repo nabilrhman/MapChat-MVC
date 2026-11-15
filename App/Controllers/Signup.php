@@ -31,7 +31,12 @@ class Signup extends \Core\Controller
      */
     public function createAction()
     {
-        $user = new User($_POST);
+        // Only the form's fields
+        $user = new User([
+            'name' => $_POST['name'] ?? '',
+            'email' => $_POST['email'] ?? '',
+            'password' => $_POST['password'] ?? '',
+        ]);
 
         if ($user->save()) {
 
@@ -70,21 +75,13 @@ class Signup extends \Core\Controller
      */
     public function activateAction()
     {
-        User::activate($this->route_params['token']);
+        if (!User::activate($this->route_params['token'])) {
+            Flash::addMessage('That activation link is wrong or was already used. Try logging in.', Flash::WARNING);
+            $this->redirect('/login');
+        }
 
         $this->redirect('/signup/activated');
     }
-
-    /**
-     * Get the name of the account from token
-     *
-     * @return the name of the account
-     */
-    public function getNameAction()
-    {
-        return User::getNameFromToken($this->route_params['token']);
-    }
-
 
     /**
      * Show the activation success page

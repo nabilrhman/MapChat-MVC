@@ -117,6 +117,11 @@ class Router
                 $action = $this->params['action'];
                 $action = $this->convertToCamelCase($action);
 
+                // fooAction must go through __call, which runs the login check
+                if (preg_match('/action$/i', $action)) {
+                    throw new \Exception("Method $action in controller $controller can't be called directly", 404);
+                }
+
                 if (is_callable([$controller_object, $action])) {
                     $controller_object->$action();
 

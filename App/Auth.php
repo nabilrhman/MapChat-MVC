@@ -36,7 +36,7 @@ class Auth
             if ($user->rememberLogin())
             {
 
-                setcookie('remember_me', $user->remember_token, $user->expiry_timestamp, '/');
+                static::setRememberCookie($user->remember_token, $user->expiry_timestamp);
 
             }
         }
@@ -85,13 +85,40 @@ class Auth
     }
 
     /**
-     * Get the originally-requested page to return to after requiring login, or default to the homepage
+     * Set or clear the remember-me cookie, with the session cookie's rules
+     *
+     * @param string $value
+     * @param int $expires
      *
      * @return void
      */
+    protected static function setRememberCookie($value, $expires)
+    {
+        setcookie('remember_me', $value, [
+            'expires' => $expires,
+            'path' => '/',
+            'httponly' => true,
+            'samesite' => 'Lax',
+            'secure' => str_starts_with(Config::appUrl(), 'https://'),
+        ]);
+    }
+
+    /**
+     * Get the originally-requested page to return to after requiring login, or default to the homepage
+     *
+     * @return string
+     */
     public static function getReturnToPage()
     {
-        return $_SESSION['return_to'] ?? '/';
+        $page = $_SESSION['return_to'] ?? '/';
+        unset($_SESSION['return_to']);
+
+        // Paths on this site only
+        if (!str_starts_with($page, '/') || str_starts_with($page, '//') || str_starts_with($page, '/\\')) {
+            return '/';
+        }
+
+        return $page;
     }
 
     /**
@@ -174,7 +201,7 @@ class Auth
                 $remembered_login->delete();
             }
 
-            setcookie('remember_me', '', time() - 3600);  // set to expire in the past
+            static::setRememberCookie('', time() - 3600);  // expired, so the browser drops it
         }
     }
 }
