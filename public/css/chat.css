@@ -930,15 +930,16 @@ body
         color: #fff;
     }
 
+    /* 12px apart, and from the 44px menu button (4px from the edge) */
     .map-toggle
     {
         display: flex;
-        right: 52px;
+        right: 60px;
     }
 
     .people-toggle
     {
-        right: 92px;
+        right: 108px;
         padding: 0 8px;
     }
 
