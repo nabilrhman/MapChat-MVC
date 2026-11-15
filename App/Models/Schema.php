@@ -65,6 +65,7 @@ class Schema extends \Core\Model
 
         static::fillDemoPlaces($db);
         static::dropDemoPictures($db);
+        static::placeBot($db);
 
         return $added;
     }
@@ -99,6 +100,21 @@ class Schema extends \Core\Model
     {
         $db->exec("UPDATE users SET avatar = NULL
                    WHERE email LIKE '%@demo.mapchat.local' AND avatar LIKE '/res/avatars/%'");
+    }
+
+    /**
+     * Give the welcome bot its place on the map, as in init.sql
+     *
+     * @param PDO $db
+     *
+     * @return void
+     */
+    protected static function placeBot($db)
+    {
+        $db->exec("INSERT INTO userinfo (email, ip, lat, lng, city)
+                   SELECT email, '0.0.0.0', 0, 0, 'Null Island' FROM users WHERE email = 'bot@mapchat.local'
+                   ON DUPLICATE KEY UPDATE city = COALESCE(city, 'Null Island'),
+                                           lat = COALESCE(lat, 0), lng = COALESCE(lng, 0)");
     }
 
     /**
