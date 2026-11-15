@@ -100,6 +100,42 @@ function slideTabs(change) {
 // Tabs from the history just appear; ones opened later ease in
 let shouldAnimateNewTabs = false;
 
+/* Closed private tabs stay closed, across reloads and logging out, until a
+   newer message comes in or you open the chat again */
+
+// Per account, on this device: conversation → newest message id when closed
+const closedTabsKey = `closedTabs:${myUserId}`;
+let closedTabs = {};
+try {
+    closedTabs = JSON.parse(localStorage.getItem(closedTabsKey)) || {};
+} catch {
+    // No storage (private browsing): tabs just come back on reload
+}
+
+function saveClosedTabs() {
+    try {
+        localStorage.setItem(closedTabsKey, JSON.stringify(closedTabs));
+    } catch {
+        // As above
+    }
+}
+
+function forgetClosedTab(conversation) {
+    if (!(conversation in closedTabs)) return;
+    delete closedTabs[conversation];
+    saveClosedTabs();
+}
+
+// The chat's tab, unless it was closed after this message; a newer message
+// reopens it
+function addTabFor(chat) {
+    const conversation = getConversation(chat);
+    if (Number(chat.dataset.id) <= (closedTabs[conversation] ?? 0)) return null;
+
+    forgetClosedTab(conversation);
+    return addTab(conversation, chat.dataset.partner);
+}
+
 function getTab(conversation) {
     return chatTabs.querySelector(`.chat-tab[data-conversation="${CSS.escape(conversation)}"]:not(.is-leaving)`);
 }
@@ -161,6 +197,9 @@ function showConversation(conversation) {
 }
 
 function closeTab(tab) {
+    closedTabs[tab.dataset.conversation] = Number(getChats().at(-1)?.dataset.id ?? 0);
+    saveClosedTabs();
+
     if (tab.classList.contains('is-active')) {
         showConversation(EVERYONE);
     }
@@ -169,6 +208,7 @@ function closeTab(tab) {
 }
 
 function openPrivateChat(userId, name) {
+    forgetClosedTab(String(userId));
     addTab(String(userId), name);
     showConversation(userId);
     messageInput.focus();
@@ -313,12 +353,11 @@ function countUnread(tab) {
 // Put new messages in their tab and count the ones in other tabs
 function placeMessages(chats) {
     chats.forEach((chat) => {
-        const conversation = getConversation(chat);
-        const tab = addTab(conversation, chat.dataset.partner);
+        const tab = addTabFor(chat);
 
-        if (conversation !== activeConversation) {
+        if (getConversation(chat) !== activeConversation) {
             chat.style.display = 'none';
-            countUnread(tab);
+            if (tab) countUnread(tab);
         }
     });
 }
@@ -451,7 +490,7 @@ async function loadOlderMessages() {
 
         showTimes(olderChats);
         olderChats.forEach((chat) => {
-            addTab(getConversation(chat), chat.dataset.partner);
+            addTabFor(chat);
             // Old news: hidden in other tabs, but not counted as unread there
             if (getConversation(chat) !== activeConversation) chat.style.display = 'none';
         });
@@ -611,7 +650,7 @@ oldestChatId = historyChats.length ? Number(historyChats[0].dataset.id) : 0;
 hasOlderMessages = historyChats.length === pageSize;
 showTimes(historyChats);
 fadeInPhotos(chatList.querySelectorAll('.chat__photo'));
-historyChats.forEach((chat) => addTab(getConversation(chat), chat.dataset.partner));
+historyChats.forEach(addTabFor);
 showConversation(EVERYONE);
 shouldAnimateNewTabs = true;
 
