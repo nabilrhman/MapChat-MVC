@@ -28,6 +28,12 @@ class DemoChat extends \Core\Model
     const READ_SPEED = 60;
     const TYPE_SPEED = 30;
 
+    /**
+     * The scenes that open each day, in this order, right after the bot's
+     * welcome: they talk about the map and pins it has just explained
+     */
+    const OPENING = ['app_map', 'app_bot'];
+
     /** A demo person shows as online from this many minutes before they speak... */
     const ARRIVE_MINUTES = 5;
 
@@ -35,13 +41,45 @@ class DemoChat extends \Core\Model
     const LINGER_MINUTES = 30;
 
     /**
-     * Add any demo messages that are due, and clear earlier days'
+     * Add any demo messages that are due, and clear earlier days'. Every open
+     * chat page asks for this each second, so only one request does it at a
+     * time; the rest skip it. Its changes are saved together or not at all,
+     * so a failure part way can't leave a gap: the chat runs in id order, and
+     * later lines are only ever added after the last one there
      *
      * @return void
      */
     public static function catchUp()
     {
         $db = static::getDB();
+
+        if (!$db->query("SELECT GET_LOCK('demo_catch_up', 0)")->fetchColumn()) {
+            return;
+        }
+
+        try {
+            $db->beginTransaction();
+            static::catchUpLocked($db);
+            $db->commit();
+        } catch (\PDOException $e) {
+            if ($db->inTransaction()) {
+                $db->rollBack();
+            }
+            error_log('Demo catch-up failed, the next request tries again: ' . $e->getMessage());
+        } finally {
+            $db->query("SELECT RELEASE_LOCK('demo_catch_up')");
+        }
+    }
+
+    /**
+     * catchUp()'s work, while it holds the lock
+     *
+     * @param PDO $db
+     *
+     * @return void
+     */
+    protected static function catchUpLocked($db)
+    {
         $today = static::today();
         $day_start = static::dayStart($today);
         $start = gmdate('Y-m-d H:i:s', $day_start);
@@ -287,9 +325,9 @@ class DemoChat extends \Core\Model
     }
 
     /**
-     * One list of scenes from all the stories: each story's scenes stay in
-     * order, never two from the same story in a row, and longer stories are
-     * picked more often so they stretch across the day
+     * One list of scenes from all the stories: the OPENING ones first, then
+     * each story's scenes in order, never two from the same story in a row,
+     * and longer stories picked more often so they stretch across the day
      *
      * @param array $stories
      *
@@ -299,6 +337,16 @@ class DemoChat extends \Core\Model
     {
         $scenes = [];
         $last = null;
+
+        foreach (static::OPENING as $name) {
+            if (!empty($stories[$name])) {
+                $scenes[] = array_shift($stories[$name]);
+                $last = $name;
+                if (!$stories[$name]) {
+                    unset($stories[$name]);
+                }
+            }
+        }
 
         while ($stories) {
             $choices = array_diff(array_keys($stories), count($stories) > 1 ? [$last] : []);
