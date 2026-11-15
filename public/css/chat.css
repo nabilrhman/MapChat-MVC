@@ -727,15 +727,23 @@ body
         box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.12);
     }
 
-    /* The chat covers the bottom of the map here, so the credits go top left
-       (the people button is top right) */
+    /* The chat covers the bottom of the map here, so the credits sit at the
+       bottom left of the strip that shows, small (the people button is top
+       right) */
     .maplibregl-ctrl-bottom-right,
     .leaflet-bottom.leaflet-right
     {
-        top: 0;
+        top: 30vh;
         right: auto;
         bottom: auto;
         left: 0;
+        transform: translateY(-100%);
+    }
+
+    .leaflet-control-attribution
+    {
+        font-size: 10px;
+        opacity: 0.75;
     }
 
     .people
