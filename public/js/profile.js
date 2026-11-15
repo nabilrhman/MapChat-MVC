@@ -45,9 +45,9 @@ $(document).ready(function () {
         avatar.attr('src', src);
         if (avatar[0].complete || src.indexOf('data:') === 0) return;
 
-        $('#photo-frame').addClass('photo-loading');
+        $('#photo-frame').addClass('is-loading');
         avatar.one('load error', function () {
-            $('#photo-frame').removeClass('photo-loading');
+            $('#photo-frame').removeClass('is-loading');
         });
     }
     showPhoto(avatar.attr('src'));
@@ -110,7 +110,7 @@ $(document).ready(function () {
     }
 
     function startEditing(card) {
-        card.addClass('editing');
+        card.addClass('is-editing');
         M.updateTextFields();
     }
 
@@ -121,18 +121,18 @@ $(document).ready(function () {
         });
         card.find('label.error').remove();
         card.find('input.error').removeClass('error');
-        card.removeClass('editing');
+        card.removeClass('is-editing');
         $('#current-password').prop('hidden', !signInChanged());
         M.updateTextFields();
     }
 
-    $('.edit-button').on('click', function () {
+    $('.settings-card__edit-button').on('click', function () {
         var card = $(this).closest('.settings-card');
         startEditing(card);
-        card.find('.edit-only input').first().focus();
+        card.find('.settings-card__edit input').first().focus();
     });
 
-    $('.cancel-button').on('click', function () {
+    $('.settings-card__cancel').on('click', function () {
         stopEditing($(this).closest('.settings-card'));
     });
 

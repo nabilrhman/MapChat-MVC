@@ -302,6 +302,11 @@ label.error
     text-align: left;
 }
 
+.input-field[hidden]
+{
+    display: none;
+}
+
 /* The checkbox tick in the site's purple instead of materialize teal */
 [type="checkbox"]:checked + span:not(.lever):before
 {
