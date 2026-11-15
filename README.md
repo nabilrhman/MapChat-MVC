@@ -49,6 +49,8 @@ first visit after a quiet spell takes about a minute to wake up.
 
 - One shared chat room for everyone who is signed in. New messages show up
   within a second.
+- Private chats: click someone's name to talk to just them, in a tab of its
+  own.
 - A map with a pin for each person, placed by their IP address at roughly city
   level. Nobody's exact location is ever shown.
 - Anyone can hide their pin and city from the map in their profile.
@@ -96,7 +98,8 @@ Open http://localhost:8080 and either sign up or press **Try it as a guest**.
 Nine made-up people around the world, from `database/demo.sql`, keep the chat
 and the map from looking empty. Through the day they post a few running stories
 and short chats from `database/demo-chat.php`, slowly and in a new order each
-day; their messages from earlier days are cleared. Their accounts can't be
+day, though each day opens with them talking about the map right after the
+MapChat welcome; their messages from earlier days are cleared. Their accounts can't be
 logged into. To start with an empty room instead, remove the `demo.sql` line
 from `docker-compose.yml`.
 
