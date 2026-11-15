@@ -196,11 +196,11 @@ ALTER TABLE userinfo
 ## Project layout
 
 ```
-Core/            The framework: router, base controller and model, views, errors
+Core/            The framework: router, base controller and model, views, icons, errors
 App/Controllers/ One class per page or action
 App/Models/      Database access for users, chats and locations
 App/Views/       Twig templates
-public/          Web root: index.php, CSS, JavaScript and images
+public/          Web root: index.php, CSS, JavaScript, images and icons.svg
 database/        init.sql (schema and welcome messages), demo.sql (optional
                  sample people), demo-chat.php (what they say each day),
                  migrate.php (adds columns an older database is missing, run
@@ -208,6 +208,7 @@ database/        init.sql (schema and welcome messages), demo.sql (optional
 tests/           PHPUnit tests
 docs/images/     The screenshots and diagram in this README
 docs/diagrams/   Draws the diagram: node docs/diagrams/draw.ts
+docs/load-test.* The load test and its report
 ```
 
 ## Author
