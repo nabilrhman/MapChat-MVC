@@ -60,7 +60,7 @@ class DemoChat extends \Core\Model
             }
         }
 
-        $now = gmdate('Y-m-d H:i:s');
+        $now = gmdate('Y-m-d H:i:s', static::now());
 
         // Skip the same message if two requests catch up at once
         $insert = $db->prepare('INSERT INTO chats (email, body, timestamp)
@@ -84,6 +84,13 @@ class DemoChat extends \Core\Model
         $stmt = $db->prepare('SELECT MAX(timestamp) FROM chats WHERE email LIKE :demo');
         $stmt->execute([':demo' => '%' . static::DOMAIN]);
         $last = $stmt->fetchColumn() ?: '';
+
+        // A fast-forwarded day (DEMO_SPEED) loops; start it over
+        if ($last > $now) {
+            $db->prepare('DELETE FROM chats WHERE email LIKE :demo AND to_email IS NULL')
+               ->execute([':demo' => '%' . static::DOMAIN]);
+            $last = '';
+        }
 
         $last_spoke = [];
 
@@ -118,7 +125,7 @@ class DemoChat extends \Core\Model
      */
     public static function presentNow()
     {
-        $now = time();
+        $now = static::now();
         $present = [];
 
         foreach (static::schedule(static::today()) as [$time, $email]) {
@@ -184,6 +191,35 @@ class DemoChat extends \Core\Model
         mt_srand();
 
         return $messages;
+    }
+
+    /**
+     * Whether DEMO_SPEED fast-forwards the day, to watch it locally
+     *
+     * @return bool
+     */
+    public static function isFast()
+    {
+        return Config::get('DEMO_SPEED', 1) > 1;
+    }
+
+    /**
+     * The time on the demo clock. Normally the real time; with DEMO_SPEED=60
+     * a real second is a demo minute, so a whole day plays in 24 minutes, on
+     * repeat
+     *
+     * @return int Unix time
+     */
+    protected static function now()
+    {
+        $speed = (float) Config::get('DEMO_SPEED', 1);
+        if ($speed <= 1) {
+            return time();
+        }
+
+        $day_start = static::dayStart(static::today());
+
+        return $day_start + (int) (fmod(time() * $speed, 86400));
     }
 
     /**

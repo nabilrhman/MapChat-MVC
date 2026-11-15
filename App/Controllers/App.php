@@ -112,7 +112,7 @@ class App extends Authenticated
      */
     protected function catchUpDemoChat()
     {
-        if (time() - ($_SESSION['demo_chat_at'] ?? 0) >= 60) {
+        if (DemoChat::isFast() || time() - ($_SESSION['demo_chat_at'] ?? 0) >= 60) {
             $_SESSION['demo_chat_at'] = time();
             DemoChat::catchUp();
         }

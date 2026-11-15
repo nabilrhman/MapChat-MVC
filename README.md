@@ -127,6 +127,7 @@ explanations. The main ones:
 | `IPSTACK_API_KEY` | Optional. Without it, ipapi.co is used |
 | `DEV_FAKE_IP` | Locally every visitor has a private IP; this public IP is used for the map instead |
 | `DEMO_TIMEZONE` | Optional. Where the demo people's day starts at midnight. Default `America/Toronto` |
+| `DEMO_SPEED` | Optional, for watching the demo chat locally: `60` plays the whole day in 24 minutes. Leave empty on a real site |
 | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_UPLOAD_PRESET` | Where avatar uploads go |
 
 ## Deploy for free
