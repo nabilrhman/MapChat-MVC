@@ -70,8 +70,10 @@ first visit after a quiet spell takes about a minute to wake up.
 - **Database:** MySQL, queried with prepared statements to block SQL injection.
 - **Views:** Twig 3 templates, which escape everything users type to block
   cross-site scripting.
-- **Front end:** Materialize CSS, jQuery for the page, and axios for every
-  request to the server. The chat asks for new messages every second.
+- **Front end:** the site's own CSS, with Beer CSS (scoped, so it styles only
+  the form fields and switches), plain JavaScript with no jQuery, and axios
+  for every request to the server. The chat asks for new messages every
+  second.
 - **Map:** MapLibre with OpenStreetMap data from OpenFreeMap, styled to match
   MapChat's colours. Browsers without WebGL get OpenStreetMap tiles through
   Leaflet instead, recoloured to the same theme in the browser. No API key is

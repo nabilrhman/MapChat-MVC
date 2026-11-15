@@ -197,12 +197,6 @@ body
     display: none;
 }
 
-/* materialize.css turns a focused button teal */
-.jump-latest:focus
-{
-    background-color: #512da8;
-}
-
 .jump-latest:hover
 {
     background-color: #4527a0;
@@ -232,6 +226,7 @@ body
     height: 48px; /* same as the top of the people list, line included */
     /* Flipped upside down so the scrollbar sits on top; each tab is flipped
        back. So "bottom" here is the top on screen, and "top" the bottom */
+    flex: none; /* keeps its height when the chat is folded to it */
     transform: scaleY(-1);
     padding: 0 8px 6px; /* the strip above the tabs */
     border-top: 1px solid #e0e0e0; /* the line under the tabs */
@@ -757,12 +752,6 @@ body
     transition: background-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
 }
 
-/* materialize.css turns a focused button teal */
-.people-toggle:focus
-{
-    background-color: #fff;
-}
-
 .people-toggle:hover
 {
     background-color: #f5f1fb;
@@ -821,6 +810,48 @@ body
 .map-toggle__icon
 {
     font-size: 20px;
+}
+
+/* The caret at the end of the tab row, only on phones with the map open */
+.chat-fold
+{
+    display: none;
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 1;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 47px; /* the tab row, leaving its line below showing */
+    padding: 0;
+    border: none;
+    background-color: #ede7f6;
+    color: #512da8;
+    cursor: pointer;
+}
+
+.chat-fold:hover
+{
+    background-color: #e1d7f2;
+}
+
+.chat-fold:focus-visible
+{
+    outline: none;
+    box-shadow: inset 0 0 0 3px #d1c4e9;
+}
+
+/* Points down to fold, up to bring the chat back */
+.chat-fold__icon
+{
+    font-size: 26px;
+    transition: transform var(--dur) var(--ease-out);
+}
+
+.is-chat-folded .chat-fold__icon
+{
+    transform: rotate(180deg);
 }
 
 /* Wide screens: the list shows unless it was closed */
@@ -935,6 +966,35 @@ body
         top: calc(var(--header-height) + 30vh);
     }
 
+    /* Slides when the map opens or the chat folds */
+    .chat-panel
+    {
+        transition: top var(--dur-slow) var(--ease-out);
+    }
+
+    .is-map-open .chat-fold
+    {
+        display: flex;
+    }
+
+    /* Tabs don't scroll under the caret */
+    .is-map-open .chat-tabs
+    {
+        padding-right: 48px;
+    }
+
+    /* Folded: only the tab row stays, just above the footer */
+    .is-map-open.is-chat-folded .chat-panel
+    {
+        top: calc(100% - var(--footer-height) - 48px);
+    }
+
+    /* The squeezed list would count as scrolled up */
+    .is-map-open.is-chat-folded .jump-latest
+    {
+        display: none;
+    }
+
     .is-map-open .map-loading
     {
         display: flex;
@@ -948,6 +1008,13 @@ body
         top: 30vh;
         bottom: auto;
         transform: translateY(-100%);
+    }
+
+    /* With the chat folded, they sit just above its tab row */
+    .is-chat-folded .maplibregl-ctrl-bottom-right,
+    .is-chat-folded .leaflet-bottom.leaflet-right
+    {
+        top: calc(100% - var(--header-height) - var(--footer-height) - 48px);
     }
 
     /* Leaflet's credit as MapLibre draws its own: a see-through round "i"
@@ -1226,12 +1293,12 @@ body
 }
 
 /* A field that grows with the text up to five lines, then scrolls */
-.chat-composer textarea.materialize-textarea
+.chat-composer__textarea
 {
     display: block; /* no inline gap under it, so it lines up with Send */
     box-sizing: border-box;
     width: 100%;
-    height: 42px; /* materialize.css makes it 3rem; match Send. Typing still grows it */
+    height: 42px; /* matches Send; typing grows it (chat.js) */
     min-height: 42px;
     max-height: 120px;
     margin: 0;
@@ -1248,9 +1315,10 @@ body
     transition: border-color var(--dur-fast) var(--ease-out);
 }
 
-.chat-composer textarea.materialize-textarea:focus
+.chat-composer__textarea:focus
 {
     border: 1px solid #7e57c2;
+    outline: none; /* the purple border shows focus */
     box-shadow: none;
 }
 
@@ -1269,8 +1337,7 @@ body
     color: #e53935;
 }
 
-.chat-composer__send,
-.chat-composer__send:focus /* materialize.css turns focused buttons teal */
+.chat-composer__send
 {
     flex: none;
     width: 42px;

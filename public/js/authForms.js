@@ -1,49 +1,26 @@
 // Checks on the sign-up and password forms before they're sent. Each page has
 // at most one of these forms; the others are skipped
+const PASSWORD_CHECKS = [
+    FIELD_CHECKS.required(),
+    FIELD_CHECKS.minLength(6),
+    FIELD_CHECKS.letterAndNumber,
+];
 
-$(document).ready(function () {
+const AUTH_FORM_CHECKS = {
+    formSignup: {
+        name: [FIELD_CHECKS.required()],
+        email: [FIELD_CHECKS.required(), FIELD_CHECKS.email, FIELD_CHECKS.emailIsFree()],
+        password: PASSWORD_CHECKS,
+    },
+    formForgot: {
+        email: [FIELD_CHECKS.required(), FIELD_CHECKS.email],
+    },
+    formPassword: {
+        password: PASSWORD_CHECKS,
+    },
+};
 
-    $('#formSignup').validate({
-        rules: {
-            name: {
-                required: true,
-                validName: true
-            },
-            email: {
-                required: true,
-                email: true,
-                remote: '/account/validate-email'
-            },
-            password: {
-                required: true,
-                minlength: 6,
-                validPassword: true
-            }
-        },
-        messages: {
-            email: {
-                remote: 'Email already registered.'
-            }
-        }
-    });
-
-    $('#formForgot').validate({
-        rules: {
-            email: {
-                required: true,
-                email: true
-            }
-        }
-    });
-
-    $('#formPassword').validate({
-        rules: {
-            password: {
-                required: true,
-                minlength: 6,
-                validPassword: true
-            }
-        }
-    });
-
+Object.entries(AUTH_FORM_CHECKS).forEach(([formId, checksByFieldName]) => {
+    const form = document.getElementById(formId);
+    if (form) setUpFormChecks(form, checksByFieldName);
 });

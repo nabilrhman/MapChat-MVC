@@ -3,7 +3,7 @@
 {% block title %}Chat{% endblock %}
 
 {% block head %}
-<link rel="stylesheet" href="/css/chat.css?v=112">
+<link rel="stylesheet" href="/css/chat.css?v=117">
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flag-icons@7.2.3/css/flag-icons.min.css">
 {% endblock %}
@@ -38,6 +38,12 @@
         </a>
     </div>
 
+    {# Phones with the map open: folds the chat down to its tabs (chat.js) #}
+    <button class="chat-fold" id="chat-fold" type="button" aria-controls="chat-list" aria-expanded="true"
+            aria-label="Fold the chat away" title="Fold the chat away">
+        <i class="material-icons chat-fold__icon" aria-hidden="true">expand_more</i>
+    </button>
+
     <div class="private-note" id="private-note" hidden>
         <span class="private-note__label">
             <i class="material-icons private-note__icon">lock</i><span class="private-note__text" id="private-note-text"></span>
@@ -58,11 +64,11 @@
     <form class="chat-composer" method="post" id="input-container-form">
         <div class="chat-composer__input">
             <span class="chat-composer__count" id="char-count" hidden></span>
-            <textarea name="message" placeholder="Type your message" rows="1" class="materialize-textarea" id="textarea-send"
+            <textarea name="message" placeholder="Type your message" rows="1" class="chat-composer__textarea" id="textarea-send"
                       maxlength="{{ constant('App\\Models\\Chat::MAX_LENGTH') }}" autofocus></textarea>
         </div>
 
-        <button name="send" class="chat-composer__send waves-effect waves-light" id="button-send" type="submit"
+        <button name="send" class="chat-composer__send" id="button-send" type="submit"
                 aria-label="Send" title="Send" disabled>
             <i class="material-icons chat-composer__send-icon">send</i>
         </button>
@@ -91,7 +97,7 @@
 {% endblock %}
 
 {% block footer %}
-<script src="/js/chat.js?v=14"></script>
+<script src="/js/chat.js?v=18"></script>
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-<script src="/js/map.js?v=19"></script>
+<script src="/js/map.js?v=21"></script>
 {% endblock %}

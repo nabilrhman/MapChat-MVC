@@ -1,5 +1,5 @@
 {% extends 'base_login.html' %}
-{% import '_form_errors.html' as form %}
+{% import '_form_fields.html' as form %}
 
 {% block title %}Reset password{% endblock %}
 
@@ -11,17 +11,12 @@
 <div class="auth-card">
 
     {# The button is inside the form, so clicking it submits #}
-    <form method="post" id="formPassword" action="/password/reset-password" class="auth-card__form">
+    <form method="post" id="formPassword" action="/password/reset-password" class="auth-card__form" novalidate>
 
         <input type="hidden" name="token" value="{{ token }}"/>
 
-        <div class="input-field">
-            <input type="password" id="inputPassword" name="password" class="password-input" autocomplete="new-password" autofocus/>
-            <label for="inputPassword">New password</label>
-            <button type="button" class="password-toggle material-icons" aria-label="Show password">visibility</button>
-            <span class="helper-text">6+ characters, a letter and a number</span>
-            <span id="error-msg-password">{{ form.field_errors(user.errors, 'Password', 'inputPassword') }}</span>
-        </div>
+        {{ form.text_field({id: 'inputPassword', name: 'password', type: 'password', label: 'New password', errors_key: 'Password',
+                            autocomplete: 'new-password', autofocus: true, hint: '6+ characters, a letter and a number'}, user.errors) }}
 
         <button type="submit" class="button button--primary button--block auth-card__button">Set new password</button>
     </form>

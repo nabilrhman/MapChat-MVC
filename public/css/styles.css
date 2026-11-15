@@ -14,8 +14,8 @@
     }
 }
 
-/* One font everywhere. materialize.css gives fields and buttons the system
-   font, which beats a plain * rule; make them use the page's font instead */
+/* One font everywhere. Browsers give fields and buttons the system font,
+   which beats inheriting from body; make them use the page's font instead */
 body
 {
     font-family: 'Montserrat', sans-serif;
@@ -35,8 +35,7 @@ textarea
     font-feature-settings: "liga";
 }
 
-/* Page content straight on the page, no framed box; centred by materialize's
-   .container width */
+/* Page content straight on the page, no framed box */
 .site-main
 {
     position: relative;

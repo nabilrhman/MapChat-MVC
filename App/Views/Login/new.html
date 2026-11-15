@@ -1,4 +1,5 @@
 {% extends 'base_login.html' %}
+{% import '_form_fields.html' as form %}
 
 {% block title %}Login{% endblock %}
 
@@ -11,22 +12,19 @@
 
     <form action="/login/create" method="post" class="auth-card__form">
 
-        <div class="input-field">
-            <input type="email" id="inputEmail" name="email" value="{{ email }}" autocomplete="email" autofocus/>
-            <label for="inputEmail">Email</label>
-        </div>
+        {{ form.text_field({id: 'inputEmail', name: 'email', type: 'email', label: 'Email',
+                            value: email, autocomplete: 'email', autofocus: true}) }}
 
-        <div class="input-field">
-            <input type="password" id="inputPassword" name="password" class="password-input" autocomplete="current-password"/>
-            <label for="inputPassword">Password</label>
-            <button type="button" class="password-toggle material-icons" aria-label="Show password">visibility</button>
-        </div>
+        {{ form.text_field({id: 'inputPassword', name: 'password', type: 'password', label: 'Password',
+                            autocomplete: 'current-password'}) }}
         <a href="/password/forgot" class="auth-card__forgot">Forgot password?</a>
 
-        <label class="auth-card__remember">
-            <input type="checkbox" name="remember_me" {% if remember_me %}checked{% endif %}/>
-            <span class="auth-card__remember-label">Remember me</span>
-        </label>
+        <div class="beer auth-card__remember">
+            <label class="checkbox">
+                <input type="checkbox" name="remember_me" {% if remember_me %}checked{% endif %}/>
+                <span class="auth-card__remember-label">Remember me</span>
+            </label>
+        </div>
 
         <button type="submit" class="button button--primary button--block auth-card__button">Log in</button>
     </form>
@@ -48,17 +46,22 @@
 {% block footer %}
 <script>
     // Making a guest account and finding its location takes a few seconds
-    var guestButton = $('#guestForm button');
-    $('#guestForm').on('submit', function (event) {
-        if (guestButton.hasClass('is-loading')) {
+    const guestForm = document.getElementById('guestForm');
+    const guestButton = guestForm.querySelector('button');
+
+    guestForm.addEventListener('submit', (event) => {
+        if (guestButton.classList.contains('is-loading')) {
             event.preventDefault();
             return;
         }
-        guestButton.addClass('is-loading').attr('aria-busy', 'true');
+        guestButton.classList.add('is-loading');
+        guestButton.setAttribute('aria-busy', 'true');
     });
+
     // Coming back with the Back button shows the page as it was left
-    $(window).on('pageshow', function () {
-        guestButton.removeClass('is-loading').removeAttr('aria-busy');
+    window.addEventListener('pageshow', () => {
+        guestButton.classList.remove('is-loading');
+        guestButton.removeAttribute('aria-busy');
     });
 </script>
 {% endblock %}

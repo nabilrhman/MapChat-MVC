@@ -185,12 +185,6 @@
     transition: background-color var(--dur-fast) var(--ease-out);
 }
 
-/* materialize.css turns a focused button teal */
-.account-menu__button:focus
-{
-    background: none;
-}
-
 .account-menu__button:hover,
 .account-menu__button.is-current,
 .account-menu.is-open .account-menu__button

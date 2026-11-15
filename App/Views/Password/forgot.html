@@ -1,4 +1,5 @@
 {% extends 'base_login.html' %}
+{% import '_form_fields.html' as form %}
 
 {% block title %}Reset password{% endblock %}
 
@@ -9,13 +10,10 @@
 
 <div class="auth-card">
 
-    <form action="/password/request-reset" method="post" id="formForgot" class="auth-card__form">
+    <form action="/password/request-reset" method="post" id="formForgot" class="auth-card__form" novalidate>
 
-        <div class="input-field">
-            <input type="email" id="inputEmail" name="email" value="{{ email }}" autocomplete="email" autofocus/>
-            <label for="inputEmail">Email</label>
-            <span id="error-msg-email"></span>
-        </div>
+        {{ form.text_field({id: 'inputEmail', name: 'email', type: 'email', label: 'Email',
+                            value: email, autocomplete: 'email', autofocus: true}) }}
 
         <button type="submit" class="button button--primary button--block auth-card__button">Send reset link</button>
     </form>

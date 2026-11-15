@@ -1,5 +1,5 @@
 {% extends 'base_login.html' %}
-{% import '_form_errors.html' as form %}
+{% import '_form_fields.html' as form %}
 
 {% block title %}Sign up{% endblock %}
 
@@ -10,27 +10,16 @@
 
 <div class="auth-card">
 
-    <form action="/signup/create" method="post" id="formSignup" class="auth-card__form">
+    <form action="/signup/create" method="post" id="formSignup" class="auth-card__form" novalidate>
 
-        <div class="input-field">
-            <input type="text" id="inputName" name="name" value="{{ user.name }}" autocomplete="name" autofocus/>
-            <label for="inputName">Name</label>
-            <span id="error-msg-name">{{ form.field_errors(user.errors, 'Name', 'inputName') }}</span>
-        </div>
+        {{ form.text_field({id: 'inputName', name: 'name', label: 'Name', errors_key: 'Name',
+                            value: user.name, autocomplete: 'name', autofocus: true}, user.errors) }}
 
-        <div class="input-field">
-            <input type="email" id="inputEmail" name="email" value="{{ user.email }}" autocomplete="email"/>
-            <label for="inputEmail">Email</label>
-            <span id="error-msg-email">{{ form.field_errors(user.errors, 'Email', 'inputEmail') }}</span>
-        </div>
+        {{ form.text_field({id: 'inputEmail', name: 'email', type: 'email', label: 'Email', errors_key: 'Email',
+                            value: user.email, autocomplete: 'email'}, user.errors) }}
 
-        <div class="input-field">
-            <input type="password" id="inputPassword" name="password" class="password-input" autocomplete="new-password"/>
-            <label for="inputPassword">Password</label>
-            <button type="button" class="password-toggle material-icons" aria-label="Show password">visibility</button>
-            <span class="helper-text">6+ characters, a letter and a number</span>
-            <span id="error-msg-password">{{ form.field_errors(user.errors, 'Password', 'inputPassword') }}</span>
-        </div>
+        {{ form.text_field({id: 'inputPassword', name: 'password', type: 'password', label: 'Password', errors_key: 'Password',
+                            autocomplete: 'new-password', hint: '6+ characters, a letter and a number'}, user.errors) }}
 
         <button type="submit" class="button button--primary button--block auth-card__button">Create account</button>
     </form>

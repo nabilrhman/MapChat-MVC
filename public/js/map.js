@@ -183,8 +183,8 @@ function mapReady() {
     mapShown = true;
 
     var show = function () {
-        $('#map').addClass('is-shown');
-        $('#map-loading').addClass('is-done');
+        document.getElementById('map').classList.add('is-shown');
+        document.getElementById('map-loading').classList.add('is-done');
     };
 
     if (vectorMap && !(vectorMap.areTilesLoaded() && !vectorMap.isMoving())) {
@@ -427,4 +427,5 @@ function initialize() {
         .catch(initializeFallback);
 }
 
-$(initialize);
+// The script loads at the end of the page, so the map's box is already there
+initialize();
