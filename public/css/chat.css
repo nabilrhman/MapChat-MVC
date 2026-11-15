@@ -41,12 +41,14 @@ body
     align-items: center;
     justify-content: center;
     pointer-events: none;
-    transition: opacity var(--dur) var(--ease-out);
+    transition: opacity var(--dur) var(--ease-out), visibility 0s linear var(--dur);
 }
 
+/* Hidden once faded, so the dots stop animating */
 .map-loading.is-done
 {
     opacity: 0;
+    visibility: hidden;
 }
 
 /* Pin tooltip: the name, then the flag and city, centred over the pin */
