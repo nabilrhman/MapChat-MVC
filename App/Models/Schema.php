@@ -6,8 +6,6 @@ use PDO;
 
 /**
  * Brings an older database up to date with init.sql
- *
- * PHP version 7.0
  */
 class Schema extends \Core\Model
 {

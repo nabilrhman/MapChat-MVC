@@ -4,12 +4,9 @@ namespace Core;
 
 /**
  * Router
- *
- * PHP version 7.0
  */
 class Router
 {
-
     /**
      * Associative array of routes (the routing table)
      * @var array
@@ -48,16 +45,6 @@ class Router
     }
 
     /**
-     * Get all the routes from the routing table
-     *
-     * @return array
-     */
-    public function getRoutes()
-    {
-        return $this->routes;
-    }
-
-    /**
      * Match the route to the routes in the routing table, setting the $params
      * property if a route is found.
      *
@@ -82,16 +69,6 @@ class Router
         }
 
         return false;
-    }
-
-    /**
-     * Get the currently matched parameters
-     *
-     * @return array
-     */
-    public function getParams()
-    {
-        return $this->params;
     }
 
     /**
@@ -124,7 +101,6 @@ class Router
 
                 if (is_callable([$controller_object, $action])) {
                     $controller_object->$action();
-
                 } else {
                     throw new \Exception("Method $action (in controller $controller) not found", 404);
                 }
@@ -190,7 +166,7 @@ class Router
         if ($url != '') {
             $parts = explode('&', $url, 2);
 
-            if (strpos($parts[0], '=') === false) {
+            if (!str_contains($parts[0], '=')) {
                 $url = $parts[0];
             } else {
                 $url = '';
@@ -204,7 +180,7 @@ class Router
      * Get the namespace for the controller class. The namespace defined in the
      * route parameters is added if present.
      *
-     * @return string The request URL
+     * @return string The namespace
      */
     protected function getNamespace()
     {

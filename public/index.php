@@ -3,8 +3,6 @@
 use App\Config;
 /**
  * Front controller
- *
- * PHP version 7.0
  */
 
 /**

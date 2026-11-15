@@ -2,18 +2,13 @@
 
 namespace App\Controllers;
 
-use App\Flash;
-use \Core\View;
-use \App\Auth;
+use Core\View;
 
 /**
- * Home controller
- *
- * PHP version 7.0
+ * About page
  */
 class About extends \Core\Controller
 {
-
     /**
      * Show the index page
      *
@@ -21,7 +16,6 @@ class About extends \Core\Controller
      */
     public function indexAction()
     {
-
         View::renderTemplate('About/index.html');
     }
 }

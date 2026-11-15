@@ -2,18 +2,15 @@
 
 namespace Core;
 
-use \App\Auth;
-use \App\Flash;
+use App\Auth;
+use App\Flash;
 
 /**
  * Base controller
- *
- * PHP version 7.0
  */
 #[\AllowDynamicProperties]
 abstract class Controller
 {
-
     /**
      * Parameters from the matched route
      * @var array
@@ -54,7 +51,7 @@ abstract class Controller
             }
 
             if ($this->before() !== false) {
-                call_user_func_array([$this, $method], $args);
+                $this->$method(...$args);
                 $this->after();
             }
         } else {
@@ -113,6 +110,21 @@ abstract class Controller
     }
 
     /**
+     * Reply with JSON
+     *
+     * @param mixed $data
+     * @param int $status HTTP status
+     *
+     * @return void
+     */
+    protected function json($data, $status = 200)
+    {
+        http_response_code($status);
+        header('Content-Type: application/json');
+        echo json_encode($data);
+    }
+
+    /**
      * Redirect to a different page
      *
      * @param string $url  The relative URL
@@ -134,17 +146,13 @@ abstract class Controller
     public function requireLogin()
     {
         if (! Auth::getUser()) {
-
             // Background requests (chat polling, sending) can't follow a
             // redirect to the login page; tell them to sign in again instead
             if (($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'XMLHttpRequest') {
-                http_response_code(401);
-                header('Content-Type: application/json');
-                echo json_encode(['error' => 'Please log in again.']);
+                $this->json(['error' => 'Please log in again.'], 401);
                 exit;
             }
 
-            //Flash::addMessage('Please login to access that page');
             Flash::addMessage('Please log in first', Flash::INFO);
 
             Auth::rememberRequestedPage();

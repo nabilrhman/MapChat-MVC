@@ -7,17 +7,28 @@ use App\Config;
 
 /**
  * Base model
- *
- * PHP version 7.0
  */
 #[\AllowDynamicProperties]
 abstract class Model
 {
+    /**
+     * Class constructor
+     *
+     * @param array $data  Initial property values (optional)
+     *
+     * @return void
+     */
+    public function __construct($data = [])
+    {
+        foreach ($data as $key => $value) {
+            $this->$key = $value;
+        }
+    }
 
     /**
      * Get the PDO database connection
      *
-     * @return mixed
+     * @return PDO
      */
     protected static function getDB()
     {

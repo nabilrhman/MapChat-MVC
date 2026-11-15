@@ -3,40 +3,22 @@
 namespace App\Models;
 
 use PDO;
-use \App\Token;
-use \App\Mail;
-use \Core\View;
+use App\Token;
+use App\Mail;
+use Core\View;
+use App\Config;
 
 /**
  * User model
- *
- * PHP version 7.0
  */
 class User extends \Core\Model
 {
-
     /**
      * Error messages
      *
      * @var array
      */
     public $errors = [];
-
-    /**
-     * Class constructor
-     *
-     * @param array $data  Initial property values (optional)
-     *
-     * @return void
-     */
-    public function __construct($data = [])
-    {
-        foreach ($data as $key => $value) {
-            $this->$key = $value;
-        };
-
-        $this->ip = $_SERVER['REMOTE_ADDR'];
-    }
 
     /**
      * Save the user model with the current property values
@@ -48,7 +30,6 @@ class User extends \Core\Model
         $this->validate();
 
         if (empty($this->errors)) {
-
             $password_hash = password_hash($this->password, PASSWORD_DEFAULT);
 
             $token = new Token();
@@ -67,7 +48,7 @@ class User extends \Core\Model
             $stmt->bindValue(':email', $this->email, PDO::PARAM_STR);
             $stmt->bindValue(':password_hash', $password_hash, PDO::PARAM_STR);
             $stmt->bindValue(':activation_hash', $hashed_token, PDO::PARAM_STR);
-            $stmt->bindValue(':is_active', \App\Config::mailEnabled() ? 0 : 1, PDO::PARAM_INT);
+            $stmt->bindValue(':is_active', Config::mailEnabled() ? 0 : 1, PDO::PARAM_INT);
 
             return $stmt->execute();
         }
@@ -101,7 +82,6 @@ class User extends \Core\Model
 
         // Password
         if (isset($this->password)) {
-
             if (strlen($this->password) < 6) {
                 $this->errors[] = 'Password: Enter at least 6 characters';
             }
@@ -113,7 +93,6 @@ class User extends \Core\Model
             if (preg_match('/.*\d+.*/i', $this->password) == 0) {
                 $this->errors[] = 'Password: Needs at least one number';
             }
-
         }
     }
 
@@ -153,7 +132,7 @@ class User extends \Core\Model
         $stmt = $db->prepare($sql);
         $stmt->bindValue(':email', $email, PDO::PARAM_STR);
 
-        $stmt->setFetchMode(PDO::FETCH_CLASS, get_called_class());
+        $stmt->setFetchMode(PDO::FETCH_CLASS, static::class);
 
         $stmt->execute();
 
@@ -161,9 +140,7 @@ class User extends \Core\Model
     }
 
     /**
-     /**
-     * Authenticate a user by email and password.
-     * Authenticate a user by email and password. User account has to be active.
+     * Authenticate a user by email and password
      *
      * @param string $email email address
      * @param string $password password
@@ -174,40 +151,8 @@ class User extends \Core\Model
     {
         $user = static::findByEmail($email);
 
-        //if ($user) {
-
-        // Old Code
-        /*if ($user && $user->is_active) {
-            if (password_verify($password, $user->password_hash)) {
-                return $user;
-            }
-        }*/
-
-        // By NR
-        if ($user) {
-            if (password_verify($password, $user->password_hash)) {
-                return $user;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-    //*
-     * Checks if the account is active.
-     *
-     * @param string $email email address
-     *
-     * @return boolean  true if active, false otherwise
-     */
-    public static function isActive($email)
-    {
-        $user = static::findByEmail($email);
-
-        //if ($user) {
-        if ($user->is_active) {
-            return true;
+        if ($user && password_verify($password, $user->password_hash)) {
+            return $user;
         }
 
         return false;
@@ -228,7 +173,7 @@ class User extends \Core\Model
         $stmt = $db->prepare($sql);
         $stmt->bindValue(':id', $id, PDO::PARAM_INT);
 
-        $stmt->setFetchMode(PDO::FETCH_CLASS, get_called_class());
+        $stmt->setFetchMode(PDO::FETCH_CLASS, static::class);
 
         $stmt->execute();
 
@@ -274,11 +219,8 @@ class User extends \Core\Model
         $user = static::findByEmail($email);
 
         if ($user) {
-
             if ($user->startPasswordReset()) {
-
                 $user->sendPasswordResetEmail();
-
             }
         }
     }
@@ -286,7 +228,7 @@ class User extends \Core\Model
     /**
      * Start the password reset process by generating a new token and expiry
      *
-     * @return void
+     * @return boolean  True if the token was saved
      */
     protected function startPasswordReset()
     {
@@ -332,17 +274,15 @@ class User extends \Core\Model
 
         $stmt->bindValue(':token_hash', $hashed_token, PDO::PARAM_STR);
 
-        $stmt->setFetchMode(PDO::FETCH_CLASS, get_called_class());
+        $stmt->setFetchMode(PDO::FETCH_CLASS, static::class);
 
         $stmt->execute();
 
         $user = $stmt->fetch();
 
         if ($user) {
-            
             // Check password reset token hasn't expired
             if (strtotime($user->password_reset_expires_at) > time()) {
-
                 return $user;
             }
         }
@@ -361,9 +301,7 @@ class User extends \Core\Model
 
         $this->validate();
 
-        //return empty($this->errors);
         if (empty($this->errors)) {
-
             $password_hash = password_hash($this->password, PASSWORD_DEFAULT);
 
             $sql = 'UPDATE users
@@ -394,7 +332,7 @@ class User extends \Core\Model
      */
     public function sendActivationEmail()
     {
-        $url = \App\Config::appUrl() . '/signup/activate/' . $this->activation_token;
+        $url = Config::appUrl() . '/signup/activate/' . $this->activation_token;
 
         $text = View::getTemplate('Signup/activation_email.txt', ['url' => $url, 'name' => $this->name]);
         $html = View::getTemplate('Signup/activation_email.html', ['url' => $url, 'name' => $this->name]);
@@ -409,7 +347,7 @@ class User extends \Core\Model
      */
     protected function sendPasswordResetEmail()
     {
-        $url = \App\Config::appUrl() . '/password/reset/' . $this->password_reset_token;
+        $url = Config::appUrl() . '/password/reset/' . $this->password_reset_token;
 
         $text = View::getTemplate('Password/reset_email.txt', ['url' => $url, 'name' => $this->name]);
         $html = View::getTemplate('Password/reset_email.html', ['url' => $url, 'name' => $this->name]);
@@ -544,7 +482,6 @@ class User extends \Core\Model
         $this->validate();
 
         if (empty($this->errors)) {
-
             $sql = 'UPDATE users
                     SET name = :name,
                         email = :email';
@@ -568,10 +505,8 @@ class User extends \Core\Model
 
             // Add password if it's set
             if (isset($this->password)) {
-
                 $password_hash = password_hash($this->password, PASSWORD_DEFAULT);
                 $stmt->bindValue(':password_hash', $password_hash, PDO::PARAM_STR);
-
             }
 
             $stmt->execute();
@@ -596,7 +531,7 @@ class User extends \Core\Model
      */
     public function updateAvatar($avatar)
     {
-        $uploads = 'https://res.cloudinary.com/' . \App\Config::cloudinaryCloudName() . '/';
+        $uploads = 'https://res.cloudinary.com/' . Config::cloudinaryCloudName() . '/';
 
         if ($avatar !== null && (!str_starts_with($avatar, $uploads) || strlen($avatar) > 2083)) {
             return false;
