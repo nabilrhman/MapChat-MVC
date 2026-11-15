@@ -2,47 +2,38 @@
 
 {% block title %}Reset password{% endblock %}
 
-{% block heading %}RESET PASSWORD{% endblock %}
-
+{% block heading %}Set a new password{% endblock %}
 
 {% block body %}
 
-<div class="container">
-    <div class="z-depth-1 grey lighten-4 row form-container form-container-custom">
-        <form method="post" id="formPassword" action="/password/reset-password">
+<div class="auth-card">
 
-            <input type="hidden" name="token" value="{{ token }}"/>
+    {# The button is inside the form, so clicking it submits #}
+    <form method="post" id="formPassword" action="/password/reset-password">
 
-            <div class='row'>
-                <div class='input-field col s12'>
-                    <input type="password" id="inputPassword" name="password" class="inputPassword" required/>
-                    <label id="passwordLabel" for="inputPassword">Password</label>
-                    <span id="error-msg-password" class="helper-text"></span>
-                </div>
-            </div>
+        <input type="hidden" name="token" value="{{ token }}"/>
 
-        </form>
+        <div class="input-field">
+            <input type="password" id="inputPassword" name="password" class="has-toggle" autocomplete="new-password" autofocus/>
+            <label for="inputPassword">New password</label>
+            <button type="button" class="password-toggle material-icons" aria-label="Show password">visibility</button>
+            <span class="helper-text">6+ characters, a letter and a number</span>
+            <span id="error-msg-password"></span>
+        </div>
 
-        <center>
-            <div class='row' style="clear: both">
-                <button type='submit' class='col s12 btn btn-large waves-effect purple hover-grow' id="submitButton">
-                    RESET
-                </button>
-            </div>
-        </center>
-    </div>
+        <button type="submit" class="button button-primary button-block" id="submitButton">Set new password</button>
+    </form>
+
+    <p class="form-switch"><span>Remembered it?</span> <a href="/login">Log in</a></p>
 </div>
 
 {% endblock %}
-
 
 {% block footer %}
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.15.0/jquery.validate.min.js"></script>
 <script src="/js/validatorExtended.js"></script>
-<script src="/js/hideShowPassword.min.js"></script>
+<script src="/js/passwordToggle.js"></script>
 <script src="/js/validatePasswordForgotPassword.js"></script>
 
-
 {% endblock %}
-

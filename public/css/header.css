@@ -92,5 +92,26 @@
     width: 100%;
 }
 
+/* Phones: a shorter header with smaller links */
+@media (max-width: 700px)
+{
+    .header
+    {
+        height: 61px;
+        padding: 0 12px;
+    }
 
+    .logo
+    {
+        width: 104px;
+        height: 32px;
+        margin-top: -5px;
+    }
 
+    .nav-container a
+    {
+        margin: 0 2px;
+        padding: 8px 6px;
+        font-size: 12px;
+    }
+}

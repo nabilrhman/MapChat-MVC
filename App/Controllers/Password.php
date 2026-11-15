@@ -97,7 +97,7 @@ class Password extends \Core\Controller
 
         } else {
 
-            Flash::addMessage('Password reset link is invalid or expired. Try again.', Flash::SUCCESS);
+            Flash::addMessage('Password reset link is invalid or expired. Try again.', Flash::WARNING);
             $this->redirect('/password/forgot');
             //View::renderTemplate('Password/token_expired.html');
             exit;

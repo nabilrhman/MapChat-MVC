@@ -22,17 +22,58 @@ body
 
 #map
 {
-    height:100%;
-    width:100%;
+    /* Between the header and the footer, so neither covers it (or its credits) */
     position:fixed;
+    top: 95px;
+    bottom: 40px;
+    width:100%;
     background:#eee;
     overflow:hidden;
     z-index:0; /* keep the map's layers below the chat panel */
 }
 
+/* Pin tooltip: the name, then the flag and city, centred over the pin */
+.pin-label
+{
+    text-align: center;
+}
+
+.pin-label strong
+{
+    display: block;
+    color: #212121;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.pin-label > span /* the city line only, not the flag inside it */
+{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    margin-top: 2px;
+    color: #757575;
+    font-size: 12px;
+}
+
+.pin-label .fi
+{
+    width: 12px;
+    height: 9px;
+    line-height: 9px;
+}
+
+/* The map libraries set their own Helvetica; use the page's font like everything else */
+#map.leaflet-container,
+#map.maplibregl-map
+{
+    font-family: inherit;
+}
+
 .map-pin
 {
-    cursor: pointer;
+    cursor: default; /* hovering shows the name; clicking does nothing */
 }
 
 
@@ -55,7 +96,7 @@ body
     overflow: hidden;
     position: absolute;
     top: 96px;
-    bottom: 43px; /* footer height */
+    bottom: 40px; /* footer height */
     left: 0;
     right: 0;
     background-color: #fafafa;
@@ -71,16 +112,554 @@ body
     flex: 1;
 }
 
+/* On this page the yellow line under the nav bar is enough; its shadow would
+   fall across the top of the chat and people panels */
+.header
+{
+    box-shadow: none;
+}
+
+/* Tabs: the open room first, then one per private chat. The open tab joins
+   the messages below; the rest sit on a darker strip */
+.chat-tabs
+{
+    display: flex;
+    align-items: stretch; /* tabs reach down to the messages */
+    overflow-x: auto;
+    box-sizing: border-box;
+    height: 48px; /* same as the top of the people list, line included */
+    /* Flipped upside down so the scrollbar sits on top; each tab is flipped
+       back. So "bottom" here is the top on screen, and "top" the bottom */
+    transform: scaleY(-1);
+    padding: 0 8px 6px; /* the strip above the tabs */
+    border-top: 1px solid #e0e0e0; /* the line under the tabs */
+    background-color: #ede7f6;
+}
+
+/* A thin scrollbar whenever the tabs don't all fit, darker on hover.
+   Chrome ignores the ::-webkit-scrollbar rules once scrollbar-width is set,
+   so the standard properties are only for browsers without them (Firefox) */
+@supports not selector(::-webkit-scrollbar)
+{
+    .chat-tabs
+    {
+        scrollbar-width: thin;
+        scrollbar-color: #d1c4e9 transparent;
+    }
+
+    .chat-tabs:hover
+    {
+        scrollbar-color: #b39ddb transparent;
+    }
+}
+
+.chat-tabs::-webkit-scrollbar
+{
+    height: 4px;
+    background: transparent;
+}
+
+.chat-tabs::-webkit-scrollbar-track
+{
+    background: transparent;
+    box-shadow: none;
+}
+
+.chat-tabs::-webkit-scrollbar-thumb
+{
+    border-radius: 0;
+    background: #d1c4e9;
+    box-shadow: none;
+}
+
+.chat-tabs:hover::-webkit-scrollbar-thumb
+{
+    background: #b39ddb;
+}
+
+.chat-tab
+{
+    transform: scaleY(-1);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 12px;
+    color: #616161;
+    font-size: 13px;
+    font-weight: 400;
+    white-space: nowrap;
+    transition: background-color 0.15s ease;
+}
+
+/* Long names are cut short so more tabs fit */
+.chat-tab .tab-name
+{
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.chat-tab:hover
+{
+    background-color: rgba(255, 255, 255, 0.5);
+    color: #512da8;
+}
+
+.chat-tab.active
+{
+    background-color: #fafafa; /* same as the messages, so they join */
+    color: #512da8;
+    font-weight: 600;
+}
+
+.chat-tab .unread
+{
+    padding: 0 6px;
+    border-radius: 10px;
+    background-color: #d1c4e9;
+    color: #311b92;
+    font-size: 11px;
+    line-height: 18px;
+}
+
+.chat-tab .close-tab
+{
+    color: #9e9e9e;
+    font-size: 20px;
+    line-height: 1;
+    padding-left: 2px; /* none on the right, so the tab's sides match */
+}
+
+.chat-tab .close-tab:hover
+{
+    color: #e53935;
+}
+
+/* Above a private chat, so it's clear who can read it */
+.private-note
+{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    padding: 8px 16px;
+    border-bottom: 1px solid #ececec;
+    background-color: #f5f1fb; /* the same band as the "Today" rows */
+}
+
+.private-note[hidden]
+{
+    display: none;
+}
+
+.private-note-label
+{
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 100%;
+    color: #5e35b1;
+    font-size: 12px;
+    line-height: 16px;
+}
+
+#private-note-text
+{
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.private-note .material-icons
+{
+    font-family: "Material Icons";
+    font-size: 14px;
+    font-feature-settings: "liga";
+}
+
+/* The side panels slide in from their own edge */
+@keyframes panelInLeft
+{
+    from { transform: translateX(-100%); }
+}
+
+@keyframes panelInRight
+{
+    from { transform: translateX(100%); }
+}
+
+@keyframes panelOutRight
+{
+    to { transform: translateX(100%); }
+}
+
+/* Held off screen until the page is ready, so the slide isn't hidden
+   behind the loading screen */
+.slide-in-left
+{
+    animation: panelInLeft 0.35s cubic-bezier(0.22, 1, 0.36, 1) both paused; /* fast start, soft stop */
+}
+
+.slide-in-right
+{
+    animation: panelInRight 0.35s cubic-bezier(0.22, 1, 0.36, 1) both paused;
+}
+
+.panels-in .slide-in-left,
+.panels-in .slide-in-right
+{
+    animation-play-state: running;
+}
+
+/* Closing the people list: slide out, then the page hides it */
+.panels-in .people.slide-out
+{
+    animation: panelOutRight 0.2s cubic-bezier(0.64, 0, 0.78, 0) forwards;
+}
+
 /* Chat container - ends */
+/* People list - starts */
+.people
+{
+    position: fixed; /* fixed, so sliding in from the edge never widens the page */
+    top: 96px;
+    bottom: 40px; /* footer height */
+    right: 0;
+    width: 220px;
+    display: flex;
+    flex-direction: column; /* the header stays put; only the list below scrolls */
+    background-color: #fafafa;
+    box-shadow: -2px 0 8px rgba(0, 0, 0, 0.12);
+}
+
+.people-list
+{
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 0; /* room under the header line and after the last person */
+}
+
+/* Rows fade out at the bottom edge instead of being cut off by the footer.
+   Stops short of the scrollbar, which runs sharp down to the footer */
+.people::after
+{
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 8px; /* scrollbar width */
+    bottom: 0;
+    height: 24px;
+    background: linear-gradient(rgba(250, 250, 250, 0), #fafafa);
+    pointer-events: none;
+}
+
+
+.people-heading
+{
+    margin: 0;
+    padding: 16px 16px 8px;
+    color: #9e9e9e;
+    font-size: 11px;
+    line-height: 16px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+/* Lines up with the chat tabs on the left */
+.people-heading.people-top
+{
+    flex: none;
+    display: flex;
+    align-items: center;
+    box-sizing: border-box;
+    height: 48px;
+    padding: 0 16px;
+    gap: 8px;
+    border-bottom: 1px solid #e0e0e0;
+    color: #512da8;
+}
+
+/* Count and "Online" sit on one baseline, so the digit and the letters line up */
+.people-title
+{
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.people-close
+{
+    margin-left: auto;
+    color: #9e9e9e;
+    font-size: 22px;
+    font-weight: 400;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.people-close:hover
+{
+    color: #e53935;
+}
+
+/* Same look as the unread count on the tabs */
+.people-count
+{
+    padding: 0 7px;
+    border-radius: 10px;
+    background-color: #d1c4e9;
+    color: #311b92;
+    font-size: 11px;
+    line-height: 18px;
+    letter-spacing: 0;
+}
+
+.person
+{
+    display: grid;
+    grid-template-columns: 28px 1fr;
+    column-gap: 10px;
+    align-items: center;
+    padding: 6px 16px;
+    cursor: default;
+}
+
+.person.can-message
+{
+    cursor: pointer;
+}
+
+.person:hover
+{
+    background-color: #ede7f6;
+}
+
+.person-avatar
+{
+    position: relative;
+    width: 28px;
+    height: 28px;
+}
+
+.person-avatar img
+{
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+    display: block;
+}
+
+/* Green dot on the avatar of someone online */
+.person.online .person-avatar::after
+{
+    content: '';
+    position: absolute;
+    right: -1px;
+    bottom: -1px;
+    width: 9px;
+    height: 9px;
+    border: 2px solid #fafafa;
+    border-radius: 50%;
+    background-color: #43a047;
+}
+
+.person:not(.online) img
+{
+    filter: grayscale(1);
+    opacity: 0.6;
+}
+
+.person-text
+{
+    min-width: 0;
+}
+
+.person-name,
+.person-city
+{
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Flag and city on one centre line, like the city line in the chat */
+.person-detail
+{
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+}
+
+.person-name
+{
+    color: #424242;
+    font-size: 13px;
+}
+
+.person:not(.online) .person-name
+{
+    color: #9e9e9e;
+}
+
+.person-detail
+{
+    color: #9e9e9e;
+    font-size: 12px;
+    line-height: 16px; /* same as the city line in the chat */
+}
+
+.person-detail .fi
+{
+    flex: none;
+}
+
+/* The pin of the person hovered in the list */
+.map-pin svg
+{
+    transition: transform 0.15s ease;
+    transform-origin: bottom center;
+}
+
+.map-pin.highlight svg
+{
+    transform: scale(1.35);
+}
+/* People list - ends */
+
+/* Button over the map that brings back the people list */
+.people-toggle
+{
+    display: none;
+    position: absolute;
+    top: 108px;
+    right: 12px;
+    z-index: 2;
+    align-items: center;
+    gap: 6px;
+    height: 36px;
+    padding: 0 12px;
+    border: none;
+    border-radius: 4px;
+    background-color: #fff;
+    color: #512da8;
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+}
+
+/* materialize.css turns a focused button teal */
+.people-toggle:focus
+{
+    background-color: #fff;
+}
+
+.people-toggle:hover
+{
+    background-color: #f5f1fb;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
+}
+
+.people-toggle:focus-visible
+{
+    outline: none;
+    box-shadow: 0 0 0 3px #d1c4e9;
+}
+
+.people-toggle .material-icons
+{
+    font-family: "Material Icons";
+    font-size: 20px;
+    font-feature-settings: "liga";
+}
+
+/* Wide screens: the list shows unless it was closed */
+@media (min-width: 1101px)
+{
+    body.people-closed .people
+    {
+        display: none;
+    }
+
+    body.people-closed .people-toggle
+    {
+        display: flex;
+    }
+}
+
+/* Tablets: the people list slides in over the map */
+@media (max-width: 1100px)
+{
+    .people-toggle
+    {
+        display: flex;
+    }
+
+    /* Hidden rather than moved off screen, which would widen the page */
+    .people
+    {
+        display: none;
+        z-index: 3;
+    }
+
+    .people.open
+    {
+        display: flex;
+    }
+}
+
+/* Phones: a strip of map on top, the chat below it at full width */
+@media (max-width: 700px)
+{
+    .chat-container
+    {
+        top: calc(61px + 30vh);
+        max-width: none;
+        min-width: 0;
+        box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.12);
+    }
+
+    #map
+    {
+        top: 61px;
+    }
+
+    /* The chat covers the bottom of the map here, so the credits go top left
+       (the people button is top right) */
+    .maplibregl-ctrl-bottom-right,
+    .leaflet-bottom.leaflet-right
+    {
+        top: 0;
+        right: auto;
+        bottom: auto;
+        left: 0;
+    }
+
+    .people
+    {
+        top: 61px;
+        width: 260px;
+        max-width: 85vw;
+    }
+
+    .people-toggle
+    {
+        top: 72px;
+    }
+}
 /* Chat - starts */
 
 .chat
 {
     /* Avatar on the left, the message on the right; a hairline between cards */
     display: grid;
-    grid-template-columns: 36px 1fr;
-    column-gap: 14px;
-    padding: 16px 20px;
+    grid-template-columns: 32px 1fr;
+    column-gap: 12px;
+    padding: 14px 16px;
     border-bottom: 1px solid #ececec;
     background-color: #fafafa;
     transition: background-color 0.2s ease;
@@ -93,14 +672,14 @@ body
 
 .chat-avatar-container
 {
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
 }
 
 .chat .avatar
 {
-    width: 36px !important;
-    height: 36px;
+    width: 32px !important;
+    height: 32px;
     border-radius: 50%;
     object-fit: cover;
     display: block;
@@ -116,8 +695,10 @@ body
 
 .chat .name
 {
-    grid-column: 1 / -1;
-    margin: 0 0 4px;
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap; /* a long name is cut short before the time */
     font-size: 13px;
     line-height: 1.4;
     letter-spacing: 0.5px;
@@ -125,10 +706,22 @@ body
     font-weight: 600;
 }
 
+.chat .name.can-message
+{
+    cursor: pointer;
+}
+
+.chat .name.can-message:hover
+{
+    color: #512da8;
+}
+
 .chat-body
 {
     grid-column: 1 / -1;
-    margin: 0 0 8px;
+    margin: 4px 0 0;
+    font-size: 14px;
+    line-height: 20px;
     text-align: left;
     overflow-wrap: anywhere;
     white-space: pre-line; /* keep line breaks people typed */
@@ -136,14 +729,114 @@ body
 
 .chat .location
 {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: flex-end; /* bottom right corner, under the time */
+    margin-top: 6px;
     color: #7e57c2;
     font-size: 12px;
+    line-height: 16px;
+}
+
+/* Two lines in a one-line window: the reader's time then the sender's, or the
+   city then the country. Hovering slides the second line into view */
+.swap
+{
+    display: block;
+    height: 16px;
+    overflow: hidden;
+    cursor: default; /* only reveals on hover, nothing to click or select */
+}
+
+.swap-track
+{
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.swap-track > *
+{
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    height: 16px;
+}
+
+.swap:hover .swap-track
+{
+    transform: translateY(-16px);
+}
+
+.sender-time
+{
+    color: #616161;
+}
+
+/* Smaller than flag-icons' default, to sit with 12px text */
+.chat .location .fi,
+.person-detail .fi
+{
+    width: 12px;
+    height: 9px;
+    line-height: 9px;
+}
+
+.chat .location .material-icons
+{
+    font-family: "Material Icons";
+    font-size: 14px;
+    font-feature-settings: "liga";
+}
+
+/* Sun or moon: day or night where the sender was */
+.chat .daylight
+{
+    font-family: "Material Icons";
+    font-size: 14px;
+    font-feature-settings: "liga";
+    line-height: 1;
+}
+
+.daylight.day
+{
+    color: #ffa000;
+}
+
+.daylight.night
+{
+    color: #5c6bc0;
+}
+
+/* "Today", "Yesterday" or a date, between messages from different days */
+.day-divider
+{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 16px;
+    border-bottom: 1px solid #ececec;
+    background-color: #f5f1fb; /* a fainter version of the tab bar's purple */
+}
+
+.day-divider span
+{
+    color: #5e35b1;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    line-height: 16px;
 }
 
 .chat .time
 {
+    align-self: center; /* level with the name beside it */
+    padding-left: 8px;
     color: #9e9e9e;
     font-size: 12px;
+    line-height: 16px;
     text-align: right;
 }
 
@@ -154,7 +847,7 @@ body
     display: flex;
     align-items: flex-end;
     gap: 10px;
-    padding: 12px 20px; /* same side padding as the messages above */
+    padding: 10px 16px; /* same side padding as the messages above */
     background-color: #fff;
     border-top: 1px solid #e0e0e0;
 }
@@ -172,15 +865,16 @@ body
     display: block; /* no inline gap under it, so it lines up with Send */
     box-sizing: border-box;
     width: 100%;
+    height: 42px; /* materialize.css makes it 3rem; match Send. Typing still grows it */
     min-height: 42px;
     max-height: 120px;
     margin: 0;
-    padding: 9px 12px;
+    padding: 10px 12px;
     border: 1px solid #ddd6ee;
     border-radius: 4px;
     background-color: #faf9fd;
-    line-height: 22px;
-    font-size: 15px;
+    line-height: 20px;
+    font-size: 14px;
     resize: none;
     overflow-y: auto !important;
     overflow-wrap: anywhere;
