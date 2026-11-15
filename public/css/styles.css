@@ -59,7 +59,6 @@ textarea
 .icon--alt-arrow-down { --icon-bearing: 4.5; }
 .icon--arrow-down { --icon-bearing: 4.5; }
 .icon--sun { --icon-bearing: 1.2; }
-.icon--logout-2 { --icon-bearing: 1.6; }
 .icon--eye-closed { --icon-bearing: 1; }
 .icon--github { --icon-bearing: 0; }
 .icon--users-group-rounded { margin-inline-end: calc(-3em / 24); }

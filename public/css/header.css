@@ -179,7 +179,7 @@
     align-items: center;
     gap: 8px;
     height: 44px;
-    padding: 0 9px 0 5px; /* with the chevron glyph's own space, ~15px after it */
+    padding: 0 17px 0 5px; /* 17px after the chevron's drawing (.icon takes back its blank sides) */
     border: none;
     border-radius: 22px;
     background: none;
@@ -230,8 +230,9 @@
    Two classes, to win over .icon in styles.css, which loads later */
 .account-menu__button .account-menu__chevron
 {
+    --icon-nudge: -1px; /* to the middle of the name's capitals */
     margin-left: calc(2px - var(--icon-bearing) * 1em / 24);
-    font-size: 20px;
+    font-size: 16px;
     transition: transform var(--dur) var(--ease-out);
 }
 
