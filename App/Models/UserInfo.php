@@ -207,7 +207,8 @@ class UserInfo extends \Core\Model
     public static function getAllLocations()
     {
         $sql = 'SELECT userinfo.lat, userinfo.lng, userinfo.city, userinfo.country,
-                       users.id AS user_id, users.name, users.avatar, users.is_guest
+                       users.id AS user_id, users.name, users.avatar,
+                       users.email LIKE \'%@demo.mapchat.local\' AS is_demo
                 FROM userinfo
                 LEFT JOIN users
                 ON userinfo.email = users.email
@@ -298,7 +299,7 @@ class UserInfo extends \Core\Model
      */
     public static function getRecentPeople()
     {
-        $sql = 'SELECT users.id, users.name, users.avatar, users.is_guest,
+        $sql = 'SELECT users.id, users.name, users.avatar, users.email LIKE \'%@demo.mapchat.local\' AS is_demo,
                        IF(users.share_location, userinfo.city, NULL) AS city,
                        IF(users.share_location, userinfo.country, NULL) AS country,
                        (userinfo.online_at > NOW() - INTERVAL :online SECOND OR ' . static::DEMO_ONLINE . ') AS is_online,
@@ -319,7 +320,7 @@ class UserInfo extends \Core\Model
     /**
      * Add each person's avatar image address (see Avatar::src)
      *
-     * @param array $people Rows with a name, an avatar, is_guest and an id
+     * @param array $people Rows with a name, an avatar, is_demo and an id
      * @param string $id_column Which column holds the user's id
      *
      * @return array
@@ -327,7 +328,7 @@ class UserInfo extends \Core\Model
     protected static function withAvatarSrc($people, $id_column)
     {
         foreach ($people as &$person) {
-            $person['avatar_src'] = \App\Avatar::src($person[$id_column], $person['name'], $person['avatar'], $person['is_guest']);
+            $person['avatar_src'] = \App\Avatar::src($person[$id_column], $person['name'], $person['avatar'], $person['is_demo']);
         }
 
         return $people;

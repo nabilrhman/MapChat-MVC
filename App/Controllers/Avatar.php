@@ -25,6 +25,8 @@ class Avatar extends Authenticated
         header('Content-Type: image/svg+xml');
         // The URL carries the name, so a renamed user gets a fresh image
         header('Cache-Control: private, max-age=86400');
-        echo $user->is_guest ? \App\Avatar::face($user->id) : \App\Avatar::svg($user->name, $user->id);
+        echo str_ends_with($user->email, \App\Models\DemoChat::DOMAIN)
+            ? \App\Avatar::face($user->id)
+            : \App\Avatar::svg($user->name, $user->id);
     }
 }
