@@ -422,15 +422,15 @@ class UserInfo extends \Core\Model
     }
 
     /**
-     * True if the user has a city but no country, i.e. was located before
-     * countries were saved
+     * True if the user has no location or no country: the lookup failed last
+     * time, or they were located before countries were saved
      *
      * @return boolean
      */
-    public function isMissingCountry()
+    public function isMissingLocation()
     {
         $stmt = static::getDB()->prepare(
-            'SELECT 1 FROM userinfo WHERE email = :email AND city IS NOT NULL AND country IS NULL'
+            'SELECT 1 FROM userinfo WHERE email = :email AND (lat IS NULL OR country IS NULL)'
         );
         $stmt->bindValue(':email', $this->email, PDO::PARAM_STR);
         $stmt->execute();
