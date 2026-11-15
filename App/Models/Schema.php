@@ -64,6 +64,7 @@ class Schema extends \Core\Model
         }
 
         static::fillDemoPlaces($db);
+        static::dropDemoPictures($db);
 
         return $added;
     }
@@ -84,6 +85,20 @@ class Schema extends \Core\Model
         foreach (static::DEMO_PLACES as $email => [$country, $timezone]) {
             $stmt->execute([':email' => $email, ':country' => $country, ':timezone' => $timezone]);
         }
+    }
+
+    /**
+     * The demo people used to have picture files; now they get drawn faces
+     * (Avatar::face), which only show when no picture is stored
+     *
+     * @param PDO $db
+     *
+     * @return void
+     */
+    protected static function dropDemoPictures($db)
+    {
+        $db->exec("UPDATE users SET avatar = NULL
+                   WHERE email LIKE '%@demo.mapchat.local' AND avatar LIKE '/res/avatars/%'");
     }
 
     /**
