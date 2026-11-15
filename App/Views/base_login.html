@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="/css/styles.css?v=13" />
     <link rel="stylesheet" href="/css/footer.css?v=6" />
     <link rel="stylesheet" href="/css/ui.css?v=11" />
-    <link rel="stylesheet" type="text/css" href="/css/login.css?v=33">
+    <link rel="stylesheet" type="text/css" href="/css/login.css?v=37">
     <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/all.css" integrity="sha384-B4dIYHKNBt8Bc12p+WXckhzcICo0wtJAoU8YZTY5qE0Id1GSseTk6S+L3BlXeVIU" crossorigin="anonymous">
 
     <title>{% block title %}{% endblock %}</title>
@@ -25,6 +25,11 @@
         <a href="/" class="auth-page__logo pop-in hover-grow" aria-label="MapChat"></a>
         <h1 class="auth-page__title">{% block heading %}{% endblock %}</h1>
         <p class="auth-page__subtitle">{% block subheading %}{% endblock %}</p>
+
+        {# One-time messages ("Check your email…") as a bar above the card #}
+        {% for message in flash_messages() %}
+        <div class="auth-notice auth-notice--{{ message.type }}" role="status">{{ message.body }}</div>
+        {% endfor %}
 
         {% block body %}{% endblock %}
     </div>
@@ -40,7 +45,6 @@
 <script src="/js/validatorExtended.js?v=1"></script>
 <script src="/js/authForms.js?v=1"></script>
 <script src="/js/passwordToggle.js"></script>
-{% include '_flash.html' %}
 
 {% block footer %}{% endblock %}
 </body>
