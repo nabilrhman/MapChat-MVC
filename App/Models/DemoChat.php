@@ -28,6 +28,12 @@ class DemoChat extends \Core\Model
     const READ_SPEED = 60;
     const TYPE_SPEED = 30;
 
+    /**
+     * The scenes that open each day, in this order, right after the bot's
+     * welcome: they talk about the map and pins it has just explained
+     */
+    const OPENING = ['app_map', 'app_bot'];
+
     /** A demo person shows as online from this many minutes before they speak... */
     const ARRIVE_MINUTES = 5;
 
@@ -287,9 +293,9 @@ class DemoChat extends \Core\Model
     }
 
     /**
-     * One list of scenes from all the stories: each story's scenes stay in
-     * order, never two from the same story in a row, and longer stories are
-     * picked more often so they stretch across the day
+     * One list of scenes from all the stories: the OPENING ones first, then
+     * each story's scenes in order, never two from the same story in a row,
+     * and longer stories picked more often so they stretch across the day
      *
      * @param array $stories
      *
@@ -299,6 +305,16 @@ class DemoChat extends \Core\Model
     {
         $scenes = [];
         $last = null;
+
+        foreach (static::OPENING as $name) {
+            if (!empty($stories[$name])) {
+                $scenes[] = array_shift($stories[$name]);
+                $last = $name;
+                if (!$stories[$name]) {
+                    unset($stories[$name]);
+                }
+            }
+        }
 
         while ($stories) {
             $choices = array_diff(array_keys($stories), count($stories) > 1 ? [$last] : []);
