@@ -5,17 +5,19 @@
 // lavender theme MapChat used on Google Maps: grey land, lavender water and
 // parks, purple water labels, and yellow pins.
 
-var STYLE_URL = 'https://tiles.openfreemap.org/styles/positron';
+const STYLE_URL = 'https://tiles.openfreemap.org/styles/positron';
 
 // Where the map starts (Boise), until the pins are in
-var START = {lat: 43.4599, lng: -116.244, zoom: 3};
+const START = {lat: 43.4599, lng: -116.244, zoom: 3};
 // Fitting the pins never zooms in closer than a city
-var MAX_PIN_ZOOM = 9;
+const MAX_PIN_ZOOM = 9;
 // Same pace as the people list in chat.js
-var PINS_INTERVAL = 15000;
+const PINS_INTERVAL = 15000;
+// The map fades in even if a slow tile never arrives
+const SHOW_MAP_TIMEOUT = 4000;
 
 // The old Google Maps style, by map layer
-var THEME = {
+const THEME = {
     land: '#f5f5f5',
     park: '#daccff',
     building: '#ececec',
@@ -31,60 +33,66 @@ var THEME = {
     roadText: '#757575',
     minorRoadText: '#9e9e9e',
     waterText: '#8746ff',
-    pin: '#ffc107'
+    pin: '#ffc107',
 };
 
-// Colour changes per layer id of the positron style
+/* The vector map's colours */
+
+// The positron style's layers that change colour, by layer id; the first
+// match wins
+const LAYER_COLOURS = [
+    {isLayer: (id) => id === 'background', paint: {'background-color': THEME.land}},
+    {isLayer: (id) => id === 'landuse_residential', paint: {'fill-color': THEME.land}},
+    {isLayer: (id) => id === 'park' || id === 'landcover_wood', paint: {'fill-color': THEME.park}},
+    {isLayer: (id) => id === 'water', paint: {'fill-color': THEME.water}},
+    {isLayer: (id) => id === 'waterway', paint: {'line-color': THEME.water}},
+    {isLayer: (id) => id === 'building', paint: {'fill-color': THEME.building, 'fill-outline-color': THEME.building}},
+    {
+        isLayer: (id) => /^(tunnel_|highway_)?motorway.*casing$|^highway_motorway_bridge_casing$/.test(id),
+        paint: {'line-color': THEME.highwayCasing},
+    },
+    {isLayer: (id) => /motorway_(inner|subtle)$/.test(id), paint: {'line-color': THEME.highway}},
+    {isLayer: (id) => id === 'highway_major_casing', paint: {'line-color': THEME.roadCasing}},
+    {isLayer: (id) => /^highway_(major_inner|major_subtle|minor|path)$/.test(id), paint: {'line-color': THEME.road}},
+    {isLayer: (id) => /^railway/.test(id) && !/dashline$/.test(id), paint: {'line-color': THEME.rail}},
+    {isLayer: (id) => /^boundary/.test(id), paint: {'line-color': THEME.boundary}},
+];
+
+const hasText = (layer) => layer.type === 'symbol' && Boolean(layer.layout?.['text-field']);
+
+function getLabelColour(layerId) {
+    if (/^water/.test(layerId)) return THEME.waterText;
+    if (layerId === 'highway-name-major') return THEME.roadText;
+    if (/^highway-name/.test(layerId)) return THEME.minorRoadText;
+    return THEME.text;
+}
+
 function themeLayer(layer) {
-    var id = layer.id;
-    var paint = layer.paint || (layer.paint = {});
+    layer.paint = layer.paint || {};
+    const layerColours = LAYER_COLOURS.find(({isLayer}) => isLayer(layer.id));
 
-    if (id === 'background') paint['background-color'] = THEME.land;
-    else if (id === 'landuse_residential') paint['fill-color'] = THEME.land;
-    else if (id === 'park' || id === 'landcover_wood') paint['fill-color'] = THEME.park;
-    else if (id === 'water') paint['fill-color'] = THEME.water;
-    else if (id === 'waterway') paint['line-color'] = THEME.water;
-    else if (id === 'building') {
-        paint['fill-color'] = THEME.building;
-        paint['fill-outline-color'] = THEME.building;
-    }
-    else if (/^(tunnel_|highway_)?motorway.*casing$|^highway_motorway_bridge_casing$/.test(id)) paint['line-color'] = THEME.highwayCasing;
-    else if (/motorway_(inner|subtle)$/.test(id)) paint['line-color'] = THEME.highway;
-    else if (/^highway_major_casing$/.test(id)) paint['line-color'] = THEME.roadCasing;
-    else if (/^highway_(major_inner|major_subtle|minor|path)$/.test(id)) paint['line-color'] = THEME.road;
-    else if (/^railway/.test(id) && !/dashline$/.test(id)) paint['line-color'] = THEME.rail;
-    else if (/^boundary/.test(id)) paint['line-color'] = THEME.boundary;
-    else if (layer.type === 'symbol' && layer.layout && layer.layout['text-field']) {
-        var color = THEME.text;
-        if (/^water/.test(id)) color = THEME.waterText;
-        else if (id === 'highway-name-major') color = THEME.roadText;
-        else if (/^highway-name/.test(id)) color = THEME.minorRoadText;
-
-        paint['text-color'] = color;
-        paint['text-halo-color'] = THEME.textHalo;
+    if (layerColours) {
+        Object.assign(layer.paint, layerColours.paint);
+    } else if (hasText(layer)) {
+        layer.paint['text-color'] = getLabelColour(layer.id);
+        layer.paint['text-halo-color'] = THEME.textHalo;
     }
 }
 
-// Shown when hovering a pin: the name, then the flag and city
-function pinLabel(location) {
-    var label = document.createElement('div');
-    label.className = 'pin-label';
+/* Pins */
 
-    var name = document.createElement('strong');
-    name.className = 'pin-label__name';
-    name.textContent = location.name || '';
-    label.appendChild(name);
+// Shown when hovering a pin: the name, then the flag and city
+function createPinLabel(location) {
+    const label = createElement('div', 'pin-label');
+    label.append(createElement('strong', 'pin-label__name', location.name || ''));
 
     if (location.city) {
-        var place = document.createElement('span');
-        place.className = 'pin-label__place';
+        const place = createElement('span', 'pin-label__place');
         if (location.country) {
-            var flag = document.createElement('span');
-            flag.className = 'fi fi-' + location.country.toLowerCase();
-            place.appendChild(flag);
+            place.append(createElement('span', `fi fi-${location.country.toLowerCase()}`));
         }
-        place.appendChild(document.createTextNode(location.city));
-        label.appendChild(place);
+        place.append(location.city);
+        label.append(place);
     }
 
     return label;
@@ -92,342 +100,388 @@ function pinLabel(location) {
 
 // A yellow map pin like the original marker icon. userId lets the people
 // list highlight this pin
-function pinElement(userId) {
-    var el = document.createElement('div');
-    el.className = 'map-pin';
-    el.dataset.userId = userId;
-    el.innerHTML =
-        '<svg class="map-pin__icon" width="20" height="27" viewBox="0 0 28 38" aria-hidden="true">' +
-        '<path d="M14 0C6.3 0 0 6.2 0 13.9 0 24.3 14 38 14 38s14-13.7 14-24.1C28 6.2 21.7 0 14 0z" fill="' + THEME.pin + '"/>' +
-        '<circle cx="14" cy="14" r="5" fill="#ffffff"/>' +
-        '</svg>';
-    return el;
+function createPinElement(userId) {
+    const pin = createElement('div', 'map-pin');
+    pin.dataset.userId = userId;
+    // One line, so no whitespace text sits beside the icon
+    pin.innerHTML = '<svg class="map-pin__icon" width="20" height="27" viewBox="0 0 28 38" aria-hidden="true">'
+        + `<path d="M14 0C6.3 0 0 6.2 0 13.9 0 24.3 14 38 14 38s14-13.7 14-24.1C28 6.2 21.7 0 14 0z" fill="${THEME.pin}"/>`
+        + '<circle cx="14" cy="14" r="5" fill="#ffffff"/></svg>';
+    return pin;
 }
+
+// Fades a pin out, then takes it off the map
+function fadeOutPin(pin, removePin) {
+    pin.classList.add('is-leaving');
+    pin.addEventListener('animationend', removePin, {once: true});
+}
+
+const getLngLat = (location) => [parseFloat(location.lng), parseFloat(location.lat)];
+const getLatLng = (location) => [parseFloat(location.lat), parseFloat(location.lng)];
+
+/* Fitting the map */
 
 // The furthest out you can zoom: the world (a square tileSize pixels tall at
 // zoom 0) must be at least as tall as the map, so it never ends mid-screen
 function minZoomToFill(tileSize) {
-    var height = document.getElementById('map').clientHeight;
-    return Math.max(0, Math.log2(height / tileSize));
+    const mapHeight = document.getElementById('map').clientHeight;
+    return Math.max(0, Math.log2(mapHeight / tileSize));
 }
 
 // Room around the pins when zooming to fit them, so no pin ends up behind the
 // chat panel or the people list
-function mapPadding() {
-    var panel = document.querySelector('.chat-panel').getBoundingClientRect();
+function getMapPadding() {
+    const chatPanel = document.querySelector('.chat-panel').getBoundingClientRect();
     // Zero while the people list is a closed drawer
-    var peopleWidth = document.querySelector('.people').getBoundingClientRect().width;
+    const peopleWidth = document.querySelector('.people').getBoundingClientRect().width;
 
     // On phones the chat sits below the map instead of beside it
-    if (panel.width >= window.innerWidth * 0.9) {
-        return {top: 40, bottom: window.innerHeight - panel.top + 40, left: 40, right: 40};
+    const isChatBelowMap = chatPanel.width >= window.innerWidth * 0.9;
+    if (isChatBelowMap) {
+        return {top: 40, bottom: window.innerHeight - chatPanel.top + 40, left: 40, right: 40};
     }
-    return {top: 60, bottom: 60, left: panel.width + 60, right: peopleWidth + 60};
+    return {top: 60, bottom: 60, left: chatPanel.width + 60, right: peopleWidth + 60};
 }
 
-// Fades a pin out, then takes it off the map
-function fadeOutPin(el, remove) {
-    el.classList.add('is-leaving');
-    el.addEventListener('animationend', remove, {once: true});
-}
+/* Showing the map and keeping its pins up to date */
 
-// Adds a MapLibre pin; returns a function that removes it
-function addPin(map, location, animate) {
-    var lngLat = [parseFloat(location.lng), parseFloat(location.lat)];
-    var popup = new maplibregl.Popup({closeButton: false, offset: 26})
-        .setDOMContent(pinLabel(location));
-    var marker = new maplibregl.Marker({element: pinElement(location.user_id), anchor: 'bottom'})
-        .setLngLat(lngLat)
-        .addTo(map);
-
-    var el = marker.getElement();
-    el.classList.toggle('is-entering', animate);
-    el.addEventListener('mouseenter', function () { popup.setLngLat(lngLat).addTo(map); });
-    el.addEventListener('mouseleave', function () { popup.remove(); });
-
-    return function () {
-        popup.remove();
-        fadeOutPin(el, function () { marker.remove(); });
-    };
-}
-
-function fitPins(map, locations) {
-    var bounds = new maplibregl.LngLatBounds();
-    locations.forEach(function (location) {
-        bounds.extend([parseFloat(location.lng), parseFloat(location.lat)]);
-    });
-
-    var padding = mapPadding();
-    if (locations.length === 1) {
-        map.jumpTo({center: bounds.getCenter(), zoom: MAX_PIN_ZOOM, padding: padding});
-    } else if (locations.length > 1) {
-        map.fitBounds(bounds, {padding: padding, maxZoom: MAX_PIN_ZOOM, animate: false});
-    }
-}
-
-function loadLocations() {
-    return postForm('/app/get-locations').then(function (response) {
-        return response.data;
-    });
-}
-
-// The vector map, once made, so mapReady can wait for its tiles
-var vectorMap = null;
-var mapShown = false;
+// The vector map, once made, so showMapOnce can wait for its tiles
+let vectorMap = null;
+let isMapShown = false;
 
 // Fades the map in and drops the dots over it, once. The vector map first
 // waits until it has moved to the pins and drawn the tiles there, so the
 // view never jumps or fills in while someone watches
-function mapReady() {
-    if (mapShown) return;
-    mapShown = true;
+function showMapOnce() {
+    if (isMapShown) return;
+    isMapShown = true;
 
-    var show = function () {
+    const showMap = () => {
         document.getElementById('map').classList.add('is-shown');
         document.getElementById('map-loading').classList.add('is-done');
     };
 
-    if (vectorMap && !(vectorMap.areTilesLoaded() && !vectorMap.isMoving())) {
-        vectorMap.once('idle', show);
-        setTimeout(show, 4000); // don't wait forever on a slow tile
+    const isVectorMapSettled = vectorMap && vectorMap.areTilesLoaded() && !vectorMap.isMoving();
+    if (vectorMap && !isVectorMapSettled) {
+        vectorMap.once('idle', showMap);
+        setTimeout(showMap, SHOW_MAP_TIMEOUT);
     } else {
-        show();
+        showMap();
     }
 }
+
+async function loadLocations() {
+    const response = await postForm('/app/get-locations');
+    return response.data;
+}
+
+// Everything a pin shows; when it changes, the pin is drawn again
+const getPinContent = (location) => [location.lat, location.lng, location.name, location.city, location.country].join('|');
 
 // Fetches the pins now and on every round after, adding new people, dropping
 // those gone or hidden, and moving anyone whose place changed. The map only
 // zooms to the pins the first time, so it never jumps while someone looks at
-// it. Pins after the first round ease in
+// it. Pins after the first round ease in. addPin(location, shouldAnimate)
+// returns a function that removes the pin
 function keepPinsUpdated(addPin, fitPins) {
-    var pins = {};
-    var first = true;
+    const pinsByUserId = new Map();
+    let isFirstRound = true;
 
-    (function refresh() {
+    function updatePins(locations) {
+        const shownUserIds = new Set();
+
+        locations.forEach((location) => {
+            const content = getPinContent(location);
+            const pin = pinsByUserId.get(location.user_id);
+            shownUserIds.add(location.user_id);
+
+            if (pin?.content === content) return;
+            pin?.removePin();
+            pinsByUserId.set(location.user_id, {content, removePin: addPin(location, !isFirstRound)});
+        });
+
+        pinsByUserId.forEach((pin, userId) => {
+            if (shownUserIds.has(userId)) return;
+            pin.removePin();
+            pinsByUserId.delete(userId);
+        });
+    }
+
+    function refreshPins() {
         loadLocations()
-            .then(function (locations) {
-                var seen = {};
-                locations.forEach(function (location) {
-                    var key = [location.lat, location.lng, location.name, location.city, location.country].join('|');
-                    var pin = pins[location.user_id];
-                    seen[location.user_id] = true;
-
-                    if (pin && pin.key === key) return;
-                    if (pin) pin.remove();
-                    pins[location.user_id] = {key: key, remove: addPin(location, !first)};
-                });
-
-                Object.keys(pins).forEach(function (id) {
-                    if (!seen[id]) {
-                        pins[id].remove();
-                        delete pins[id];
-                    }
-                });
-
-                if (first) {
+            .then((locations) => {
+                updatePins(locations);
+                if (isFirstRound) {
                     fitPins(locations);
-                    first = false;
+                    isFirstRound = false;
                 }
             })
-            .catch(function () {
+            .catch(() => {
                 // Try again on the next round
             })
-            .finally(function () {
-                mapReady();
-                setTimeout(refresh, PINS_INTERVAL);
+            .finally(() => {
+                showMapOnce();
+                setTimeout(refreshPins, PINS_INTERVAL);
             });
-    })();
+    }
+
+    refreshPins();
 }
 
-function supportsWebGL() {
+/* The vector map (MapLibre) */
+
+// Adds a MapLibre pin; returns a function that removes it
+function addVectorPin(map, location, shouldAnimate) {
+    const lngLat = getLngLat(location);
+    const popup = new maplibregl.Popup({closeButton: false, offset: 26})
+        .setDOMContent(createPinLabel(location));
+    const marker = new maplibregl.Marker({element: createPinElement(location.user_id), anchor: 'bottom'})
+        .setLngLat(lngLat)
+        .addTo(map);
+
+    const pin = marker.getElement();
+    pin.classList.toggle('is-entering', shouldAnimate);
+    pin.addEventListener('mouseenter', () => popup.setLngLat(lngLat).addTo(map));
+    pin.addEventListener('mouseleave', () => popup.remove());
+
+    return () => {
+        popup.remove();
+        fadeOutPin(pin, () => marker.remove());
+    };
+}
+
+function fitVectorPins(map, locations) {
+    const bounds = new maplibregl.LngLatBounds();
+    locations.forEach((location) => bounds.extend(getLngLat(location)));
+
+    const padding = getMapPadding();
+    if (locations.length === 1) {
+        map.jumpTo({center: bounds.getCenter(), zoom: MAX_PIN_ZOOM, padding});
+    } else if (locations.length > 1) {
+        map.fitBounds(bounds, {padding, maxZoom: MAX_PIN_ZOOM, animate: false});
+    }
+}
+
+// Credits as a small (i) beside the people list (see chat.css)
+function addVectorCredits(map) {
+    map.addControl(new maplibregl.AttributionControl({compact: true}), 'bottom-right');
+    // No tooltip on the (i): it explains itself. The aria-label stays for screen readers
+    map.getContainer().querySelector('.maplibregl-ctrl-attrib-button').removeAttribute('title');
+
+    // MapLibre opens them at first; close them once the map is drawn
+    map.once('load', () => {
+        const credits = map.getContainer().querySelector('.maplibregl-ctrl-attrib');
+        credits.classList.remove('maplibregl-compact-show');
+        credits.removeAttribute('open');
+    });
+}
+
+async function loadThemedStyle() {
+    const response = await fetch(STYLE_URL);
+    if (!response.ok) throw new Error(`Map style ${response.status}`);
+
+    const style = await response.json();
+    style.layers.forEach(themeLayer);
+    return style;
+}
+
+async function initializeVectorMap() {
+    const style = await loadThemedStyle();
+    const map = new maplibregl.Map({
+        container: 'map',
+        style,
+        center: [START.lng, START.lat],
+        zoom: START.zoom,
+        minZoom: minZoomToFill(512),
+        attributionControl: false,
+    });
+    vectorMap = map;
+    addVectorCredits(map);
+
+    window.addEventListener('resize', () => map.setMinZoom(minZoomToFill(512)));
+
+    map.on('load', () => {
+        keepPinsUpdated(
+            (location, shouldAnimate) => addVectorPin(map, location, shouldAnimate),
+            (locations) => fitVectorPins(map, locations),
+        );
+    });
+}
+
+/* The tile map (Leaflet), for browsers without WebGL */
+
+function isWebGLSupported() {
     try {
-        var canvas = document.createElement('canvas');
-        return !!(canvas.getContext('webgl2') || canvas.getContext('webgl'));
-    } catch (e) {
+        const canvas = document.createElement('canvas');
+        return Boolean(canvas.getContext('webgl2') || canvas.getContext('webgl'));
+    } catch {
         return false;
     }
 }
 
-function loadAsset(tag, attrs) {
-    return new Promise(function (resolve, reject) {
-        var el = document.createElement(tag);
-        Object.keys(attrs).forEach(function (key) { el[key] = attrs[key]; });
-        el.onload = resolve;
-        el.onerror = reject;
-        document.head.appendChild(el);
+function loadAsset(tagName, attributes) {
+    return new Promise((resolve, reject) => {
+        const asset = document.createElement(tagName);
+        Object.assign(asset, attributes);
+        asset.onload = resolve;
+        asset.onerror = reject;
+        document.head.append(asset);
     });
 }
 
 function hexToRgb(hex) {
-    var n = parseInt(hex.slice(1), 16);
-    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+    const value = parseInt(hex.slice(1), 16);
+    return [(value >> 16) & 255, (value >> 8) & 255, value & 255];
 }
 
 // Recolour a standard OpenStreetMap tile into the MapChat theme, pixel by
 // pixel: blue water becomes lavender (its labels purple), green parks and
-// woods a faint lavender tint, and everything else light grey.
+// woods a faint lavender tint, and everything else light grey. Runs for every
+// pixel of every tile, so it reads and writes the channels directly instead
+// of making an array per pixel
 function themeTile(imageData) {
-    var water = hexToRgb(THEME.water);
-    var waterText = hexToRgb(THEME.waterText);
-    var park = [236, 231, 250];  // much paler than THEME.park: OSM has far more green
-    var d = imageData.data;
+    const water = hexToRgb(THEME.water);
+    const waterText = hexToRgb(THEME.waterText);
+    const park = [236, 231, 250]; // much paler than THEME.park: OSM has far more green
+    const pixels = imageData.data;
 
-    for (var i = 0; i < d.length; i += 4) {
-        var r = d[i], g = d[i + 1], b = d[i + 2];
-        var max = Math.max(r, g, b), min = Math.min(r, g, b);
-        var light = (max + min) / 510;
-        var colourful = max - min > 28;
-        var out;
+    for (let i = 0; i < pixels.length; i += 4) {
+        const red = pixels[i];
+        const green = pixels[i + 1];
+        const blue = pixels[i + 2];
+        const brightest = Math.max(red, green, blue);
+        const darkest = Math.min(red, green, blue);
+        const lightness = (brightest + darkest) / 510;
+        const isColourful = brightest - darkest > 28;
+        let colour;
 
-        if (colourful && b >= g && b > r + 20) {
-            out = light > 0.55 ? water : waterText;            // water, water labels
-        } else if (g - r > 25 && g > b && light > 0.55) {
-            out = park;                                        // parks, woods
+        if (isColourful && blue >= green && blue > red + 20) {
+            colour = lightness > 0.55 ? water : waterText; // water, water labels
+        } else if (green - red > 25 && green > blue && lightness > 0.55) {
+            colour = park; // parks, woods
         } else {
-            var grey = 0.299 * r + 0.587 * g + 0.114 * b;
-            var soft = 255 - (255 - grey) * 0.75;              // lighter, softer grey
-            out = [soft, soft, soft];
+            const grey = 0.299 * red + 0.587 * green + 0.114 * blue;
+            const softGrey = 255 - (255 - grey) * 0.75; // lighter, softer grey
+            colour = [softGrey, softGrey, softGrey];
         }
 
-        d[i] = out[0];
-        d[i + 1] = out[1];
-        d[i + 2] = out[2];
+        pixels[i] = colour[0];
+        pixels[i + 1] = colour[1];
+        pixels[i + 2] = colour[2];
     }
 
     return imageData;
 }
 
-// Browsers without WebGL can't draw the vector map, so show OpenStreetMap
-// tiles with Leaflet instead, recoloured to the same theme
-function initializeFallback() {
-    var version = 'https://unpkg.com/leaflet@1.9.4/dist/';
-    loadAsset('link', {rel: 'stylesheet', href: version + 'leaflet.css'});
-    loadAsset('script', {src: version + 'leaflet.js'}).then(function () {
-        var map = L.map('map', {
-            zoomControl: false,
-            attributionControl: false,
-            worldCopyJump: true,
-            zoomSnap: 0.25,
-            minZoom: minZoomToFill(256),
-            // Stop dragging past the top and bottom of the world
-            maxBounds: [[-85, -Infinity], [85, Infinity]],
-            maxBoundsViscosity: 1
-        }).setView([START.lat, START.lng], START.zoom);
+// Each OpenStreetMap tile, recoloured on a canvas before it's shown
+function createThemedTileLayer() {
+    const ThemedTiles = L.GridLayer.extend({
+        createTile(coords, done) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 256;
 
-        window.addEventListener('resize', function () { map.setMinZoom(minZoomToFill(256)); });
-
-        // Credits beside the people list (see chat.css); the tiles add theirs to it
-        map.attributionControl = L.control.attribution({position: 'bottomright', prefix: false}).addTo(map);
-
-        // On phones it's an "i" that opens on tap, like MapLibre's (see chat.css)
-        var credit = map.attributionControl.getContainer();
-        L.DomEvent.on(credit, 'click', function (event) {
-            if (event.target.tagName !== 'A') {
-                credit.classList.toggle('is-open');
-            }
-        });
-
-        var ThemedTiles = L.GridLayer.extend({
-            createTile: function (coords, done) {
-                var canvas = document.createElement('canvas');
-                canvas.width = canvas.height = 256;
-
-                var img = new Image();
-                img.crossOrigin = 'anonymous';
-                img.onload = function () {
-                    var ctx = canvas.getContext('2d', {willReadFrequently: true});
-                    ctx.drawImage(img, 0, 0);
-                    ctx.putImageData(themeTile(ctx.getImageData(0, 0, 256, 256)), 0, 0);
-                    done(null, canvas);
-                };
-                img.onerror = function (e) { done(e, canvas); };
-                img.src = 'https://tile.openstreetmap.org/' + coords.z + '/' + coords.x + '/' + coords.y + '.png';
-
-                return canvas;
-            }
-        });
-
-        new ThemedTiles({
-            maxZoom: 19,
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }).addTo(map);
-
-        keepPinsUpdated(function (location, animate) {
-            var latLng = [parseFloat(location.lat), parseFloat(location.lng)];
-            var pin = pinElement(location.user_id);
-            pin.classList.toggle('is-entering', animate);
-            var icon = L.divIcon({className: '', html: pin.outerHTML, iconSize: [20, 27], iconAnchor: [10, 27]});
-            var marker = L.marker(latLng, {icon: icon})
-                .bindTooltip(pinLabel(location).outerHTML, {direction: 'top', offset: [0, -26]})
-                .addTo(map);
-            return function () {
-                marker.closeTooltip();
-                fadeOutPin(marker.getElement().querySelector('.map-pin'), function () { marker.remove(); });
+            const tile = new Image();
+            tile.crossOrigin = 'anonymous';
+            tile.onload = () => {
+                const context = canvas.getContext('2d', {willReadFrequently: true});
+                context.drawImage(tile, 0, 0);
+                context.putImageData(themeTile(context.getImageData(0, 0, 256, 256)), 0, 0);
+                done(null, canvas);
             };
-        }, function (locations) {
-            var bounds = locations.map(function (location) {
-                return [parseFloat(location.lat), parseFloat(location.lng)];
-            });
+            tile.onerror = (error) => done(error, canvas);
+            tile.src = `https://tile.openstreetmap.org/${coords.z}/${coords.x}/${coords.y}.png`;
 
-            var padding = mapPadding();
-            var fit = {
-                paddingTopLeft: [padding.left, padding.top],
-                paddingBottomRight: [padding.right, padding.bottom],
-                maxZoom: MAX_PIN_ZOOM
-            };
-            if (bounds.length) map.fitBounds(bounds, fit);
-        });
-    }).catch(mapReady);
+            return canvas;
+        },
+    });
+
+    return new ThemedTiles({
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    });
 }
 
-function initialize() {
-    if (!supportsWebGL()) {
+// Credits beside the people list (see chat.css); the tiles add theirs to it.
+// On phones it's an "i" that opens on tap, like MapLibre's
+function addTileCredits(map) {
+    map.attributionControl = L.control.attribution({position: 'bottomright', prefix: false}).addTo(map);
+
+    const credits = map.attributionControl.getContainer();
+    L.DomEvent.on(credits, 'click', (event) => {
+        if (event.target.tagName !== 'A') {
+            credits.classList.toggle('is-open');
+        }
+    });
+}
+
+// Adds a Leaflet pin; returns a function that removes it
+function addTilePin(map, location, shouldAnimate) {
+    const pin = createPinElement(location.user_id);
+    pin.classList.toggle('is-entering', shouldAnimate);
+    const icon = L.divIcon({className: '', html: pin.outerHTML, iconSize: [20, 27], iconAnchor: [10, 27]});
+    const marker = L.marker(getLatLng(location), {icon})
+        .bindTooltip(createPinLabel(location).outerHTML, {direction: 'top', offset: [0, -26]})
+        .addTo(map);
+
+    return () => {
+        marker.closeTooltip();
+        fadeOutPin(marker.getElement().querySelector('.map-pin'), () => marker.remove());
+    };
+}
+
+function fitTilePins(map, locations) {
+    if (locations.length === 0) return;
+
+    const padding = getMapPadding();
+    map.fitBounds(locations.map(getLatLng), {
+        paddingTopLeft: [padding.left, padding.top],
+        paddingBottomRight: [padding.right, padding.bottom],
+        maxZoom: MAX_PIN_ZOOM,
+    });
+}
+
+async function initializeTileMap() {
+    const leafletUrl = 'https://unpkg.com/leaflet@1.9.4/dist/';
+    loadAsset('link', {rel: 'stylesheet', href: `${leafletUrl}leaflet.css`});
+    await loadAsset('script', {src: `${leafletUrl}leaflet.js`});
+
+    const map = L.map('map', {
+        zoomControl: false,
+        attributionControl: false,
+        worldCopyJump: true,
+        zoomSnap: 0.25,
+        minZoom: minZoomToFill(256),
+        // Stop dragging past the top and bottom of the world
+        maxBounds: [[-85, -Infinity], [85, Infinity]],
+        maxBoundsViscosity: 1,
+    }).setView([START.lat, START.lng], START.zoom);
+
+    window.addEventListener('resize', () => map.setMinZoom(minZoomToFill(256)));
+    addTileCredits(map);
+    createThemedTileLayer().addTo(map);
+
+    keepPinsUpdated(
+        (location, shouldAnimate) => addTilePin(map, location, shouldAnimate),
+        (locations) => fitTilePins(map, locations),
+    );
+}
+
+// Browsers without WebGL can't draw the vector map, so they get OpenStreetMap
+// tiles with Leaflet, recoloured to the same theme. If even that fails, the
+// map's box still fades in
+function initializeFallback() {
+    initializeTileMap().catch(showMapOnce);
+}
+
+function initializeMap() {
+    if (!isWebGLSupported()) {
         initializeFallback();
         return;
     }
-
-    fetch(STYLE_URL)
-        .then(function (response) {
-            if (!response.ok) throw new Error('Map style ' + response.status);
-            return response.json();
-        })
-        .then(function (style) {
-            style.layers.forEach(themeLayer);
-
-            var map = new maplibregl.Map({
-                container: 'map',
-                style: style,
-                center: [START.lng, START.lat],
-                zoom: START.zoom,
-                minZoom: minZoomToFill(512),
-                attributionControl: false
-            });
-            vectorMap = map;
-
-            // Credits as a small (i) beside the people list (see chat.css). MapLibre
-            // opens them at first; close them once the map is drawn
-            map.addControl(new maplibregl.AttributionControl({compact: true}), 'bottom-right');
-            // No tooltip on the (i): it explains itself. The aria-label stays for screen readers
-            map.getContainer().querySelector('.maplibregl-ctrl-attrib-button').removeAttribute('title');
-            map.once('load', function () {
-                var credits = map.getContainer().querySelector('.maplibregl-ctrl-attrib');
-                credits.classList.remove('maplibregl-compact-show');
-                credits.removeAttribute('open');
-            });
-
-            window.addEventListener('resize', function () { map.setMinZoom(minZoomToFill(512)); });
-
-            map.on('load', function () {
-                keepPinsUpdated(function (location, animate) {
-                    return addPin(map, location, animate);
-                }, function (locations) {
-                    fitPins(map, locations);
-                });
-            });
-        })
-        // Without the vector style, the tile map still shows the pins
-        .catch(initializeFallback);
+    // Without the vector style, the tile map still shows the pins
+    initializeVectorMap().catch(initializeFallback);
 }
 
 // The script loads at the end of the page, so the map's box is already there
-initialize();
+initializeMap();
