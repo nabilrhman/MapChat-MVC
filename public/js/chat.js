@@ -1,9 +1,8 @@
-// The chat page: messages, tabs for private chats, and sending. The people
-// list is in people.js. The server's values come from data attributes on
-// #chat (see base_chat.html)
+// The chat page: messages, tabs for private chats, and the composer. Talking
+// to the server about messages is in messages.js, the people list in
+// people.js. The server's values come from data attributes on #chat (see
+// base_chat.html)
 
-const MESSAGES_INTERVAL = 1000;
-const MESSAGES_HIDDEN_INTERVAL = 8000;
 // The MapChat bot's made-up country, at 0°, 0° (a code free for private use,
 // so Intl has no name for it)
 const NULL_ISLAND = 'XN';
@@ -443,8 +442,7 @@ const pageSize = Number(chatPanel.dataset.pageSize);
 
 async function loadOlderMessages() {
     for (let page = 0; page < MAX_PAGES_PER_SCROLL && hasOlderMessages; page++) {
-        const response = await postForm('/app/get-older', {before: oldestChatId});
-        const olderChats = parseHtml(response.data).filter((element) => element.classList.contains('chat'));
+        const olderChats = await fetchOlderChats(oldestChatId);
         hasOlderMessages = olderChats.length === pageSize;
         if (olderChats.length === 0) return;
 
@@ -507,10 +505,7 @@ function trimOldMessages() {
     addDayDividers();
 }
 
-/* Checking for new messages */
-
-// The newest message this page has; each tab keeps its own
-let lastChatId = Number(chatPanel.dataset.lastChatId);
+/* Showing new messages */
 
 // A new version went live: reload, so new messages don't arrive in markup
 // the page's old CSS and JS don't know. Not while something is typed
@@ -522,17 +517,9 @@ function reloadIfUpdated(liveBuild) {
     }
 }
 
-// Scrolls down for new messages only if you're at the bottom already, or forced
-// (after you send); someone reading older messages stays where they are
-async function checkForMessages(shouldScrollToNewest = false) {
-    const response = await postForm('/app/get', {after: lastChatId});
-    reloadIfUpdated(response.headers['x-build']);
-
-    // Two checks can overlap (e.g. right after sending), so skip any already shown
-    const newChats = parseHtml(response.data)
-        .filter((element) => element.classList.contains('chat') && Number(element.dataset.id) > lastChatId);
-    if (newChats.length === 0) return;
-
+// Scrolls down for new messages only if you're at the bottom already, or
+// after you send; someone reading older messages stays where they are
+function showNewChats(newChats, isAfterSending) {
     const wasAtBottom = getDistanceFromBottom() < AT_BOTTOM_DISTANCE;
 
     showTimes(newChats);
@@ -540,10 +527,8 @@ async function checkForMessages(shouldScrollToNewest = false) {
     fadeInPhotos(newChats.map((chat) => chat.querySelector('.chat__photo')));
     placeMessages(newChats);
     addDayDividers();
-    // Only once they're shown, so a failure above fetches them again
-    lastChatId = Number(newChats.at(-1).dataset.id);
 
-    if (wasAtBottom || shouldScrollToNewest) {
+    if (wasAtBottom || isAfterSending) {
         trimOldMessages();
         scrollToNewest();
     } else {
@@ -552,24 +537,6 @@ async function checkForMessages(shouldScrollToNewest = false) {
         updateJumpButton();
     }
 }
-
-// Every second, or less often while the tab is hidden
-function keepCheckingForMessages() {
-    checkForMessages()
-        .catch(() => {
-            // Try again on the next round
-        })
-        .finally(() => {
-            setTimeout(keepCheckingForMessages, document.hidden ? MESSAGES_HIDDEN_INTERVAL : MESSAGES_INTERVAL);
-        });
-}
-
-// Catch up at once when the tab is shown again
-document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) {
-        checkForMessages().catch(() => {});
-    }
-});
 
 /* Sending */
 
@@ -602,19 +569,15 @@ composerForm.addEventListener('submit', (event) => {
     event.preventDefault();
     if (isSending) return;
 
-    const message = {body: messageInput.value.trim()};
-    if (activeConversation !== EVERYONE) {
-        message.to = activeConversation;
-    }
+    const to = activeConversation === EVERYONE ? null : activeConversation;
 
     isSending = true;
     updateSendButton();
 
-    postForm('/app/send', message)
+    sendMessage(messageInput.value.trim(), to)
         .then(() => {
             messageInput.value = '';
             messageInput.dispatchEvent(new Event('input'));
-            return checkForMessages(true);
         })
         .catch((error) => {
             showToast(getErrorMessage(error, 'Your message could not be sent.'), 'warning');
@@ -653,7 +616,7 @@ showConversation(EVERYONE);
 shouldAnimateNewTabs = true;
 
 keepPeopleUpdated(updateOnlineDots, openPrivateChat);
-keepCheckingForMessages();
+keepMessagesUpdated(showNewChats, reloadIfUpdated);
 
 // Slide the panels in
 document.body.classList.add('is-ready');

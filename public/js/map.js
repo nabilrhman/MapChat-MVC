@@ -6,6 +6,9 @@
 // parks, purple water labels, and yellow pins.
 
 const STYLE_URL = 'https://tiles.openfreemap.org/styles/positron';
+const MAPLIBRE_URL = 'https://unpkg.com/maplibre-gl@4.7.1/dist/';
+// Phones, where the map can start closed (matches chat.css)
+const PHONE_SCREEN = '(max-width: 700px)';
 
 // Where the map starts (Boise), until the pins are in
 const START = {lat: 43.4599, lng: -116.244, zoom: 3};
@@ -286,7 +289,11 @@ async function loadThemedStyle() {
 }
 
 async function initializeVectorMap() {
-    const style = await loadThemedStyle();
+    const [style] = await Promise.all([
+        loadThemedStyle(),
+        loadAsset('script', {src: `${MAPLIBRE_URL}maplibre-gl.js`}),
+        loadAsset('link', {rel: 'stylesheet', href: `${MAPLIBRE_URL}maplibre-gl.css`}),
+    ]);
     const map = new maplibregl.Map({
         container: 'map',
         style,
@@ -483,5 +490,26 @@ function initializeMap() {
     initializeVectorMap().catch(initializeFallback);
 }
 
+// Phones with the map closed don't load it until the map button opens it,
+// so the chat gets the connection to itself. Once started, it stays
+function initializeMapWhenOpen() {
+    const phoneScreen = window.matchMedia(PHONE_SCREEN);
+    const mapToggle = document.getElementById('map-toggle');
+    const isMapOpen = () => !phoneScreen.matches || document.body.classList.contains('is-map-open');
+
+    function startIfOpen() {
+        if (!isMapOpen()) return;
+        mapToggle.removeEventListener('click', startIfOpen);
+        phoneScreen.removeEventListener('change', startIfOpen);
+        initializeMap();
+    }
+
+    // chat.js loads first, so its click handler has already opened the map
+    mapToggle.addEventListener('click', startIfOpen);
+    // Turning a phone or widening the window past the breakpoint shows it too
+    phoneScreen.addEventListener('change', startIfOpen);
+    startIfOpen();
+}
+
 // The script loads at the end of the page, so the map's box is already there
-initializeMap();
+initializeMapWhenOpen();
