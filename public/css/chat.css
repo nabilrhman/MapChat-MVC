@@ -170,7 +170,7 @@ body
     align-items: center;
     gap: var(--icon-gap);
     height: 34px;
-    padding: 0 14px 0 10px;
+    padding: 0 14px; /* even, as .icon takes back the arrow's blank sides */
     border: none;
     border-radius: 17px;
     background-color: var(--md-primary);
@@ -212,7 +212,7 @@ body
 
 .jump-latest__icon
 {
-    font-size: 18px;
+    font-size: 14px; /* the solid arrow, a little taller than the capitals */
 }
 
 /* Tabs: the open room first, then one per private chat. The open tab joins
