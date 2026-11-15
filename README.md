@@ -32,6 +32,8 @@ was to understand what a web framework actually does, so instead of using one, I
 wrote my own: the router, controllers, models, views, sessions and login are all
 hand-written PHP.
 
+In 2026 I came back to it to bring parts of it up to date, and I'm still at it.
+
 The [live demo](https://mapchat.swiftsolve.net) runs on free hosting, so the
 first visit after a quiet spell takes about a minute to wake up.
 
@@ -54,6 +56,9 @@ first visit after a quiet spell takes about a minute to wake up.
 - A map with a pin for each person, placed by their IP address at roughly city
   level. Nobody's exact location is ever shown.
 - Anyone can hide their pin and city from the map in their profile.
+- On phones the map starts hidden to give the chat the room. A button shows
+  it above the chat, and the chat can then fold down to its tabs to give the
+  map the whole screen.
 - Visitors can try it as a guest without signing up. Guest accounts and their
   messages are deleted after 24 hours, unless the guest sets an email and
   password in their profile to keep the account.
@@ -70,10 +75,11 @@ first visit after a quiet spell takes about a minute to wake up.
 - **Database:** MySQL, queried with prepared statements to block SQL injection.
 - **Views:** Twig 3 templates, which escape everything users type to block
   cross-site scripting.
-- **Front end:** the site's own CSS, with Beer CSS (scoped, so it styles only
-  the form fields and switches), plain JavaScript with no jQuery, and axios
-  for every request to the server. The chat asks for new messages every
-  second.
+- **Front end:** the site's own CSS, in Material 3's colours and states
+  (generated from MapChat's purple) with square corners, and Beer CSS for
+  the form fields, scoped so it styles nothing else. Plain JavaScript with no
+  jQuery, and axios for every request to the server. The chat asks for new
+  messages every second.
 - **Map:** MapLibre with OpenStreetMap data from OpenFreeMap, styled to match
   MapChat's colours. Browsers without WebGL get OpenStreetMap tiles through
   Leaflet instead, recoloured to the same theme in the browser. No API key is
