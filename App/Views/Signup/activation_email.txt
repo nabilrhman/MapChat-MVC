@@ -1,9 +1,11 @@
-MapChat
-{{ app_url }}
+Welcome to MapChat
 
-Welcome to MapChat, {{ name }}!
+Hi {{ name }},
 
-Open this link to activate your account:
+Thanks for signing up. Open this link to activate your account and start chatting:
 {{ url }}
 
-If you didn't sign up for MapChat, you can ignore this email.
+Didn't sign up for MapChat? You can ignore this email.
+
+MapChat, an open chat room on a map
+{{ app_url }}
