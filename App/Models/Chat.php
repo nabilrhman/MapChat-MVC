@@ -74,8 +74,20 @@ class Chat extends \Core\Model
      */
     public static function getRecent($viewer)
     {
-        $sql = 'SELECT * FROM (' . static::visibleSql() . ' ORDER BY chats.id DESC LIMIT ' . static::HISTORY . ') AS recent
-                ORDER BY id';
+        // Each kind of message is read from its own index, so other people's
+        // private messages are never scanned past
+        $limit = ' ORDER BY id DESC LIMIT ' . static::HISTORY;
+        $sql = static::selectSql() . '
+                JOIN (
+                    (SELECT id FROM chats WHERE to_email IS NULL' . $limit . ')
+                    UNION ALL
+                    (SELECT id FROM chats WHERE to_email = :viewer' . $limit . ')
+                    UNION ALL
+                    (SELECT id FROM chats WHERE email = :viewer AND to_email IS NOT NULL' . $limit . ')
+                   ' . $limit . '
+                ) AS recent
+                ON recent.id = chats.id
+                ORDER BY chats.id';
 
         $stmt = static::getDB()->prepare($sql);
         $stmt->bindValue(':viewer', $viewer, PDO::PARAM_STR);
@@ -112,6 +124,17 @@ class Chat extends \Core\Model
      */
     protected static function visibleSql()
     {
+        return static::selectSql() . '
+                WHERE (chats.to_email IS NULL OR chats.to_email = :viewer OR chats.email = :viewer)';
+    }
+
+    /**
+     * The query for each message with its sender and recipient, without a filter
+     *
+     * @return string
+     */
+    protected static function selectSql()
+    {
         return 'SELECT chats.id, chats.body, chats.timestamp, users.id AS user_id, users.name, users.email, users.avatar,
                        users.email LIKE \'%@demo.mapchat.local\' AS is_demo,
                        IF(users.share_location, userinfo.city, NULL) AS city,
@@ -125,7 +148,6 @@ class Chat extends \Core\Model
                 LEFT JOIN users AS recipients
                 ON chats.to_email = recipients.email
                 LEFT JOIN userinfo
-                ON users.email = userinfo.email
-                WHERE (chats.to_email IS NULL OR chats.to_email = :viewer OR chats.email = :viewer)';
+                ON users.email = userinfo.email';
     }
 }
