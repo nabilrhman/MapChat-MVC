@@ -1159,3 +1159,16 @@ body
 {
     background: #c6b9ff;
 }
+
+/* Montserrat's tabular figures: every digit the same width, so counts and
+   times don't wobble as they change */
+.chat-tab__unread,
+.people__count,
+.people-toggle,
+.chat__time,
+.chat__sender-time,
+.person__detail,
+.chat-composer__count
+{
+    font-variant-numeric: tabular-nums;
+}
