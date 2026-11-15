@@ -1,8 +1,8 @@
 <?php
 
 /**
- * Adds columns an older database is missing. The container runs this before
- * starting Apache: php database/migrate.php
+ * Adds columns an older database is missing. The container runs this alongside
+ * Apache when it starts: php database/migrate.php
  */
 require dirname(__DIR__) . '/vendor/autoload.php';
 

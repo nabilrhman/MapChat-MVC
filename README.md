@@ -142,7 +142,9 @@ MySQL-compatible service.
    and `CLOUDINARY_CLOUD_NAME` / `CLOUDINARY_UPLOAD_PRESET` for avatar uploads.
 
 Free Render services sleep after 15 minutes without visitors, so the first visit
-after a quiet spell takes about a minute.
+after a quiet spell takes about a minute. To prevent that, the `Keep awake` GitHub
+Actions workflow requests `/health.txt` every 10 minutes. A service that never
+sleeps uses about 744 of the 750 free hours Render gives each workspace a month.
 
 A database made before private messages, local times and countries were added
 needs these columns. The container adds them itself when it starts
