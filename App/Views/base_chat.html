@@ -3,38 +3,38 @@
 {% block title %}Chat{% endblock %}
 
 {% block head %}
-<link rel="stylesheet" href="/css/chat.css?v=99">
+<link rel="stylesheet" href="/css/chat.css?v=100">
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flag-icons@7.2.3/css/flag-icons.min.css">
 {% endblock %}
 
 {% block content %}
 
-<div id="map"></div>
+<div class="map" id="map"></div>
 
 <div class="map-loading" id="map-loading">
-    <span class="loading-dots" aria-label="Loading the map"><span></span><span></span><span></span></span>
+    <span class="loading-dots" aria-label="Loading the map"><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span></span>
 </div>
 
 <!-- Opens the people list on screens too narrow to show it beside the map -->
 <button class="people-toggle" id="people-toggle" type="button" aria-label="Who's online">
-    <i class="material-icons">group</i><span id="people-toggle-count">0</span>
+    <i class="material-icons people-toggle__icon">group</i><span id="people-toggle-count">0</span>
 </button>
 
 {# What chat.js needs from the server #}
-<div class="chat-container slide-in-left" id="chat"
+<div class="chat-panel" id="chat"
      data-my-id="{{ current_user.id|e('html_attr') }}"
      data-last-chat-id="{{ last_chat_id|e('html_attr') }}">
 
     <div class="chat-tabs" id="chat-tabs">
         <a class="chat-tab" href="#" data-conversation="everyone">
-            <span class="tab-name"># Everyone</span><span class="unread" hidden></span>
+            <span class="chat-tab__name"># Everyone</span><span class="chat-tab__unread" hidden></span>
         </a>
     </div>
 
     <div class="private-note" id="private-note" hidden>
-        <span class="private-note-label">
-            <i class="material-icons">lock</i><span id="private-note-text"></span>
+        <span class="private-note__label">
+            <i class="material-icons private-note__icon">lock</i><span class="private-note__text" id="private-note-text"></span>
         </span>
     </div>
 
@@ -42,35 +42,35 @@
         {% block chats %}{% endblock %}
     </div>
 
-    <form class="input-container" method="post" id="input-container-form">
-        <div class="input">
-            <span class="char-count" id="char-count" hidden></span>
+    <form class="chat-composer" method="post" id="input-container-form">
+        <div class="chat-composer__input">
+            <span class="chat-composer__count" id="char-count" hidden></span>
             <textarea name="message" placeholder="Type your message" rows="1" class="materialize-textarea" id="textarea-send"
                       maxlength="{{ constant('App\\Models\\Chat::MAX_LENGTH') }}" autofocus></textarea>
         </div>
 
-        <button name="send" class="waves-effect waves-light" id="button-send" type="submit"
+        <button name="send" class="chat-composer__send waves-effect waves-light" id="button-send" type="submit"
                 aria-label="Send" title="Send" disabled>
-            <i class="material-icons">send</i>
+            <i class="material-icons chat-composer__send-icon">send</i>
         </button>
     </form>
 
 </div>
 
-<aside class="people slide-in-right" id="people">
-    <h6 class="people-heading people-top">
-        <span class="people-title"><span class="people-count" id="online-count">0</span>Online</span>
-        <span class="people-close" id="people-close" title="Close">&times;</span>
+<aside class="people" id="people">
+    <h6 class="people__heading people__heading--top">
+        <span class="people__title"><span class="people__count" id="online-count">0</span>Online</span>
+        <span class="people__close" id="people-close" title="Close">&times;</span>
     </h6>
 
-    <div class="people-list">
+    <div class="people__list">
         <div id="people-online">
-            <div class="people-loading">
-                <span class="loading-dots" aria-label="Loading"><span></span><span></span><span></span></span>
+            <div class="people__loading">
+                <span class="loading-dots" aria-label="Loading"><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span></span>
             </div>
         </div>
 
-        <h6 class="people-heading" id="recent-heading" hidden>Recently here</h6>
+        <h6 class="people__heading" id="recent-heading" hidden>Recently here</h6>
         <div id="people-recent"></div>
     </div>
 </aside>
@@ -78,7 +78,7 @@
 {% endblock %}
 
 {% block footer %}
-<script src="/js/chat.js?v=5"></script>
+<script src="/js/chat.js?v=6"></script>
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-<script src="/js/map.js?v=17"></script>
+<script src="/js/map.js?v=18"></script>
 {% endblock %}

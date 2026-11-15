@@ -10,7 +10,7 @@ body
 
 /* Logo, heading, card and footer in one centred column that scrolls if it
    has to, with even space at both ends */
-main
+.auth-page
 {
     display: flex;
     flex-direction: column;
@@ -21,7 +21,7 @@ main
 }
 
 /* Logo, title and card, centred between the top of the page and the footer */
-.auth-center
+.auth-page__center
 {
     display: flex;
     flex-direction: column;
@@ -30,7 +30,7 @@ main
     margin: auto 0;
 }
 
-.login-logo
+.auth-page__logo
 {
     /* Vector logo, so it stays sharp at any size */
     display: block;
@@ -41,7 +41,7 @@ main
 }
 
 /* Page title above the card */
-.auth-title
+.auth-page__title
 {
     margin: 24px 0 24px;
     color: #fff;
@@ -63,13 +63,13 @@ main
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
 }
 
-.auth-card form
+.auth-card__form
 {
     margin: 0;
 }
 
-.forgot-link,
-.form-switch a
+.auth-card__forgot,
+.auth-card__switch-link
 {
     color: #512da8;
     font-size: 13px;
@@ -77,46 +77,39 @@ main
     text-decoration: none;
 }
 
-.forgot-link:hover,
-.form-switch a:hover
+.auth-card__forgot:hover,
+.auth-card__switch-link:hover
 {
     text-decoration: underline;
 }
 
 /* Under the password field, on the right */
-.forgot-link
+.auth-card__forgot
 {
     display: block;
     margin-top: -8px;
     text-align: right;
 }
 
-.remember
+.auth-card__remember
 {
     display: block;
     margin: 8px 0 0;
 }
 
-.remember span
+.auth-card__remember-label
 {
     color: #424242;
     font-size: 13px;
 }
 
-/* The checkbox tick in the site's purple instead of materialize teal */
-.remember [type="checkbox"]:checked + span:not(.lever):before
-{
-    border-right-color: #512da8;
-    border-bottom-color: #512da8;
-}
-
-.auth-card .button-block
+.auth-card__button
 {
     margin-top: 16px;
 }
 
 /* "or" with a line on each side */
-.form-divider
+.auth-card__divider
 {
     display: flex;
     align-items: center;
@@ -125,21 +118,21 @@ main
     font-size: 13px;
 }
 
-.form-divider::before,
-.form-divider::after
+.auth-card__divider::before,
+.auth-card__divider::after
 {
     content: "";
     flex: 1;
     border-bottom: 1px solid #ddd;
 }
 
-.form-divider span
+.auth-card__divider-label
 {
     padding: 0 12px;
 }
 
 /* "New here?" on the left, the action on the right, at the bottom of the card */
-.form-switch
+.auth-card__switch
 {
     display: flex;
     align-items: center;
@@ -154,7 +147,7 @@ main
 
 /* Same content as the in-app footer, on one centred line at the bottom of the
    screen; on a page taller than the screen it comes after the card */
-.footer-login
+.auth-page__footer
 {
     width: 100%;
     padding-top: 30px;
@@ -172,7 +165,7 @@ main
 /* Phones: less padding inside the card */
 @media (max-width: 480px)
 {
-    main
+    .auth-page
     {
         padding-top: 32px;
     }

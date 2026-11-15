@@ -13,21 +13,21 @@
 
 <div class="row main-content-wrapper appear-down about-intro">
     <div class="col s12 center-align">
-        <img class="about-logo" src="/res/logo-mapchat.svg" alt="MapChat">
+        <img class="about-intro__logo" src="/res/logo-mapchat.svg" alt="MapChat">
     </div>
     <div class="col s12">
-        <p>
+        <p class="about-intro__text">
             <strong>MapChat</strong> is an open chat room on a map.
             Everyone who signs in talks in the same room, and a pin on the map shows which
             city each person is chatting from.
         </p>
-        <p>
+        <p class="about-intro__text">
             I built it in 2018 as a university project at Boise State University. The goal was
             to understand what a web framework actually does, so instead of using one, I wrote
             my own: the router, controllers, models, views, sessions and login are all
             hand-written PHP.
         </p>
-        <p>
+        <p class="about-intro__text">
             The code is open source on
             <a href="https://github.com/nabilrhman/MapChat-MVC" class="purple-text"><i class="fab fa-github"></i> GitHub</a>.
         </p>
@@ -36,7 +36,7 @@
 
 <div class="row main-content-wrapper">
     <div class="col s12 m6">
-        <h5 class="appear-down h5-with-padding">What you can do</h5>
+        <h5 class="appear-down about-heading">What you can do</h5>
         <ul class="collection appear-down">
             <li class="collection-item">Chat with everyone who is signed in, in one shared room.</li>
             <li class="collection-item">Try it as a guest without signing up. Guest accounts disappear after 24 hours unless you keep them.</li>
@@ -47,7 +47,7 @@
         </ul>
     </div>
     <div class="col s12 m6">
-        <h5 class="appear-down h5-with-padding">How it's built</h5>
+        <h5 class="appear-down about-heading">How it's built</h5>
         <ul class="collection appear-down">
             <li class="collection-item">A model-view-controller (MVC) framework written from scratch in PHP.</li>
             <li class="collection-item">MySQL for users and messages, queried with prepared statements to block SQL injection.</li>
@@ -61,7 +61,7 @@
 
 <div class="row main-content-wrapper">
     <div class="col s12">
-        <h5 class="appear-down h5-with-padding">Good to know</h5>
+        <h5 class="appear-down about-heading">Good to know</h5>
         <ul class="collection appear-down">
             <li class="collection-item">Your location comes from your IP address, so the map only knows roughly which city you are in. It never uses GPS, and you can hide your pin and city from your profile.</li>
             <li class="collection-item">There is one room for everyone. Anything you write is visible to everyone signed in.</li>

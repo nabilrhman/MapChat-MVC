@@ -10,22 +10,22 @@
 <div class="auth-card">
 
     {# The button is inside the form, so clicking it submits #}
-    <form method="post" id="formPassword" action="/password/reset-password">
+    <form method="post" id="formPassword" action="/password/reset-password" class="auth-card__form">
 
         <input type="hidden" name="token" value="{{ token }}"/>
 
         <div class="input-field">
-            <input type="password" id="inputPassword" name="password" class="has-toggle" autocomplete="new-password" autofocus/>
+            <input type="password" id="inputPassword" name="password" class="password-input" autocomplete="new-password" autofocus/>
             <label for="inputPassword">New password</label>
             <button type="button" class="password-toggle material-icons" aria-label="Show password">visibility</button>
             <span class="helper-text">6+ characters, a letter and a number</span>
             <span id="error-msg-password">{{ form.field_errors(user.errors, 'Password', 'inputPassword') }}</span>
         </div>
 
-        <button type="submit" class="button button-primary button-block">Set new password</button>
+        <button type="submit" class="button button--primary button--block auth-card__button">Set new password</button>
     </form>
 
-    <p class="form-switch"><span>Remembered it?</span> <a href="/login">Log in</a></p>
+    <p class="auth-card__switch"><span>Remembered it?</span> <a class="auth-card__switch-link" href="/login">Log in</a></p>
 </div>
 
 {% endblock %}

@@ -3,7 +3,7 @@
 {% block title %}Profile{% endblock %}
 
 {% block head %}
-<link rel="stylesheet" href="/css/profile.css?v=16"/>
+<link rel="stylesheet" href="/css/profile.css?v=17"/>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flag-icons@7.2.3/css/flag-icons.min.css">
 {% endblock %}
 
@@ -11,17 +11,17 @@
 
 <div class="profile-page">
 
-    <h4 class="appear-down">Profile</h4>
-    <div class="divider"></div>
+    <h4 class="profile-page__title appear-down">Profile</h4>
+    <div class="divider profile-page__divider"></div>
 
     {% if user.is_guest %}
     <div class="guest-banner appear-down">
-        <i class="material-icons">schedule</i>
-        <div class="guest-text">
-            <strong>Guest account</strong>
-            <span>Deleted in {{ user.guestHoursLeft() }} h along with your messages.</span>
+        <i class="material-icons guest-banner__icon">schedule</i>
+        <div class="guest-banner__text">
+            <strong class="guest-banner__title">Guest account</strong>
+            <span class="guest-banner__note">Deleted in {{ user.guestHoursLeft() }} h along with your messages.</span>
         </div>
-        <button type="button" class="button button-primary button-small" id="keep-account">Keep my account</button>
+        <button type="button" class="button button--primary button--small" id="keep-account">Keep my account</button>
     </div>
     {% endif %}
 
@@ -32,24 +32,24 @@
 
         {# Each card shows its details, and Edit turns them into fields with Cancel and Save #}
         <section class="settings-card" id="card-profile">
-            <div class="card-head">
-                <h5>Profile</h5>
-                <button type="button" class="button button-quiet button-small edit-button">Edit</button>
+            <div class="settings-card__head">
+                <h5 class="settings-card__title">Profile</h5>
+                <button type="button" class="button button--quiet button--small settings-card__edit-button">Edit</button>
             </div>
 
             {# The photo saves as soon as it's uploaded or removed, apart from Save #}
-            <div class="photo-row">
-                <div class="photo-frame" id="photo-frame">
-                    <img class="circle" id="avatar" alt="Your photo"
+            <div class="profile-photo">
+                <div class="profile-photo__frame" id="photo-frame">
+                    <img class="profile-photo__image circle" id="avatar" alt="Your photo"
                          src="{{ avatar_src(user.id, user.name, user.avatar) }}"
                          data-default-src="{{ default_avatar|e('html_attr') }}"/>
-                    <span class="loading-dots" aria-label="Uploading"><span></span><span></span><span></span></span>
+                    <span class="loading-dots profile-photo__dots" aria-label="Uploading"><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span></span>
                 </div>
                 <div>
-                    <label for="file-upload" class="button button-quiet button-small">
-                        <i class="material-icons">photo_camera</i>Change photo
+                    <label for="file-upload" class="button button--quiet button--small profile-photo__button">
+                        <i class="material-icons button__icon">photo_camera</i>Change photo
                     </label>
-                    <button type="button" class="link-button" id="remove-photo"
+                    <button type="button" class="link-button link-button--danger" id="remove-photo"
                             {% if user.avatar is empty %}hidden{% endif %}>Remove</button>
                     <p class="field-hint">JPG, PNG or GIF</p>
                     <input id="file-upload" type="file" accept="image/png,image/gif,image/jpeg" hidden
@@ -58,12 +58,12 @@
                 </div>
             </div>
 
-            <dl class="view-only">
-                <dt>Name</dt>
-                <dd>{{ user.name }}</dd>
+            <dl class="settings-card__view">
+                <dt class="settings-card__label">Name</dt>
+                <dd class="settings-card__value">{{ user.name }}</dd>
             </dl>
 
-            <div class="edit-only">
+            <div class="settings-card__edit">
                 <div class="input-field">
                     <input type="text" id="inputName" name="name" value="{{ user.name }}" autocomplete="name"/>
                     <label for="inputName">Name</label>
@@ -71,27 +71,27 @@
                 </div>
             </div>
 
-            <div class="card-actions edit-only">
-                <button type="button" class="link-button cancel-button">Cancel</button>
-                <button type="submit" class="button button-primary button-small">Save</button>
+            <div class="settings-card__actions settings-card__edit">
+                <button type="button" class="link-button settings-card__cancel">Cancel</button>
+                <button type="submit" class="button button--primary button--small">Save</button>
             </div>
         </section>
 
         <section class="settings-card" id="card-account">
-            <div class="card-head">
-                <h5>Account</h5>
-                <button type="button" class="button button-quiet button-small edit-button">Edit</button>
+            <div class="settings-card__head">
+                <h5 class="settings-card__title">Account</h5>
+                <button type="button" class="button button--quiet button--small settings-card__edit-button">Edit</button>
             </div>
 
-            <dl class="view-only">
-                <dt>Email</dt>
-                <dd>{{ user.is_guest ? 'Not set' : user.email }}</dd>
-                <dt>Password</dt>
-                <dd>{{ user.is_guest ? 'Not set' : '••••••••' }}</dd>
+            <dl class="settings-card__view">
+                <dt class="settings-card__label">Email</dt>
+                <dd class="settings-card__value">{{ user.is_guest ? 'Not set' : user.email }}</dd>
+                <dt class="settings-card__label">Password</dt>
+                <dd class="settings-card__value">{{ user.is_guest ? 'Not set' : '••••••••' }}</dd>
             </dl>
 
             {# A guest's placeholder email isn't shown; they type their own to keep the account #}
-            <div class="edit-only">
+            <div class="settings-card__edit">
                 <div class="input-field">
                     <input type="email" id="inputEmail" name="email" value="{{ user.is_guest ? '' : user.email }}" autocomplete="email"/>
                     <label for="inputEmail">Email</label>
@@ -99,7 +99,7 @@
                 </div>
 
                 <div class="input-field">
-                    <input type="password" id="inputPassword" name="password" class="has-toggle" autocomplete="new-password"/>
+                    <input type="password" id="inputPassword" name="password" class="password-input" autocomplete="new-password"/>
                     <label for="inputPassword">{{ user.is_guest ? 'Password' : 'New password' }}</label>
                     <button type="button" class="password-toggle material-icons" aria-label="Show password">visibility</button>
                     <span class="helper-text">
@@ -110,7 +110,7 @@
 
                 {% if not user.is_guest %}
                 <div class="input-field" id="current-password" hidden>
-                    <input type="password" id="inputCurrentPassword" name="current_password" class="has-toggle" autocomplete="current-password"/>
+                    <input type="password" id="inputCurrentPassword" name="current_password" class="password-input" autocomplete="current-password"/>
                     <label for="inputCurrentPassword">Current password</label>
                     <button type="button" class="password-toggle material-icons" aria-label="Show password">visibility</button>
                     <span class="helper-text">Needed to change your email or password.</span>
@@ -119,34 +119,34 @@
                 {% endif %}
             </div>
 
-            <div class="card-actions edit-only">
-                <button type="button" class="link-button cancel-button">Cancel</button>
-                <button type="submit" class="button button-primary button-small">Save</button>
+            <div class="settings-card__actions settings-card__edit">
+                <button type="button" class="link-button settings-card__cancel">Cancel</button>
+                <button type="submit" class="button button--primary button--small">Save</button>
             </div>
         </section>
 
     </form>
 
     <section class="settings-card appear-down">
-        <div class="card-head">
-            <h5>Privacy</h5>
+        <div class="settings-card__head">
+            <h5 class="settings-card__title">Privacy</h5>
         </div>
 
-        <div class="privacy-row">
+        <div class="privacy-setting">
             <div>
-                <label class="setting-name" for="share-location">Show me on the map</label>
+                <label class="privacy-setting__name" for="share-location">Show me on the map</label>
                 {% if place and place.city %}
-                <p class="field-hint" id="profile-place">
-                    <span class="place-shown">
+                <p class="field-hint place-note" id="profile-place">
+                    <span class="place-note__shown">
                         Others see you in
                         {% if place.country %}<span class="fi fi-{{ place.country|lower }}"></span>{% endif %}
                         {{ place.city }}
                     </span>
-                    <span class="place-hidden">Your pin and city are hidden from everyone</span>
+                    <span class="place-note__hidden">Your pin and city are hidden from everyone</span>
                 </p>
                 {% endif %}
             </div>
-            <div class="switch">
+            <div class="switch privacy-setting__switch">
                 <label>
                     <input type="checkbox" id="share-location" {% if user.share_location %}checked{% endif %}>
                     <span class="lever"></span>
@@ -163,5 +163,5 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.15.0/jquery.validate.min.js"></script>
 <script src="/js/passwordToggle.js"></script>
 <script src="/js/validatorExtended.js?v=1"></script>
-<script src="/js/profile.js?v=1"></script>
+<script src="/js/profile.js?v=2"></script>
 {% endblock %}

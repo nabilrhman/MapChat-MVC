@@ -53,8 +53,8 @@ $(document).ready(function () {
         });
 
         requestAnimationFrame(function () {
-            moved.addClass('tab-shift').css('translate', '').one('transitionend', function () {
-                $(this).removeClass('tab-shift');
+            moved.addClass('is-shifting').css('translate', '').one('transitionend', function () {
+                $(this).removeClass('is-shifting');
             });
         });
     }
@@ -63,7 +63,7 @@ $(document).ready(function () {
     var tabsReady = false;
 
     function tabFor(conversation) {
-        return $('#chat-tabs .chat-tab[data-conversation="' + conversation + '"]').not('.tab-leave');
+        return $('#chat-tabs .chat-tab[data-conversation="' + conversation + '"]').not('.is-leaving');
     }
 
     function addTab(conversation, name) {
@@ -71,11 +71,11 @@ $(document).ready(function () {
         if (!tab.length) {
             tab = $('<a class="chat-tab" href="#"></a>')
                 .attr('data-conversation', conversation)
-                .append($('<span class="tab-online" title="Online"></span>').prop('hidden', !onlineIds[conversation]))
-                .append($('<span class="tab-name"></span>').text(name).attr('title', name))
-                .append('<span class="unread" hidden></span>')
-                .append('<span class="close-tab" title="Close">&times;</span>')
-                .toggleClass('tab-enter', tabsReady);
+                .append($('<span class="chat-tab__online" title="Online"></span>').prop('hidden', !onlineIds[conversation]))
+                .append($('<span class="chat-tab__name"></span>').text(name).attr('title', name))
+                .append('<span class="chat-tab__unread" hidden></span>')
+                .append('<span class="chat-tab__close" title="Close">&times;</span>')
+                .toggleClass('is-entering', tabsReady);
             $('#chat-tabs').append(tab);
         }
         return tab;
@@ -84,10 +84,10 @@ $(document).ready(function () {
     function showConversation(conversation) {
         activeConversation = String(conversation);
 
-        $('#chat-tabs .chat-tab').removeClass('active');
-        var tab = tabFor(activeConversation).addClass('active');
+        $('#chat-tabs .chat-tab').removeClass('is-active');
+        var tab = tabFor(activeConversation).addClass('is-active');
         slideTabs(function () {
-            tab.find('.unread').prop('hidden', true).text('');
+            tab.find('.chat-tab__unread').prop('hidden', true).text('');
         });
         tab[0].scrollIntoView({block: 'nearest', inline: 'nearest'});
 
@@ -96,18 +96,18 @@ $(document).ready(function () {
         });
 
         // Restart the fade (reading offsetWidth makes the browser see the removal)
-        var list = $('#chat-list').removeClass('tab-in');
+        var list = $('#chat-list').removeClass('is-switching');
         list[0].offsetWidth;
-        list.addClass('tab-in');
+        list.addClass('is-switching');
 
-        var name = tab.find('.tab-name').text();
+        var name = tab.find('.chat-tab__name').text();
         var isPrivate = activeConversation !== 'everyone';
 
         $('#private-note').prop('hidden', !isPrivate);
         $('#private-note-text').text('Private chat with ' + name);
         $('#textarea-send').attr('placeholder', isPrivate ? 'Message ' + name : 'Type your message');
         addDayDividers();
-        $('.chat-list').scrollTop($('.chat-list').prop('scrollHeight'));
+        $('#chat-list').scrollTop($('#chat-list').prop('scrollHeight'));
     }
 
     // Uploaded photos fade in over a soft circle once loaded; letter avatars
@@ -117,9 +117,9 @@ $(document).ready(function () {
             var img = this;
             if (img.complete || img.src.indexOf('data:') === 0) return;
 
-            var frame = $(img).parent().addClass('photo-loading');
+            var frame = $(img).parent().addClass('is-loading');
             $(img).one('load error', function () {
-                frame.removeClass('photo-loading');
+                frame.removeClass('is-loading');
             });
         });
     }
@@ -149,7 +149,7 @@ $(document).ready(function () {
     // Each message shows its time; hovering it slides to the sender's own time.
     // Also names the sender's country, shown when hovering the city
     function showTimes(chats) {
-        chats.find('.country-name').each(function () {
+        chats.find('.chat__country').each(function () {
             var code = $(this).data('country');
             if (code === NULL_ISLAND) {
                 $(this).text('Republic of Null Island');
@@ -162,17 +162,17 @@ $(document).ready(function () {
             var date = new Date($(this).find('time').attr('datetime'));
             $(this).find('time').text(date.toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'}));
 
-            var tip = $(this).find('.sender-time');
+            var tip = $(this).find('.chat__sender-time');
             if (!tip.length) return;
 
-            var info = $(this).find('.time');
+            var info = $(this).find('.chat__time');
             // Always midnight on Null Island, where the time zones meet
             var local = info.data('country') === NULL_ISLAND
                 ? {text: '00:00', hour: 0}
                 : senderTime(date, info.data('timezone'), parseFloat(info.data('lng')));
             var day = local.hour >= 6 && local.hour < 18;
 
-            tip.find('.daylight').text(day ? 'wb_sunny' : 'nights_stay').addClass(day ? 'day' : 'night');
+            tip.find('.chat__daylight').text(day ? 'wb_sunny' : 'nights_stay').addClass(day ? 'chat__daylight--day' : 'chat__daylight--night');
             tip.find('span').text(local.text);
         });
     }
@@ -196,7 +196,7 @@ $(document).ready(function () {
 
             var date = new Date($(this).find('time').attr('datetime'));
             if (date.toDateString() !== lastDay) {
-                $('<div class="day-divider"><span></span></div>').insertBefore(this)
+                $('<div class="day-divider"><span class="day-divider__label"></span></div>').insertBefore(this)
                     .find('span').text(dayLabel(date));
                 lastDay = date.toDateString();
             }
@@ -211,9 +211,9 @@ $(document).ready(function () {
 
             if (conversation !== activeConversation) {
                 $(this).hide();
-                var unread = tab.find('.unread');
+                var unread = tab.find('.chat-tab__unread');
                 slideTabs(function () {
-                    unread.toggleClass('unread-enter', unread.prop('hidden'))
+                    unread.toggleClass('is-entering', unread.prop('hidden'))
                         .text((parseInt(unread.text(), 10) || 0) + 1).prop('hidden', false);
                 });
             }
@@ -221,7 +221,7 @@ $(document).ready(function () {
     }
 
     showTimes($('#chat-list .chat'));
-    fadeInPhotos($('#chat-list .avatar'));
+    fadeInPhotos($('#chat-list .chat__photo'));
     $('#chat-list .chat').each(function () {
         addTab(String($(this).data('conversation')), $(this).data('partner'));
     });
@@ -238,13 +238,13 @@ $(document).ready(function () {
         this.scrollLeft += e.originalEvent.deltaY;
     });
 
-    $('#chat-tabs').on('click', '.close-tab', function (e) {
+    $('#chat-tabs').on('click', '.chat-tab__close', function (e) {
         e.stopPropagation();
         var tab = $(this).closest('.chat-tab');
-        if (tab.hasClass('active')) {
+        if (tab.hasClass('is-active')) {
             showConversation('everyone');
         }
-        tab.addClass('tab-leave').one('animationend', function () {
+        tab.addClass('is-leaving').one('animationend', function () {
             slideTabs(function () { tab.remove(); });
         });
     });
@@ -255,7 +255,7 @@ $(document).ready(function () {
         $('#textarea-send').focus();
     }
 
-    $('#chat-list').on('click', '.can-message', function () {
+    $('#chat-list').on('click', '.chat__name--can-message', function () {
         openPrivateChat($(this).data('user-id'), $(this).data('user-name'));
     });
 
@@ -268,27 +268,27 @@ $(document).ready(function () {
         var isMe = person.id === myId;
 
         var row = $('<div class="person"></div>')
-            .toggleClass('online', person.is_online == 1)
-            .toggleClass('can-message', !isMe)
+            .toggleClass('is-online', person.is_online == 1)
+            .toggleClass('person--can-message', !isMe)
             .attr('data-user-id', person.id)
             .attr('title', isMe ? '' : 'Chat privately with ' + person.name);
 
-        $('<div class="person-avatar"></div>')
-            .append($('<img alt="">').attr('src', person.avatar_src))
+        $('<div class="person__avatar"></div>')
+            .append($('<img class="person__photo" alt="">').attr('src', person.avatar_src))
             .appendTo(row);
         // Online: flag and city. Recently here: how long ago
-        var detail = $('<span class="person-detail"></span>');
+        var detail = $('<span class="person__detail"></span>');
         if (person.is_online != 1) {
             detail.text(timeAgo(person.minutes_ago));
         } else {
             if (person.country) {
                 detail.append($('<span class="fi"></span>').addClass('fi-' + person.country.toLowerCase()));
             }
-            detail.append($('<span class="person-city"></span>').text(person.city || ''));
+            detail.append($('<span class="person__city"></span>').text(person.city || ''));
         }
 
-        $('<div class="person-text"></div>')
-            .append($('<span class="person-name"></span>').text(person.name + (isMe ? ' (you)' : '')))
+        $('<div class="person__text"></div>')
+            .append($('<span class="person__name"></span>').text(person.name + (isMe ? ' (you)' : '')))
             .append(detail)
             .appendTo(row);
 
@@ -305,13 +305,13 @@ $(document).ready(function () {
         });
 
         // The rows are replaced, so a hovered row never gets its mouseleave
-        $('.map-pin').removeClass('highlight');
+        $('.map-pin').removeClass('is-highlighted');
 
         // A green dot on the tab of each private chat partner who's online;
         // it fades only when that changes
         onlineIds = {};
         online.forEach(function (p) { onlineIds[p.id] = true; });
-        $('#chat-tabs .tab-online').each(function () {
+        $('#chat-tabs .chat-tab__online').each(function () {
             var dot = $(this);
             var isOnline = !!onlineIds[dot.closest('.chat-tab').data('conversation')];
             if (isOnline === !dot.prop('hidden')) return;
@@ -319,8 +319,8 @@ $(document).ready(function () {
             if (isOnline) {
                 dot.prop('hidden', false);
             } else {
-                dot.addClass('dot-leave').one('animationend', function () {
-                    dot.prop('hidden', true).removeClass('dot-leave');
+                dot.addClass('is-leaving').one('animationend', function () {
+                    dot.prop('hidden', true).removeClass('is-leaving');
                 });
             }
         });
@@ -337,14 +337,14 @@ $(document).ready(function () {
     // recent counts as both, so the green dot fades with the row
     function fillPeople(section, people) {
         var old = {};
-        section.children('.person').not('.person-leave').each(function (index) {
+        section.children('.person').not('.is-leaving').each(function (index) {
             old[$(this).attr('data-user-id')] = {row: $(this), index: index, top: this.getBoundingClientRect().top};
         });
         var tops = {};
         Object.keys(old).forEach(function (id) { tops[id] = old[id].top; });
 
         var rows = people.map(function (person) {
-            var row = personRow(person).toggleClass('person-enter', !old[person.id]);
+            var row = personRow(person).toggleClass('is-entering', !old[person.id]);
             delete old[person.id];
             return row;
         });
@@ -358,7 +358,7 @@ $(document).ready(function () {
             } else {
                 section.append(gone.row);
             }
-            fadeOut(gone.row, 'person-leave');
+            fadeOut(gone.row, 'is-leaving');
         });
 
         slideToNewPlaces(section, tops);
@@ -367,7 +367,7 @@ $(document).ready(function () {
     // Rows that were already there start where they were and slide to their
     // new place, so someone joining pushes the list down smoothly
     function slideToNewPlaces(section, tops) {
-        var moved = section.children('.person').not('.person-enter, .person-leave').filter(function () {
+        var moved = section.children('.person').not('.is-entering, .is-leaving').filter(function () {
             var before = tops[$(this).attr('data-user-id')];
             return before !== undefined && Math.round(before - this.getBoundingClientRect().top) !== 0;
         });
@@ -379,8 +379,8 @@ $(document).ready(function () {
 
         // The next frame, so the browser draws them at the old place first
         requestAnimationFrame(function () {
-            moved.addClass('person-shift').css('transform', '').one('transitionend', function () {
-                $(this).removeClass('person-shift');
+            moved.addClass('is-shifting').css('transform', '').one('transitionend', function () {
+                $(this).removeClass('is-shifting');
             });
         });
     }
@@ -399,7 +399,7 @@ $(document).ready(function () {
     })();
 
     // Slide the panels in
-    $('body').addClass('panels-in');
+    $('body').addClass('is-ready');
 
     // A drawer on narrow screens, a column that can be closed on wide ones
     var narrowScreen = window.matchMedia(NARROW_SCREEN);
@@ -407,9 +407,9 @@ $(document).ready(function () {
     function setPeopleOpen(open) {
         var apply = function () {
             if (narrowScreen.matches) {
-                $('#people').toggleClass('open', open);
+                $('#people').toggleClass('is-open', open);
             } else {
-                $('body').toggleClass('people-closed', !open);
+                $('body').toggleClass('is-people-closed', !open);
             }
         };
 
@@ -419,8 +419,8 @@ $(document).ready(function () {
         }
 
         // Slide out first, then hide
-        $('#people').addClass('slide-out').one('animationend', function () {
-            $(this).removeClass('slide-out');
+        $('#people').addClass('is-closing').one('animationend', function () {
+            $(this).removeClass('is-closing');
             apply();
         });
     }
@@ -433,7 +433,7 @@ $(document).ready(function () {
         setPeopleOpen(false);
     });
 
-    $('#people').on('click', '.person.can-message', function () {
+    $('#people').on('click', '.person--can-message', function () {
         var person = $(this).data('person');
         if (narrowScreen.matches) {
             setPeopleOpen(false);
@@ -444,7 +444,7 @@ $(document).ready(function () {
     // Point out the person's pin on the map
     $('#people').on('mouseenter mouseleave', '.person', function (e) {
         $('.map-pin[data-user-id="' + $(this).attr('data-user-id') + '"]')
-            .toggleClass('highlight', e.type === 'mouseenter');
+            .toggleClass('is-highlighted', e.type === 'mouseenter');
     });
 
     // The newest message this page has; each tab keeps its own
@@ -464,15 +464,15 @@ $(document).ready(function () {
             var atBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 80;
 
             showTimes(chats);
-            $(".chat-list").append(chats);
-            fadeInPhotos(chats.find('.avatar'));
+            $('#chat-list').append(chats);
+            fadeInPhotos(chats.find('.chat__photo'));
             placeMessages(chats);
             addDayDividers();
             // Only once they're shown, so a failure above fetches them again
             lastChatId = chats.last().data('id');
 
             if (atBottom || forceScroll) {
-                $(".chat-list").animate({scrollTop: $(".chat-list").prop("scrollHeight")}, SCROLL_DURATION);
+                $('#chat-list').animate({scrollTop: $('#chat-list').prop('scrollHeight')}, SCROLL_DURATION);
             }
         });
     }
@@ -506,7 +506,7 @@ $(document).ready(function () {
         e.preventDefault();
         if (sending) return;
 
-        var bodyText = $('.materialize-textarea').val().trim();
+        var bodyText = $('#textarea-send').val().trim();
 
         var data = {body: bodyText};
         if (activeConversation !== 'everyone') {
@@ -518,8 +518,8 @@ $(document).ready(function () {
 
         postForm('/app/send', data)
             .then(function () {
-                $('.materialize-textarea').val("").trigger('input');
-                M.textareaAutoResize($('.materialize-textarea'));
+                $('#textarea-send').val("").trigger('input');
+                M.textareaAutoResize($('#textarea-send'));
                 return checkForMessages(true);
             })
             .catch(function (error) {
@@ -533,7 +533,7 @@ $(document).ready(function () {
     });
 
     // Enter sends, Shift+Enter starts a new line
-    $(".materialize-textarea").keypress(function (event) {
+    $('#textarea-send').keypress(function (event) {
         if (event.which == 13 && !event.shiftKey) {
             event.preventDefault();
             if (!$('#button-send').prop('disabled')) {
@@ -550,7 +550,7 @@ $(document).ready(function () {
         updateSendButton();
         $('#char-count')
             .prop('hidden', length < max - 100)
-            .toggleClass('over-soon', length > max - 20)
+            .toggleClass('is-near-limit', length > max - 20)
             .text(length + ' / ' + max);
     });
 

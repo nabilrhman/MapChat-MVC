@@ -17,13 +17,13 @@
     background-color: #ede7f6;
 }
 
-.guest-banner > .material-icons
+.guest-banner__icon
 {
     color: #512da8;
     font-size: 22px;
 }
 
-.guest-text
+.guest-banner__text
 {
     display: flex;
     flex: 1;
@@ -31,27 +31,27 @@
     min-width: 200px;
 }
 
-.guest-text strong
+.guest-banner__title
 {
     color: #311b92;
     font-size: 14px;
     font-weight: 600;
 }
 
-.guest-text span
+.guest-banner__note
 {
     color: #5e35b1;
     font-size: 13px;
 }
 
 /* Every card: 20px inside, a 32px header row, then its content 12px below */
-.profile-page h4
+.profile-page__title
 {
     margin: 24px 0 12px;
 }
 
 /* The line under the title, as on About */
-.profile-page .divider
+.profile-page__divider
 {
     margin-bottom: 16px;
 }
@@ -64,7 +64,7 @@
     background-color: #fff;
 }
 
-.settings-card h5
+.settings-card__title
 {
     margin: 0;
     font-size: 17px;
@@ -72,7 +72,7 @@
 }
 
 /* Photo with its buttons beside it */
-.photo-row
+.profile-photo
 {
     display: flex;
     align-items: center;
@@ -80,7 +80,7 @@
     margin-bottom: 16px;
 }
 
-.photo-row #avatar
+.profile-photo__image
 {
     display: block;
     width: 72px;
@@ -91,29 +91,29 @@
 
 /* A soft circle while the photo loads, and dots over a dimmed photo while a
    new one uploads */
-.photo-frame
+.profile-photo__frame
 {
     position: relative;
     flex: none;
     border-radius: 50%;
 }
 
-.photo-frame.photo-loading
+.profile-photo__frame.is-loading
 {
     background-color: #ede7f6;
 }
 
-.photo-frame.photo-loading #avatar
+.profile-photo__frame.is-loading .profile-photo__image
 {
     opacity: 0;
 }
 
-.photo-frame.is-uploading #avatar
+.profile-photo__frame.is-uploading .profile-photo__image
 {
     opacity: 0.4;
 }
 
-.photo-frame > .loading-dots
+.profile-photo__dots
 {
     position: absolute;
     inset: 0;
@@ -124,20 +124,19 @@
     transition: opacity var(--dur) var(--ease-out);
 }
 
-.photo-frame.is-uploading > .loading-dots
+.profile-photo__frame.is-uploading .profile-photo__dots
 {
     opacity: 1;
 }
 
-.photo-row [hidden],
-.input-field[hidden]
+.profile-photo [hidden]
 {
     display: none;
 }
 
 /* Card title on the left, its Edit button on the right; the same height
    with or without the button */
-.card-head
+.settings-card__head
 {
     display: flex;
     align-items: center;
@@ -148,7 +147,7 @@
 }
 
 /* View mode: the saved details as plain text */
-.view-only
+.settings-card__view
 {
     display: grid;
     grid-template-columns: 90px 1fr;
@@ -156,13 +155,13 @@
     margin: 0;
 }
 
-.view-only dt
+.settings-card__label
 {
     color: #757575;
     font-size: 13px;
 }
 
-.view-only dd
+.settings-card__value
 {
     margin: 0;
     overflow-wrap: anywhere;
@@ -171,21 +170,21 @@
 }
 
 /* Edit mode swaps the text for fields, and hides the Edit button */
-.settings-card:not(.editing) .edit-only,
-.settings-card.editing .view-only,
-.settings-card.editing .edit-button
+.settings-card:not(.is-editing) .settings-card__edit,
+.settings-card.is-editing .settings-card__view,
+.settings-card.is-editing .settings-card__edit-button
 {
     display: none;
 }
 
 /* Each swap fades in */
-.view-only,
-.edit-only
+.settings-card__view,
+.settings-card__edit
 {
     animation: fade-in var(--dur) var(--ease-out);
 }
 
-.card-actions
+.settings-card__actions
 {
     display: flex;
     align-items: center;
@@ -194,18 +193,13 @@
     margin-top: 8px;
 }
 
-.photo-row .button
+.profile-photo__button
 {
     margin-right: 8px;
 }
 
-#remove-photo:hover
-{
-    color: #e53935;
-}
-
 /* Privacy: the setting on the left, its switch on the right */
-.privacy-row
+.privacy-setting
 {
     display: flex;
     align-items: flex-start;
@@ -213,29 +207,29 @@
     gap: 16px;
 }
 
-.setting-name
+.privacy-setting__name
 {
     color: #212121;
     font-size: 14px;
 }
 
-.privacy-row .switch
+.privacy-setting__switch
 {
     flex: none;
 }
 
-#profile-place .fi
+.place-note .fi
 {
     margin: 0 2px;
 }
 
-#profile-place .place-hidden,
-#profile-place.is-hidden .place-shown
+.place-note__hidden,
+.place-note.is-hidden .place-note__shown
 {
     display: none;
 }
 
-#profile-place.is-hidden .place-hidden
+.place-note.is-hidden .place-note__hidden
 {
     display: inline;
 }

@@ -71,11 +71,13 @@ function pinLabel(location) {
     label.className = 'pin-label';
 
     var name = document.createElement('strong');
+    name.className = 'pin-label__name';
     name.textContent = location.name || '';
     label.appendChild(name);
 
     if (location.city) {
         var place = document.createElement('span');
+        place.className = 'pin-label__place';
         if (location.country) {
             var flag = document.createElement('span');
             flag.className = 'fi fi-' + location.country.toLowerCase();
@@ -95,7 +97,7 @@ function pinElement(userId) {
     el.className = 'map-pin';
     el.dataset.userId = userId;
     el.innerHTML =
-        '<svg width="20" height="27" viewBox="0 0 28 38" aria-hidden="true">' +
+        '<svg class="map-pin__icon" width="20" height="27" viewBox="0 0 28 38" aria-hidden="true">' +
         '<path d="M14 0C6.3 0 0 6.2 0 13.9 0 24.3 14 38 14 38s14-13.7 14-24.1C28 6.2 21.7 0 14 0z" fill="' + THEME.pin + '"/>' +
         '<circle cx="14" cy="14" r="5" fill="#ffffff"/>' +
         '</svg>';
@@ -112,7 +114,7 @@ function minZoomToFill(tileSize) {
 // Room around the pins when zooming to fit them, so no pin ends up behind the
 // chat panel or the people list
 function mapPadding() {
-    var panel = document.querySelector('.chat-container').getBoundingClientRect();
+    var panel = document.querySelector('.chat-panel').getBoundingClientRect();
     // Zero while the people list is a closed drawer
     var peopleWidth = document.querySelector('.people').getBoundingClientRect().width;
 
@@ -125,7 +127,7 @@ function mapPadding() {
 
 // Fades a pin out, then takes it off the map
 function fadeOutPin(el, remove) {
-    el.classList.add('pin-leave');
+    el.classList.add('is-leaving');
     el.addEventListener('animationend', remove, {once: true});
 }
 
@@ -139,7 +141,7 @@ function addPin(map, location, animate) {
         .addTo(map);
 
     var el = marker.getElement();
-    el.classList.toggle('pin-enter', animate);
+    el.classList.toggle('is-entering', animate);
     el.addEventListener('mouseenter', function () { popup.setLngLat(lngLat).addTo(map); });
     el.addEventListener('mouseleave', function () { popup.remove(); });
 
@@ -334,7 +336,7 @@ function initializeFallback() {
         keepPinsUpdated(function (location, animate) {
             var latLng = [parseFloat(location.lat), parseFloat(location.lng)];
             var pin = pinElement(location.user_id);
-            pin.classList.toggle('pin-enter', animate);
+            pin.classList.toggle('is-entering', animate);
             var icon = L.divIcon({className: '', html: pin.outerHTML, iconSize: [20, 27], iconAnchor: [10, 27]});
             var marker = L.marker(latLng, {icon: icon})
                 .bindTooltip(pinLabel(location).outerHTML, {direction: 'top', offset: [0, -26]})

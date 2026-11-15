@@ -1,7 +1,7 @@
 /* HEADER */
 /* The purple bar with the logo on the left and the menu on the right */
 
-.logo {
+.site-header__logo {
     display: block;
     flex: none;
     width: 146px;
@@ -12,9 +12,12 @@
     /* The wordmark's "p" hangs below the line; nudge it up so the letters,
        not the whole box, sit level with the menu */
     margin-top: -7px;
+    /* The logo is a picture; its text is only for screen readers */
+    text-indent: -9999px;
+    overflow: hidden;
 }
 
-.header {
+.site-header {
     position: fixed;
     top: 0;
     left: 0;
@@ -31,27 +34,16 @@
     box-shadow: 0px 3px 3px #888888;
 }
 
-/* The logo is a picture; its text is only for screen readers */
-.header a.logo {
-    text-indent: -9999px;
-    overflow: hidden;
-}
-
 /* NAV */
 
-.nav-container
+.site-header__nav
 {
     display: flex;
     flex-direction: row-reverse; /* links are written right-to-left in the markup */
     align-items: center;
-    /* materialize.css also defines .nav-container (width 70%, max-width,
-       margin auto), which pulls the menu away from the right edge */
-    width: auto;
-    max-width: none;
-    margin: 0;
 }
 
-.nav-container a
+.site-header__link
 {
     color: #FFF;
     text-decoration: none;
@@ -64,7 +56,7 @@
 }
 
 /* Pull left  */
-.pull-left a:before
+.site-header__link:before
 {
     position: absolute;
     width: 100%;
@@ -80,7 +72,7 @@
     transition: transform var(--dur) var(--ease-out);
 }
 
-.pull-left a:hover:before
+.site-header__link:hover:before
 {
     transform: scaleX(1);
 }
@@ -88,19 +80,19 @@
 /* Phones: a shorter header with smaller links */
 @media (max-width: 700px)
 {
-    .header
+    .site-header
     {
         padding: 0 12px;
     }
 
-    .logo
+    .site-header__logo
     {
         width: 104px;
         height: 32px;
         margin-top: -5px;
     }
 
-    .nav-container a
+    .site-header__link
     {
         margin: 0 2px;
         padding: 8px 6px;

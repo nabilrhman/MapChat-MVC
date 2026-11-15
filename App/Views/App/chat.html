@@ -10,40 +10,40 @@
 {# Only in the open room; inside a private chat you're already talking to them #}
 {% set can_message = conversation == 'everyone' and not mine and chat.email != constant('App\\Models\\Chat::BOT_EMAIL') %}
 {# Messages from the poll ease in; the history and your own appear at once #}
-<div class="chat{% if not initial|default(false) and not mine %} message-in{% endif %}"
+<div class="chat{% if not initial|default(false) and not mine %} is-entering{% endif %}"
      data-id="{{ chat.id }}" data-conversation="{{ conversation }}" data-partner="{{ partner }}">
-    <div class="chat-avatar-container">
-        <img class="avatar" src="{{ avatar_src(chat.user_id, chat.name, chat.avatar, chat.is_demo) }}" alt="Avatar">
+    <div class="chat__avatar">
+        <img class="chat__photo" src="{{ avatar_src(chat.user_id, chat.name, chat.avatar, chat.is_demo) }}" alt="Avatar">
     </div>
 
-    <div class="chat-body-container">
+    <div class="chat__content">
         {% if can_message %}
-        <h3 class="name can-message" data-user-id="{{ chat.user_id }}" data-user-name="{{ chat.name }}"
+        <h3 class="chat__name chat__name--can-message" data-user-id="{{ chat.user_id }}" data-user-name="{{ chat.name }}"
             title="Chat privately with {{ chat.name }}">{{ chat.name }}</h3>
         {% else %}
-        <h3 class="name">{{ chat.name }}</h3>
+        <h3 class="chat__name">{{ chat.name }}</h3>
         {% endif %}
         {# The page fills in the time in the reader's own time zone. On hover it
            slides to the sender's own time, with a sun or moon #}
-        <span class="time{% if chat.lng is not null %} swap{% endif %}"
+        <span class="chat__time{% if chat.lng is not null %} swap{% endif %}"
               data-timezone="{{ chat.timezone }}" data-lng="{{ chat.lng }}" data-country="{{ chat.country }}">
-            <span class="swap-track">
-                <time datetime="{{ chat.timestamp|date('c') }}"></time>
+            <span class="swap__track">
+                <time class="swap__line" datetime="{{ chat.timestamp|date('c') }}"></time>
                 {% if chat.lng is not null %}
-                <span class="sender-time"><i class="material-icons daylight"></i><span></span></span>
+                <span class="chat__sender-time swap__line"><i class="material-icons chat__daylight"></i><span></span></span>
                 {% endif %}
             </span>
         </span>
-        <p class="chat-body">{{ chat.body }}</p>
+        <p class="chat__body">{{ chat.body }}</p>
         {# No row at all without a place (e.g. the MapChat bot, or a hidden location) #}
         {% if chat.city %}
         {# On hover the city slides to the country's flag and name #}
-        <span class="location">
+        <span class="chat__location">
             <span{% if chat.country %} class="swap"{% endif %}>
-                <span class="swap-track">
-                    <span><i class="material-icons">place</i>{{ chat.city }}</span>
+                <span class="swap__track">
+                    <span class="swap__line"><i class="material-icons chat__place-icon">place</i>{{ chat.city }}</span>
                     {% if chat.country %}
-                    <span><span class="fi fi-{{ chat.country|lower }}"></span><span class="country-name" data-country="{{ chat.country }}"></span></span>
+                    <span class="swap__line"><span class="fi fi-{{ chat.country|lower }}"></span><span class="chat__country" data-country="{{ chat.country }}"></span></span>
                     {% endif %}
                 </span>
             </span>

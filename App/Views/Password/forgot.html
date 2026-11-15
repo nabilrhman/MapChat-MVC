@@ -8,7 +8,7 @@
 
 <div class="auth-card">
 
-    <form action="/password/request-reset" method="post" id="formForgot">
+    <form action="/password/request-reset" method="post" id="formForgot" class="auth-card__form">
 
         <div class="input-field">
             <input type="email" id="inputEmail" name="email" value="{{ email }}" autocomplete="email" autofocus/>
@@ -16,10 +16,10 @@
             <span id="error-msg-email"></span>
         </div>
 
-        <button type="submit" class="button button-primary button-block">Send reset link</button>
+        <button type="submit" class="button button--primary button--block auth-card__button">Send reset link</button>
     </form>
 
-    <p class="form-switch"><span>Remembered it?</span> <a href="/login">Log in</a></p>
+    <p class="auth-card__switch"><span>Remembered it?</span> <a class="auth-card__switch-link" href="/login">Log in</a></p>
 </div>
 
 {% endblock %}
