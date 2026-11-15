@@ -487,6 +487,18 @@ class User extends \Core\Model
     const GUEST_LIFETIME_HOURS = 24;
 
     /**
+     * Hours until this guest account is deleted, rounded up
+     *
+     * @return int
+     */
+    public function guestHoursLeft()
+    {
+        $secondsLeft = strtotime($this->created_at) + static::GUEST_LIFETIME_HOURS * 3600 - time();
+
+        return max(1, (int) ceil($secondsLeft / 3600));
+    }
+
+    /**
      * Delete guest accounts older than GUEST_LIFETIME_HOURS. Their messages
      * and location go with them (the chats and userinfo tables cascade on
      * delete). Runs whenever a new guest signs in, so no scheduled job is

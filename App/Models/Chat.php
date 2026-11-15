@@ -24,6 +24,12 @@ class Chat extends \Core\Model
     /** Messages a guest can send per minute */
     const GUEST_PER_MINUTE = 10;
 
+    /** Most messages sent to the page at once, when it opens or checks for new ones */
+    const HISTORY = 100;
+
+    /** The welcome account; nobody can message it privately */
+    const BOT_EMAIL = 'bot@mapchat.local';
+
     /**
      * How many messages this person sent in the last few seconds
      *
@@ -84,14 +90,15 @@ class Chat extends \Core\Model
             if (!empty($this->body))
             {
                 // Stored as typed; Twig escapes it when the chat is shown
-                $sql = 'INSERT INTO chats (email, body)
-                            VALUES (:email, :body)';
+                $sql = 'INSERT INTO chats (email, to_email, body)
+                            VALUES (:email, :to_email, :body)';
 
                 $db = static::getDB();
                 $stmt = $db->prepare($sql);
 
                 $stmt->bindValue(':body', $this->body, PDO::PARAM_STR);
                 $stmt->bindValue(':email', $this->email, PDO::PARAM_STR);
+                $stmt->bindValue(':to_email', $this->to_email ?? null, PDO::PARAM_STR);
 
                 $stmt->execute();
             }
@@ -102,120 +109,66 @@ class Chat extends \Core\Model
     }
 
     /**
-     * Save the user model with the current property values
+     * The newest messages the viewer may see, oldest first
      *
-     * @return boolean  True if the user was saved, false otherwise
+     * @param string $viewer The viewer's email
+     *
+     * @return array
      */
-    public function hasChatAfter()
+    public static function getRecent($viewer)
     {
-        if (empty($this->errors))
-        {
+        $sql = 'SELECT * FROM (' . static::visibleSql() . ' ORDER BY chats.id DESC LIMIT ' . static::HISTORY . ') AS recent
+                ORDER BY id';
 
-            $sql = 'SELECT COUNT(*) FROM chats
-                    WHERE chats.id > :last_chat_id ';
+        $stmt = static::getDB()->prepare($sql);
+        $stmt->bindValue(':viewer', $viewer, PDO::PARAM_STR);
+        $stmt->execute();
 
-            $db = static::getDB();
-            $stmt = $db->prepare($sql);
-
-            $stmt->bindValue(':last_chat_id', $this->last_chat_id, PDO::PARAM_STR);
-            $stmt->execute();
-            $newChatNum = $stmt->fetchColumn();
-
-            if ($newChatNum != 0)
-            {
-                return true;
-            }
-            else
-            {
-                return false;
-            }
-        }
-
-        return false;
+        return $stmt->fetchAll();
     }
 
     /**
-     * Save the user model with the current property values
+     * Messages the viewer may see that came after the given id
      *
-     * @return boolean  True if the user was saved, false otherwise
+     * @param string $viewer The viewer's email
+     * @param int $afterId
+     *
+     * @return array
      */
-    public function getAll()
+    public static function getAfter($viewer, $afterId)
     {
-        if (empty($this->errors))
-        {
+        $sql = static::visibleSql() . ' AND chats.id > :after_id ORDER BY chats.id LIMIT ' . static::HISTORY;
 
-            $sql = 'SELECT chats.id, chats.body, chats.timestamp, users.id AS user_id, users.name, users.email, users.avatar,
-                           IF(users.share_location, userinfo.city, NULL) AS city
-                    FROM chats
-                    LEFT JOIN users
-                    ON chats.email = users.email
-                    LEFT JOIN userinfo
-                    ON users.email = userinfo.email';
+        $stmt = static::getDB()->prepare($sql);
+        $stmt->bindValue(':viewer', $viewer, PDO::PARAM_STR);
+        $stmt->bindValue(':after_id', $afterId, PDO::PARAM_INT);
+        $stmt->execute();
 
-            $db = static::getDB();
-            $stmt = $db->prepare($sql);
-            $stmt->execute();
-            $chats = $stmt->fetchAll();
-
-            if ($chats != false)
-            {
-                foreach ($chats as $row)
-                {
-                    $this->last_chat_id = $row['id'];
-                }
-            }
-
-            return $chats;
-
-        }
-        return false;
+        return $stmt->fetchAll();
     }
 
-
-    public function getAfter()
+    /**
+     * The query for messages the viewer may see: the open room and their own
+     * private ones
+     *
+     * @return string
+     */
+    protected static function visibleSql()
     {
-        if (empty($this->errors))
-        {
-            $sql = 'SELECT chats.id, chats.body, chats.timestamp, users.id AS user_id, users.name, users.email, users.avatar,
-                           IF(users.share_location, userinfo.city, NULL) AS city
-                    FROM chats
-                    LEFT JOIN users
-                    ON chats.email = users.email
-                    LEFT JOIN userinfo
-                    ON users.email = userinfo.email
-	                WHERE chats.id > :last_chat_id';
-
-            $db = static::getDB();
-            $stmt = $db->prepare($sql);
-            $stmt->bindValue(':last_chat_id', $this->last_chat_id, PDO::PARAM_STR);
-            $stmt->execute();
-            $chats = $stmt->fetchAll();
-
-            if ($chats != false)
-            {
-                foreach ($chats as $row)
-                {
-                    $this->last_chat_id = $row['id'];
-                }
-
-            }
-
-            return $chats;
-        }
-        return false;
-
+        return 'SELECT chats.id, chats.body, chats.timestamp, users.id AS user_id, users.name, users.email, users.avatar,
+                       IF(users.share_location, userinfo.city, NULL) AS city,
+                       IF(users.share_location, userinfo.country, NULL) AS country,
+                       IF(users.share_location, userinfo.lng, NULL) AS lng,
+                       IF(users.share_location, userinfo.timezone, NULL) AS timezone,
+                       recipients.id AS to_user_id, recipients.name AS to_name
+                FROM chats
+                LEFT JOIN users
+                ON chats.email = users.email
+                LEFT JOIN users AS recipients
+                ON chats.to_email = recipients.email
+                LEFT JOIN userinfo
+                ON users.email = userinfo.email
+                WHERE (chats.to_email IS NULL OR chats.to_email = :viewer OR chats.email = :viewer)';
     }
-
-    public function getLastChatId()
-    {
-        return $this->last_chat_id;
-    }
-
-    /*
-    public function setLastChatId($chatId)
-    {
-        $this->lastChatId = $chatId;
-    }*/
-
 
 }

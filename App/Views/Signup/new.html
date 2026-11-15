@@ -2,45 +2,38 @@
 
 {% block title %}Sign up{% endblock %}
 
-{% block heading %}SIGN UP{% endblock %}
+{% block heading %}Create your account{% endblock %}
 
 {% block body %}
 
-        <div class="container">
-            <div class="z-depth-1 grey lighten-4 row form-container form-container-custom">
+<div class="auth-card">
 
-                <form class="col s12" action="/signup/create" method="post" id="formSignup">
+    <form action="/signup/create" method="post" id="formSignup">
 
-                    <div class='row'>
-                        <div class='input-field col s12'>
-                            <input type="text" id="inputName" name="name" autofocus value="{{ user.name }}" required/>
-                            <label for="inputName">Name</label>
-                            <span id="error-msg-name" class="helper-text"></span>
-                        </div>
-                    </div>
+        <div class="input-field">
+            <input type="text" id="inputName" name="name" value="{{ user.name }}" autocomplete="name" autofocus/>
+            <label for="inputName">Name</label>
+            <span id="error-msg-name"></span>
+        </div>
 
-                    <div class='row'>
-                        <div class='input-field col s12'>
-                            <input type="email" id="inputEmail" name="email" value="{{ user.email }}" required/>
-                            <label for="inputEmail" data-error="Type your email">Email address</label>
-                            <span id="error-msg-email" class="helper-text"></span>
-                        </div>
-                    </div>
+        <div class="input-field">
+            <input type="email" id="inputEmail" name="email" value="{{ user.email }}" autocomplete="email"/>
+            <label for="inputEmail">Email</label>
+            <span id="error-msg-email"></span>
+        </div>
 
-                    <div class='row'>
-                        <div class='input-field col s12'>
-                            <input type="password" id="inputPassword" name="password" class="inputPassword" required/>
-                            <label id="passwordLabel" for="inputPassword">Password</label>
-                            <span id="error-msg-password" class="helper-text"></span>
-                        </div>
-                    </div>
+        <div class="input-field">
+            <input type="password" id="inputPassword" name="password" class="has-toggle" autocomplete="new-password"/>
+            <label for="inputPassword">Password</label>
+            <button type="button" class="password-toggle material-icons" aria-label="Show password">visibility</button>
+            <span class="helper-text">6+ characters, a letter and a number</span>
+            <span id="error-msg-password"></span>
+        </div>
 
-                    <div class='row form-actions'>
-                <button type='submit' class='btn waves-effect purple' id="submitButton">Create account</button>
-            </div>
-                </form>
-            <p class="col s12 form-switch"><span>Already have an account?</span> <a href="/login">Log in</a></p>
-    </div>
+        <button type="submit" class="button button-primary button-block" id="submitButton">Create account</button>
+    </form>
+
+    <p class="form-switch"><span>Already have an account?</span> <a href="/login">Log in</a></p>
 </div>
 
 {% endblock %}
@@ -48,7 +41,7 @@
 {% block footer %}
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.15.0/jquery.validate.min.js"></script>
-<script src="/js/hideShowPassword.min.js"></script>
+<script src="/js/passwordToggle.js"></script>
 <script src="/js/validatorExtended.js"></script>
 <script src="/js/validateInput.js"></script>
 

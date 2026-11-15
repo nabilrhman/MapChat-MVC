@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Auth;
 use \Core\View;
 use \App\Models\Chat;
+use \App\Models\User;
 use \App\Models\UserInfo;
 
 
@@ -24,47 +25,40 @@ class App extends Authenticated
      */
     public function indexAction()
     {
-        $chat = new Chat($_POST);
-        $chats = $chat->getall();
+        $this->refreshLocation();
+        UserInfo::markOnline(Auth::getEmail());
 
+        $chats = Chat::getRecent(Auth::getEmail());
 
         View::renderTemplate('App/index.html', [
-            'chats' => $chats
+            'chats' => $chats,
+            'last_chat_id' => $chats ? end($chats)['id'] : 0
         ]);
-
-        Auth::setLastChatId($chat->getLastChatId());
     }
 
     /**
-     * Gets new chats (for AJAX)
+     * Gets new chats (for AJAX). Each page says which message it saw last, so
+     * two open tabs don't take each other's messages
      *
      * @return void
      */
     public function getAction()
     {
+        UserInfo::markOnline(Auth::getEmail());
 
-        if(Auth::hasLastChatId())
+        // A page from before this change doesn't send it; don't flood it with old messages
+        if (!isset($_POST['after']))
         {
-
-                $_POST['last_chat_id'] = Auth::getLastChatId();
-                $chat = new Chat($_POST);
-
-                if ($chat->hasChatAfter())
-                {
-                    $chats = $chat->getAfter(Auth::getLastChatId());
-
-                    View::renderTemplate('App/chat.html', [
-                        'chats' => $chats
-                    ]);
-
-                    Auth::setLastChatId($chat->getLastChatId());
-                }
-
+            return;
         }
-        else
-        {
-            Auth::setLastChatId(0);
 
+        $chats = Chat::getAfter(Auth::getEmail(), (int) $_POST['after']);
+
+        if ($chats)
+        {
+            View::renderTemplate('App/chat.html', [
+                'chats' => $chats
+            ]);
         }
     }
 
@@ -94,7 +88,20 @@ class App extends Authenticated
             return;
         }
 
-        $chat = new Chat(['email' => $user->email, 'body' => $body]);
+        // A private message goes to one other person, never to yourself or the bot
+        $toEmail = null;
+        if (!empty($_POST['to'])) {
+            $recipient = User::findByID($_POST['to']);
+
+            if (!$recipient || $recipient->id == $user->id || $recipient->email === Chat::BOT_EMAIL) {
+                $this->refuse(400, 'You can\'t message this person.');
+                return;
+            }
+
+            $toEmail = $recipient->email;
+        }
+
+        $chat = new Chat(['email' => $user->email, 'to_email' => $toEmail, 'body' => $body]);
         $chat->send();
     }
 
@@ -114,20 +121,41 @@ class App extends Authenticated
     }
 
     /**
-     * Gets new chats (for AJAX)
+     * Look the signed-in user's location up again if their IP changed since the
+     * last lookup, or if they were located before countries were saved
      *
      * @return void
      */
-    public function updatelocationAction()
+    protected function refreshLocation()
     {
         // Only ever update the signed-in user's own location, from their real IP
         $userInfo = new UserInfo(['email' => Auth::getEmail(), 'ip' => UserInfo::getRealIP()]);
-        if ($userInfo->hasIPUpdated())
+        if ($userInfo->hasIPUpdated() || $userInfo->isMissingCountry())
         {
             $userInfo->saveIP();
             $userInfo->findLocationFromIP();
             $userInfo->saveLocation();
         }
+    }
+
+    /**
+     * Who is online and who was here in the last day (for AJAX)
+     *
+     * @return void
+     */
+    public function getPeopleAction()
+    {
+        // The page sends its time zone along, so others can see your local time
+        $timezone = $_POST['timezone'] ?? '';
+        if (in_array($timezone, \DateTimeZone::listIdentifiers(), true)) {
+            UserInfo::saveTimezone(Auth::getEmail(), $timezone);
+        }
+
+        // So you're in the list from the first load, not after the next check
+        UserInfo::markOnline(Auth::getEmail());
+
+        header('Content-Type: application/json');
+        echo json_encode(UserInfo::getRecentPeople());
     }
 
     public function getLocationsAction()

@@ -54,11 +54,17 @@ CREATE TABLE sessions (
 CREATE TABLE chats (
   `id`        INT          NOT NULL AUTO_INCREMENT,
   `email`     VARCHAR(255) NOT NULL,
+  -- NULL for the open room, otherwise the one person this private message is for
+  `to_email`  VARCHAR(255) NULL DEFAULT NULL,
   `body`      MEDIUMTEXT,
   `timestamp` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `fk_m_email` (`email`),
+  KEY `fk_m_to_email` (`to_email`),
   CONSTRAINT `fk_m_email` FOREIGN KEY (`email`) REFERENCES users (`email`)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE,
+  CONSTRAINT `fk_m_to_email` FOREIGN KEY (`to_email`) REFERENCES users (`email`)
     ON DELETE CASCADE
     ON UPDATE CASCADE
 )
@@ -76,6 +82,10 @@ CREATE TABLE userinfo (
   `lat`       DECIMAL(10, 8),
   `lng`       DECIMAL(11, 8),
   `city`      VARCHAR(255),
+  -- Two-letter code from the IP lookup, e.g. "BD"
+  `country`   CHAR(2),
+  -- From the browser, e.g. "Asia/Dhaka"; shows others your local time
+  `timezone`  VARCHAR(64),
   `online_at` TIMESTAMP     NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `email` (`email`),
