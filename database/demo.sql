@@ -10,16 +10,16 @@ SET NAMES utf8mb4;
 -- nobody can log in as them.
 --
 
-INSERT INTO users (name, email, password_hash, is_active, avatar) VALUES
-  ('Aiko Tanaka',   'aiko@demo.mapchat.local',    '!', TRUE, '/res/avatars/aiko.svg'),
-  ('Rafael Costa',  'rafael@demo.mapchat.local',  '!', TRUE, '/res/avatars/rafael.svg'),
-  ('Maya Thompson', 'maya@demo.mapchat.local',    '!', TRUE, '/res/avatars/maya.svg'),
-  ('Tanvir Hasan',  'tanvir@demo.mapchat.local',  '!', TRUE, '/res/avatars/tanvir.svg'),
-  ('Wanjiru Kamau', 'wanjiru@demo.mapchat.local', '!', TRUE, '/res/avatars/wanjiru.svg'),
-  ('Lukas Becker',  'lukas@demo.mapchat.local',   '!', TRUE, '/res/avatars/lukas.svg'),
-  ('Sofia Ramírez', 'sofia@demo.mapchat.local',   '!', TRUE, '/res/avatars/sofia.svg'),
-  ('Jae-won Park',  'jaewon@demo.mapchat.local',  '!', TRUE, '/res/avatars/jaewon.svg'),
-  ('Emily Carter',  'emily@demo.mapchat.local',   '!', TRUE, '/res/avatars/emily.svg');
+INSERT INTO users (name, email, password_hash, is_active) VALUES
+  ('Aiko Tanaka',   'aiko@demo.mapchat.local',    '!', TRUE),
+  ('Rafael Costa',  'rafael@demo.mapchat.local',  '!', TRUE),
+  ('Maya Thompson', 'maya@demo.mapchat.local',    '!', TRUE),
+  ('Tanvir Hasan',  'tanvir@demo.mapchat.local',  '!', TRUE),
+  ('Wanjiru Kamau', 'wanjiru@demo.mapchat.local', '!', TRUE),
+  ('Lukas Becker',  'lukas@demo.mapchat.local',   '!', TRUE),
+  ('Sofia Ramírez', 'sofia@demo.mapchat.local',   '!', TRUE),
+  ('Jae-won Park',  'jaewon@demo.mapchat.local',  '!', TRUE),
+  ('Emily Carter',  'emily@demo.mapchat.local',   '!', TRUE);
 
 -- Where each of them is chatting from (city centres, not real addresses)
 INSERT INTO userinfo (email, ip, lat, lng, city, country, timezone, online_at) VALUES
