@@ -191,7 +191,7 @@ body
 {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: var(--icon-gap);
     box-sizing: border-box;
     width: 100%;
     max-width: 400px;

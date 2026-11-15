@@ -87,7 +87,7 @@ body
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 4px;
+    gap: var(--icon-gap);
     margin-top: 2px;
     color: #757575;
     font-size: 12px;
@@ -168,7 +168,7 @@ body
     z-index: 1;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: var(--icon-gap);
     height: 34px;
     padding: 0 14px 0 10px;
     border: none;
@@ -402,7 +402,7 @@ body
 {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: var(--icon-gap);
     max-width: 100%;
     color: #5e35b1;
     font-size: 12px;
@@ -529,7 +529,7 @@ body
 {
     display: flex;
     align-items: baseline;
-    gap: 8px;
+    gap: var(--icon-gap);
 }
 
 .people__close
@@ -642,7 +642,7 @@ body
 {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: var(--icon-gap);
     min-width: 0;
 }
 
@@ -739,7 +739,7 @@ body
     right: 12px;
     z-index: 2;
     align-items: center;
-    gap: 6px;
+    gap: var(--icon-gap);
     height: 36px;
     padding: 0 12px;
     border: none;
@@ -1214,7 +1214,7 @@ body
 {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: var(--icon-gap);
     height: 16px;
 }
 
