@@ -18,13 +18,16 @@ CREATE TABLE users (
   `avatar`                    VARCHAR(2083),
   -- Guest accounts are deleted 24 hours after created_at
   `is_guest`                  BOOLEAN      NOT NULL DEFAULT FALSE,
+  -- Hash of the token a guest's browser keeps, so they can come back to it
+  `guest_token_hash`          VARCHAR(64)  NULL DEFAULT NULL,
   -- "Show me on the map" in the profile
   `share_location`            BOOLEAN      NOT NULL DEFAULT TRUE,
   `created_at`                TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `email` (`email`),
   UNIQUE KEY `password_reset_hash` (`password_reset_hash`),
-  UNIQUE KEY `activation_hash` (`activation_hash`)
+  UNIQUE KEY `activation_hash` (`activation_hash`),
+  UNIQUE KEY `guest_token_hash` (`guest_token_hash`)
 )
   ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4;

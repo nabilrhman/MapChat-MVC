@@ -393,18 +393,60 @@ class User extends \Core\Model
     {
         static::deleteOldGuests();
 
-        $sql = 'INSERT INTO users (name, email, password_hash, is_active, is_guest)
-                VALUES (:name, :email, :password_hash, 1, 1)';
+        $sql = 'INSERT INTO users (name, email, password_hash, is_active, is_guest, guest_token_hash)
+                VALUES (:name, :email, :password_hash, 1, 1, :guest_token_hash)';
 
         $db = static::getDB();
         $stmt = $db->prepare($sql);
 
+        $token = new Token();
+
         $stmt->bindValue(':name', 'Guest ' . random_int(1000, 9999), PDO::PARAM_STR);
         $stmt->bindValue(':email', 'guest-' . bin2hex(random_bytes(8)) . '@guest.mapchat.local', PDO::PARAM_STR);
         $stmt->bindValue(':password_hash', password_hash(bin2hex(random_bytes(32)), PASSWORD_DEFAULT), PDO::PARAM_STR);
+        $stmt->bindValue(':guest_token_hash', $token->getHash(), PDO::PARAM_STR);
         $stmt->execute();
 
-        return static::findByID($db->lastInsertId());
+        $user = static::findByID($db->lastInsertId());
+        $user->guest_token = $token->getValue();
+
+        return $user;
+    }
+
+    /**
+     * The guest account a browser started earlier, if it still exists, so a
+     * returning guest gets their name and messages back
+     *
+     * @param string $value The token from the guest's cookie
+     *
+     * @return mixed User object if found, false otherwise
+     */
+    public static function findGuestByToken($value)
+    {
+        if ($value === '') {
+            return false;
+        }
+
+        $token = new Token($value);
+
+        $stmt = static::getDB()->prepare('SELECT * FROM users
+                                          WHERE guest_token_hash = :hash AND is_guest = 1
+                                            AND created_at > NOW() - INTERVAL ' . static::GUEST_LIFETIME_HOURS . ' HOUR');
+        $stmt->bindValue(':hash', $token->getHash(), PDO::PARAM_STR);
+        $stmt->setFetchMode(PDO::FETCH_CLASS, static::class);
+        $stmt->execute();
+
+        return $stmt->fetch();
+    }
+
+    /**
+     * When this guest account is deleted
+     *
+     * @return int Unix time
+     */
+    public function guestExpiresAt()
+    {
+        return strtotime($this->created_at . ' UTC') + static::GUEST_LIFETIME_HOURS * 3600;
     }
 
     /**

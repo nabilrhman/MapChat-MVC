@@ -18,6 +18,10 @@ class Schema extends \Core\Model
     const ADDED_COLUMNS = [
         ['userinfo', 'country', ['ALTER TABLE userinfo ADD COLUMN country CHAR(2) AFTER city']],
         ['userinfo', 'timezone', ['ALTER TABLE userinfo ADD COLUMN timezone VARCHAR(64) AFTER country']],
+        ['users', 'guest_token_hash', [
+            'ALTER TABLE users ADD COLUMN guest_token_hash VARCHAR(64) NULL DEFAULT NULL AFTER is_guest',
+            'ALTER TABLE users ADD UNIQUE KEY guest_token_hash (guest_token_hash)',
+        ]],
         ['chats', 'to_email', [
             'ALTER TABLE chats ADD COLUMN to_email VARCHAR(255) NULL DEFAULT NULL AFTER email',
             'ALTER TABLE chats ADD KEY fk_m_to_email (to_email)',
