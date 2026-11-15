@@ -1,20 +1,19 @@
 {% extends 'base_app.html' %}
 
-{% block title %}Home{% endblock %}
+{% block title %}Chat{% endblock %}
 
 {% block head %}
-<link rel="stylesheet" href="/css/app.css">
-<link rel="stylesheet" href="/css/chat.css?v=90">
-<link rel="stylesheet" href="/css/styles.css" />
+<link rel="stylesheet" href="/css/chat.css?v=93">
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flag-icons@7.2.3/css/flag-icons.min.css">
 {% endblock %}
 
-{% block chatmodule %}
+{% block content %}
 
-<div id="map">
+<div id="map"></div>
 
-    <!--<iframe src="https://snazzymaps.com/embed/100419" width="100%" height="100%" style="border:none;"></iframe>-->
+<div class="map-loading" id="map-loading">
+    <span class="loading-dots" aria-label="Loading the map"><span></span><span></span><span></span></span>
 </div>
 
 <!-- Opens the people list on screens too narrow to show it beside the map -->
@@ -22,7 +21,10 @@
     <i class="material-icons">group</i><span id="people-toggle-count">0</span>
 </button>
 
-<div class="chat-container slide-in-left">
+{# What chat.js needs from the server #}
+<div class="chat-container slide-in-left" id="chat"
+     data-my-id="{{ current_user.id|e('html_attr') }}"
+     data-last-chat-id="{{ last_chat_id|e('html_attr') }}">
 
     <div class="chat-tabs" id="chat-tabs">
         <a class="chat-tab" href="#" data-conversation="everyone">
@@ -37,17 +39,14 @@
     </div>
 
     <div class="chat-list" id="chat-list">
-        {% block chats %}
-
-        {% endblock %}
+        {% block chats %}{% endblock %}
     </div>
 
-
     <form class="input-container" method="post" id="input-container-form">
-        <div class="input" id="msg">
+        <div class="input">
             <span class="char-count" id="char-count" hidden></span>
-            <textarea name="message" placeholder="Type your message" rows="1"
-                      class="materialize-textarea" id="textarea-send" maxlength="500" autofocus></textarea>
+            <textarea name="message" placeholder="Type your message" rows="1" class="materialize-textarea" id="textarea-send"
+                      maxlength="{{ constant('App\\Models\\Chat::MAX_LENGTH') }}" autofocus></textarea>
         </div>
 
         <button name="send" class="waves-effect waves-light" id="button-send" type="submit"
@@ -65,7 +64,11 @@
     </h6>
 
     <div class="people-list">
-        <div id="people-online"></div>
+        <div id="people-online">
+            <div class="people-loading">
+                <span class="loading-dots" aria-label="Loading"><span></span><span></span><span></span></span>
+            </div>
+        </div>
 
         <h6 class="people-heading" id="recent-heading" hidden>Recently here</h6>
         <div id="people-recent"></div>
@@ -75,437 +78,7 @@
 {% endblock %}
 
 {% block footer %}
-
-
-
-
-
-<script>
-    $(document).ready(function() {
-
-        function updateScroll(e)
-        {
-
-            if ($(".chat-list").scrollHeight - elem.scrollTop() == elem.outerHeight())
-            {
-                $(".chat-list").animate({scrollTop: $(".chat-list").prop("scrollHeight")}, 1000);
-            }
-            else
-            {
-
-            }
-
-        }
-
-
-        // The tab being shown: "everyone", or the id of the person in a private chat
-        var activeConversation = 'everyone';
-
-        function tabFor(conversation)
-        {
-            return $('#chat-tabs .chat-tab[data-conversation="' + conversation + '"]');
-        }
-
-        function addTab(conversation, name)
-        {
-            var tab = tabFor(conversation);
-            if (!tab.length) {
-                tab = $('<a class="chat-tab" href="#"></a>')
-                    .attr('data-conversation', conversation)
-                    .append($('<span class="tab-name"></span>').text(name).attr('title', name))
-                    .append('<span class="unread" hidden></span>')
-                    .append('<span class="close-tab" title="Close">&times;</span>');
-                $('#chat-tabs').append(tab);
-            }
-            return tab;
-        }
-
-        function showConversation(conversation)
-        {
-            activeConversation = String(conversation);
-
-            $('#chat-tabs .chat-tab').removeClass('active');
-            var tab = tabFor(activeConversation).addClass('active');
-            tab.find('.unread').prop('hidden', true).text('');
-            tab[0].scrollIntoView({block: 'nearest', inline: 'nearest'});
-
-            $('#chat-list .chat').each(function () {
-                $(this).toggle(String($(this).data('conversation')) === activeConversation);
-            });
-
-            var name = tab.find('.tab-name').text();
-            var isPrivate = activeConversation !== 'everyone';
-
-            $('#private-note').prop('hidden', !isPrivate);
-            $('#private-note-text').text('Private chat with ' + name);
-            $('#textarea-send').attr('placeholder', isPrivate ? 'Message ' + name : 'Type your message');
-            addDayDividers();
-            $('.chat-list').scrollTop($('.chat-list').prop('scrollHeight'));
-        }
-
-        // The time where the sender was. Without their time zone, an estimate from
-        // longitude (an hour per 15 degrees), marked with "~"
-        function senderTime(date, timezone, lng)
-        {
-            var format = {hour: 'numeric', minute: '2-digit'};
-
-            if (timezone) {
-                return {
-                    text: date.toLocaleTimeString([], Object.assign({timeZone: timezone}, format)),
-                    hour: Number(date.toLocaleString('en-US', {hour: 'numeric', hourCycle: 'h23', timeZone: timezone}))
-                };
-            }
-
-            var shifted = new Date(date.getTime() + Math.round(lng / 15) * 3600000);
-            return {
-                text: '~' + shifted.toLocaleTimeString([], Object.assign({timeZone: 'UTC'}, format)),
-                hour: shifted.getUTCHours()
-            };
-        }
-
-        var countryNames = new Intl.DisplayNames(['en'], {type: 'region'});
-
-        // Each message shows its time; hovering it slides to the sender's own time.
-        // Also names the sender's country, shown when hovering the city
-        function showTimes(chats)
-        {
-            chats.find('.country-name').each(function () {
-                $(this).text(countryNames.of($(this).data('country')));
-            });
-
-            chats.each(function () {
-                var date = new Date($(this).find('time').attr('datetime'));
-                $(this).find('time').text(date.toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'}));
-
-                var tip = $(this).find('.sender-time');
-                if (!tip.length) return;
-
-                var info = $(this).find('.time');
-                var local = senderTime(date, info.data('timezone'), parseFloat(info.data('lng')));
-                var day = local.hour >= 6 && local.hour < 18;
-
-                tip.find('.daylight').text(day ? 'wb_sunny' : 'nights_stay').addClass(day ? 'day' : 'night');
-                tip.find('span').text(local.text);
-            });
-        }
-
-        function dayLabel(date)
-        {
-            var yesterday = new Date();
-            yesterday.setDate(yesterday.getDate() - 1);
-
-            if (date.toDateString() === new Date().toDateString()) return 'Today';
-            if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
-            return date.toLocaleDateString([], {month: 'short', day: 'numeric'});
-        }
-
-        // A divider wherever the day changes in the conversation being shown
-        function addDayDividers()
-        {
-            $('#chat-list .day-divider').remove();
-
-            var lastDay = null;
-            $('#chat-list .chat').each(function () {
-                if (String($(this).data('conversation')) !== activeConversation) return;
-
-                var date = new Date($(this).find('time').attr('datetime'));
-                if (date.toDateString() !== lastDay) {
-                    $('<div class="day-divider"><span></span></div>').insertBefore(this)
-                        .find('span').text(dayLabel(date));
-                    lastDay = date.toDateString();
-                }
-            });
-        }
-
-        // Put new messages in their tab and count the ones in other tabs
-        function placeMessages(chats)
-        {
-            chats.each(function () {
-                var conversation = String($(this).data('conversation'));
-                var tab = addTab(conversation, $(this).data('partner'));
-
-                if (conversation !== activeConversation) {
-                    $(this).hide();
-                    var unread = tab.find('.unread');
-                    unread.text((parseInt(unread.text(), 10) || 0) + 1).prop('hidden', false);
-                }
-            });
-        }
-
-        showTimes($('#chat-list .chat'));
-        $('#chat-list .chat').each(function () {
-            addTab(String($(this).data('conversation')), $(this).data('partner'));
-        });
-        showConversation('everyone');
-
-        $('#chat-tabs').on('click', '.chat-tab', function (e) {
-            e.preventDefault();
-            showConversation($(this).data('conversation'));
-        });
-
-        // A mouse wheel scrolls the tabs sideways
-        $('#chat-tabs').on('wheel', function (e) {
-            this.scrollLeft += e.originalEvent.deltaY;
-        });
-
-        $('#chat-tabs').on('click', '.close-tab', function (e) {
-            e.stopPropagation();
-            var tab = $(this).closest('.chat-tab');
-            if (tab.hasClass('active')) {
-                showConversation('everyone');
-            }
-            tab.remove();
-        });
-
-        function openPrivateChat(userId, name)
-        {
-            addTab(userId, name);
-            showConversation(userId);
-            $('#textarea-send').focus();
-        }
-
-        $('#chat-list').on('click', '.can-message', function () {
-            openPrivateChat($(this).data('user-id'), $(this).data('user-name'));
-        });
-
-        var myId = {{ current_user.id }};
-
-        function timeAgo(minutes)
-        {
-            if (minutes < 60) return minutes + ' min ago';
-            return Math.floor(minutes / 60) + ' h ago';
-        }
-
-        function personRow(person)
-        {
-            var isMe = person.id === myId;
-            var avatar = person.avatar || '/avatar/' + person.id + '?v=' + encodeURIComponent(person.name);
-
-            var row = $('<div class="person"></div>')
-                .toggleClass('online', person.is_online == 1)
-                .toggleClass('can-message', !isMe)
-                .attr('data-user-id', person.id)
-                .attr('title', isMe ? '' : 'Chat privately with ' + person.name);
-
-            $('<div class="person-avatar"></div>')
-                .append($('<img alt="">').attr('src', avatar))
-                .appendTo(row);
-            // Online: flag and city. Recently here: how long ago
-            var detail = $('<span class="person-detail"></span>');
-            if (person.is_online != 1) {
-                detail.text(timeAgo(person.minutes_ago));
-            } else {
-                if (person.country) {
-                    detail.append($('<span class="fi"></span>').addClass('fi-' + person.country.toLowerCase()));
-                }
-                detail.append($('<span class="person-city"></span>').text(person.city || ''));
-            }
-
-            $('<div class="person-text"></div>')
-                .append($('<span class="person-name"></span>').text(person.name + (isMe ? ' (you)' : '')))
-                .append(detail)
-                .appendTo(row);
-
-            return row.data('person', person);
-        }
-
-        function showPeople(people)
-        {
-            var online = people.filter(function (p) { return p.is_online == 1; });
-            var recent = people.filter(function (p) { return p.is_online != 1; });
-
-            // You first, then everyone else by name
-            online.sort(function (a, b) {
-                return (b.id === myId) - (a.id === myId) || a.name.localeCompare(b.name);
-            });
-
-            // The rows are replaced, so a hovered row never gets its mouseleave
-            $('.map-pin').removeClass('highlight');
-
-            $('#online-count, #people-toggle-count').text(online.length);
-            $('#people-online').empty().append(online.map(personRow));
-            $('#recent-heading').prop('hidden', !recent.length);
-            $('#people-recent').empty().append(recent.map(personRow));
-        }
-
-        // The list changes slowly, so every 15 seconds is enough
-        (function loadPeople() {
-            postForm('/app/get-people', {timezone: Intl.DateTimeFormat().resolvedOptions().timeZone})
-                .then(function (response) {
-                    showPeople(response.data);
-                })
-                .catch(function () {
-                    // Try again on the next round
-                })
-                .finally(function () {
-                    setTimeout(loadPeople, 15000);
-                });
-        })();
-
-        // Drop the loading screen at once and slide the panels in
-        $('.se-pre-con').stop().hide();
-        $('body').addClass('panels-in');
-
-        // A drawer on narrow screens, a column that can be closed on wide ones
-        var narrowScreen = window.matchMedia('(max-width: 1100px)');
-
-        function setPeopleOpen(open)
-        {
-            var apply = function () {
-                if (narrowScreen.matches) {
-                    $('#people').toggleClass('open', open);
-                } else {
-                    $('body').toggleClass('people-closed', !open);
-                }
-            };
-
-            if (open) {
-                apply();
-                return;
-            }
-
-            // Slide out first, then hide
-            $('#people').addClass('slide-out').one('animationend', function () {
-                $(this).removeClass('slide-out');
-                apply();
-            });
-        }
-
-        $('#people-toggle').on('click', function () {
-            setPeopleOpen(!$('#people').is(':visible'));
-        });
-
-        $('#people-close').on('click', function () {
-            setPeopleOpen(false);
-        });
-
-        $('#people').on('click', '.person.can-message', function () {
-            var person = $(this).data('person');
-            if (narrowScreen.matches) {
-                setPeopleOpen(false);
-            }
-            openPrivateChat(person.id, person.name);
-        });
-
-        // Point out the person's pin on the map
-        $('#people').on('mouseenter mouseleave', '.person', function (e) {
-            $('.map-pin[data-user-id="' + $(this).attr('data-user-id') + '"]')
-                .toggleClass('highlight', e.type === 'mouseenter');
-        });
-
-        // The newest message this page has; each tab keeps its own
-        var lastChatId = {{ last_chat_id }};
-
-        // Scrolls down for new messages only if you're at the bottom already, or forced
-        // (after you send); someone reading older messages stays where they are
-        function checkForMessages(forceScroll)
-        {
-            return postForm('/app/get', {after: lastChatId}).then(function (response) {
-                // Two checks can overlap (e.g. right after sending), so skip any already shown
-                var chats = $($.parseHTML(response.data)).filter('.chat').filter(function () {
-                    return $(this).data('id') > lastChatId;
-                });
-                if (!chats.length) return;
-
-                var list = $('#chat-list')[0];
-                var atBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 80;
-
-                lastChatId = chats.last().data('id');
-                showTimes(chats);
-                $(".chat-list").append(chats);
-                placeMessages(chats);
-                addDayDividers();
-
-                if (atBottom || forceScroll) {
-                    $(".chat-list").animate({scrollTop: $(".chat-list").prop("scrollHeight")}, 400);
-                }
-            });
-        }
-
-        // Every second, or every 8 seconds while the tab is hidden
-        (function update() {
-            checkForMessages()
-                .catch(function () {
-                    // Try again on the next round
-                })
-                .finally(function () {
-                    setTimeout(update, document.hidden ? 8000 : 1000);
-                });
-        })();
-
-        // Catch up at once when the tab is shown again
-        document.addEventListener('visibilitychange', function () {
-            if (!document.hidden) {
-                checkForMessages().catch(function () {});
-            }
-        });
-
-        $('#input-container-form').on('submit', function (e) {
-            e.preventDefault();
-
-            var bodyText = $('.materialize-textarea').val().trim();
-
-            var data = {body: bodyText};
-            if (activeConversation !== 'everyone') {
-                data.to = activeConversation;
-            }
-
-            postForm('/app/send', data)
-                .then(function () {
-                    $('.materialize-textarea').val("").trigger('input');
-                    M.textareaAutoResize($('.materialize-textarea'));
-                    return checkForMessages(true);
-                })
-                .catch(function (error) {
-                    var message = errorMessage(error, 'Your message could not be sent.');
-                    M.toast({html: $('<div>').text(message).html()});
-                });
-        });
-
-        // Enter sends, Shift+Enter starts a new line
-        $(".materialize-textarea").keypress(function (event) {
-            if (event.which == 13 && !event.shiftKey) {
-                event.preventDefault();
-                if (!$('#button-send').prop('disabled')) {
-                    $("#input-container-form").submit();
-                }
-            }
-        });
-
-        // Grey out Send while the box is empty; show the count near the limit
-        $('#textarea-send').on('input', function () {
-            var length = this.value.length;
-            var max = parseInt(this.getAttribute('maxlength'), 10);
-
-            $('#button-send').prop('disabled', this.value.trim() === '');
-            $('#char-count')
-                .prop('hidden', length < max - 100)
-                .toggleClass('over-soon', length > max - 20)
-                .text(length + ' / ' + max);
-        });
-
-        function scrollToBottom()
-        {
-
-            $(".chat-list").animate({scrollTop: $(".chat-list").prop("scrollHeight")}, 1000);
-
-        };
-
-        //$('.chat-list').bind('scroll',updateScroll);
-
-        $(".chat-list").animate({scrollTop: $(".chat-list").prop("scrollHeight")}, 1000);
-
-    });
-
-
-
-
-
-</script>
-
+<script src="/js/chat.js?v=3"></script>
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-<script type='text/javascript' src='/js/map.js?v=14'></script>
-
-
-
+<script src="/js/map.js?v=16"></script>
 {% endblock %}

@@ -1,8 +1,3 @@
-*
-{
-    font-family: 'Montserrat', sans-serif;
-}
-
 html
 {
     height:100%;
@@ -24,12 +19,36 @@ body
 {
     /* Between the header and the footer, so neither covers it (or its credits) */
     position:fixed;
-    top: 95px;
-    bottom: 40px;
+    top: var(--header-height);
+    bottom: var(--footer-height);
     width:100%;
     background:#eee;
     overflow:hidden;
     z-index:0; /* keep the map's layers below the chat panel */
+}
+
+/* Dots over the part of the map not under the panels, until the map is
+   drawn with its pins */
+.map-loading
+{
+    position: fixed;
+    top: var(--header-height);
+    bottom: var(--footer-height);
+    left: max(350px, 30%); /* the chat panel's width */
+    right: 220px; /* the people list's */
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    transition: opacity var(--dur) var(--ease-out), visibility 0s linear var(--dur);
+}
+
+/* Hidden once faded, so the dots stop animating */
+.map-loading.is-done
+{
+    opacity: 0;
+    visibility: hidden;
 }
 
 /* Pin tooltip: the name, then the flag and city, centred over the pin */
@@ -95,8 +114,8 @@ body
     min-width: 350px;
     overflow: hidden;
     position: absolute;
-    top: 96px;
-    bottom: 40px; /* footer height */
+    top: var(--header-height);
+    bottom: var(--footer-height);
     left: 0;
     right: 0;
     background-color: #fafafa;
@@ -188,7 +207,43 @@ body
     font-size: 13px;
     font-weight: 400;
     white-space: nowrap;
-    transition: background-color 0.15s ease;
+    transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+
+/* Same green as the dot on an online person's avatar */
+.chat-tab .tab-online
+{
+    flex: none;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #43a047;
+}
+
+/* A private-chat tab grows in when opened and shrinks out when closed; so
+   does its green dot when the person comes or goes. scale, not transform,
+   which would undo the tab's flip */
+@keyframes grow-in
+{
+    from { opacity: 0; scale: 0.6; }
+}
+
+@keyframes shrink-out
+{
+    to { opacity: 0; scale: 0.6; }
+}
+
+.chat-tab.tab-enter,
+.chat-tab .tab-online
+{
+    animation: grow-in var(--dur) var(--ease-out) backwards;
+}
+
+.chat-tab.tab-leave,
+.chat-tab .tab-online.dot-leave
+{
+    animation: shrink-out var(--dur-fast) var(--ease-in) forwards;
+    pointer-events: none;
 }
 
 /* Long names are cut short so more tabs fit */
@@ -272,9 +327,7 @@ body
 
 .private-note .material-icons
 {
-    font-family: "Material Icons";
     font-size: 14px;
-    font-feature-settings: "liga";
 }
 
 /* The side panels slide in from their own edge */
@@ -293,16 +346,16 @@ body
     to { transform: translateX(100%); }
 }
 
-/* Held off screen until the page is ready, so the slide isn't hidden
-   behind the loading screen */
+/* Held off screen until the page's script runs, so they slide in once the
+   page is ready rather than while it loads */
 .slide-in-left
 {
-    animation: panelInLeft 0.35s cubic-bezier(0.22, 1, 0.36, 1) both paused; /* fast start, soft stop */
+    animation: panelInLeft var(--dur-slow) var(--ease-out) both paused;
 }
 
 .slide-in-right
 {
-    animation: panelInRight 0.35s cubic-bezier(0.22, 1, 0.36, 1) both paused;
+    animation: panelInRight var(--dur-slow) var(--ease-out) both paused;
 }
 
 .panels-in .slide-in-left,
@@ -314,7 +367,7 @@ body
 /* Closing the people list: slide out, then the page hides it */
 .panels-in .people.slide-out
 {
-    animation: panelOutRight 0.2s cubic-bezier(0.64, 0, 0.78, 0) forwards;
+    animation: panelOutRight var(--dur) var(--ease-in) forwards;
 }
 
 /* Chat container - ends */
@@ -322,8 +375,8 @@ body
 .people
 {
     position: fixed; /* fixed, so sliding in from the edge never widens the page */
-    top: 96px;
-    bottom: 40px; /* footer height */
+    top: var(--header-height);
+    bottom: var(--footer-height);
     right: 0;
     width: 220px;
     display: flex;
@@ -423,6 +476,7 @@ body
     align-items: center;
     padding: 6px 16px;
     cursor: default;
+    transition: background-color var(--dur-fast) var(--ease-out);
 }
 
 .person.can-message
@@ -449,6 +503,12 @@ body
     border-radius: 50%;
     object-fit: cover;
     display: block;
+}
+
+/* Until the first reply */
+.people-loading
+{
+    padding: 12px 16px;
 }
 
 /* Green dot on the avatar of someone online */
@@ -517,10 +577,43 @@ body
     flex: none;
 }
 
+/* Someone who comes or goes slides in or out of their part of the list */
+@keyframes person-in
+{
+    from { opacity: 0; transform: translateX(12px); }
+}
+
+@keyframes person-out
+{
+    to { opacity: 0; transform: translateX(12px); }
+}
+
+.person.person-enter
+{
+    animation: person-in var(--dur) var(--ease-out) backwards;
+}
+
+.person.person-leave
+{
+    animation: person-out var(--dur-fast) var(--ease-in) forwards;
+    pointer-events: none;
+}
+
+/* Pins that come or go after the first load grow from their point */
+.map-pin.pin-enter svg
+{
+    animation: grow-in var(--dur) var(--ease-out) backwards;
+}
+
+.map-pin.pin-leave svg
+{
+    animation: shrink-out var(--dur-fast) var(--ease-in) forwards;
+}
+
 /* The pin of the person hovered in the list */
 .map-pin svg
 {
-    transition: transform 0.15s ease;
+    transition: transform var(--dur-fast) var(--ease-out);
     transform-origin: bottom center;
 }
 
@@ -535,7 +628,7 @@ body
 {
     display: none;
     position: absolute;
-    top: 108px;
+    top: calc(var(--header-height) + 12px);
     right: 12px;
     z-index: 2;
     align-items: center;
@@ -550,6 +643,7 @@ body
     font-weight: 600;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
     cursor: pointer;
+    transition: background-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
 }
 
 /* materialize.css turns a focused button teal */
@@ -572,9 +666,7 @@ body
 
 .people-toggle .material-icons
 {
-    font-family: "Material Icons";
     font-size: 20px;
-    font-feature-settings: "liga";
 }
 
 /* Wide screens: the list shows unless it was closed */
@@ -606,6 +698,11 @@ body
         z-index: 3;
     }
 
+    .map-loading
+    {
+        right: 0;
+    }
+
     .people.open
     {
         display: flex;
@@ -615,17 +712,19 @@ body
 /* Phones: a strip of map on top, the chat below it at full width */
 @media (max-width: 700px)
 {
+    .map-loading
+    {
+        left: 0;
+        bottom: auto;
+        height: 30vh;
+    }
+
     .chat-container
     {
-        top: calc(61px + 30vh);
+        top: calc(var(--header-height) + 30vh);
         max-width: none;
         min-width: 0;
         box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.12);
-    }
-
-    #map
-    {
-        top: 61px;
     }
 
     /* The chat covers the bottom of the map here, so the credits go top left
@@ -641,14 +740,8 @@ body
 
     .people
     {
-        top: 61px;
         width: 260px;
         max-width: 85vw;
-    }
-
-    .people-toggle
-    {
-        top: 72px;
     }
 }
 /* Chat - starts */
@@ -662,7 +755,19 @@ body
     padding: 14px 16px;
     border-bottom: 1px solid #ececec;
     background-color: #fafafa;
-    transition: background-color 0.2s ease;
+    transition: background-color var(--dur-fast) var(--ease-out);
+}
+
+/* A message from the poll eases in (see App/chat.html) */
+.message-in
+{
+    animation: fade-in-up var(--dur) var(--ease-out) backwards;
+}
+
+/* A quick fade when switching tabs */
+.chat-list.tab-in
+{
+    animation: fade-in var(--dur) var(--ease-out);
 }
 
 .chat:hover
@@ -678,11 +783,37 @@ body
 
 .chat .avatar
 {
-    width: 32px !important;
+    width: 32px;
     height: 32px;
     border-radius: 50%;
     object-fit: cover;
     display: block;
+}
+
+/* A soft circle while an uploaded photo loads; the photo then fades in
+   (see chat.js) */
+.chat-avatar-container,
+.person-avatar
+{
+    border-radius: 50%;
+}
+
+.chat .avatar,
+.person-avatar img
+{
+    transition: opacity var(--dur) var(--ease-out);
+}
+
+.chat-avatar-container.photo-loading,
+.person-avatar.photo-loading
+{
+    background-color: #ede7f6;
+}
+
+.chat-avatar-container.photo-loading img,
+.person-avatar.photo-loading img
+{
+    opacity: 0;
 }
 
 .chat-body-container
@@ -753,7 +884,7 @@ body
     display: flex;
     flex-direction: column;
     align-items: flex-end;
-    transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+    transition: transform var(--dur) var(--ease-out);
 }
 
 .swap-track > *
@@ -785,17 +916,13 @@ body
 
 .chat .location .material-icons
 {
-    font-family: "Material Icons";
     font-size: 14px;
-    font-feature-settings: "liga";
 }
 
 /* Sun or moon: day or night where the sender was */
 .chat .daylight
 {
-    font-family: "Material Icons";
     font-size: 14px;
-    font-feature-settings: "liga";
     line-height: 1;
 }
 
@@ -879,7 +1006,7 @@ body
     overflow-y: auto !important;
     overflow-wrap: anywhere;
     box-shadow: none;
-    transition: box-shadow 0.15s ease;
+    transition: border-color var(--dur-fast) var(--ease-out);
 }
 
 .input-container textarea.materialize-textarea:focus
@@ -917,7 +1044,7 @@ body
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background-color 0.15s ease;
+    transition: background-color var(--dur-fast) var(--ease-out);
 }
 
 #button-send:hover
@@ -933,11 +1060,9 @@ body
 
 #button-send .material-icons
 {
-    font-family: "Material Icons";
     font-size: 20px;
     line-height: 1;
     margin-left: 2px; /* the arrow looks centred when nudged right */
-    font-feature-settings: "liga";
     -webkit-font-smoothing: antialiased;
 }
 /* Message box - ends */

@@ -48,8 +48,9 @@ $.validator.addMethod('validPassword',
 $.validator.addMethod('validName',
     function(value, element, param) {
 
+        // Any script counts, not only Latin letters
         if (value != '') {
-            if (value.match(/.*[a-z]+.*/i) == null) {
+            if (value.match(/\S/) == null) {
                 return false;
             }
         }
@@ -59,44 +60,10 @@ $.validator.addMethod('validName',
     'Can\'t be blank.'
 );
 
-/**
- * Add jQuery Validation plugin method for a valid email
- *
- */
-$.validator.addMethod('validEmail',
-    function(value, element, param) {
-
-        var filter = /^([\w-\.]+)@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.)|(([\w-]+\.)+))([a-zA-Z]{2,4}|[0-9]{1,3})(\]?)$/;
-        if (value != '') {
-            if (filter.test(value)) {
-                return true;
-            }
-            else {
-                return false;
-            }
-        }
-        else
-        {
-            return false;
-        }
-
-        return true;
-    },
-    'Enter a valid email.'
-);
-
 $.validator.setDefaults({
+    // Each message goes in the span under its field
     errorPlacement: function(error, element) {
-        if (element.attr("name") == "name" )  //Id of input field
-            error.appendTo('#error-msg-name');
-        if (element.attr("name") == "email" )  //Id of input field
-            error.appendTo('#error-msg-email');
-        if (element.attr("name") == "password" )  //Id of input field
-        {
-            error.appendTo('#error-msg-password');
-        }
+        error.appendTo('#error-msg-' + element.attr('name'));
     }
 });
-
-
 

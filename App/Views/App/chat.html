@@ -9,16 +9,11 @@
 {% endif %}
 {# Only in the open room; inside a private chat you're already talking to them #}
 {% set can_message = conversation == 'everyone' and not mine and chat.email != constant('App\\Models\\Chat::BOT_EMAIL') %}
-<div class="chat{% if not initial|default(false) %} animated fadeIn{% endif %}"
+{# Messages from the poll ease in; the history and your own appear at once #}
+<div class="chat{% if not initial|default(false) and not mine %} message-in{% endif %}"
      data-id="{{ chat.id }}" data-conversation="{{ conversation }}" data-partner="{{ partner }}">
     <div class="chat-avatar-container">
-        {% if chat.avatar is not empty %}
-        <img class="avatar" src="{{ chat.avatar }}" alt="Avatar"
-             style="width:100%;">
-        {% else %}
-        <img class="avatar" src="/avatar/{{ chat.user_id }}?v={{ chat.name|url_encode }}" alt="Avatar"
-             style="width:100%;">
-        {% endif %}
+        <img class="avatar" src="{{ avatar_src(chat.user_id, chat.name, chat.avatar, chat.is_demo) }}" alt="Avatar">
     </div>
 
     <div class="chat-body-container">
@@ -31,7 +26,7 @@
         {# The page fills in the time in the reader's own time zone. On hover it
            slides to the sender's own time, with a sun or moon #}
         <span class="time{% if chat.lng is not null %} swap{% endif %}"
-              data-timezone="{{ chat.timezone }}" data-lng="{{ chat.lng }}">
+              data-timezone="{{ chat.timezone }}" data-lng="{{ chat.lng }}" data-country="{{ chat.country }}">
             <span class="swap-track">
                 <time datetime="{{ chat.timestamp|date('c') }}"></time>
                 {% if chat.lng is not null %}

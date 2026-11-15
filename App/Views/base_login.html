@@ -9,11 +9,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" type="text/css" href="/css/materialize.css">
-    <link rel="stylesheet" type="text/css" href="/css/animate.css">
-    <link rel="stylesheet" href="/css/styles.css?v=10" />
-    <link rel="stylesheet" href="/css/footer.css?v=4" />
-    <link rel="stylesheet" href="/css/ui.css?v=8" />
-    <link rel="stylesheet" type="text/css" href="/css/login.css?v=28">
+    <link rel="stylesheet" href="/css/animations.css?v=1" />
+    <link rel="stylesheet" href="/css/styles.css?v=12" />
+    <link rel="stylesheet" href="/css/footer.css?v=5" />
+    <link rel="stylesheet" href="/css/ui.css?v=9" />
+    <link rel="stylesheet" type="text/css" href="/css/login.css?v=29">
     <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/all.css" integrity="sha384-B4dIYHKNBt8Bc12p+WXckhzcICo0wtJAoU8YZTY5qE0Id1GSseTk6S+L3BlXeVIU" crossorigin="anonymous">
 
     <title>{% block title %}{% endblock %}</title>
@@ -22,19 +22,23 @@
 <body>
 <main>
     <div class="auth-center">
-        <a href="/" class="login-logo anim-bounce-in hover-grow" aria-label="MapChat"></a>
+        <a href="/" class="login-logo pop-in hover-grow" aria-label="MapChat"></a>
         <h1 class="auth-title">{% block heading %}{% endblock %}</h1>
 
         {% block body %}{% endblock %}
     </div>
 
     <footer class="footer-login">
-        <span>&copy; {{ 'now'|date('Y') }} <a href="https://nabilr.com" class="footer-author">Nabil Rahman</a></span>
+        {% include '_copyright.html' %}
     </footer>
 </main>
 
-<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.1/jquery.min.js"></script>
-<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0-beta/js/materialize.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.15.0/jquery.validate.min.js"></script>
+<script src="/js/validatorExtended.js?v=1"></script>
+<script src="/js/authForms.js?v=1"></script>
+<script src="/js/passwordToggle.js"></script>
 {% include '_flash.html' %}
 
 {% block footer %}{% endblock %}
