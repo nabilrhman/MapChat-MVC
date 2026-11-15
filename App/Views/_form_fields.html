@@ -1,0 +1,25 @@
+{# A text field in Beer CSS's style: the label floats up once the field has
+   focus or text, and a problem shows in place of the hint until it's fixed
+   (formChecks.js). After a refused submit, the server's problems for the
+   field ("Email: Already registered") start out shown #}
+{% macro text_field(field, errors = []) %}
+{% set type = field.type|default('text') %}
+{% set problems = errors|default([])|filter(e => e starts with field.errors_key|default('') ~ ':')|map(e => (e|split(':', 2))[1]|trim) %}
+<div class="beer form-field"{% if field.box_id is defined %} id="{{ field.box_id }}"{% endif %}{% if field.hidden|default(false) %} hidden{% endif %}>
+    <div class="field label border{{ problems ? ' invalid' }}">
+        <input type="{{ type }}" id="{{ field.id }}" name="{{ field.name }}" value="{{ field.value|default('') }}"
+               placeholder=" " autocomplete="{{ field.autocomplete }}"
+               {%- if type == 'password' %} class="password-input"{% endif %}
+               {%- if field.autofocus|default(false) %} autofocus{% endif %}
+               {%- if problems %} aria-invalid="true" aria-describedby="{{ field.id }}-error"{% endif %}>
+        <label for="{{ field.id }}">{{ field.label }}</label>
+        {% if type == 'password' %}
+        <button type="button" class="password-toggle material-icons" aria-label="Show password">visibility</button>
+        {% endif %}
+        {% if field.hint is defined %}
+        <output class="form-field__hint">{{ field.hint }}</output>
+        {% endif %}
+        <output class="invalid" id="{{ field.id }}-error">{{ problems ? problems|join('. ') ~ '.' }}</output>
+    </div>
+</div>
+{% endmacro %}

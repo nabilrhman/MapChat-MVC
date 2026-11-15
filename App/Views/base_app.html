@@ -12,15 +12,16 @@
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/all.css" integrity="sha384-B4dIYHKNBt8Bc12p+WXckhzcICo0wtJAoU8YZTY5qE0Id1GSseTk6S+L3BlXeVIU" crossorigin="anonymous">
 
-    <link rel="stylesheet" href="/css/materialize.css">
-    <link rel="stylesheet" href="/css/animations.css?v=4" />
+    {% include '_beer.html' %}
+    <link rel="stylesheet" href="/css/base.css?v=3" />
+    <link rel="stylesheet" href="/css/animations.css?v=5" />
 
     <!-- Styles for the header and footer -->
-    <link rel="stylesheet" href="/css/header.css?v=23" />
+    <link rel="stylesheet" href="/css/header.css?v=24" />
     <link rel="stylesheet" href="/css/footer.css?v=6" />
 
-    <link rel="stylesheet" href="/css/styles.css?v=14" />
-    <link rel="stylesheet" href="/css/ui.css?v=20" />
+    <link rel="stylesheet" href="/css/styles.css?v=16" />
+    <link rel="stylesheet" href="/css/ui.css?v=25" />
 
     {% block head %}{% endblock %}
 </head>
@@ -30,19 +31,17 @@
 {% include '_header.html' %}
 
 {% block content %}
-<div class="container site-main">
+<div class="site-main">
     {% block body %}{% endblock %}
 </div>
 {% endblock %}
 
 {% include '_footer.html' %}
 
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
 <script src="https://unpkg.com/axios@1.7.9/dist/axios.min.js"></script>
-<script src="/js/http.js?v=2"></script>
-<!-- Compiled and minified JavaScript -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
-<script src="/js/toast.js?v=1"></script>
+<script src="/js/dom.js?v=2"></script>
+<script src="/js/http.js?v=4"></script>
+<script src="/js/toast.js?v=4"></script>
 <script src="/js/loadingBar.js?v=4"></script>
 <script src="/js/header.js?v=2"></script>
 <script src="/js/tooltip.js?v=5"></script>

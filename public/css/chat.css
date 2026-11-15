@@ -173,11 +173,11 @@ body
     padding: 0 14px 0 10px;
     border: none;
     border-radius: 17px;
-    background-color: #512da8;
-    color: #fff;
+    background-color: var(--md-primary);
+    color: var(--md-on-primary);
     font-size: 13px;
     font-weight: 600;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    box-shadow: var(--md-elevation-3);
     overflow: hidden;
     white-space: nowrap;
     transform: translateX(-50%);
@@ -197,15 +197,9 @@ body
     display: none;
 }
 
-/* materialize.css turns a focused button teal */
-.jump-latest:focus
-{
-    background-color: #512da8;
-}
-
 .jump-latest:hover
 {
-    background-color: #4527a0;
+    background-color: color-mix(in srgb, var(--md-on-primary) var(--md-hover), var(--md-primary));
 }
 
 /* The transparent outline only shows in forced-colors mode, which drops
@@ -232,6 +226,7 @@ body
     height: 48px; /* same as the top of the people list, line included */
     /* Flipped upside down so the scrollbar sits on top; each tab is flipped
        back. So "bottom" here is the top on screen, and "top" the bottom */
+    flex: none; /* keeps its height when the chat is folded to it */
     transform: scaleY(-1);
     padding: 0 8px 6px; /* the strip above the tabs */
     border-top: 1px solid #e0e0e0; /* the line under the tabs */
@@ -553,12 +548,13 @@ body
 }
 
 /* Same look as the unread count on the tabs */
+/* Lighter than a tab's unread badge: this only informs, the badge wants attention */
 .people__count
 {
     padding: 0 7px;
     border-radius: 10px;
-    background-color: #d1c4e9;
-    color: #311b92;
+    background-color: var(--md-secondary-container);
+    color: var(--md-primary);
     font-size: 11px;
     line-height: 18px;
     letter-spacing: 0;
@@ -748,25 +744,19 @@ body
     padding: 0 12px;
     border: none;
     border-radius: 4px;
-    background-color: #fff;
-    color: #512da8;
+    background-color: var(--md-surface-container-lowest); /* white, clear of the lavender map */
+    color: var(--md-primary);
     font-size: 13px;
     font-weight: 600;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    box-shadow: var(--md-elevation-2);
     cursor: pointer;
     transition: background-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
 }
 
-/* materialize.css turns a focused button teal */
-.people-toggle:focus
-{
-    background-color: #fff;
-}
-
+/* Only a faint tint: over the map a stronger one, or a deeper shadow, turns it grey */
 .people-toggle:hover
 {
-    background-color: #f5f1fb;
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
+    background-color: color-mix(in srgb, var(--md-primary) 4%, var(--md-surface-container-lowest));
 }
 
 .people-toggle:focus-visible
@@ -821,6 +811,48 @@ body
 .map-toggle__icon
 {
     font-size: 20px;
+}
+
+/* The caret at the end of the tab row, only on phones with the map open */
+.chat-fold
+{
+    display: none;
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 1;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 47px; /* the tab row, leaving its line below showing */
+    padding: 0;
+    border: none;
+    background-color: #ede7f6;
+    color: #512da8;
+    cursor: pointer;
+}
+
+.chat-fold:hover
+{
+    background-color: #e1d7f2;
+}
+
+.chat-fold:focus-visible
+{
+    outline: none;
+    box-shadow: inset 0 0 0 3px #d1c4e9;
+}
+
+/* Points down to fold, up to bring the chat back */
+.chat-fold__icon
+{
+    font-size: 26px;
+    transition: transform var(--dur) var(--ease-out);
+}
+
+.is-chat-folded .chat-fold__icon
+{
+    transform: rotate(180deg);
 }
 
 /* Wide screens: the list shows unless it was closed */
@@ -916,11 +948,27 @@ body
     }
 
     .map-toggle:hover,
-    .people-toggle:hover,
-    .map-toggle[aria-pressed="true"]
+    .people-toggle:hover
     {
         background-color: rgba(255, 255, 255, 0.15);
         box-shadow: none;
+    }
+
+    /* On (the map shown, the people list open): a white button with purple
+       inside, so on and off differ at a glance, not only by a faint tint */
+    .map-toggle[aria-pressed="true"],
+    .map-toggle[aria-pressed="true"]:hover,
+    .people-toggle[aria-expanded="true"],
+    .people-toggle[aria-expanded="true"]:hover
+    {
+        background-color: #fff;
+        color: var(--md-primary);
+    }
+
+    .map-toggle,
+    .people-toggle
+    {
+        transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
     }
 
     .map-toggle:focus-visible,
@@ -933,6 +981,35 @@ body
     .is-map-open .chat-panel
     {
         top: calc(var(--header-height) + 30vh);
+    }
+
+    /* Slides when the map opens or the chat folds */
+    .chat-panel
+    {
+        transition: top var(--dur-slow) var(--ease-out);
+    }
+
+    .is-map-open .chat-fold
+    {
+        display: flex;
+    }
+
+    /* Tabs don't scroll under the caret */
+    .is-map-open .chat-tabs
+    {
+        padding-right: 48px;
+    }
+
+    /* Folded: only the tab row stays, just above the footer */
+    .is-map-open.is-chat-folded .chat-panel
+    {
+        top: calc(100% - var(--footer-height) - 48px);
+    }
+
+    /* The squeezed list would count as scrolled up */
+    .is-map-open.is-chat-folded .jump-latest
+    {
+        display: none;
     }
 
     .is-map-open .map-loading
@@ -948,6 +1025,13 @@ body
         top: 30vh;
         bottom: auto;
         transform: translateY(-100%);
+    }
+
+    /* With the chat folded, they sit just above its tab row */
+    .is-chat-folded .maplibregl-ctrl-bottom-right,
+    .is-chat-folded .leaflet-bottom.leaflet-right
+    {
+        top: calc(100% - var(--header-height) - var(--footer-height) - 48px);
     }
 
     /* Leaflet's credit as MapLibre draws its own: a see-through round "i"
@@ -1226,12 +1310,12 @@ body
 }
 
 /* A field that grows with the text up to five lines, then scrolls */
-.chat-composer textarea.materialize-textarea
+.chat-composer__textarea
 {
     display: block; /* no inline gap under it, so it lines up with Send */
     box-sizing: border-box;
     width: 100%;
-    height: 42px; /* materialize.css makes it 3rem; match Send. Typing still grows it */
+    height: 42px; /* matches Send; typing grows it (chat.js) */
     min-height: 42px;
     max-height: 120px;
     margin: 0;
@@ -1248,9 +1332,10 @@ body
     transition: border-color var(--dur-fast) var(--ease-out);
 }
 
-.chat-composer textarea.materialize-textarea:focus
+.chat-composer__textarea:focus
 {
     border: 1px solid #7e57c2;
+    outline: none; /* the purple border shows focus */
     box-shadow: none;
 }
 
@@ -1269,8 +1354,7 @@ body
     color: #e53935;
 }
 
-.chat-composer__send,
-.chat-composer__send:focus /* materialize.css turns focused buttons teal */
+.chat-composer__send
 {
     flex: none;
     width: 42px;
@@ -1278,8 +1362,8 @@ body
     padding: 0;
     border: none;
     border-radius: 4px;
-    background-color: #512da8;
-    color: #fff;
+    background-color: var(--md-primary);
+    color: var(--md-on-primary);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -1287,14 +1371,16 @@ body
     transition: background-color var(--dur-fast) var(--ease-out);
 }
 
-.chat-composer__send:hover
+.chat-composer__send:hover:not(:disabled)
 {
-    background-color: #5e35b1;
+    background-color: color-mix(in srgb, var(--md-on-primary) var(--md-hover), var(--md-primary));
 }
 
+/* Material 3's disabled look, as on the other buttons */
 .chat-composer__send:disabled
 {
-    background-color: #d1c4e9;
+    background-color: color-mix(in srgb, var(--md-on-surface) 12%, transparent);
+    color: color-mix(in srgb, var(--md-on-surface) 38%, transparent);
     cursor: default;
 }
 

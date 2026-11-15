@@ -1,0 +1,120 @@
+/* The global basics every page builds on, which materialize.css used to give.
+   Beer CSS only styles inside .beer (its scoped build). In the lowest layer
+   (see _beer.html), so inside .beer Beer's own rules beat these */
+
+@layer base
+{
+    /* Material 3 colour roles for MapChat's purple, which stays the primary.
+       The rest come from its tonal palettes (Google's material-color-utilities,
+       tonal spot scheme). Shapes stay square: only colour, state and depth
+       follow Material 3 */
+    :root
+    {
+        --md-primary: #512da8;
+        --md-on-primary: #fff;
+        --md-primary-container: #e8ddff;
+        --md-on-primary-container: #21005d;
+        --md-secondary-container: #e8def8;
+        --md-on-secondary-container: #1d192b;
+        --md-error: #ba1a1a;
+
+        --md-surface: #fdf7ff;
+        --md-surface-container-lowest: #fff;
+        --md-surface-container-low: #f8f2fa;
+        --md-surface-container: #f2ecf4;
+        --md-surface-container-high: #ece6ee;
+        --md-on-surface: #1c1b20;
+        --md-on-surface-variant: #48454e;
+        --md-outline: #79757f;
+        --md-outline-variant: #cac4cf;
+
+        --md-inverse-surface: #322f35;
+        --md-inverse-on-surface: #f5eff7;
+        --md-inverse-primary: #cebdff;
+
+        /* Shadows for raised things, lowest first */
+        --md-elevation-1: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px 1px rgba(0, 0, 0, 0.15);
+        --md-elevation-2: 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 6px 2px rgba(0, 0, 0, 0.15);
+        --md-elevation-3: 0 1px 3px rgba(0, 0, 0, 0.3), 0 4px 8px 3px rgba(0, 0, 0, 0.15);
+
+        /* How much of a button's text colour tints it on hover and press */
+        --md-hover: 8%;
+        --md-pressed: 12%;
+    }
+
+    html
+    {
+        box-sizing: border-box;
+        line-height: 1.5;
+        color: var(--md-on-surface);
+        -webkit-text-size-adjust: 100%;
+    }
+
+    *,
+    *::before,
+    *::after
+    {
+        box-sizing: inherit;
+    }
+
+    body
+    {
+        margin: 0;
+    }
+
+    a
+    {
+        color: #039be5;
+        text-decoration: none;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    ul
+    {
+        padding-left: 0;
+        list-style-type: none;
+    }
+
+    img
+    {
+        border-style: none;
+    }
+
+    strong
+    {
+        font-weight: 500;
+    }
+
+    h1, h2, h3, h4, h5, h6
+    {
+        font-weight: 400;
+        line-height: 1.3;
+    }
+
+    h2 { font-size: 3.56rem; margin: 2.37rem 0 1.42rem; }
+    h3 { font-size: 2.92rem; margin: 1.95rem 0 1.17rem; }
+    h4 { font-size: 2.28rem; margin: 1.52rem 0 0.91rem; }
+    h5 { font-size: 1.64rem; margin: 1.09rem 0 0.66rem; }
+    h6 { font-size: 1.15rem; margin: 0.77rem 0 0.46rem; }
+
+    label
+    {
+        font-size: 0.8rem;
+        color: #9e9e9e;
+    }
+
+    /* A thin grey rule under page titles */
+    .divider
+    {
+        height: 1px;
+        overflow: hidden;
+        background-color: #e0e0e0;
+    }
+}
+
+/* Outside the layer: Beer makes .beer boxes display: block, and a hidden one
+   must still hide */
+[hidden]
+{
+    display: none;
+}

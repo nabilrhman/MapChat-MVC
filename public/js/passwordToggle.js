@@ -1,10 +1,13 @@
 // Eye button inside password fields: shows or hides what was typed
-$(document).on('click', '.password-toggle', function () {
-    var input = $(this).siblings('input');
-    var show = input.attr('type') === 'password';
+document.addEventListener('click', (event) => {
+    const toggle = event.target.closest('.password-toggle');
+    if (!toggle) return;
 
-    input.attr('type', show ? 'text' : 'password').focus();
-    $(this)
-        .text(show ? 'visibility_off' : 'visibility')
-        .attr('aria-label', show ? 'Hide password' : 'Show password');
+    const input = toggle.parentElement.querySelector('input');
+    const willShowPassword = input.type === 'password';
+
+    input.type = willShowPassword ? 'text' : 'password';
+    input.focus();
+    toggle.textContent = willShowPassword ? 'visibility_off' : 'visibility';
+    toggle.setAttribute('aria-label', willShowPassword ? 'Hide password' : 'Show password');
 });

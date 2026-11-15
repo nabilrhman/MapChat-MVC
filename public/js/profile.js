@@ -1,200 +1,177 @@
 // The profile page. The server's values come from data attributes (see
 // Profile/show.html)
 
-$(document).ready(function () {
+const profileForm = document.getElementById('formProfile');
+const ownUserId = profileForm.dataset.userId;
+const isGuest = profileForm.dataset.guest === 'true';
 
-    var form = $('#formProfile');
-    var userId = form.data('user-id');
-    var isGuest = form.data('guest');
+const nameInput = document.getElementById('inputName');
+const emailInput = document.getElementById('inputEmail');
+const passwordInput = document.getElementById('inputPassword');
+const currentPasswordField = document.getElementById('current-password');
 
-    $('#keep-account').on('click', function () {
-        startEditing($('#card-account'));
-        $('#inputEmail')[0].scrollIntoView({block: 'center', behavior: 'smooth'});
-        $('#inputEmail').focus();
-    });
+/* Privacy: saves as soon as it's switched */
 
-    /* Privacy: saves as soon as it's switched */
+const shareLocationSwitch = document.getElementById('share-location');
 
-    function showPlace(shared) {
-        $('#profile-place').toggleClass('is-hidden', !shared);
-    }
-    showPlace($('#share-location').prop('checked'));
+function showPlaceNote(isLocationShared) {
+    document.getElementById('profile-place')?.classList.toggle('is-hidden', !isLocationShared);
+}
+showPlaceNote(shareLocationSwitch.checked);
 
-    $('#share-location').on('change', function () {
-        var checkbox = this;
-        postForm('/profile/update-location-sharing', {share: checkbox.checked ? 1 : 0})
-            .then(function () {
-                showPlace(checkbox.checked);
-                showToast(checkbox.checked ? 'You are shown on the map' : 'You are hidden from the map', 'info');
-            })
-            .catch(function () {
-                checkbox.checked = !checkbox.checked;
-                showToast('Could not save. Try again.', 'warning');
-            });
-    });
-
-    /* Photo: saves as soon as it's uploaded or removed */
-
-    var avatar = $('#avatar');
-    var upload = $('#file-upload');
-    var CLOUDINARY_URL = 'https://api.cloudinary.com/v1_1/' + upload.data('cloud-name') + '/image/upload';
-    var CLOUDINARY_UPLOAD_PRESET = upload.data('upload-preset');
-
-    // An uploaded photo fades in over a soft circle once loaded
-    function showPhoto(src) {
-        avatar.attr('src', src);
-        if (avatar[0].complete || src.indexOf('data:') === 0) return;
-
-        $('#photo-frame').addClass('is-loading');
-        avatar.one('load error', function () {
-            $('#photo-frame').removeClass('is-loading');
+shareLocationSwitch.addEventListener('change', () => {
+    const isLocationShared = shareLocationSwitch.checked;
+    postForm('/profile/update-location-sharing', {share: isLocationShared ? 1 : 0})
+        .then(() => {
+            showPlaceNote(isLocationShared);
+            showToast(isLocationShared ? 'You are shown on the map' : 'You are hidden from the map', 'info');
+        })
+        .catch(() => {
+            shareLocationSwitch.checked = !isLocationShared;
+            showToast('Could not save. Try again.', 'warning');
         });
+});
+
+/* Photo: saves as soon as it's uploaded or removed */
+
+const avatar = document.getElementById('avatar');
+const photoFrame = document.getElementById('photo-frame');
+const photoUpload = document.getElementById('file-upload');
+const removePhotoButton = document.getElementById('remove-photo');
+const CLOUDINARY_URL = `https://api.cloudinary.com/v1_1/${photoUpload.dataset.cloudName}/image/upload`;
+const CLOUDINARY_UPLOAD_PRESET = photoUpload.dataset.uploadPreset;
+
+// An uploaded photo fades in over a soft circle once loaded
+function showPhoto(src) {
+    avatar.src = src;
+    if (avatar.complete || src.startsWith('data:')) return;
+
+    photoFrame.classList.add('is-loading');
+    const onPhotoSettled = () => photoFrame.classList.remove('is-loading');
+    avatar.addEventListener('load', onPhotoSettled, {once: true});
+    avatar.addEventListener('error', onPhotoSettled, {once: true});
+}
+showPhoto(avatar.src);
+
+async function uploadPhoto(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+
+    const response = await axios.post(CLOUDINARY_URL, formData);
+    return response.data.secure_url;
+}
+
+// Upload the photo, then save it; on any failure the old one stays
+photoUpload.addEventListener('change', async () => {
+    const file = photoUpload.files[0];
+    if (!file) return;
+    photoUpload.value = '';
+    photoFrame.classList.add('is-uploading');
+
+    try {
+        const photoUrl = await uploadPhoto(file);
+        await postForm('/profile/update-avatar', {avatar: photoUrl});
+        showPhoto(photoUrl);
+        removePhotoButton.hidden = false;
+        showToast('Photo updated');
+    } catch {
+        showToast('Your photo could not be saved. Try again.', 'warning');
+    } finally {
+        photoFrame.classList.remove('is-uploading');
     }
-    showPhoto(avatar.attr('src'));
+});
 
-    // Upload the photo, then save it; on any failure the old one stays
-    upload.on('change', function () {
-        var file = this.files[0];
-        if (!file) return;
-
-        $('#photo-frame').addClass('is-uploading');
-
-        var formData = new FormData();
-        formData.append('file', file);
-        formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-
-        axios.post(CLOUDINARY_URL, formData)
-            .then(function (res) {
-                var url = res.data.secure_url;
-                return postForm('/profile/update-avatar', {avatar: url}).then(function () {
-                    showPhoto(url);
-                    $('#remove-photo').prop('hidden', false);
-                    showToast('Photo updated');
-                });
-            })
-            .catch(function () {
-                showToast('Your photo could not be saved. Try again.', 'warning');
-            })
-            .finally(function () {
-                $('#photo-frame').removeClass('is-uploading');
-            });
-
-        this.value = '';
-    });
-
-    $('#remove-photo').on('click', function () {
-        postForm('/profile/remove-avatar')
-            .then(function () {
-                showPhoto(avatar.data('default-src'));
-                $('#remove-photo').prop('hidden', true);
-                showToast('Photo removed');
-            })
-            .catch(function () {
-                showToast('Your photo could not be removed. Try again.', 'warning');
-            });
-    });
-
-    /* Name, email and password: each card opens with Edit and saves with Save */
-
-    var fields = $('#inputName, #inputEmail, #inputPassword');
-    fields.each(function () {
-        $(this).data('initial', this.value);
-    });
-
-    function changed(field) {
-        return field.value !== $(field).data('initial');
-    }
-
-    function signInChanged() {
-        return changed($('#inputEmail')[0]) || $('#inputPassword').val() !== '';
-    }
-
-    function startEditing(card) {
-        card.addClass('is-editing');
-        M.updateTextFields();
-    }
-
-    // Back to the saved values and out of edit mode
-    function stopEditing(card) {
-        card.find('input').each(function () {
-            this.value = $(this).data('initial') || '';
+removePhotoButton.addEventListener('click', () => {
+    postForm('/profile/remove-avatar')
+        .then(() => {
+            showPhoto(avatar.dataset.defaultSrc);
+            removePhotoButton.hidden = true;
+            showToast('Photo removed');
+        })
+        .catch(() => {
+            showToast('Your photo could not be removed. Try again.', 'warning');
         });
-        card.find('label.error').remove();
-        card.find('input.error').removeClass('error');
-        card.removeClass('is-editing');
-        $('#current-password').prop('hidden', !signInChanged());
-        M.updateTextFields();
-    }
+});
 
-    $('.settings-card__edit-button').on('click', function () {
-        var card = $(this).closest('.settings-card');
-        startEditing(card);
-        card.find('.settings-card__edit input').first().focus();
-    });
+/* Name, email and password: each card opens with Edit and saves with Save */
 
-    $('.settings-card__cancel').on('click', function () {
-        stopEditing($(this).closest('.settings-card'));
-    });
+const editableFields = [nameInput, emailInput, passwordInput];
+const savedValues = new Map(editableFields.map((field) => [field, field.value]));
 
-    // The current password is asked for only when the email or password changes
-    $('#inputEmail, #inputPassword').on('input', function () {
-        $('#current-password').prop('hidden', !signInChanged());
-    });
+const hasChanged = (field) => field.value !== savedValues.get(field);
+const isSignInChanging = () => hasChanged(emailInput) || passwordInput.value !== '';
 
-    form.validate({
-        rules: {
-            name: {
-                required: true,
-                validName: true
-            },
-            email: {
-                // A guest only needs an email when setting a password
-                required: function () {
-                    return !isGuest || $('#inputPassword').val() !== '';
-                },
-                email: true,
-                remote: {
-                    url: '/account/validate-email',
-                    data: {
-                        ignore_id: function () {
-                            return userId;
-                        }
-                    }
-                }
-            },
-            password: {
-                minlength: 6,
-                validPassword: true
-            },
-            current_password: {
-                required: signInChanged
-            }
+// The current password is asked for only when the email or password changes
+function showCurrentPasswordIfNeeded() {
+    if (currentPasswordField) currentPasswordField.hidden = !isSignInChanging();
+}
+
+const formChecks = setUpFormChecks(profileForm, {
+    name: [FIELD_CHECKS.required()],
+    email: [
+        {
+            // A guest only needs an email when setting a password
+            message: isGuest ? 'Enter your email to keep your account.' : "Can't be blank.",
+            test: (value) => (isGuest && passwordInput.value === '') || value.trim() !== '',
         },
-        messages: {
-            email: {
-                required: isGuest ? 'Enter your email to keep your account.' : "Can't be blank.",
-                remote: 'Email already registered.'
-            },
-            current_password: {
-                required: 'Enter your current password to make this change.'
-            }
-        }
-    });
+        FIELD_CHECKS.email,
+        FIELD_CHECKS.emailIsFree(() => ownUserId),
+    ],
+    password: [FIELD_CHECKS.minLength(6), FIELD_CHECKS.letterAndNumber],
+    current_password: [FIELD_CHECKS.required('Enter your current password to make this change.')],
+});
 
-    var saving = false;
+function startEditing(card) {
+    card.classList.add('is-editing');
+}
 
-    form.on('submit', function () {
-        if ($(this).valid()) {
-            saving = true;
-            $(this).find('button[type=submit]').prop('disabled', true).text('Saving…');
-        }
+// Back to the saved values and out of edit mode
+function stopEditing(card) {
+    card.querySelectorAll('input').forEach((input) => {
+        input.value = savedValues.get(input) ?? '';
     });
+    formChecks.clearProblems(card);
+    card.classList.remove('is-editing');
+    showCurrentPasswordIfNeeded();
+}
 
-    // Warn before leaving with unsaved changes
-    window.addEventListener('beforeunload', function (e) {
-        if (!saving && fields.toArray().some(changed)) {
-            e.preventDefault();
-            e.returnValue = '';
-        }
+document.querySelectorAll('.settings-card__edit-button').forEach((editButton) => {
+    editButton.addEventListener('click', () => {
+        const card = editButton.closest('.settings-card');
+        startEditing(card);
+        card.querySelector('.settings-card__edit input').focus();
     });
+});
+
+document.querySelectorAll('.settings-card__cancel').forEach((cancelButton) => {
+    cancelButton.addEventListener('click', () => stopEditing(cancelButton.closest('.settings-card')));
+});
+
+document.getElementById('keep-account')?.addEventListener('click', () => {
+    startEditing(document.getElementById('card-account'));
+    emailInput.scrollIntoView({block: 'center', behavior: 'smooth'});
+    emailInput.focus();
+});
+
+emailInput.addEventListener('input', showCurrentPasswordIfNeeded);
+passwordInput.addEventListener('input', showCurrentPasswordIfNeeded);
+
+// Runs after the checks, which hold back a submit until everything passes
+let isSaving = false;
+
+profileForm.addEventListener('submit', (event) => {
+    if (event.defaultPrevented) return;
+    isSaving = true;
+    profileForm.querySelectorAll('button[type=submit]').forEach((saveButton) => {
+        saveButton.disabled = true;
+        saveButton.textContent = 'Saving…';
+    });
+});
+
+// Warn before leaving with unsaved changes
+window.addEventListener('beforeunload', (event) => {
+    if (!isSaving && editableFields.some(hasChanged)) {
+        event.preventDefault();
+    }
 });

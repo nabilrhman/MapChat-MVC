@@ -1,8 +1,0 @@
-{# The server's errors for one field ("Email: Already registered"), in the
-   label jQuery Validate uses, so it goes away once the field is fixed #}
-{% macro field_errors(errors, field, input) %}
-{% set messages = errors|default([])|filter(e => e starts with field ~ ':')|map(e => (e|split(':', 2))[1]|trim) %}
-{% if messages %}
-<label id="{{ input }}-error" class="error" for="{{ input }}">{{ messages|join('. ') }}.</label>
-{% endif %}
-{% endmacro %}

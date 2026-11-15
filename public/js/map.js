@@ -183,8 +183,8 @@ function mapReady() {
     mapShown = true;
 
     var show = function () {
-        $('#map').addClass('is-shown');
-        $('#map-loading').addClass('is-done');
+        document.getElementById('map').classList.add('is-shown');
+        document.getElementById('map-loading').classList.add('is-done');
     };
 
     if (vectorMap && !(vectorMap.areTilesLoaded() && !vectorMap.isMoving())) {
@@ -407,6 +407,8 @@ function initialize() {
             // Credits as a small (i) beside the people list (see chat.css). MapLibre
             // opens them at first; close them once the map is drawn
             map.addControl(new maplibregl.AttributionControl({compact: true}), 'bottom-right');
+            // No tooltip on the (i): it explains itself. The aria-label stays for screen readers
+            map.getContainer().querySelector('.maplibregl-ctrl-attrib-button').removeAttribute('title');
             map.once('load', function () {
                 var credits = map.getContainer().querySelector('.maplibregl-ctrl-attrib');
                 credits.classList.remove('maplibregl-compact-show');
@@ -427,4 +429,5 @@ function initialize() {
         .catch(initializeFallback);
 }
 
-$(initialize);
+// The script loads at the end of the page, so the map's box is already there
+initialize();

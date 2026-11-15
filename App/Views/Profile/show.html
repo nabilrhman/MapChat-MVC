@@ -1,9 +1,10 @@
 {% extends "base_app.html" %}
+{% import '_form_fields.html' as form %}
 
 {% block title %}Profile{% endblock %}
 
 {% block head %}
-<link rel="stylesheet" href="/css/profile.css?v=20"/>
+<link rel="stylesheet" href="/css/profile.css?v=22"/>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flag-icons@7.2.3/css/flag-icons.min.css">
 {% endblock %}
 
@@ -26,7 +27,7 @@
     {# What profile.js needs from the server #}
     <form action="/profile/update" method="post" id="formProfile" class="appear-down"
           data-user-id="{{ user.id|e('html_attr') }}"
-          data-guest="{{ user.is_guest ? 'true' : 'false' }}">
+          data-guest="{{ user.is_guest ? 'true' : 'false' }}" novalidate>
 
         {# Each card shows its details, and Edit turns them into fields with Cancel and Save #}
         <section class="settings-card" id="card-profile">
@@ -38,7 +39,7 @@
             {# The photo saves as soon as it's uploaded or removed, apart from Save #}
             <div class="profile-photo">
                 <div class="profile-photo__frame" id="photo-frame">
-                    <img class="profile-photo__image circle" id="avatar" alt="Your photo"
+                    <img class="profile-photo__image" id="avatar" alt="Your photo"
                          src="{{ avatar_src(user.id, user.name, user.avatar) }}"
                          data-default-src="{{ default_avatar|e('html_attr') }}"/>
                     <span class="loading-dots profile-photo__dots" aria-label="Uploading"><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span></span>
@@ -62,11 +63,7 @@
             </dl>
 
             <div class="settings-card__edit">
-                <div class="input-field">
-                    <input type="text" id="inputName" name="name" value="{{ user.name }}" autocomplete="name"/>
-                    <label for="inputName">Name</label>
-                    <span id="error-msg-name"></span>
-                </div>
+                {{ form.text_field({id: 'inputName', name: 'name', label: 'Name', value: user.name, autocomplete: 'name'}) }}
             </div>
 
             <div class="settings-card__actions settings-card__edit">
@@ -90,30 +87,19 @@
 
             {# A guest's placeholder email isn't shown; they type their own to keep the account #}
             <div class="settings-card__edit">
-                <div class="input-field">
-                    <input type="email" id="inputEmail" name="email" value="{{ user.is_guest ? '' : user.email }}" autocomplete="email"/>
-                    <label for="inputEmail">Email</label>
-                    <span id="error-msg-email"></span>
-                </div>
+                {{ form.text_field({id: 'inputEmail', name: 'email', type: 'email', label: 'Email',
+                                    value: user.is_guest ? '' : user.email, autocomplete: 'email'}) }}
 
-                <div class="input-field">
-                    <input type="password" id="inputPassword" name="password" class="password-input" autocomplete="new-password"/>
-                    <label for="inputPassword">{{ user.is_guest ? 'Password' : 'New password' }}</label>
-                    <button type="button" class="password-toggle material-icons" aria-label="Show password">visibility</button>
-                    <span class="helper-text">
-                        {{ user.is_guest ? '6+ characters, a letter and a number. Needed to keep your account.' : 'Leave blank to keep your current password.' }}
-                    </span>
-                    <span id="error-msg-password"></span>
-                </div>
+                {% if user.is_guest %}
+                {{ form.text_field({id: 'inputPassword', name: 'password', type: 'password', label: 'Password', autocomplete: 'new-password',
+                                    hint: '6+ characters, a letter and a number. Needed to keep your account.'}) }}
+                {% else %}
+                {{ form.text_field({id: 'inputPassword', name: 'password', type: 'password', label: 'New password', autocomplete: 'new-password',
+                                    hint: 'Leave blank to keep your current password.'}) }}
 
-                {% if not user.is_guest %}
-                <div class="input-field" id="current-password" hidden>
-                    <input type="password" id="inputCurrentPassword" name="current_password" class="password-input" autocomplete="current-password"/>
-                    <label for="inputCurrentPassword">Current password</label>
-                    <button type="button" class="password-toggle material-icons" aria-label="Show password">visibility</button>
-                    <span class="helper-text">Needed to change your email or password.</span>
-                    <span id="error-msg-current_password"></span>
-                </div>
+                {{ form.text_field({id: 'inputCurrentPassword', name: 'current_password', type: 'password', label: 'Current password',
+                                    autocomplete: 'current-password', hint: 'Needed to change your email or password.',
+                                    box_id: 'current-password', hidden: true}) }}
                 {% endif %}
             </div>
 
@@ -144,10 +130,10 @@
                 </p>
                 {% endif %}
             </div>
-            <div class="switch privacy-setting__switch">
-                <label>
+            <div class="beer privacy-setting__switch">
+                <label class="switch">
                     <input type="checkbox" id="share-location" {% if user.share_location %}checked{% endif %}>
-                    <span class="lever"></span>
+                    <span></span>
                 </label>
             </div>
         </div>
@@ -158,8 +144,7 @@
 {% endblock %}
 
 {% block footer %}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.15.0/jquery.validate.min.js"></script>
-<script src="/js/passwordToggle.js"></script>
-<script src="/js/validatorExtended.js?v=1"></script>
-<script src="/js/profile.js?v=3"></script>
+<script src="/js/passwordToggle.js?v=3"></script>
+<script src="/js/formChecks.js?v=2"></script>
+<script src="/js/profile.js?v=5"></script>
 {% endblock %}

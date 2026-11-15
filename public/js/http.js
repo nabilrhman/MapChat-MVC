@@ -16,7 +16,7 @@ function postForm(url, data) {
 }
 
 // The message the server gave for a refused request, if any
-function errorMessage(error, fallback) {
-    var data = error && error.response && error.response.data;
-    return (data && data.error) || fallback;
+function getErrorMessage(error, fallback) {
+    const data = error?.response?.data;
+    return data?.error || fallback;
 }
