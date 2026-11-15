@@ -11,6 +11,8 @@ use Symfony\Component\Mime\Email;
  *
  * Sends through whatever MAILER_DSN points at, e.g. any provider's SMTP:
  * smtp://user:pass@smtp.example.com:587
+ * or Brevo's HTTPS API, for hosts that block SMTP ports (like Render's free plan):
+ * brevo+api://API_KEY@default
  */
 class Mail
 {

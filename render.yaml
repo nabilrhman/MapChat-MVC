@@ -30,3 +30,9 @@ services:
         generateValue: true
       - key: SHOW_ERRORS
         value: "false"
+      # Free plans block SMTP ports, so use Brevo's API: brevo+api://API_KEY@default
+      - key: MAILER_DSN
+        sync: false
+      # Must use the verified domain, e.g. MapChat <no-reply@mail.swiftsolve.net>
+      - key: MAIL_FROM
+        sync: false
