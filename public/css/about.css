@@ -7,6 +7,7 @@
     --space-s: 12px;
     --space-m: clamp(16px, 2.5vw, 24px);
     --space-l: clamp(24px, 4vw, 40px);
+    --icon-size: 22px;
 
     max-width: 720px;   /* same as Profile, so the titles line up */
     margin: 0 auto;
@@ -126,11 +127,13 @@
 
 .about-card__icon
 {
+    width: var(--icon-size);
     color: #512da8;
-    font-size: 22px;
+    font-size: var(--icon-size);
 }
 
-/* A small purple dot before each line, centred on the first line of text */
+/* A small purple dot before each point, right under the middle of the
+   heading's icon, with the text lined up under the heading's words */
 .about-list
 {
     margin: 0;
@@ -139,7 +142,7 @@
 .about-list li
 {
     position: relative;
-    padding-left: 18px;
+    padding-left: calc(var(--icon-size) + var(--space-xs));
     line-height: 1.5;
 }
 
@@ -155,7 +158,7 @@
     content: "";
     position: absolute;
     top: calc(0.75em - 3px);
-    left: 2px;
+    left: calc(var(--icon-size) / 2 - 3px);
     width: 6px;
     height: 6px;
     border-radius: 50%;
