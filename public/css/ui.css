@@ -302,6 +302,13 @@ label.error
     text-align: left;
 }
 
+/* The checkbox tick in the site's purple instead of materialize teal */
+[type="checkbox"]:checked + span:not(.lever):before
+{
+    border-right-color: #512da8;
+    border-bottom-color: #512da8;
+}
+
 /* Purple switches, matching the rest of the app */
 .switch label input[type=checkbox]:checked + .lever
 {
