@@ -174,7 +174,7 @@
     align-items: center;
     gap: 8px;
     height: 44px;
-    padding: 0 6px 0 4px;
+    padding: 0 6px 0 6px; /* the chevron's glyph has its own space; this evens the ends */
     border: none;
     border-radius: 22px;
     background: none;
@@ -209,17 +209,14 @@
     flex: none;
     width: 34px;
     height: 34px;
-    border: 2px solid rgba(255, 255, 255, 0.85);
     border-radius: 50%;
     object-fit: cover;
-    background-color: #fff;
 }
 
 .account-menu__avatar--large
 {
     width: 40px;
     height: 40px;
-    border-color: #ede7f6;
 }
 
 .account-menu__name
@@ -232,6 +229,7 @@
 
 .account-menu__chevron
 {
+    margin-right: -2px;
     font-size: 20px;
     transition: transform var(--dur) var(--ease-out);
 }
@@ -350,11 +348,6 @@
         padding: 14px 20px;
         border-bottom: none;
         background-color: rgba(18, 0, 94, 0.2);
-    }
-
-    .account-menu__avatar--large
-    {
-        border-color: rgba(255, 255, 255, 0.85);
     }
 
     .account-menu__who-detail
