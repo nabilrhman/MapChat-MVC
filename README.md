@@ -117,7 +117,7 @@ logged into. To start with an empty room instead, remove the `demo.sql` line
 from `docker-compose.yml`.
 
 The MapChat account says hello when you walk into a quiet room. With
-`ANTHROPIC_API_KEY` set it also chats back: it answers someone nobody else
+`GROQ_API_KEY` set it also chats back: it answers someone nobody else
 answered within 45 seconds, keeps talking with whoever is talking to it, goes
 quiet while people talk to each other, and answers private messages (click its
 name). Room replies only see the open room, and private replies only see that
@@ -161,8 +161,8 @@ explanations. The main ones:
 | `DEV_FAKE_IP` | Locally every visitor has a private IP; this public IP is used for the map instead |
 | `DEMO_TIMEZONE` | Optional. Where the demo people's day starts at midnight. Default `America/Toronto` |
 | `DEMO_SPEED` | Optional, for watching the demo chat locally: `60` plays the whole day in 24 minutes. Leave empty on a real site |
-| `ANTHROPIC_API_KEY` | Optional. Lets the MapChat account chat back through the Claude API. Without it, it only greets |
-| `MAPCHAT_MODEL` | Optional. The Claude model it writes with. Default `claude-opus-5-5` |
+| `GROQ_API_KEY` | Optional. Lets the MapChat account chat back, through Groq's free plan (console.groq.com). Without it, it only greets |
+| `MAPCHAT_MODEL` | Optional. The Groq model it writes with. Default `openai/gpt-oss-120b` |
 | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_UPLOAD_PRESET` | Where avatar uploads go |
 
 ## Deploy for free

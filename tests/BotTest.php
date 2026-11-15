@@ -9,7 +9,7 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * The MapChat account with a clock the tests move and a writer that notes
- * what it was shown instead of calling the Claude API
+ * what it was shown instead of calling Groq
  */
 class TestBot extends Bot
 {

@@ -4,6 +4,8 @@ namespace App\Models;
 
 use PDO;
 use App\Config;
+use Symfony\Component\HttpClient\HttpClient;
+use Symfony\Contracts\HttpClient\Exception\ExceptionInterface;
 
 /**
  * The MapChat account chats back: it greets a visitor who walks into a quiet
@@ -42,8 +44,11 @@ class Bot extends \Core\Model
     /** How many earlier messages MapChat reads before it answers */
     const CONTEXT_MESSAGES = 20;
 
+    /** Groq's chat API, which has a free plan */
+    const API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+
     /** Used when MAPCHAT_MODEL is unset */
-    const MODEL = 'claude-opus-5-5';
+    const MODEL = 'openai/gpt-oss-120b';
 
     /** Who MapChat is and how it writes */
     const INSTRUCTIONS = <<<'TEXT'
@@ -54,7 +59,7 @@ class Bot extends \Core\Model
 
     /**
      * Writes MapChat's replies: fn (string $instructions, string $chat): ?string.
-     * The Claude API unless a test swaps it
+     * Groq unless a test swaps it
      *
      * @var callable|null
      */
@@ -67,7 +72,7 @@ class Bot extends \Core\Model
      */
     public static function canReply()
     {
-        return static::$writer !== null || Config::get('ANTHROPIC_API_KEY') !== null;
+        return static::$writer !== null || Config::get('GROQ_API_KEY') !== null;
     }
 
     /**
@@ -355,51 +360,50 @@ class Bot extends \Core\Model
             $messages
         );
 
-        $writer = static::$writer ?? [static::class, 'askClaude'];
+        $writer = static::$writer ?? [static::class, 'askGroq'];
 
         return $writer($situation, implode("\n", $lines));
     }
 
     /**
-     * Write a reply with the Claude API
+     * Write a reply with Groq's chat API
      *
      * @param string $situation
      * @param string $chat
      *
      * @return string|null
      */
-    protected static function askClaude($situation, $chat)
+    protected static function askGroq($situation, $chat)
     {
-        $client = new \Anthropic\Client(apiKey: Config::get('ANTHROPIC_API_KEY'));
+        $model = Config::get('MAPCHAT_MODEL', static::MODEL);
+        $request = [
+            'model' => $model,
+            'messages' => [
+                ['role' => 'system', 'content' => static::INSTRUCTIONS . "\n\n" . $situation],
+                ['role' => 'user', 'content' => "<chat>\n$chat\n</chat>"],
+            ],
+            'max_completion_tokens' => 1000,
+        ];
+
+        // A short chat line needs little thinking; only the gpt-oss models take these
+        if (str_starts_with($model, 'openai/gpt-oss')) {
+            $request['reasoning_effort'] = 'low';
+            $request['include_reasoning'] = false;
+        }
 
         try {
-            $message = $client->beta->messages->create(
-                model: Config::get('MAPCHAT_MODEL', static::MODEL),
-                maxTokens: 2000,
-                system: static::INSTRUCTIONS . "\n\n" . $situation,
-                messages: [['role' => 'user', 'content' => "<chat>\n$chat\n</chat>"]],
-                outputConfig: ['effort' => 'low'],
-                fallbacks: 'default',
-                betas: ['server-side-fallback-2026-07-01'],
-                requestOptions: ['timeout' => 20, 'maxRetries' => 1],
-            );
-        } catch (\Anthropic\Core\Exceptions\APIException $e) {
+            $response = HttpClient::create()->request('POST', static::API_URL, [
+                'auth_bearer' => Config::get('GROQ_API_KEY'),
+                'json' => $request,
+                // Someone's poll waits on this, so don't let it hang
+                'max_duration' => 20,
+            ]);
+
+            return $response->toArray()['choices'][0]['message']['content'] ?? null;
+        } catch (ExceptionInterface $e) {
             error_log('MapChat could not write a reply: ' . $e->getMessage());
             return null;
         }
-
-        // Declined: say nothing rather than something odd
-        if ($message->stopReason === 'refusal') {
-            return null;
-        }
-
-        foreach ($message->content as $block) {
-            if ($block->type === 'text') {
-                return $block->text;
-            }
-        }
-
-        return null;
     }
 
     /**
