@@ -5,17 +5,17 @@ namespace App;
 /**
  * Picture for people who haven't uploaded an avatar: their initials on a
  * coloured gradient, the same style as the sample people's avatars, or for
- * guests a drawn face. Each person always gets the same one.
+ * the demo people a drawn face. Each person always gets the same one.
  */
 class Avatar
 {
-    /** Line colour of the guest faces */
+    /** Line colour of the demo people's faces */
     const INK = '#1f1f1f';
 
-    /** Pastel backgrounds for the guest faces */
+    /** Pastel backgrounds for the demo people's faces */
     const PASTELS = ['#fde2e4', '#e2ece9', '#dfe7fd', '#fff1e6', '#e9f5db', '#fad2e1', '#d7e3fc', '#fcefb4', '#e4dcf1', '#d8f3dc'];
 
-    /** Guest face parts, drawn on a 96 x 96 grid in the ink colour */
+    /** Face parts, drawn on a 96 x 96 grid in the ink colour */
     const HAIR = [
         'crop' => '<path d="M27 46C25 27 37 18 49 18C62 18 72 28 69 46C66 37 58 31 48 31C38 31 31 37 27 46Z"/>',
         'swoop' => '<path d="M27 47C23 26 42 13 60 19C71 23 73 35 69 47C66 38 61 32 54 30C50 36 40 38 30 37C28 40 27 43 27 47Z"/>',
@@ -93,26 +93,26 @@ class Avatar
      * @param int $id
      * @param string $name
      * @param string|null $photo The uploaded photo's URL, if any
-     * @param bool $is_guest Guests get a drawn face instead of initials
+     * @param bool $is_demo The demo people (database/demo.sql) get a drawn face
      *
      * @return string
      */
-    public static function src($id, $name, $photo = null, $is_guest = false)
+    public static function src($id, $name, $photo = null, $is_demo = false)
     {
-        if ($photo) {
+        if ($photo && !$is_demo) {
             return $photo;
         }
 
-        $svg = $is_guest ? static::face($id) : static::svg($name, $id);
+        $svg = $is_demo ? static::face($id) : static::svg($name, $id);
 
         return 'data:image/svg+xml;base64,' . base64_encode($svg);
     }
 
     /**
-     * A guest's avatar: a line-drawn face on a pastel background, put
-     * together from the parts above. The same guest always gets the same face
+     * A demo person's avatar: a line-drawn face on a pastel background, put
+     * together from the parts above. The same person always gets the same face
      *
-     * @param int $seed The guest's id
+     * @param int $seed The person's id
      *
      * @return string SVG
      */

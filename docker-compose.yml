@@ -14,6 +14,7 @@ services:
       - ./App:/var/www/html/App
       - ./Core:/var/www/html/Core
       - ./public:/var/www/html/public
+      - ./database:/var/www/html/database
     depends_on:
       mailpit:
         condition: service_started
