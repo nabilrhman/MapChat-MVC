@@ -3,21 +3,16 @@
 namespace App\Controllers;
 
 use App\Auth;
-use \Core\View;
-use \App\Models\Chat;
-use \App\Models\User;
-use \App\Models\UserInfo;
-
+use Core\View;
+use App\Models\Chat;
+use App\Models\User;
+use App\Models\UserInfo;
 
 /**
- * Items controller (example)
- *
- * PHP version 7.0
+ * The chat page and the AJAX calls it makes
  */
-//class Items extends \Core\Controller
 class App extends Authenticated
 {
-
     /**
      * App index
      *
@@ -47,15 +42,13 @@ class App extends Authenticated
         UserInfo::markOnline(Auth::getEmail());
 
         // A page from before this change doesn't send it; don't flood it with old messages
-        if (!isset($_POST['after']))
-        {
+        if (!isset($_POST['after'])) {
             return;
         }
 
         $chats = Chat::getAfter(Auth::getEmail(), (int) $_POST['after']);
 
-        if ($chats)
-        {
+        if ($chats) {
             View::renderTemplate('App/chat.html', [
                 'chats' => $chats
             ]);
@@ -117,9 +110,7 @@ class App extends Authenticated
      */
     protected function refuse($status, $message)
     {
-        http_response_code($status);
-        header('Content-Type: application/json');
-        echo json_encode(['error' => $message]);
+        $this->json(['error' => $message], $status);
     }
 
     /**
@@ -132,11 +123,8 @@ class App extends Authenticated
     {
         // Only ever update the signed-in user's own location, from their real IP
         $userInfo = new UserInfo(['email' => Auth::getEmail(), 'ip' => UserInfo::getRealIP()]);
-        if ($userInfo->hasIPUpdated() || $userInfo->isMissingLocation())
-        {
-            $userInfo->saveIP();
-            $userInfo->findLocationFromIP();
-            $userInfo->saveLocation();
+        if ($userInfo->hasIPUpdated() || $userInfo->isMissingLocation()) {
+            UserInfo::locate(Auth::getEmail(), UserInfo::getRealIP());
         }
     }
 
@@ -156,23 +144,16 @@ class App extends Authenticated
         // So you're in the list from the first load, not after the next check
         UserInfo::markOnline(Auth::getEmail());
 
-        header('Content-Type: application/json');
-        echo json_encode(UserInfo::getRecentPeople());
+        $this->json(UserInfo::getRecentPeople());
     }
 
+    /**
+     * Everyone's pin for the map (for AJAX)
+     *
+     * @return void
+     */
     public function getLocationsAction()
     {
-        $userInfo = new UserInfo();
-        $locations = $userInfo->getAllLocations();
-
-        header('Content-Type: application/json');
-        echo json_encode($locations);
-
-
-        //print_r($userInfo->getAllLocations());
-        //echo $locations[1]['lat'];
-
+        $this->json(UserInfo::getAllLocations());
     }
-
-
 }

@@ -2,18 +2,21 @@
 
 namespace App\Controllers;
 
-use \Core\View;
-use \App\Auth;
-use \App\Flash;
-use \App\Models\UserInfo;
+use Core\View;
+use App\Auth;
+use App\Flash;
+use App\Models\UserInfo;
 
 /**
  * Profile controller
- *
- * PHP version 7.0
  */
 class Profile extends Authenticated
 {
+    /**
+     * The logged-in user
+     * @var \App\Models\User
+     */
+    protected $user;
 
     /**
      * Before filter - called before each action method
@@ -37,7 +40,7 @@ class Profile extends Authenticated
         View::renderTemplate('Profile/show.html', [
             'user' => $this->user,
             'place' => UserInfo::getPlace($this->user->email),
-            'default_avatar' => '/avatar/' . $this->user->id . '?v=' . urlencode($this->user->name)
+            'default_avatar' => \App\Avatar::src($this->user->id, $this->user->name)
         ]);
     }
 
@@ -58,7 +61,7 @@ class Profile extends Authenticated
                 if ($password !== '') {
                     $this->refuse('Enter your email to keep your account.');
                 }
-                $_POST['email'] = $this->user->email;
+                $email = $this->user->email;
             }
         } elseif ($email !== $this->user->email || $password !== '') {
             // Changing how you sign in needs your current password
@@ -67,7 +70,9 @@ class Profile extends Authenticated
             }
         }
 
-        if ($this->user->updateProfile($_POST)) {
+        $data = ['name' => $_POST['name'] ?? '', 'email' => $email, 'password' => $password];
+
+        if ($this->user->updateProfile($data)) {
             Flash::clear();
             Flash::addMessage('Changes saved');
         } else {
@@ -129,7 +134,6 @@ class Profile extends Authenticated
 
         $this->user->setLocationSharing(!empty($_POST['share']));
 
-        header('Content-Type: application/json');
-        echo json_encode(['share_location' => !empty($_POST['share'])]);
+        $this->json(['share_location' => !empty($_POST['share'])]);
     }
 }

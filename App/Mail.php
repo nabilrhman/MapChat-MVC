@@ -14,7 +14,6 @@ use Symfony\Component\Mime\Email;
  */
 class Mail
 {
-
     /**
      * Send a message. Does nothing when email is not configured.
      *

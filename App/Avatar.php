@@ -44,6 +44,21 @@ class Avatar
     }
 
     /**
+     * Image address for an avatar: the uploaded photo, or the letter avatar
+     * inline, so a page full of people needs no request per avatar
+     *
+     * @param int $id
+     * @param string $name
+     * @param string|null $photo The uploaded photo's URL, if any
+     *
+     * @return string
+     */
+    public static function src($id, $name, $photo = null)
+    {
+        return $photo ?: 'data:image/svg+xml;base64,' . base64_encode(static::svg($name, $id));
+    }
+
+    /**
      * The avatar as an SVG image
      *
      * @param string $name Shown as initials

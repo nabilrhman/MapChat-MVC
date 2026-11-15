@@ -4,33 +4,27 @@ namespace App;
 
 /**
  * Unique random tokens
- *
- * PHP version 7.0
  */
 class Token
 {
-
     /**
      * The token value
-     * @var array
+     * @var string
      */
     protected $token;
 
     /**
      * Class constructor. Create a new random token or assign an existing one if passed in.
      *
-     * @param string $value (optional) A token value
+     * @param string $token_value (optional) A token value
      *
-     * @return string  A 32-character token
+     * @return void
      */
     public function __construct($token_value = null)
     {
         if ($token_value) {
-
             $this->token = $token_value;
-
         } else {
-        
             $this->token = bin2hex(random_bytes(16));  // 16 bytes = 128 bits = 32 hex characters
         }
     }
@@ -52,7 +46,7 @@ class Token
      */
     public function getHash()
     {
-        $secret = \App\Config::get('SECRET_KEY');
+        $secret = Config::get('SECRET_KEY');
         if ($secret === null) {
             throw new \RuntimeException('SECRET_KEY is not set');
         }
