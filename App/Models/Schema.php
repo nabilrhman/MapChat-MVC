@@ -29,6 +29,23 @@ class Schema extends \Core\Model
     ];
 
     /**
+     * The demo people's country and time zone, as in demo.sql. A database
+     * seeded before those columns existed has them empty, and the demo
+     * people never sign in to fill them
+     */
+    const DEMO_PLACES = [
+        'aiko@demo.mapchat.local'    => ['JP', 'Asia/Tokyo'],
+        'rafael@demo.mapchat.local'  => ['PT', 'Europe/Lisbon'],
+        'maya@demo.mapchat.local'    => ['CA', 'America/Toronto'],
+        'tanvir@demo.mapchat.local'  => ['BD', 'Asia/Dhaka'],
+        'wanjiru@demo.mapchat.local' => ['KE', 'Africa/Nairobi'],
+        'lukas@demo.mapchat.local'   => ['DE', 'Europe/Berlin'],
+        'sofia@demo.mapchat.local'   => ['MX', 'America/Mexico_City'],
+        'jaewon@demo.mapchat.local'  => ['KR', 'Asia/Seoul'],
+        'emily@demo.mapchat.local'   => ['US', 'America/Boise'],
+    ];
+
+    /**
      * Add any of ADDED_COLUMNS the database is missing. Safe to run every start
      *
      * @return array The columns added, as table.column
@@ -48,7 +65,27 @@ class Schema extends \Core\Model
             }
         }
 
+        static::fillDemoPlaces($db);
+
         return $added;
+    }
+
+    /**
+     * Give the demo people their country and time zone where they're missing
+     *
+     * @param PDO $db
+     *
+     * @return void
+     */
+    protected static function fillDemoPlaces($db)
+    {
+        $stmt = $db->prepare('UPDATE userinfo
+                              SET country = COALESCE(country, :country), timezone = COALESCE(timezone, :timezone)
+                              WHERE email = :email');
+
+        foreach (static::DEMO_PLACES as $email => [$country, $timezone]) {
+            $stmt->execute([':email' => $email, ':country' => $country, ':timezone' => $timezone]);
+        }
     }
 
     /**
