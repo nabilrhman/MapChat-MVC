@@ -164,6 +164,14 @@ return [
             ['maya', 'that\'s what i hoped. my budget disagrees 💸'],
             ['rafael', 'get them warm, with cinnamon, from a place with a queue of grandmas. trust the grandmas'],
         ],
+        [
+            ['maya', 'I\'M IN LISBON 🇵🇹 rafael your tips were perfect'],
+            ['rafael', 'welcome!! did you find the grandma queue?'],
+            ['maya', 'yes! 6 pastéis de nata today. no regrets'],
+            ['lukas', 'maya that is a strong first day'],
+            ['rafael', 'want to grab a coffee tomorrow? i can show you the best viewpoint in the city ☕'],
+            ['maya', 'yes please!! ☀️'],
+        ],
     ],
     'guide' => [
         [
@@ -279,6 +287,124 @@ return [
             ['maya', 'great for asking someone for tips without spamming the whole room 😄'],
             ['rafael', 'my inbox is open for lisbon questions 😄'],
             ['tanvir', 'nice, i\'ll try it 👍'],
+        ],
+    ],
+    'football' => [
+        [
+            ['rafael', 'who\'s watching football this weekend? ⚽'],
+            ['lukas', 'me, but my team has lost five in a row 😩'],
+            ['rafael', 'lukas five?? that\'s painful'],
+            ['sofia', 'i only watch for the snacks 🍿'],
+            ['wanjiru', 'sofia same. snacks first, football second'],
+        ],
+        [
+            ['rafael', 'lukas, did your team finally win?'],
+            ['lukas', 'WE WON 🎉 1-0 in the 93rd minute'],
+            ['rafael', 'the losing streak is over!'],
+            ['lukas', 'i aged ten years in those last three minutes'],
+            ['sofia', 'congrats lukas! i\'ll eat a snack in your honour 🍿'],
+        ],
+    ],
+    'wedding' => [
+        [
+            ['tanvir', 'my cousin\'s wedding is next week. five days of events 😅'],
+            ['emily', 'tanvir five days?? how?'],
+            ['tanvir', 'mehndi, holud, the wedding, the reception... and a lot of food in between'],
+            ['wanjiru', 'honestly that sounds amazing'],
+            ['tanvir', 'ask me again on day four 😂'],
+        ],
+        [
+            ['jaewon', 'tanvir how\'s the wedding marathon going?'],
+            ['tanvir', 'day 3 and i\'ve danced more this week than in my whole life 💃'],
+            ['jaewon', 'pictures or it didn\'t happen'],
+            ['tanvir', 'my aunts have 400 photos. none of them are flattering'],
+            ['maya', 'that\'s every wedding everywhere 😂'],
+        ],
+    ],
+    'bike' => [
+        [
+            ['lukas', 'someone stole my bike from outside the bakery 😤'],
+            ['aiko', 'oh no lukas! did you lock it?'],
+            ['lukas', 'i locked it... to itself. apparently that\'s not how locks work'],
+            ['emily', 'oh lukas 😂'],
+            ['lukas', 'reported it. not very hopeful'],
+        ],
+        [
+            ['lukas', 'you won\'t believe it. found my bike 🚲'],
+            ['aiko', 'WHERE?'],
+            ['lukas', 'two streets away, outside a different bakery. even the thief needed bread'],
+            ['tanvir', 'a thief with good taste 😂'],
+            ['lukas', 'new lock arrived today. a very serious one 🔒'],
+        ],
+    ],
+    'surf' => [
+        [
+            ['rafael', 'tried surfing for the first time today 🏄'],
+            ['jaewon', 'rafael how was it?'],
+            ['rafael', 'i stood up for about one second. then the ocean said no'],
+            ['emily', 'one second counts!'],
+            ['rafael', 'my instructor said the same. i think he was being kind 😅'],
+        ],
+    ],
+    'mole' => [
+        [
+            ['sofia', 'my abuela is teaching me her mole recipe today. it has 23 ingredients 😳'],
+            ['tanvir', 'sofia 23?? my nani\'s biryani would be jealous'],
+            ['sofia', 'three kinds of chilli, chocolate, sesame, and a lot of patience'],
+            ['maya', 'how long does it take?'],
+            ['sofia', 'all day. but she says it\'s worth it, and she\'s always right'],
+        ],
+    ],
+    'matatu' => [
+        [
+            ['wanjiru', 'rode the coolest matatu today 🚌 neon lights, a huge painting of a lion, music so loud the seats shook'],
+            ['emily', 'wanjiru what\'s a matatu?'],
+            ['wanjiru', 'our minibuses! each one is decorated by its crew. some are like rolling art galleries'],
+            ['jaewon', 'that sounds way more fun than my bus'],
+            ['wanjiru', 'it\'s fun until you need to get off and nobody can hear you 😂'],
+        ],
+    ],
+    'kdrama' => [
+        [
+            ['maya', 'jaewon, recommend me a k-drama. i need something to watch this weekend 📺'],
+            ['jaewon', 'how many hours of sleep are you willing to lose?'],
+            ['maya', 'like... a few?'],
+            ['jaewon', 'then something short. "my liberation notes". quiet but beautiful'],
+            ['aiko', 'that one made me cry on a train'],
+            ['maya', 'perfect. adding it 🍿'],
+        ],
+    ],
+    'music' => [
+        [
+            ['jaewon', 'what\'s everyone listening to? i need new music 🎧'],
+            ['wanjiru', 'jaewon try sauti sol. happy music from kenya'],
+            ['rafael', 'fado, if you want to feel things'],
+            ['lukas', 'berlin techno, if you want to feel nothing 😄'],
+            ['jaewon', 'lukas that\'s the most berlin answer possible'],
+        ],
+    ],
+    'vending' => [
+        [
+            ['aiko', 'tokyo tip: in winter the vending machines sell hot corn soup in a can 🌽'],
+            ['tanvir', 'aiko hot soup... from a machine??'],
+            ['aiko', 'yes! and there\'s always one bit of corn stuck at the bottom you can never get out'],
+            ['lukas', 'i need this immediately'],
+        ],
+    ],
+    'traffic' => [
+        [
+            ['tanvir', 'took 50 minutes to go 3km in a rickshaw today 🛺'],
+            ['sofia', 'tanvir mexico city traffic says hi 👋 i walk whenever i can'],
+            ['rafael', 'lisbon\'s problem is that everything is uphill. somehow both ways'],
+            ['tanvir', 'rafael at least your hills come with a view'],
+        ],
+    ],
+    'app_photo' => [
+        [
+            ['emily', 'how do people have real photos here? mine is just my initials'],
+            ['sofia', 'emily go to your profile and click "change photo"'],
+            ['emily', 'oh nice. should i use a photo of me or of Doughlores?'],
+            ['aiko', 'Doughlores, obviously 😂'],
         ],
     ],
 ];
