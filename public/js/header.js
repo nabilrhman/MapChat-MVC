@@ -26,7 +26,7 @@
 
     var menuButton = document.getElementById('menu-button');
     menu(document.querySelector('.site-header'), menuButton, 'is-menu-open', function (open) {
-        setIcon(menuButton.querySelector('.icon'), open ? 'close-circle' : 'hamburger-menu');
+        setIcon(menuButton.querySelector('.icon'), open ? 'close' : 'hamburger-menu');
     });
 
     menu(document.getElementById('account-menu'), document.getElementById('account-menu-button'), 'is-open');
