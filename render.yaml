@@ -7,9 +7,12 @@ services:
     runtime: docker
     plan: free
     healthCheckPath: /login
+    # Point a CNAME for this name at the service's onrender.com address
+    domains:
+      - mapchat.swiftsolve.net
     envVars:
       - key: APP_URL
-        sync: false
+        value: https://mapchat.swiftsolve.net
       - key: DB_HOST
         sync: false
       - key: DB_PORT
