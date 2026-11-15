@@ -10,7 +10,7 @@
     {# Phones fold the links into this menu #}
     <button type="button" class="site-header__menu-button" id="menu-button"
             aria-controls="site-nav" aria-expanded="false" aria-label="Menu">
-        <i class="material-icons">menu</i>
+        {{ icon('hamburger-menu') }}
     </button>
 
     <div class="site-header__nav" id="site-nav">
@@ -23,7 +23,7 @@
                     aria-controls="account-menu-list" aria-expanded="false" aria-haspopup="true">
                 <img class="account-menu__avatar" src="{{ avatar_src(current_user.id, current_user.name, current_user.avatar) }}" alt="">
                 <span class="account-menu__name">{{ current_user.name }}</span>
-                <i class="material-icons account-menu__chevron">expand_more</i>
+                {{ icon('alt-arrow-down', 'account-menu__chevron') }}
             </button>
             <div class="account-menu__list" id="account-menu-list">
                 <div class="account-menu__who">
@@ -34,11 +34,11 @@
                     </span>
                 </div>
                 <a href="/profile/show" class="account-menu__item{{ on_profile ? ' is-current' }}"{{ on_profile ? ' aria-current="page"' }}>
-                    <i class="material-icons">person</i>Profile
+                    {{ icon('user', 'account-menu__icon') }}Profile
                 </a>
                 <form method="post" action="/logout">
                     <button type="submit" class="account-menu__item account-menu__item--button">
-                        <i class="material-icons">logout</i>Log out
+                        {{ icon('logout-2', 'account-menu__icon') }}Log out
                     </button>
                 </form>
             </div>

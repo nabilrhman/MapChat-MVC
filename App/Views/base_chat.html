@@ -20,13 +20,13 @@
 
 <!-- Shows the map on phones, where it starts hidden to give the chat the room -->
 <button class="map-toggle" id="map-toggle" type="button" aria-pressed="false" aria-label="Show the map" title="Show the map">
-    <i class="material-icons map-toggle__icon">map</i>
+    {{ icon('map', 'map-toggle__icon') }}
 </button>
 
 <!-- Opens the people list on screens too narrow to show it beside the map -->
 <button class="people-toggle" id="people-toggle" type="button" aria-label="Who's online"
         aria-controls="people" aria-expanded="false">
-    <i class="material-icons people-toggle__icon">group</i><span id="people-toggle-count">0</span>
+    {{ icon('users-group-rounded', 'people-toggle__icon') }}<span id="people-toggle-count">0</span>
 </button>
 
 {# What chat.js needs from the server #}
@@ -45,12 +45,12 @@
     {# Phones with the map open: folds the chat down to its tabs (chat.js) #}
     <button class="chat-fold" id="chat-fold" type="button" aria-controls="chat-list" aria-expanded="true"
             aria-label="Fold the chat away" title="Fold the chat away">
-        <i class="material-icons chat-fold__icon" aria-hidden="true">expand_more</i>
+        {{ icon('alt-arrow-down', 'chat-fold__icon') }}
     </button>
 
     <div class="private-note" id="private-note" hidden>
         <span class="private-note__label">
-            <i class="material-icons private-note__icon">lock</i><span class="private-note__text" id="private-note-text"></span>
+            {{ icon('lock', 'private-note__icon') }}<span class="private-note__text" id="private-note-text"></span>
         </span>
     </div>
 
@@ -61,7 +61,7 @@
 
         {# Shows when you've scrolled up; counts messages that came in meanwhile #}
         <button type="button" class="jump-latest" id="jump-latest" hidden>
-            <i class="material-icons jump-latest__icon" aria-hidden="true">arrow_downward</i><span id="jump-latest-text" aria-live="polite">Latest</span>
+            {{ icon('arrow-down', 'jump-latest__icon') }}<span id="jump-latest-text" aria-live="polite">Latest</span>
         </button>
     </div>
 
@@ -74,7 +74,7 @@
 
         <button name="send" class="chat-composer__send" id="button-send" type="submit"
                 aria-label="Send" title="Send" disabled>
-            <i class="material-icons chat-composer__send-icon">send</i>
+            {{ icon('plain', 'chat-composer__send-icon') }}
         </button>
     </form>
 

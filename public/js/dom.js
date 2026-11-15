@@ -7,6 +7,23 @@ function createElement(tagName, className = '', text = '') {
     return element;
 }
 
+// An icon from the sprite, as Core\Icon draws one in Twig
+function createIcon(name, className = '') {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('class', `icon ${className}`.trim());
+    svg.setAttribute('aria-hidden', 'true');
+    const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+    use.setAttribute('href', `${document.documentElement.dataset.icons}#${name}`);
+    svg.append(use);
+    return svg;
+}
+
+// Shows another icon from the sprite in an icon's place
+function setIcon(svg, name) {
+    const use = svg.querySelector('use');
+    use.setAttribute('href', use.getAttribute('href').replace(/#.*$/, `#${name}`));
+}
+
 // Elements from a chunk of HTML the server sent
 function parseHtml(html) {
     const template = document.createElement('template');

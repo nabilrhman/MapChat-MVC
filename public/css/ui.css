@@ -206,9 +206,8 @@ h4
     right: 8px;
     z-index: 2; /* above Beer's input */
     color: var(--md-on-surface-variant);
-    font-family: "Material Icons";
     font-size: 20px;
-    line-height: 1;
+    line-height: 0;
     cursor: pointer;
 }
 

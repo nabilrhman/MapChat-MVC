@@ -82,6 +82,9 @@ first visit after a quiet spell takes about a minute to wake up.
   the form fields, scoped so it styles nothing else. Plain JavaScript with no
   jQuery, and axios for every request to the server. The chat asks for new
   messages every second.
+- **Icons:** the Bold weight of the [Solar icon set](https://www.figma.com/community/file/1166831539721848736)
+  by 480 Design, under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/),
+  in one sprite, `public/icons.svg`. The GitHub mark is from Simple Icons.
 - **Map:** MapLibre with OpenStreetMap data from OpenFreeMap, styled to match
   MapChat's colours. Browsers without WebGL get OpenStreetMap tiles through
   Leaflet instead, recoloured to the same theme in the browser. No API key is

@@ -17,7 +17,7 @@
 
     {% if user.is_guest %}
     <div class="guest-banner appear-down">
-        <i class="material-icons guest-banner__icon">schedule</i>
+        {{ icon('clock-circle', 'guest-banner__icon') }}
         <strong class="guest-banner__title">Guest account</strong>
         <span class="guest-banner__note">Deleted in {{ user.guestHoursLeft() }} h along with your messages.</span>
         <button type="button" class="button button--primary button--small guest-banner__button" id="keep-account">Keep my account</button>
@@ -46,7 +46,7 @@
                 </div>
                 <div>
                     <label for="file-upload" class="button button--quiet button--small profile-photo__button">
-                        <i class="material-icons button__icon">photo_camera</i>Change photo
+                        {{ icon('camera', 'button__icon') }}Change photo
                     </label>
                     <button type="button" class="link-button link-button--danger" id="remove-photo"
                             {% if user.avatar is empty %}hidden{% endif %}>Remove</button>
