@@ -7,17 +7,43 @@ namespace App\Controllers\Test {
      */
     class Probe extends \Core\Controller
     {
-        /** Each action that ran, with the route's parameters */
+        /** Each step that ran, with the route's parameters for actions */
         public static array $calls = [];
 
-        protected function showAction()
+        /** What before() returns; false stops the action */
+        public static $beforeResult = null;
+
+        protected function before()
+        {
+            static::$calls[] = ['before'];
+
+            return static::$beforeResult;
+        }
+
+        protected function after()
+        {
+            static::$calls[] = ['after'];
+        }
+
+        public function showAction()
         {
             static::$calls[] = ['show', $this->route_params];
         }
 
-        protected function addNewAction()
+        public function listAction()
         {
-            static::$calls[] = ['addNew', $this->route_params];
+            static::$calls[] = ['list', $this->route_params];
+        }
+
+        public function saveAction()
+        {
+            static::$calls[] = ['save', $this->route_params];
+        }
+
+        /** Public, but no route names it */
+        public function secretAction()
+        {
+            static::$calls[] = ['secret', $this->route_params];
         }
     }
 }
@@ -25,6 +51,7 @@ namespace App\Controllers\Test {
 namespace Tests {
 
     use App\Controllers\Test\Probe;
+    use Core\MethodNotAllowed;
     use Core\Router;
     use PHPUnit\Framework\TestCase;
 
@@ -35,104 +62,176 @@ namespace Tests {
         protected function setUp(): void
         {
             Probe::$calls = [];
+            Probe::$beforeResult = null;
             $_SERVER['REQUEST_METHOD'] = 'GET';
 
             $this->router = new Router();
-            $this->router->add('', ['namespace' => 'Test', 'controller' => 'Probe', 'action' => 'show']);
-            $this->router->add('avatar/{id:\d+}', ['namespace' => 'Test', 'controller' => 'Probe', 'action' => 'show']);
-            $this->router->add('{controller}/{action}', ['namespace' => 'Test']);
+            $this->router->get('/', [Probe::class, 'showAction']);
+            $this->router->get('/probe', [Probe::class, 'listAction']);
+            $this->router->get('/probe/list', [Probe::class, 'listAction']);
+            $this->router->post('/probe/save', [Probe::class, 'saveAction']);
+            $this->router->get('/item/{id:\d+}', [Probe::class, 'showAction']);
+            $this->router->get('/item/{id:\d+}/edit', [Probe::class, 'showAction']);
+            $this->router->post('/item/{id:\d+}/edit', [Probe::class, 'saveAction']);
         }
 
-        public function testMatchesAFixedRoute()
+        /**
+         * The actions that ran, in order, each with its route's parameters
+         */
+        private function actionCalls(): array
         {
-            $this->assertTrue($this->router->match(''));
+            return array_values(array_filter(Probe::$calls, fn ($call) => count($call) === 2));
         }
 
-        public function testReadsVariablesFromTheUrl()
+        /**
+         * The names of the actions that ran, in order
+         */
+        private function actionsRun(): array
         {
-            $this->router->dispatch('probe/show');
-
-            $this->assertSame('show', Probe::$calls[0][0]);
-            $this->assertSame('probe', Probe::$calls[0][1]['controller']);
+            return array_column($this->actionCalls(), 0);
         }
 
-        public function testCustomPatternOnlyMatchesItsOwnFormat()
+        private function assertDispatchFails(int $code, string $method, string $url): \Exception
         {
-            // On its own, without the {controller}/{action} route to fall back to
-            $router = new Router();
-            $router->add('avatar/{id:\d+}', ['controller' => 'Avatar', 'action' => 'show']);
+            try {
+                $this->router->dispatch($method, $url);
+            } catch (\Exception $e) {
+                $this->assertSame($code, $e->getCode());
+                $this->assertSame([], $this->actionsRun());
 
-            $this->assertTrue($router->match('avatar/42'));
-            $this->assertFalse($router->match('avatar/abc'));
-            $this->assertFalse($router->match('avatar/42/x'));
+                return $e;
+            }
+
+            $this->fail("$method $url was dispatched");
         }
 
-        public function testCustomPatternPassesTheValue()
+        public function testRunsTheExactActionTheRouteNames()
         {
-            $this->router->dispatch('avatar/42');
+            $this->router->dispatch('GET', '/probe/list');
 
-            $this->assertSame('42', Probe::$calls[0][1]['id']);
+            $this->assertSame(['list'], $this->actionsRun());
+        }
+
+        public function testRunsTheActionThatMatchesTheMethod()
+        {
+            $_SERVER['REQUEST_METHOD'] = 'POST';
+            $this->router->dispatch('POST', '/item/7/edit');
+            $_SERVER['REQUEST_METHOD'] = 'GET';
+            $this->router->dispatch('GET', '/item/7/edit');
+
+            $this->assertSame(['save', 'show'], $this->actionsRun());
+        }
+
+        public function testAliasesRunTheSameAction()
+        {
+            $this->router->dispatch('GET', '/probe');
+            $this->router->dispatch('GET', '/probe/list');
+
+            $this->assertSame(['list', 'list'], $this->actionsRun());
+        }
+
+        public function testHomePage()
+        {
+            $this->router->dispatch('GET', '/');
+
+            $this->assertSame(['show'], $this->actionsRun());
+        }
+
+        public function testRouteVariablesReachTheController()
+        {
+            $this->router->dispatch('GET', '/item/42');
+
+            $this->assertSame([['show', ['id' => '42']]], $this->actionCalls());
+        }
+
+        public function testVariableOutsideItsPatternIs404()
+        {
+            $this->assertDispatchFails(404, 'GET', '/item/abc');
+            $this->assertDispatchFails(404, 'GET', '/item/42/x');
+            $this->assertDispatchFails(404, 'GET', '/item/');
         }
 
         public function testIgnoresCase()
         {
-            $this->assertTrue($this->router->match('PROBE/SHOW'));
+            $this->router->dispatch('GET', '/PROBE/LIST');
+
+            $this->assertSame(['list'], $this->actionsRun());
         }
 
-        public function testHyphensBecomeCamelCase()
+        public function testQueryStringIsNotPartOfThePath()
         {
-            $this->router->dispatch('probe/add-new');
+            $this->router->dispatch('GET', '/probe/list?page=1&sort=name');
+            $this->router->dispatch('GET', '/?page=1');
+            $this->router->dispatch('GET', '/item/42?id=99');
 
-            $this->assertSame('addNew', Probe::$calls[0][0]);
+            $this->assertSame(['list', 'show', 'show'], $this->actionsRun());
+            $this->assertSame(['id' => '42'], $this->actionCalls()[2][1]);
         }
 
-        public function testDropsTheQueryString()
+        public function testQueryStringCantCompleteAPath()
         {
-            // .htaccess turns "probe/show?page=1" into "probe/show&page=1"
-            $this->router->dispatch('probe/show&page=1');
-
-            $this->assertCount(1, Probe::$calls);
+            $this->assertDispatchFails(404, 'GET', '/probe/li?st');
+            $this->assertDispatchFails(404, 'GET', '/item?/42');
         }
 
-        public function testQueryStringOnTheHomePage()
+        public function testUnknownPathIs404()
         {
-            $this->router->dispatch('page=1');
-
-            $this->assertSame('show', Probe::$calls[0][0]);
+            $this->assertDispatchFails(404, 'GET', '/a/b/c');
+            $this->assertDispatchFails(404, 'POST', '/a/b/c');
         }
 
-        public function testUnknownUrlIs404()
+        public function testWrongMethodIs405WithTheAllowedMethods()
         {
-            $this->expectExceptionCode(404);
+            $e = $this->assertDispatchFails(405, 'GET', '/probe/save');
+            $this->assertInstanceOf(MethodNotAllowed::class, $e);
+            $this->assertSame(['POST'], $e->allowed);
 
-            $this->router->dispatch('a/b/c');
+            $e = $this->assertDispatchFails(405, 'POST', '/probe/list');
+            $this->assertSame(['GET', 'HEAD'], $e->allowed);
+
+            $e = $this->assertDispatchFails(405, 'PUT', '/item/7/edit');
+            $this->assertSame(['GET', 'POST', 'HEAD'], $e->allowed);
         }
 
-        public function testUnknownControllerIs404()
+        public function testHeadRunsTheGetAction()
         {
-            $this->expectExceptionCode(404);
+            $this->router->dispatch('HEAD', '/probe/list');
 
-            $this->router->dispatch('nothing/show');
+            $this->assertSame(['list'], $this->actionsRun());
         }
 
-        public function testUnknownActionIs404()
+        public function testHeadOnAPostRouteIs405()
         {
-            $this->expectExceptionCode(404);
+            $e = $this->assertDispatchFails(405, 'HEAD', '/probe/save');
 
-            $this->router->dispatch('probe/missing');
+            $this->assertSame(['POST'], $e->allowed);
         }
 
-        public function testActionMethodCantBeCalledDirectly()
+        public function testUnregisteredActionCantBeReachedByUrl()
         {
-            // That would skip __call, and with it the login check
-            try {
-                $this->router->dispatch('probe/show-action');
-                $this->fail('No exception was thrown');
-            } catch (\Exception $e) {
-                $this->assertSame(404, $e->getCode());
+            // The old {controller}/{action} route turned these into secretAction
+            foreach (['/probe/secret', '/probe/secret-action', '/test/probe/secret', '/probe/before', '/probe/run-action'] as $url) {
+                $this->assertDispatchFails(404, 'GET', $url);
+                $this->assertDispatchFails(404, 'POST', $url);
             }
 
             $this->assertSame([], Probe::$calls);
+        }
+
+        public function testFiltersRunAroundTheAction()
+        {
+            $this->router->dispatch('GET', '/probe/list');
+
+            $this->assertSame(['before', 'list', 'after'], array_column(Probe::$calls, 0));
+        }
+
+        public function testBeforeFilterCanStopTheAction()
+        {
+            Probe::$beforeResult = false;
+
+            $this->router->dispatch('GET', '/probe/list');
+
+            $this->assertSame([['before']], Probe::$calls);
         }
     }
 }

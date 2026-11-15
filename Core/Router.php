@@ -8,32 +8,50 @@ namespace Core;
 class Router
 {
     /**
-     * Associative array of routes (the routing table)
+     * The routing table: each route's method, URL pattern and action
      * @var array
      */
     protected $routes = [];
 
     /**
-     * Parameters from the matched route
-     * @var array
+     * Add a GET route; HEAD requests take it too
+     *
+     * @param string $route  The route URL
+     * @param array  $action Controller class and action method
+     *
+     * @return void
      */
-    protected $params = [];
+    public function get($route, $action)
+    {
+        $this->add('GET', $route, $action);
+    }
+
+    /**
+     * Add a POST route
+     *
+     * @param string $route  The route URL
+     * @param array  $action Controller class and action method
+     *
+     * @return void
+     */
+    public function post($route, $action)
+    {
+        $this->add('POST', $route, $action);
+    }
 
     /**
      * Add a route to the routing table
      *
-     * @param string $route  The route URL
-     * @param array  $params Parameters (controller, action, etc.)
+     * @param string $method HTTP method
+     * @param string $route  The route URL, e.g. /avatar/{id:\d+}
+     * @param array  $action Controller class and action method, e.g. [Avatar::class, 'showAction']
      *
      * @return void
      */
-    public function add($route, $params = [])
+    public function add($method, $route, $action)
     {
         // Convert the route to a regular expression: escape forward slashes
         $route = preg_replace('/\//', '\\/', $route);
-
-        // Convert variables e.g. {controller}
-        $route = preg_replace('/\{([a-z]+)\}/', '(?P<\1>[a-z-]+)', $route);
 
         // Convert variables with custom regular expressions e.g. {id:\d+}
         $route = preg_replace('/\{([a-z]+):([^\}]+)\}/', '(?P<\1>\2)', $route);
@@ -41,155 +59,68 @@ class Router
         // Add start and end delimiters, and case insensitive flag
         $route = '/^' . $route . '$/i';
 
-        $this->routes[$route] = $params;
+        $this->routes[] = ['method' => $method, 'pattern' => $route, 'action' => $action];
     }
 
     /**
-     * Match the route to the routes in the routing table, setting the $params
-     * property if a route is found.
+     * Find the route for a request
      *
-     * @param string $url The route URL
+     * @param string $method HTTP method
+     * @param string $path   The URL's path, without the query string
      *
-     * @return boolean  true if a match found, false otherwise
+     * @return array The route's action and the values of its variables
+     *
+     * @throws \Exception 404 when no route has this path
+     * @throws MethodNotAllowed when routes have this path, but not for this method
      */
-    public function match($url)
+    public function match($method, $path)
     {
-        foreach ($this->routes as $route => $params) {
-            if (preg_match($route, $url, $matches)) {
-                // Get named capture group values
-                foreach ($matches as $key => $match) {
-                    if (is_string($key)) {
-                        $params[$key] = $match;
-                    }
-                }
+        $allowed = [];
 
-                $this->params = $params;
-                return true;
+        foreach ($this->routes as $route) {
+            if (!preg_match($route['pattern'], $path, $matches)) {
+                continue;
             }
+
+            // HEAD runs the GET action; the server leaves the body out
+            if ($route['method'] === $method || ($method === 'HEAD' && $route['method'] === 'GET')) {
+                $params = array_filter($matches, 'is_string', ARRAY_FILTER_USE_KEY);
+
+                return ['action' => $route['action'], 'params' => $params];
+            }
+
+            $allowed[] = $route['method'];
         }
 
-        return false;
+        if (!$allowed) {
+            throw new \Exception("No route matched $method $path", 404);
+        }
+
+        if (in_array('GET', $allowed)) {
+            $allowed[] = 'HEAD';
+        }
+
+        throw new MethodNotAllowed(array_values(array_unique($allowed)));
     }
 
     /**
      * Dispatch the route, creating the controller object and running the
      * action method
      *
-     * @param string $url The route URL
+     * @param string $method HTTP method
+     * @param string $url    The requested URL, e.g. /password/reset/1a2b?x=1
      *
      * @return void
      */
-    public function dispatch($url)
+    public function dispatch($method, $url)
     {
-        $url = $this->removeQueryStringVariables($url);
+        // The query string is already in $_GET; only the path picks the route
+        $path = explode('?', $url, 2)[0];
 
-        if ($this->match($url)) {
-            $controller = $this->params['controller'];
-            $controller = $this->convertToStudlyCaps($controller);
-            $controller = $this->getNamespace() . $controller;
+        $route = $this->match($method, $path);
+        [$class, $action] = $route['action'];
 
-            if (class_exists($controller)) {
-                $controller_object = new $controller($this->params);
-
-                $action = $this->params['action'];
-                $action = $this->convertToCamelCase($action);
-
-                // fooAction must go through __call, which runs the login check
-                if (preg_match('/action$/i', $action)) {
-                    throw new \Exception("Method $action in controller $controller can't be called directly", 404);
-                }
-
-                if (is_callable([$controller_object, $action])) {
-                    $controller_object->$action();
-                } else {
-                    throw new \Exception("Method $action (in controller $controller) not found", 404);
-                }
-            } else {
-                throw new \Exception("Controller class $controller not found", 404);
-            }
-        } else {
-            throw new \Exception('No route matched.', 404);
-        }
-    }
-
-    /**
-     * Convert the string with hyphens to StudlyCaps,
-     * e.g. post-authors => PostAuthors
-     *
-     * @param string $string The string to convert
-     *
-     * @return string
-     */
-    protected function convertToStudlyCaps($string)
-    {
-        return str_replace(' ', '', ucwords(str_replace('-', ' ', $string)));
-    }
-
-    /**
-     * Convert the string with hyphens to camelCase,
-     * e.g. add-new => addNew
-     *
-     * @param string $string The string to convert
-     *
-     * @return string
-     */
-    protected function convertToCamelCase($string)
-    {
-        return lcfirst($this->convertToStudlyCaps($string));
-    }
-
-    /**
-     * Remove the query string variables from the URL (if any). As the full
-     * query string is used for the route, any variables at the end will need
-     * to be removed before the route is matched to the routing table. For
-     * example:
-     *
-     *   URL                           $_SERVER['QUERY_STRING']  Route
-     *   -------------------------------------------------------------------
-     *   localhost                     ''                        ''
-     *   localhost/?                   ''                        ''
-     *   localhost/?page=1             page=1                    ''
-     *   localhost/posts?page=1        posts&page=1              posts
-     *   localhost/posts/index         posts/index               posts/index
-     *   localhost/posts/index?page=1  posts/index&page=1        posts/index
-     *
-     * A URL of the format localhost/?page (one variable name, no value) won't
-     * work however. (NB. The .htaccess file converts the first ? to a & when
-     * it's passed through to the $_SERVER variable).
-     *
-     * @param string $url The full URL
-     *
-     * @return string The URL with the query string variables removed
-     */
-    protected function removeQueryStringVariables($url)
-    {
-        if ($url != '') {
-            $parts = explode('&', $url, 2);
-
-            if (!str_contains($parts[0], '=')) {
-                $url = $parts[0];
-            } else {
-                $url = '';
-            }
-        }
-
-        return $url;
-    }
-
-    /**
-     * Get the namespace for the controller class. The namespace defined in the
-     * route parameters is added if present.
-     *
-     * @return string The namespace
-     */
-    protected function getNamespace()
-    {
-        $namespace = 'App\Controllers\\';
-
-        if (array_key_exists('namespace', $this->params)) {
-            $namespace .= $this->params['namespace'] . '\\';
-        }
-
-        return $namespace;
+        $controller = new $class($route['params']);
+        $controller->runAction($action);
     }
 }

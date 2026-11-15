@@ -8,7 +8,8 @@ use PHPUnit\Framework\TestCase;
 /**
  * Logging in, logging out and saving the profile, over real HTTP requests to
  * the app on PHP's built-in server. Changing anything takes a POST from this
- * site; other methods get 405 and change nothing
+ * site; other methods get 405 and change nothing. Also the route table: only
+ * listed routes answer, each with its own method
  */
 class AccountTest extends TestCase
 {
@@ -156,10 +157,16 @@ class AccountTest extends TestCase
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    private function assertRefusedMethod(array $response): void
+    private function assertRefusedMethod(array $response, string $allow = 'POST'): void
     {
         $this->assertSame(405, $response['status']);
-        $this->assertSame('POST', $response['headers']['allow'] ?? null);
+        $this->assertSame($allow, $response['headers']['allow'] ?? null);
+    }
+
+    private function assertRedirect(string $location, array $response): void
+    {
+        $this->assertSame(303, $response['status']);
+        $this->assertSame($location, $response['headers']['location'] ?? null);
     }
 
     public function testLoginPageShowsOverGet()
@@ -239,5 +246,157 @@ class AccountTest extends TestCase
 
         $this->assertSame($before, $this->user());
         $this->assertTrue($this->isSignedIn());
+    }
+
+    public function testPagesAndTheirOlderUrls()
+    {
+        $this->assertRedirect('/login', $this->request('GET', '/'));
+        $this->assertRedirect('/login', $this->request('GET', '/home/index'));
+        $this->assertSame(200, $this->request('GET', '/about')['status']);
+        $this->assertSame(200, $this->request('GET', '/about/index')['status']);
+        $this->assertSame(200, $this->request('GET', '/login/new')['status']);
+        $this->assertSame(200, $this->request('GET', '/signup/new')['status']);
+        $this->assertSame(200, $this->request('GET', '/password/forgot')['status']);
+
+        $this->logIn();
+        $this->assertRedirect('/app', $this->request('GET', '/'));
+        $this->assertSame(200, $this->request('GET', '/app')['status']);
+        $this->assertSame(200, $this->request('GET', '/app/index')['status']);
+    }
+
+    public function testHeadAnswersLikeGet()
+    {
+        $this->assertSame(200, $this->request('HEAD', '/login')['status']);
+        $this->assertRedirect('/login', $this->request('HEAD', '/'));
+        $this->assertRefusedMethod($this->request('HEAD', '/logout'));
+    }
+
+    public function testOlderLogoutUrlSignsOut()
+    {
+        $this->logIn();
+
+        $this->assertRefusedMethod($this->request('GET', '/login/destroy'));
+        $this->assertTrue($this->isSignedIn());
+
+        $this->assertRedirect('/login/show-logout-message', $this->request('POST', '/login/destroy'));
+        $this->assertFalse($this->isSignedIn());
+    }
+
+    public function testPostOnlyUrlsRefuseGet()
+    {
+        foreach (['/login/guest', '/signup/create', '/password/request-reset', '/password/reset-password', '/app/get', '/app/send', '/app/get-locations', '/profile/update-avatar'] as $path) {
+            $this->assertRefusedMethod($this->request('GET', $path), 'POST');
+        }
+    }
+
+    public function testGetOnlyUrlsRefusePost()
+    {
+        $this->assertRefusedMethod($this->request('POST', '/login'), 'GET, HEAD');
+        $this->assertRefusedMethod($this->request('POST', '/profile/show'), 'GET, HEAD');
+        $this->assertRefusedMethod($this->request('DELETE', '/about'), 'GET, HEAD');
+    }
+
+    public function testUnknownUrlIs404()
+    {
+        $this->assertSame(404, $this->request('GET', '/nothing/here')['status']);
+        $this->assertSame(404, $this->request('POST', '/nothing/here')['status']);
+    }
+
+    public function testControllerMethodsWithoutARouteAreUnreachable()
+    {
+        $this->logIn();
+
+        // Methods the old {controller}/{action} route would have tried
+        $paths = ['/app/refresh-location', '/app/catch-up-demo-chat', '/app/refuse', '/profile/refuse', '/profile/before',
+            '/password/get-user-or-exit', '/login/run-action', '/login/new-action', '/home/index-action', '/profile/show-action'];
+        foreach ($paths as $path) {
+            $this->assertSame(404, $this->request('GET', $path)['status'], "GET $path");
+            $this->assertSame(404, $this->request('POST', $path)['status'], "POST $path");
+        }
+    }
+
+    public function testRouteVariableOutsideItsPatternIs404()
+    {
+        $this->logIn();
+
+        $this->assertSame(404, $this->request('GET', '/avatar/abc')['status']);
+        $this->assertSame(404, $this->request('GET', '/signup/activate/not-hex')['status']);
+        $this->assertSame(404, $this->request('GET', '/password/reset/zz')['status']);
+    }
+
+    public function testAvatarRouteSendsTheImage()
+    {
+        $this->logIn();
+        $id = $this->db->query("SELECT id FROM users WHERE email = '" . self::EMAIL . "'")->fetchColumn();
+
+        $response = $this->request('GET', "/avatar/$id?v=2");
+
+        $this->assertSame(200, $response['status']);
+        $this->assertSame('image/svg+xml', $response['headers']['content-type']);
+    }
+
+    public function testActivationLinkFromTheEmailActivates()
+    {
+        $token = bin2hex(random_bytes(16));
+        $this->db->prepare('UPDATE users SET is_active = FALSE, activation_hash = ? WHERE email = ?')
+            ->execute([(new \App\Token($token))->getHash(), self::EMAIL]);
+
+        $this->assertRedirect('/signup/activated', $this->request('GET', "/signup/activate/$token"));
+        $this->assertRedirect('/login', $this->request('GET', '/signup/activated'));
+        $this->assertStringContainsString('Your account is active', $this->request('GET', '/login')['body']);
+
+        $this->assertSame(1, (int) $this->db->query("SELECT is_active FROM users WHERE email = '" . self::EMAIL . "'")->fetchColumn());
+    }
+
+    public function testResetLinkFromTheEmailShowsTheForm()
+    {
+        $token = bin2hex(random_bytes(16));
+        $this->db->prepare('UPDATE users SET password_reset_hash = ?, password_reset_expires_at = DATE_ADD(NOW(), INTERVAL 1 HOUR) WHERE email = ?')
+            ->execute([(new \App\Token($token))->getHash(), self::EMAIL]);
+
+        $response = $this->request('GET', "/password/reset/$token");
+        $this->assertSame(200, $response['status']);
+        $this->assertStringContainsString($token, $response['body']);
+
+        $response = $this->request('POST', '/password/reset-password', ['token' => $token, 'password' => 'newpass123']);
+        $this->assertRedirect('/login/new', $response);
+        $this->assertTrue(password_verify('newpass123', $this->user()['password_hash']));
+    }
+
+    public function testEmailCheckReadsTheQueryString()
+    {
+        $taken = $this->request('GET', '/account/validate-email?' . http_build_query(['email' => self::EMAIL]));
+        $free = $this->request('GET', '/account/validate-email?' . http_build_query(['email' => 'free@test.local']));
+
+        $this->assertSame('false', $taken['body']);
+        $this->assertSame('true', $free['body']);
+    }
+
+    public function testProtectedPageSendsYouToLogInAndBack()
+    {
+        $this->assertRedirect('/login', $this->request('GET', '/profile/show?tab=1'));
+
+        $response = $this->request('POST', '/login/create', ['email' => self::EMAIL, 'password' => self::PASSWORD]);
+        $this->assertRedirect('/profile/show?tab=1', $response);
+    }
+
+    public function testProtectedAjaxRequestAsksYouToLogInAgain()
+    {
+        $headers = ['X-Requested-With' => 'XMLHttpRequest'];
+
+        $response = $this->request('POST', '/app/get-people', [], $headers);
+        $this->assertSame(401, $response['status']);
+        $this->assertSame(['error' => 'Please log in again.'], json_decode($response['body'], true));
+
+        // The login check stops the action before it saves anything
+        $this->db->prepare('UPDATE users SET share_location = FALSE WHERE email = ?')->execute([self::EMAIL]);
+        $response = $this->request('POST', '/profile/update-location-sharing', ['share' => 1], $headers);
+        $this->assertSame(401, $response['status']);
+        $this->assertSame(0, (int) $this->db->query("SELECT share_location FROM users WHERE email = '" . self::EMAIL . "'")->fetchColumn());
+
+        $this->logIn();
+        $response = $this->request('POST', '/app/get-people', [], $headers);
+        $this->assertSame(200, $response['status']);
+        $this->assertIsArray(json_decode($response['body'], true));
     }
 }

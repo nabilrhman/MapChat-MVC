@@ -30,32 +30,23 @@ abstract class Controller
     }
 
     /**
-     * Magic method called when a non-existent or inaccessible method is
-     * called on an object of this class. Used to execute before and after
-     * filter methods on action methods. Action methods need to be named
-     * with an "Action" suffix, e.g. indexAction, showAction etc.
+     * Run an action with the origin check and the before and after filters
+     * around it. The router calls this with the action its route names
      *
-     * @param string $name  Method name
-     * @param array $args Arguments passed to the method
+     * @param string $action Action method, e.g. indexAction
      *
      * @return void
      */
-    public function __call($name, $args)
+    public function runAction($action)
     {
-        $method = $name . 'Action';
+        if (!$this->isSameOrigin()) {
+            http_response_code(403);
+            exit;
+        }
 
-        if (method_exists($this, $method)) {
-            if (!$this->isSameOrigin()) {
-                http_response_code(403);
-                exit;
-            }
-
-            if ($this->before() !== false) {
-                $this->$method(...$args);
-                $this->after();
-            }
-        } else {
-            throw new \Exception("Method $method not found in controller " . get_class($this), 404);
+        if ($this->before() !== false) {
+            $this->$action();
+            $this->after();
         }
     }
 
@@ -94,20 +85,6 @@ abstract class Controller
         }
 
         return parse_url($source, PHP_URL_HOST) === parse_url('//' . ($_SERVER['HTTP_HOST'] ?? ''), PHP_URL_HOST);
-    }
-
-    /**
-     * Stop unless the request is a POST
-     *
-     * @return void
-     */
-    protected function requirePost()
-    {
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            http_response_code(405);
-            header('Allow: POST');
-            exit;
-        }
     }
 
     /**

@@ -32,6 +32,8 @@ services:
       DB_HOST: db
       DB_PASSWORD: mapchat
       DB_NAME: mapchat_test
+      # For the activation and reset link tests
+      SECRET_KEY: test-secret
     volumes:
       # Edit code and tests without rebuilding
       - ./App:/var/www/html/App
