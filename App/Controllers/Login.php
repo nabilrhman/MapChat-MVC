@@ -30,6 +30,8 @@ class Login extends \Core\Controller
      */
     public function createAction()
     {
+        $this->requirePost();
+
         $remember_me = isset($_POST['remember_me']);
         $user = User::authenticate($_POST['email'] ?? '', $_POST['password'] ?? '');
 
@@ -83,12 +85,15 @@ class Login extends \Core\Controller
     }
 
     /**
-     * Log out a user
+     * Log out a user (POST only, so a link or image on another site can't
+     * sign anyone out)
      *
      * @return void
      */
     public function destroyAction()
     {
+        $this->requirePost();
+
         Auth::logout();
 
         $this->redirect('/login/show-logout-message');

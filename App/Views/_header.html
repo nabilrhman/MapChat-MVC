@@ -36,9 +36,11 @@
                 <a href="/profile/show" class="account-menu__item{{ on_profile ? ' is-current' }}"{{ on_profile ? ' aria-current="page"' }}>
                     <i class="material-icons">person</i>Profile
                 </a>
-                <a href="/logout" class="account-menu__item">
-                    <i class="material-icons">logout</i>Log out
-                </a>
+                <form method="post" action="/logout">
+                    <button type="submit" class="account-menu__item account-menu__item--button">
+                        <i class="material-icons">logout</i>Log out
+                    </button>
+                </form>
             </div>
         </div>
         {% else %}
