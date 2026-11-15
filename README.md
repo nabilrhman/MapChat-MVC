@@ -126,6 +126,7 @@ explanations. The main ones:
 | `MAILER_DSN` | SMTP address for outgoing email. Empty turns email off (locally it defaults to Mailpit) |
 | `IPSTACK_API_KEY` | Optional. Without it, ipapi.co is used |
 | `DEV_FAKE_IP` | Locally every visitor has a private IP; this public IP is used for the map instead |
+| `DEMO_TIMEZONE` | Optional. Where the demo people's day starts at midnight. Default `America/Toronto` |
 | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_UPLOAD_PRESET` | Where avatar uploads go |
 
 ## Deploy for free

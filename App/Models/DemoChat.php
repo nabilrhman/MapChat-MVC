@@ -3,13 +3,15 @@
 namespace App\Models;
 
 use PDO;
+use App\Config;
 
 /**
  * The demo people talk in the room through the day: a few running stories
  * and one-off chats (database/demo-chat.php) at a slow pace, in a fresh
  * order each day. There's no timer on the server (the free plan sleeps), so
  * whenever someone has the chat open, catchUp() adds the messages that are
- * due by now, with their scheduled times. Earlier days' are cleared.
+ * due by now, with their scheduled times. Earlier days' are cleared, and the
+ * day follows DEMO_TIMEZONE.
  */
 class DemoChat extends \Core\Model
 {
@@ -25,6 +27,9 @@ class DemoChat extends \Core\Model
     /** ...until this many minutes after */
     const LINGER_MINUTES = 30;
 
+    /** Hour the room wakes up; nobody talks between midnight and then */
+    const WAKE_HOUR = 7;
+
     /**
      * Add any demo messages that are due, and clear earlier days'
      *
@@ -33,17 +38,16 @@ class DemoChat extends \Core\Model
     public static function catchUp()
     {
         $db = static::getDB();
-        $today = gmdate('Y-m-d');
+        $today = static::today();
+        $start = gmdate('Y-m-d H:i:s', static::dayStart($today));
 
-        $stmt = $db->prepare('DELETE FROM chats WHERE email LIKE :demo AND timestamp < :today AND to_email IS NULL');
-        $stmt->bindValue(':demo', '%' . static::DOMAIN, PDO::PARAM_STR);
-        $stmt->bindValue(':today', $today . ' 00:00:00', PDO::PARAM_STR);
-        $stmt->execute();
-
-        $stmt = $db->prepare('SELECT MAX(timestamp) FROM chats WHERE email LIKE :demo');
-        $stmt->bindValue(':demo', '%' . static::DOMAIN, PDO::PARAM_STR);
-        $stmt->execute();
-        $last = $stmt->fetchColumn() ?: '';
+        // The welcome messages open each day, so they're never under "Yesterday"
+        $stmt = $db->prepare('SELECT id FROM chats WHERE email = :bot AND to_email IS NULL AND timestamp < :start ORDER BY id');
+        $stmt->execute([':bot' => Chat::BOT_EMAIL, ':start' => $start]);
+        $restamp = $db->prepare('UPDATE chats SET timestamp = :time WHERE id = :id');
+        foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $i => $id) {
+            $restamp->execute([':time' => gmdate('Y-m-d H:i:s', static::dayStart($today) + ($i + 1) * 60), ':id' => $id]);
+        }
 
         $now = gmdate('Y-m-d H:i:s');
 
@@ -52,9 +56,27 @@ class DemoChat extends \Core\Model
                                 SELECT :email, :body, :time FROM DUAL
                                 WHERE NOT EXISTS (SELECT 1 FROM chats WHERE email = :email2 AND timestamp = :time2)');
 
+        $schedule = static::schedule($today);
+
+        // Clear every demo line today's schedule doesn't have: earlier days',
+        // and any left from before the conversations were rewritten
+        $planned = array_flip(array_map(fn ($line) => $line[1] . ' ' . $line[0], $schedule));
+        $stmt = $db->prepare('SELECT id, email, timestamp FROM chats WHERE email LIKE :demo AND to_email IS NULL');
+        $stmt->execute([':demo' => '%' . static::DOMAIN]);
+        $drop = $db->prepare('DELETE FROM chats WHERE id = :id');
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            if (!isset($planned[$row['email'] . ' ' . $row['timestamp']])) {
+                $drop->execute([':id' => $row['id']]);
+            }
+        }
+
+        $stmt = $db->prepare('SELECT MAX(timestamp) FROM chats WHERE email LIKE :demo');
+        $stmt->execute([':demo' => '%' . static::DOMAIN]);
+        $last = $stmt->fetchColumn() ?: '';
+
         $last_spoke = [];
 
-        foreach (static::schedule($today) as [$time, $email, $body]) {
+        foreach ($schedule as [$time, $email, $body]) {
             if ($time > $now) {
                 break;
             }
@@ -88,7 +110,7 @@ class DemoChat extends \Core\Model
         $now = time();
         $present = [];
 
-        foreach (static::schedule(gmdate('Y-m-d')) as [$time, $email]) {
+        foreach (static::schedule(static::today()) as [$time, $email]) {
             $at = strtotime($time . ' UTC');
 
             if ($now >= $at - static::ARRIVE_MINUTES * 60 && $now <= $at + static::LINGER_MINUTES * 60) {
@@ -126,13 +148,16 @@ class DemoChat extends \Core\Model
             $offsets[] = $lines;
         }
 
-        $start = mt_rand(5, 25);
+        $day_start = static::dayStart($date);
+        $day_minutes = (static::dayStart(date('Y-m-d', strtotime($date . ' +1 day'))) - $day_start) / 60;
+
+        // Quiet at night: the room wakes up around 7am
+        $start = static::WAKE_HOUR * 60 + mt_rand(0, 20);
         $busy = array_sum(array_map(fn ($lines) => end($lines), $offsets));
-        $free = 24 * 60 - 30 - $start - $busy;
+        $free = $day_minutes - 30 - $start - $busy;
         $weights = array_map(fn () => mt_rand(60, 140), array_slice($scenes, 1));
         $scale = $free / max(1, array_sum($weights));
 
-        $day_start = strtotime($date . ' 00:00:00 UTC');
         $minute = $start;
         $messages = [];
 
@@ -148,6 +173,37 @@ class DemoChat extends \Core\Model
         mt_srand();
 
         return $messages;
+    }
+
+    /**
+     * Today's date where the demo day runs (DEMO_TIMEZONE, Toronto by default),
+     * so its messages are "Today" for people there
+     *
+     * @return string Y-m-d
+     */
+    public static function today()
+    {
+        return (new \DateTime('now', static::timezone()))->format('Y-m-d');
+    }
+
+    /**
+     * Midnight at the start of a demo day
+     *
+     * @param string $date Y-m-d
+     *
+     * @return int Unix time
+     */
+    protected static function dayStart($date)
+    {
+        return (new \DateTime($date . ' 00:00:00', static::timezone()))->getTimestamp();
+    }
+
+    /**
+     * @return \DateTimeZone
+     */
+    protected static function timezone()
+    {
+        return new \DateTimeZone(Config::get('DEMO_TIMEZONE', 'America/Toronto'));
     }
 
     /**
