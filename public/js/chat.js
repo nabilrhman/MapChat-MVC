@@ -108,6 +108,7 @@ $(document).ready(function () {
         $('#textarea-send').attr('placeholder', isPrivate ? 'Message ' + name : 'Type your message');
         addDayDividers();
         $('#chat-list').scrollTop($('#chat-list').prop('scrollHeight'));
+        newWhileAway = 0;
     }
 
     // Uploaded photos fade in over a soft circle once loaded; letter avatars
@@ -481,6 +482,48 @@ $(document).ready(function () {
         }
     }
 
+    // The "Latest" button: shows once you've scrolled up a screen's worth of
+    // pixels, counts messages in this tab that arrive meanwhile, and takes you
+    // back down
+    var newWhileAway = 0;
+
+    function updateJumpButton() {
+        var list = $('#chat-list')[0];
+        var away = list.scrollHeight - list.scrollTop - list.clientHeight > 200;
+        if (!away) newWhileAway = 0;
+
+        var button = $('#jump-latest')[0];
+        var label = $('#jump-latest-text');
+        var text = newWhileAway === 0 ? 'Latest'
+            : newWhileAway + (newWhileAway === 1 ? ' new message' : ' new messages');
+
+        button.hidden = !away;
+        if (!away || label.text() === text) {
+            label.text(text);
+            button.style.width = '';
+            return;
+        }
+
+        // The pill grows to the new label's width, and the label fades in,
+        // instead of both jumping
+        var from = button.offsetWidth;
+        label.text(text);
+        button.style.width = '';
+        var to = button.offsetWidth;
+        button.style.width = from + 'px';
+        button.offsetWidth; // start from the old width
+        button.style.width = to + 'px';
+        label.removeClass('is-changing');
+        label[0].offsetWidth;
+        label.addClass('is-changing');
+    }
+
+    $('#chat-list').on('scroll', updateJumpButton);
+
+    $('#jump-latest').on('click', function () {
+        $('#chat-list').animate({scrollTop: $('#chat-list').prop('scrollHeight')}, SCROLL_DURATION);
+    });
+
     // Scrolls down for new messages only if you're at the bottom already, or forced
     // (after you send); someone reading older messages stays where they are
     function checkForMessages(forceScroll) {
@@ -506,6 +549,10 @@ $(document).ready(function () {
 
             if (atBottom || forceScroll) {
                 $('#chat-list').animate({scrollTop: $('#chat-list').prop('scrollHeight')}, SCROLL_DURATION);
+            } else {
+                // Only ones in the open tab; the others get a count on their tab
+                newWhileAway += chats.filter(function () { return this.style.display !== 'none'; }).length;
+                updateJumpButton();
             }
         });
     }

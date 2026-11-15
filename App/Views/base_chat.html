@@ -3,7 +3,7 @@
 {% block title %}Chat{% endblock %}
 
 {% block head %}
-<link rel="stylesheet" href="/css/chat.css?v=109">
+<link rel="stylesheet" href="/css/chat.css?v=111">
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flag-icons@7.2.3/css/flag-icons.min.css">
 {% endblock %}
@@ -44,8 +44,15 @@
         </span>
     </div>
 
-    <div class="chat-list" id="chat-list">
-        {% block chats %}{% endblock %}
+    <div class="chat-list-wrap">
+        <div class="chat-list" id="chat-list">
+            {% block chats %}{% endblock %}
+        </div>
+
+        {# Shows when you've scrolled up; counts messages that came in meanwhile #}
+        <button type="button" class="jump-latest" id="jump-latest" hidden>
+            <i class="material-icons jump-latest__icon">arrow_downward</i><span id="jump-latest-text">Latest</span>
+        </button>
     </div>
 
     <form class="chat-composer" method="post" id="input-container-form">
@@ -84,7 +91,7 @@
 {% endblock %}
 
 {% block footer %}
-<script src="/js/chat.js?v=9"></script>
+<script src="/js/chat.js?v=11"></script>
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="/js/map.js?v=19"></script>
 {% endblock %}

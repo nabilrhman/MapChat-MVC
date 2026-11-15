@@ -140,12 +140,83 @@ body
 
 }
 
+/* The messages, with room for the jump button to float over their bottom */
+.chat-list-wrap
+{
+    position: relative;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+}
+
 .chat-list
 {
     max-height: 100%;
     overflow-y: auto;
     overflow-x: hidden;
     flex: 1;
+}
+
+/* "Latest" / "3 new messages": a pill at the bottom centre of the messages
+   while you read further up */
+.jump-latest
+{
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 34px;
+    padding: 0 14px 0 10px;
+    border: none;
+    border-radius: 17px;
+    background-color: #512da8;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    overflow: hidden;
+    white-space: nowrap;
+    transform: translateX(-50%);
+    cursor: pointer;
+    transition: width var(--dur) var(--ease-out);
+    animation: fade-in-up var(--dur) var(--ease-out);
+}
+
+/* The new label fades in as the pill widens (chat.js) */
+#jump-latest-text.is-changing
+{
+    animation: fade-in var(--dur) var(--ease-out);
+}
+
+.jump-latest[hidden]
+{
+    display: none;
+}
+
+/* materialize.css turns a focused button teal */
+.jump-latest:focus
+{
+    background-color: #512da8;
+}
+
+.jump-latest:hover
+{
+    background-color: #4527a0;
+}
+
+.jump-latest:focus-visible
+{
+    outline: none;
+    box-shadow: 0 0 0 3px #d1c4e9;
+}
+
+.jump-latest__icon
+{
+    font-size: 18px;
 }
 
 /* Tabs: the open room first, then one per private chat. The open tab joins

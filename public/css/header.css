@@ -174,7 +174,7 @@
     align-items: center;
     gap: 8px;
     height: 44px;
-    padding: 0 14px 0 6px;
+    padding: 0 4px 0 5px; /* with the chevron glyph's own space, ~10px after it */
     border: none;
     border-radius: 22px;
     background: none;
