@@ -65,6 +65,27 @@ class App extends Authenticated
     }
 
     /**
+     * Gets the page of chats before the given id, when the reader scrolls up
+     * past the oldest one shown (for AJAX)
+     *
+     * @return void
+     */
+    public function getOlderAction()
+    {
+        $this->requirePost();
+
+        $chats = Chat::getBefore(Auth::getEmail(), (int) ($_POST['before'] ?? 0));
+
+        if ($chats) {
+            // Older messages appear at once, without the new-message ease-in
+            View::renderTemplate('App/chat.html', [
+                'chats' => $chats,
+                'initial' => true
+            ]);
+        }
+    }
+
+    /**
      * Send the typed chat (for AJAX)
      *
      * @return void

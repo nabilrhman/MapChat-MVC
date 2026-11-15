@@ -31,6 +31,7 @@
 <div class="chat-panel" id="chat"
      data-my-id="{{ current_user.id|e('html_attr') }}"
      data-last-chat-id="{{ last_chat_id|e('html_attr') }}"
+     data-page-size="{{ constant('App\\Models\\Chat::HISTORY') }}"
      data-build="{{ build_id|default('')|e('html_attr') }}">
 
     <div class="chat-tabs" id="chat-tabs">

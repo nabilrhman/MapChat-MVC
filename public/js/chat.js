@@ -13,6 +13,14 @@ const SCROLL_BEHAVIOR = window.matchMedia('(prefers-reduced-motion: reduce)').ma
 const SCROLLED_UP_DISTANCE = 200;
 // Closer to the bottom than this, new messages scroll into view
 const AT_BOTTOM_DISTANCE = 80;
+// Closer to the top than this, the next page of older messages loads
+const LOAD_OLDER_DISTANCE = 200;
+// Pages of older messages fetched in a row when none of them are for the
+// open tab, before waiting for the next scroll
+const MAX_PAGES_PER_SCROLL = 5;
+// More messages than this on the page, the oldest go while you're at the
+// bottom, so a tab left open in a busy room stays small
+const MAX_MESSAGES = 300;
 const EVERYONE = 'everyone';
 
 const chatPanel = document.getElementById('chat');
@@ -402,6 +410,81 @@ jumpButton.addEventListener('click', () => {
     if (jumpButton.matches(':focus-visible')) messageInput.focus();
 });
 
+/* Older messages: the next page loads as you scroll near the top */
+
+// The oldest message on the page; older ones are fetched before it
+let oldestChatId = 0;
+let hasOlderMessages = true;
+let isLoadingOlder = false;
+// The server's page size; a shorter page means there are no more
+const pageSize = Number(chatPanel.dataset.pageSize);
+
+async function loadOlderMessages() {
+    for (let page = 0; page < MAX_PAGES_PER_SCROLL && hasOlderMessages; page++) {
+        const response = await postForm('/app/get-older', {before: oldestChatId});
+        const olderChats = parseHtml(response.data).filter((element) => element.classList.contains('chat'));
+        hasOlderMessages = olderChats.length === pageSize;
+        if (olderChats.length === 0) return;
+
+        // What you were reading stays put as the list grows above it
+        const distanceFromBottom = getDistanceFromBottom();
+
+        showTimes(olderChats);
+        olderChats.forEach((chat) => {
+            addTab(getConversation(chat), chat.dataset.partner);
+            // Old news: hidden in other tabs, but not counted as unread there
+            if (getConversation(chat) !== activeConversation) chat.style.display = 'none';
+        });
+        chatList.prepend(...olderChats);
+        fadeInPhotos(olderChats.map((chat) => chat.querySelector('.chat__photo')));
+        addDayDividers();
+        oldestChatId = Number(olderChats[0].dataset.id);
+
+        chatList.scrollTop = chatList.scrollHeight - chatList.clientHeight - distanceFromBottom;
+
+        if (olderChats.some((chat) => getConversation(chat) === activeConversation)) return;
+    }
+}
+
+function loadOlderIfNearTop() {
+    if (isLoadingOlder || !hasOlderMessages || chatList.scrollTop > LOAD_OLDER_DISTANCE) return;
+
+    isLoadingOlder = true;
+    loadOlderMessages()
+        .catch(() => {
+            // The next scroll near the top tries again
+        })
+        .finally(() => {
+            isLoadingOlder = false;
+        });
+}
+
+// Only when you scroll up: a short tab sits at the top while it scrolls
+// itself down to new messages, and shouldn't load and trim on every one
+let lastScrollTop = 0;
+
+chatList.addEventListener('scroll', () => {
+    if (chatList.scrollTop < lastScrollTop) loadOlderIfNearTop();
+    lastScrollTop = chatList.scrollTop;
+});
+
+// A wheel turned up at the very top, or in a tab too short to scroll
+chatList.addEventListener('wheel', (event) => {
+    if (event.deltaY < 0) loadOlderIfNearTop();
+});
+
+// Drop the oldest messages past the limit. Only while you're at the bottom,
+// so nothing you're reading disappears; the scroll up fetches them again
+function trimOldMessages() {
+    const chats = getChats();
+    if (chats.length <= MAX_MESSAGES || isLoadingOlder) return;
+
+    chats.slice(0, chats.length - MAX_MESSAGES).forEach((chat) => chat.remove());
+    oldestChatId = Number(chats[chats.length - MAX_MESSAGES].dataset.id);
+    hasOlderMessages = true;
+    addDayDividers();
+}
+
 /* Checking for new messages */
 
 // The newest message this page has; each tab keeps its own
@@ -439,6 +522,7 @@ async function checkForMessages(shouldScrollToNewest = false) {
     lastChatId = Number(newChats.at(-1).dataset.id);
 
     if (wasAtBottom || shouldScrollToNewest) {
+        trimOldMessages();
         scrollToNewest();
     } else {
         // Only ones in the open tab; the others get a count on their tab
@@ -538,6 +622,8 @@ messageInput.addEventListener('input', () => {
 /* Start */
 
 const historyChats = getChats();
+oldestChatId = historyChats.length ? Number(historyChats[0].dataset.id) : 0;
+hasOlderMessages = historyChats.length === pageSize;
 showTimes(historyChats);
 fadeInPhotos(chatList.querySelectorAll('.chat__photo'));
 historyChats.forEach((chat) => addTab(getConversation(chat), chat.dataset.partner));
