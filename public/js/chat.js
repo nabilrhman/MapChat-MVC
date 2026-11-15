@@ -307,8 +307,10 @@ $(document).ready(function () {
     function fillPeople(section, people) {
         var old = {};
         section.children('.person').not('.person-leave').each(function (index) {
-            old[$(this).attr('data-user-id')] = {row: $(this), index: index};
+            old[$(this).attr('data-user-id')] = {row: $(this), index: index, top: this.getBoundingClientRect().top};
         });
+        var tops = {};
+        Object.keys(old).forEach(function (id) { tops[id] = old[id].top; });
 
         var rows = people.map(function (person) {
             var row = personRow(person).toggleClass('person-enter', !old[person.id]);
@@ -326,6 +328,29 @@ $(document).ready(function () {
                 section.append(gone.row);
             }
             fadeOut(gone.row, 'person-leave');
+        });
+
+        slideToNewPlaces(section, tops);
+    }
+
+    // Rows that were already there start where they were and slide to their
+    // new place, so someone joining pushes the list down smoothly
+    function slideToNewPlaces(section, tops) {
+        var moved = section.children('.person').not('.person-enter, .person-leave').filter(function () {
+            var before = tops[$(this).attr('data-user-id')];
+            return before !== undefined && Math.round(before - this.getBoundingClientRect().top) !== 0;
+        });
+
+        moved.each(function () {
+            var shift = tops[$(this).attr('data-user-id')] - this.getBoundingClientRect().top;
+            this.style.transform = 'translateY(' + shift + 'px)';
+        });
+
+        // The next frame, so the browser draws them at the old place first
+        requestAnimationFrame(function () {
+            moved.addClass('person-shift').css('transform', '').one('transitionend', function () {
+                $(this).removeClass('person-shift');
+            });
         });
     }
 
