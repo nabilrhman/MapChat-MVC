@@ -30,9 +30,6 @@ class DemoChat extends \Core\Model
     /** ...until this many minutes after */
     const LINGER_MINUTES = 30;
 
-    /** Hour the room wakes up; nobody talks between midnight and then */
-    const WAKE_HOUR = 7;
-
     /**
      * Add any demo messages that are due, and clear earlier days'
      *
@@ -166,8 +163,7 @@ class DemoChat extends \Core\Model
         $next_day = (new \DateTime($date, static::timezone()))->modify('+1 day')->format('Y-m-d');
         $day_minutes = (static::dayStart($next_day) - $day_start) / 60;
 
-        // Quiet at night: the room wakes up around 7am
-        $start = static::WAKE_HOUR * 60 + mt_rand(0, 20);
+        $start = mt_rand(5, 20);
         $busy = array_sum(array_map(fn ($lines) => end($lines), $offsets));
         $free = $day_minutes - 30 - $start - $busy;
         $weights = array_map(fn () => mt_rand(60, 140), array_slice($scenes, 1));
