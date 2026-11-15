@@ -13,15 +13,15 @@
     <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/all.css" integrity="sha384-B4dIYHKNBt8Bc12p+WXckhzcICo0wtJAoU8YZTY5qE0Id1GSseTk6S+L3BlXeVIU" crossorigin="anonymous">
 
     {% include '_beer.html' %}
-    <link rel="stylesheet" href="/css/base.css?v=3" />
-    <link rel="stylesheet" href="/css/animations.css?v=5" />
+    <link rel="stylesheet" href="{{ asset('/css/base.css') }}" />
+    <link rel="stylesheet" href="{{ asset('/css/animations.css') }}" />
 
     <!-- Styles for the header and footer -->
-    <link rel="stylesheet" href="/css/header.css?v=24" />
-    <link rel="stylesheet" href="/css/footer.css?v=6" />
+    <link rel="stylesheet" href="{{ asset('/css/header.css') }}" />
+    <link rel="stylesheet" href="{{ asset('/css/footer.css') }}" />
 
-    <link rel="stylesheet" href="/css/styles.css?v=16" />
-    <link rel="stylesheet" href="/css/ui.css?v=25" />
+    <link rel="stylesheet" href="{{ asset('/css/styles.css') }}" />
+    <link rel="stylesheet" href="{{ asset('/css/ui.css') }}" />
 
     {% block head %}{% endblock %}
 </head>
@@ -39,12 +39,12 @@
 {% include '_footer.html' %}
 
 <script src="https://unpkg.com/axios@1.7.9/dist/axios.min.js"></script>
-<script src="/js/dom.js?v=2"></script>
-<script src="/js/http.js?v=4"></script>
-<script src="/js/toast.js?v=4"></script>
-<script src="/js/loadingBar.js?v=4"></script>
-<script src="/js/header.js?v=2"></script>
-<script src="/js/tooltip.js?v=5"></script>
+<script src="{{ asset('/js/dom.js') }}"></script>
+<script src="{{ asset('/js/http.js') }}"></script>
+<script src="{{ asset('/js/toast.js') }}"></script>
+<script src="{{ asset('/js/loadingBar.js') }}"></script>
+<script src="{{ asset('/js/header.js') }}"></script>
+<script src="{{ asset('/js/tooltip.js') }}"></script>
 {% include '_flash.html' %}
 
 {% block footer %}{% endblock %}

@@ -42,6 +42,8 @@ class View
             // A function, so only the page that shows messages uses them up
             $twig->addFunction(new \Twig\TwigFunction('flash_messages', [\App\Flash::class, 'getMessages']));
             $twig->addFunction(new \Twig\TwigFunction('avatar_src', [\App\Avatar::class, 'src']));
+            // Links to files in public/ that change when the file does (see Asset)
+            $twig->addFunction(new \Twig\TwigFunction('asset', [Asset::class, 'url']));
             $twig->addGlobal('app_url', Config::appUrl());
             // For marking the current page in the header
             $twig->addGlobal('current_path', parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH));
