@@ -484,3 +484,18 @@ label.error
     border-top-color: transparent;
     border-bottom-color: rgba(33, 33, 33, 0.92);
 }
+
+/* Beside the thing, on its left, with the arrow pointing right at it */
+.tooltip--left
+{
+    transform: translateX(3px);
+}
+
+.tooltip--left::after
+{
+    top: 50%;
+    left: 100%;
+    border-top-color: transparent;
+    border-left-color: rgba(33, 33, 33, 0.92);
+    transform: translateY(-50%);
+}

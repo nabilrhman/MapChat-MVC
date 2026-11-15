@@ -272,7 +272,8 @@ $(document).ready(function () {
             .toggleClass('is-online', person.is_online == 1)
             .toggleClass('person--can-message', !isMe)
             .attr('data-user-id', person.id)
-            .attr('title', isMe ? '' : 'Chat privately with ' + person.name);
+            .attr('title', isMe ? '' : 'Chat privately with ' + person.name)
+            .attr('data-tip-side', 'left'); // over the map, not the rows above
 
         $('<div class="person__avatar"></div>')
             .append($('<img class="person__photo" alt="">').attr('src', person.avatar_src))

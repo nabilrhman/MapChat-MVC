@@ -5,7 +5,7 @@
 (function () {
     if (!window.matchMedia('(hover: hover)').matches) return;
 
-    var DELAY = 400;
+    var DELAY = 150; // just long enough not to flicker when the mouse passes over
     var tip = document.createElement('div');
     tip.className = 'tooltip';
     tip.setAttribute('role', 'tooltip');
@@ -13,6 +13,12 @@
 
     var target = null;
     var timer = null;
+    var mouse = {x: 0, y: 0};
+
+    document.addEventListener('mousemove', function (event) {
+        mouse.x = event.clientX;
+        mouse.y = event.clientY;
+    });
 
     function textOf(el) {
         var title = el.getAttribute('title');
@@ -42,14 +48,31 @@
     }
 
     function show() {
+        // Redrawn while we waited: use what's under the mouse now
+        if (target && !target.isConnected) {
+            var under = document.elementFromPoint(mouse.x, mouse.y);
+            target = under && under.closest('[title], [data-tip]');
+        }
+
         var text = target && textOf(target);
         if (!text) return;
 
         tip.textContent = text;
-        tip.classList.remove('tooltip--below');
+        tip.classList.remove('tooltip--below', 'tooltip--left');
         var box = boxOf(target);
         var width = tip.offsetWidth;
         var height = tip.offsetHeight;
+
+        // To the left, for rows in a list at the screen's right edge, where
+        // above would cover the row before
+        if (target.dataset.tipSide === 'left' && box.left - width - 8 > 8) {
+            tip.classList.add('tooltip--left');
+            tip.style.left = (box.left - width - 8) + 'px';
+            tip.style.top = (box.top + box.height / 2 - height / 2) + 'px';
+            tip.classList.add('is-shown');
+            return;
+        }
+
         var left = Math.min(Math.max(8, box.left + box.width / 2 - width / 2), window.innerWidth - width - 8);
         var top = box.top - height - 6;
         if (top < 8) {
@@ -74,6 +97,14 @@
     document.addEventListener('mouseover', function (event) {
         var el = event.target.closest('[title], [data-tip]');
         if (el === target) return;
+
+        // A list that redraws itself (the people list) swaps the row under
+        // the mouse for an identical one; keep the tooltip on the new row
+        if (el && tip.classList.contains('is-shown') && textOf(el) === tip.textContent) {
+            target = el;
+            return;
+        }
+
         hide();
         if (!el) return;
 
