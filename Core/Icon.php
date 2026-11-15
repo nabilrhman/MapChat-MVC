@@ -20,7 +20,7 @@ class Icon
     {
         $href = Asset::url('/icons.svg') . '#' . $name;
 
-        return '<svg class="' . htmlspecialchars(trim("icon $class")) . '" aria-hidden="true">'
+        return '<svg class="' . htmlspecialchars(trim("icon icon--$name $class")) . '" aria-hidden="true">'
             . '<use href="' . htmlspecialchars($href) . '"></use></svg>';
     }
 }

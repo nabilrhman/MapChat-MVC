@@ -226,10 +226,12 @@
     text-overflow: ellipsis;
 }
 
-/* Pulled in close to the name */
-.account-menu__chevron
+/* 8px from the 14px name, as --icon-gap gives beside 14px text (in here it
+   would go by the icon's size); the button's gap is 8px already. Two
+   classes, to win over .icon in styles.css, which loads later */
+.account-menu__button .account-menu__chevron
 {
-    margin-left: -4px;
+    margin-left: calc(-1 * var(--icon-bearing) * 1em / 24);
     font-size: 20px;
     transition: transform var(--dur) var(--ease-out);
 }
@@ -290,7 +292,7 @@
 {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: var(--icon-gap);
     padding: 10px 16px;
     color: #212121;
     font-size: 14px;

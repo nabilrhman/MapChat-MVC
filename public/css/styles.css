@@ -30,14 +30,52 @@ textarea
 }
 
 /* Icons from public/icons.svg (Core\Icon): sized by font-size and drawn in
-   the text colour, as the icon font was */
+   the text colour, as the icon font was.
+   Beside text, the space between them is --icon-gap, from the drawing
+   itself: each glyph's blank sides (--icon-bearing, in 24ths of the icon)
+   are taken back. The gap grows faster than the text: 6px beside 12px text,
+   8px beside 14px. It's in em, so it's set as the gap of the icon and
+   text's container. --icon-nudge moves a glyph that looks low up to the
+   middle of the capitals */
+:root
+{
+    --icon-gap: calc(1em - 6px);
+}
+
 .icon
 {
+    --icon-bearing: 2;
     width: 1em;
     height: 1em;
     flex-shrink: 0;
+    margin-inline: calc(var(--icon-bearing) * -1em / 24);
     fill: currentColor;
     vertical-align: -0.125em;
+    translate: 0 var(--icon-nudge, 0);
+}
+
+.icon--user { --icon-bearing: 4; }
+.icon--map-point { --icon-bearing: 5; } /* its sides curve away, so it looks narrower */
+.icon--alt-arrow-down { --icon-bearing: 5; }
+.icon--arrow-down { --icon-bearing: 5.2; }
+.icon--sun { --icon-bearing: 1.2; }
+.icon--logout-2 { --icon-bearing: 1.6; }
+.icon--eye-closed { --icon-bearing: 1; }
+.icon--github { --icon-bearing: 0; }
+.icon--users-group-rounded { margin-inline-end: calc(-3em / 24); }
+/* A pin's round head is its middle to the eye, above the middle of its box */
+.icon--map-point { --icon-nudge: -0.04em; }
+
+/* Alone in a button, an icon keeps its whole box, so it stays centred */
+.site-header__menu-button .icon,
+.password-toggle .icon,
+.map-toggle .icon,
+.chat-fold .icon,
+.chat-composer__send-icon,
+.site-footer__source .icon
+{
+    margin-inline: 0;
+    translate: none;
 }
 
 /* Page content straight on the page, no framed box */

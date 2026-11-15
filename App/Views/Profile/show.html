@@ -123,8 +123,10 @@
                 <p class="field-hint place-note" id="profile-place">
                     <span class="place-note__shown">
                         Others see you in
-                        {% if place.country %}<span class="fi fi-{{ place.country|lower }}"></span>{% endif %}
-                        {{ place.city }}
+                        <span class="place-note__place">
+                            {%- if place.country %}<span class="fi fi-{{ place.country|lower }}"></span>{% endif -%}
+                            {{ place.city -}}
+                        </span>
                     </span>
                     <span class="place-note__hidden">Your pin and city are hidden from everyone</span>
                 </p>

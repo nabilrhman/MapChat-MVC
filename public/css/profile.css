@@ -12,8 +12,8 @@
 .guest-banner
 {
     display: grid;
-    grid-template-columns: 18px minmax(0, 1fr) auto;
-    column-gap: 8px;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    column-gap: var(--icon-gap);
     row-gap: 2px;
     align-items: center;
     margin-bottom: 16px;
@@ -238,9 +238,19 @@
     flex: none;
 }
 
-.place-note .fi
+/* Flag and city, --icon-gap apart like an icon and its text */
+.place-note__place
 {
-    margin: 0 2px;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--icon-gap);
+}
+
+.place-note__shown
+{
+    display: inline-flex;
+    align-items: center;
+    gap: var(--icon-gap);
 }
 
 .place-note__hidden,
