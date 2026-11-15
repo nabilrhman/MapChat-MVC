@@ -19,6 +19,12 @@ class DemoChat extends \Core\Model
     /** Minutes between messages within a conversation */
     const REPLY_MINUTES = [2, 6];
 
+    /** A demo person shows as online from this many minutes before they speak... */
+    const ARRIVE_MINUTES = 5;
+
+    /** ...until this many minutes after */
+    const LINGER_MINUTES = 30;
+
     /**
      * Add any demo messages that are due, and clear earlier days'
      *
@@ -46,16 +52,51 @@ class DemoChat extends \Core\Model
                                 SELECT :email, :body, :time FROM DUAL
                                 WHERE NOT EXISTS (SELECT 1 FROM chats WHERE email = :email2 AND timestamp = :time2)');
 
+        $last_spoke = [];
+
         foreach (static::schedule($today) as [$time, $email, $body]) {
-            if ($time <= $last || $time > $now) {
-                continue;
+            if ($time > $now) {
+                break;
             }
 
-            $insert->execute([
-                ':email' => $email, ':body' => $body, ':time' => $time,
-                ':email2' => $email, ':time2' => $time,
-            ]);
+            $last_spoke[$email] = $time;
+
+            if ($time > $last) {
+                $insert->execute([
+                    ':email' => $email, ':body' => $body, ':time' => $time,
+                    ':email2' => $email, ':time2' => $time,
+                ]);
+            }
         }
+
+        // When they last spoke, for "Recently here"
+        $seen = $db->prepare('UPDATE userinfo SET online_at = :time
+                              WHERE email = :email AND (online_at IS NULL OR online_at < :time2)');
+        foreach ($last_spoke as $email => $time) {
+            $seen->execute([':email' => $email, ':time' => $time, ':time2' => $time]);
+        }
+    }
+
+    /**
+     * The demo people who are in the room right now: those about to speak,
+     * speaking, or who spoke a little while ago
+     *
+     * @return array Their emails
+     */
+    public static function presentNow()
+    {
+        $now = time();
+        $present = [];
+
+        foreach (static::schedule(gmdate('Y-m-d')) as [$time, $email]) {
+            $at = strtotime($time . ' UTC');
+
+            if ($now >= $at - static::ARRIVE_MINUTES * 60 && $now <= $at + static::LINGER_MINUTES * 60) {
+                $present[$email] = true;
+            }
+        }
+
+        return array_keys($present);
     }
 
     /**
