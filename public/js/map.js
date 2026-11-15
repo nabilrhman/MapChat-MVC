@@ -171,9 +171,28 @@ function loadLocations() {
     });
 }
 
-// Drops the dots over the map
+// The vector map, once made, so mapReady can wait for its tiles
+var vectorMap = null;
+var mapShown = false;
+
+// Fades the map in and drops the dots over it, once. The vector map first
+// waits until it has moved to the pins and drawn the tiles there, so the
+// view never jumps or fills in while someone watches
 function mapReady() {
-    $('#map-loading').addClass('is-done');
+    if (mapShown) return;
+    mapShown = true;
+
+    var show = function () {
+        $('#map').addClass('is-shown');
+        $('#map-loading').addClass('is-done');
+    };
+
+    if (vectorMap && !(vectorMap.areTilesLoaded() && !vectorMap.isMoving())) {
+        vectorMap.once('idle', show);
+        setTimeout(show, 4000); // don't wait forever on a slow tile
+    } else {
+        show();
+    }
 }
 
 // Fetches the pins now and on every round after, adding new people, dropping
@@ -383,6 +402,7 @@ function initialize() {
                 minZoom: minZoomToFill(512),
                 attributionControl: false
             });
+            vectorMap = map;
 
             // Credits as a small (i) beside the people list (see chat.css). MapLibre
             // opens them at first; close them once the map is drawn

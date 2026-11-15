@@ -30,8 +30,7 @@
     align-items: center;
     justify-content: space-between;
     background-color: #512da8;
-    border-bottom: 4px solid #ffc107;
-    box-shadow: 0px 3px 3px #888888;
+    border-bottom: 4px solid #ffc107; /* the yellow line is the only edge, on every page */
 }
 
 /* NAV */
@@ -77,12 +76,25 @@
     transform: scaleX(1);
 }
 
-/* Phones: a shorter header with smaller links */
+/* The page being shown keeps the darker background a link gets on hover */
+.site-header__link.is-current:before
+{
+    transform: scaleX(1);
+}
+
+/* The menu button only shows on phones */
+.site-header__menu-button
+{
+    display: none;
+}
+
+/* Phones: a shorter header; the links fold into a menu that drops down
+   from the hamburger button, at full width under the header */
 @media (max-width: 700px)
 {
     .site-header
     {
-        padding: 0 12px;
+        padding: 0 4px 0 12px;
     }
 
     .site-header__logo
@@ -92,10 +104,57 @@
         margin-top: -5px;
     }
 
+    .site-header__menu-button
+    {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 44px;
+        height: 44px;
+        margin-left: auto;
+        padding: 0;
+        border: none;
+        border-radius: 4px;
+        background: none;
+        color: #fff;
+        cursor: pointer;
+    }
+
+    .site-header__menu-button:focus
+    {
+        background: none;
+    }
+
+    .site-header__menu-button:focus-visible
+    {
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.4);
+    }
+
+    .site-header__nav
+    {
+        display: none;
+        position: absolute;
+        top: calc(100% + 4px); /* under the yellow line, which is the header's border */
+        left: 0;
+        right: 0;
+        flex-direction: column-reverse; /* the markup lists them right-to-left */
+        align-items: stretch;
+        background-color: #512da8;
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25);
+    }
+
+    .is-menu-open .site-header__nav
+    {
+        display: flex;
+        animation: fade-in-down var(--dur) var(--ease-out);
+    }
+
     .site-header__link
     {
-        margin: 0 2px;
-        padding: 8px 6px;
-        font-size: 12px;
+        margin: 0;
+        padding: 14px 20px;
+        border-top: 1px solid rgba(255, 255, 255, 0.12);
+        font-size: 14px;
     }
 }

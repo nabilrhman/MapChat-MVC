@@ -358,10 +358,32 @@ label.error
     }
 }
 
-/* Toast colours by message type: a coloured stripe on the left */
-.toast--success { border-left: 4px solid #66bb6a; }
-.toast--info    { border-left: 4px solid #9575cd; }
-.toast--warning { border-left: 4px solid #ffa726; }
+/* Toasts look like the notices on the log-in pages: tinted by type, with a
+   coloured stripe and a matching icon */
+#toast-container .toast
+{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-left: 4px solid #512da8;
+    background-color: #ede7f6;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    color: #311b92;
+    font-weight: 500;
+}
+
+.toast__icon
+{
+    flex-shrink: 0;
+    font-size: 20px;
+    color: #512da8;
+}
+
+#toast-container .toast--success { border-left-color: #2e7d32; background-color: #e8f5e9; color: #1b5e20; }
+#toast-container .toast--success .toast__icon { color: #2e7d32; }
+
+#toast-container .toast--warning { border-left-color: #ef6c00; background-color: #fff3e0; color: #8a3c00; }
+#toast-container .toast--warning .toast__icon { color: #ef6c00; }
 
 /* Compact toasts: short line, wraps if needed, never wider than 340px */
 #toast-container .toast
@@ -373,4 +395,45 @@ label.error
     word-break: normal;
     width: fit-content;   /* short messages get a short toast */
     margin-left: auto;    /* keep them against the right edge */
+}
+
+/* The thin bar across the top while the next page loads (loadingBar.js).
+   It jumps a little straight away so the click feels answered, then slows,
+   as it can't know how long is left; the next page fills the rest */
+.loading-bar
+{
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 10000;
+    width: 0;
+    height: 3px;
+    background-color: #ffc107;
+    box-shadow: 0 0 6px rgba(255, 193, 7, 0.7);
+    opacity: 0;
+    pointer-events: none;
+}
+
+.loading-bar--running
+{
+    opacity: 1;
+    animation: loading-bar-grow 10s linear forwards;
+}
+
+/* Under the header it fills the header's yellow line in a deeper orange */
+.loading-bar--header
+{
+    top: calc(var(--header-height) - 4px);
+    z-index: 111; /* just above the header */
+    height: 4px;
+    background-color: #ff6f00;
+    box-shadow: none;
+}
+
+@keyframes loading-bar-grow
+{
+    0%   { width: 0; }
+    3%   { width: 30%; }
+    20%  { width: 60%; }
+    100% { width: 90%; }
 }

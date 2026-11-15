@@ -425,6 +425,27 @@ $(document).ready(function () {
         });
     }
 
+    // Phones start with the map hidden; the button brings a strip of it back,
+    // and the choice is remembered for next time
+    function setMapOpen(open) {
+        $('body').toggleClass('is-map-open', open);
+        $('#map-toggle')
+            .attr('aria-pressed', open ? 'true' : 'false')
+            .attr('aria-label', open ? 'Hide the map' : 'Show the map')
+            .attr('title', open ? 'Hide the map' : 'Show the map');
+        try {
+            localStorage.setItem('mapOpen', open ? '1' : '0');
+        } catch (e) {}
+    }
+
+    try {
+        setMapOpen(localStorage.getItem('mapOpen') === '1');
+    } catch (e) {}
+
+    $('#map-toggle').on('click', function () {
+        setMapOpen(!$('body').hasClass('is-map-open'));
+    });
+
     $('#people-toggle').on('click', function () {
         setPeopleOpen(!$('#people').is(':visible'));
     });
@@ -536,7 +557,7 @@ $(document).ready(function () {
             })
             .catch(function (error) {
                 var message = errorMessage(error, 'Your message could not be sent.');
-                M.toast({html: $('<div>').text(message).html()});
+                showToast(message, 'warning');
             })
             .finally(function () {
                 sending = false;

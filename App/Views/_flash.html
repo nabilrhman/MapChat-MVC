@@ -5,9 +5,7 @@
     (function () {
         var messages = {{ flash_messages|json_encode(constant('JSON_HEX_TAG') b-or constant('JSON_HEX_AMP') b-or constant('JSON_HEX_APOS') b-or constant('JSON_HEX_QUOT'))|raw }};
         messages.forEach(function (message) {
-            var text = document.createElement('div');
-            text.textContent = message.body;
-            M.toast({html: text.innerHTML, classes: 'toast--' + message.type, displayLength: 4500});
+            showToast(message.body, message.type);
         });
     })();
 </script>
