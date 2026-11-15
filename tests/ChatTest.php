@@ -184,4 +184,84 @@ class ChatTest extends TestCase
 
         $this->assertSame(2, Chat::countRecent(self::ANN, 60));
     }
+
+    private function userId(string $email): int
+    {
+        $stmt = $this->db->prepare('SELECT id FROM users WHERE email = ?');
+        $stmt->execute([$email]);
+
+        return (int) $stmt->fetchColumn();
+    }
+
+    /**
+     * Private chats as partner name => [unread, newest id]
+     */
+    private function conversations(string $viewer, int $upToId = PHP_INT_MAX): array
+    {
+        $conversations = [];
+        foreach (Chat::getConversations($viewer, $upToId) as $partner) {
+            $conversations[$partner['name']] = [(int) $partner['unread'], (int) $partner['newest_id']];
+        }
+
+        return $conversations;
+    }
+
+    public function testConversationsCountUnreadPerPartner()
+    {
+        $this->send(self::ANN, 'one', self::BOB);
+        $annNewest = $this->send(self::ANN, 'two', self::BOB);
+        $catNewest = $this->send(self::CAT, 'hi bob', self::BOB);
+        $this->send(self::ANN, 'hello all');
+
+        $this->assertSame(['cat' => [1, $catNewest], 'ann' => [2, $annNewest]], $this->conversations(self::BOB));
+    }
+
+    public function testConversationsIncludeOnesYouStartedWithNothingUnread()
+    {
+        $sent = $this->send(self::ANN, 'for cat', self::CAT);
+
+        $this->assertSame(['cat' => [0, $sent]], $this->conversations(self::ANN));
+        $this->assertSame([], $this->conversations(self::BOB));
+    }
+
+    public function testConversationsIncludeOnesPushedOutOfTheNewestPage()
+    {
+        $private = $this->send(self::ANN, 'before the rush', self::BOB);
+        for ($i = 0; $i < Chat::HISTORY; $i++) {
+            $this->send(self::CAT, "busy $i");
+        }
+
+        $this->assertNotContains('before the rush', $this->bodies(Chat::getRecent(self::BOB)));
+        $this->assertSame(['ann' => [1, $private]], $this->conversations(self::BOB));
+    }
+
+    public function testConversationsLeaveOutMessagesNewerThanThePage()
+    {
+        $first = $this->send(self::ANN, 'on the page', self::BOB);
+        $this->send(self::ANN, 'after the page', self::BOB);
+
+        $this->assertSame(['ann' => [1, $first]], $this->conversations(self::BOB, $first));
+    }
+
+    public function testMarkReadOnlyClearsThatSenderUpToTheId()
+    {
+        $this->send(self::ANN, 'one', self::BOB);
+        $seen = $this->send(self::ANN, 'two', self::BOB);
+        $later = $this->send(self::ANN, 'three', self::BOB);
+        $catMessage = $this->send(self::CAT, 'hi bob', self::BOB);
+
+        Chat::markRead(self::BOB, $this->userId(self::ANN), $seen);
+
+        $this->assertSame(['cat' => [1, $catMessage], 'ann' => [1, $later]], $this->conversations(self::BOB));
+    }
+
+    public function testMarkReadCantClearSomeoneElsesMessages()
+    {
+        $sent = $this->send(self::ANN, 'for cat', self::CAT);
+
+        // Bob marking "ann" read touches only messages sent to bob
+        Chat::markRead(self::BOB, $this->userId(self::ANN), PHP_INT_MAX);
+
+        $this->assertSame(['ann' => [1, $sent]], $this->conversations(self::CAT));
+    }
 }

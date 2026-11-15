@@ -58,6 +58,11 @@ async function fetchOlderChats(before) {
     return parseHtml(response.data).filter((element) => element.classList.contains('chat'));
 }
 
+// Tells the server you've seen the private messages from a person, up to an id
+function markChatRead(from, upTo) {
+    return postForm('/app/mark-read', {from, up_to: upTo});
+}
+
 // Sends to everyone, or privately when to is a person's id, then fetches it
 // back so it shows at once. That check failing doesn't fail the send: the
 // message went out, and the next round brings it

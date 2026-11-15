@@ -194,6 +194,55 @@ function showConversation(conversation) {
     addDayDividers();
     scrollToNewest('instant');
     newMessagesWhileScrolledUp = 0;
+
+    markConversationRead(activeConversation);
+    if (tab.dataset.newestId) {
+        loadConversation(activeConversation, tab.dataset.newestId);
+        delete tab.dataset.newestId;
+    }
+}
+
+function setUnreadCount(tab, count) {
+    const unreadCount = tab.querySelector('.chat-tab__unread');
+    unreadCount.textContent = count;
+    unreadCount.hidden = false;
+}
+
+/* Read private chats: the server keeps which messages you've seen, so ones
+   that came while you were away get a count on their tab when you're back */
+
+// Per conversation, the message id the server last heard you'd seen
+const markedReadUpTo = {};
+
+function markConversationRead(conversation) {
+    if (conversation === EVERYONE) return;
+    const upTo = Number(getChats().at(-1)?.dataset.id ?? 0);
+    if (upTo <= (markedReadUpTo[conversation] ?? 0)) return;
+
+    markedReadUpTo[conversation] = upTo;
+    markChatRead(conversation, upTo).catch(() => {
+        // The next message or visit to the tab tries again
+        markedReadUpTo[conversation] = 0;
+    });
+}
+
+// A private chat a busy room pushed out of the loaded page fetches older
+// pages until its newest message is there
+async function loadConversation(conversation, newestId) {
+    const isLoaded = () => chatList.querySelector(`.chat[data-id="${newestId}"]`);
+    if (isLoaded() || isLoadingOlder) return;
+
+    isLoadingOlder = true;
+    try {
+        while (!isLoaded() && hasOlderMessages && activeConversation === conversation) {
+            await loadOlderMessages();
+        }
+    } catch {
+        // Scrolling up tries again
+    } finally {
+        isLoadingOlder = false;
+    }
+    if (activeConversation === conversation) scrollToNewest('instant');
 }
 
 function closeTab(tab) {
@@ -360,6 +409,9 @@ function placeMessages(chats) {
             if (tab) countUnread(tab);
         }
     });
+    if (chats.some((chat) => getConversation(chat) === activeConversation)) {
+        markConversationRead(activeConversation);
+    }
 }
 
 chatList.addEventListener('click', (event) => {
@@ -537,8 +589,11 @@ chatList.addEventListener('wheel', (event) => {
 function trimOldMessages() {
     const chats = getChats();
     if (chats.length <= MAX_MESSAGES || isLoadingOlder) return;
+    // Nor while an open private chat would lose messages: its list could empty
+    const toDrop = chats.slice(0, chats.length - MAX_MESSAGES);
+    if (activeConversation !== EVERYONE && toDrop.some((chat) => getConversation(chat) === activeConversation)) return;
 
-    chats.slice(0, chats.length - MAX_MESSAGES).forEach((chat) => chat.remove());
+    toDrop.forEach((chat) => chat.remove());
     oldestChatId = Number(chats[chats.length - MAX_MESSAGES].dataset.id);
     hasOlderMessages = true;
     addDayDividers();
@@ -651,6 +706,16 @@ hasOlderMessages = historyChats.length === pageSize;
 showTimes(historyChats);
 fadeInPhotos(chatList.querySelectorAll('.chat__photo'));
 historyChats.forEach(addTabFor);
+// Your newest private chats, loaded or not, counting what came while you were away
+JSON.parse(chatPanel.dataset.conversations || '[]').forEach((partner) => {
+    const conversation = String(partner.user_id);
+    if (Number(partner.newest_id) <= (closedTabs[conversation] ?? 0)) return;
+
+    forgetClosedTab(conversation);
+    const tab = addTab(conversation, partner.name);
+    tab.dataset.newestId = partner.newest_id;
+    if (Number(partner.unread) > 0) setUnreadCount(tab, partner.unread);
+});
 showConversation(EVERYONE);
 shouldAnimateNewTabs = true;
 

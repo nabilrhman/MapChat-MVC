@@ -21,6 +21,9 @@ class Chat extends \Core\Model
     /** Most messages sent to the page at once: when it opens, checks for new ones or asks for older ones */
     const HISTORY = 100;
 
+    // Private chats the page opens a tab for, however busy the room has been
+    const CONVERSATIONS = 20;
+
     /** The welcome account; nobody can message it privately */
     const BOT_EMAIL = 'bot@mapchat.local';
 
@@ -94,6 +97,66 @@ class Chat extends \Core\Model
         $stmt->execute();
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * The viewer's newest private chats, each with the other person, the
+     * newest message's id and how many the viewer hasn't seen. The page may
+     * not hold those messages: a busy room pushes them out of the newest page
+     *
+     * @param string $viewer The viewer's email
+     * @param int $upToId The page's newest message; the chat's polling brings later ones
+     *
+     * @return array
+     */
+    public static function getConversations($viewer, $upToId)
+    {
+        $sql = 'SELECT users.id AS user_id, users.name, MAX(private.id) AS newest_id, SUM(private.is_unread) AS unread
+                FROM (
+                    (SELECT email AS partner, id, read_at IS NULL AS is_unread FROM chats
+                     WHERE to_email = :viewer AND id <= :up_to_id)
+                    UNION ALL
+                    (SELECT to_email, id, FALSE FROM chats
+                     WHERE email = :viewer AND to_email IS NOT NULL AND id <= :up_to_id)
+                ) AS private
+                JOIN users
+                ON private.partner = users.email
+                GROUP BY users.id, users.name
+                ORDER BY newest_id DESC
+                LIMIT ' . static::CONVERSATIONS;
+
+        $stmt = static::getDB()->prepare($sql);
+        $stmt->bindValue(':viewer', $viewer, PDO::PARAM_STR);
+        $stmt->bindValue(':up_to_id', $upToId, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Mark the private messages a person sent the viewer as seen, up to the
+     * given id. Ones that came later stay unread
+     *
+     * @param string $viewer The viewer's email
+     * @param int $senderId
+     * @param int $upToId
+     *
+     * @return void
+     */
+    public static function markRead($viewer, $senderId, $upToId)
+    {
+        $sql = 'UPDATE chats
+                JOIN users
+                ON chats.email = users.email
+                SET chats.read_at = CURRENT_TIMESTAMP
+                WHERE chats.to_email = :viewer AND users.id = :sender_id
+                      AND chats.id <= :up_to_id AND chats.read_at IS NULL';
+
+        $stmt = static::getDB()->prepare($sql);
+        $stmt->bindValue(':viewer', $viewer, PDO::PARAM_STR);
+        $stmt->bindValue(':sender_id', $senderId, PDO::PARAM_INT);
+        $stmt->bindValue(':up_to_id', $upToId, PDO::PARAM_INT);
+        $stmt->execute();
     }
 
     /**

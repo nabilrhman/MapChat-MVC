@@ -12,8 +12,10 @@ class Schema extends \Core\Model
     /**
      * Columns added since the first release, with the statements that add
      * each, kept in step with init.sql. One change per statement, since TiDB
-     * won't add a foreign key alongside other changes. to_email goes last: if
-     * its foreign key fails, the columns the pages need are already there
+     * won't add a foreign key alongside other changes. to_email goes near the
+     * end: if its foreign key fails, the columns the pages need are already
+     * there. read_at needs to_email, and counts every private message from
+     * before it as read, so nobody's old ones come back as unread
      */
     const ADDED_COLUMNS = [
         ['userinfo', 'country', ['ALTER TABLE userinfo ADD COLUMN country CHAR(2) AFTER city']],
@@ -27,6 +29,10 @@ class Schema extends \Core\Model
             'ALTER TABLE chats ADD KEY fk_m_to_email (to_email)',
             'ALTER TABLE chats ADD CONSTRAINT fk_m_to_email FOREIGN KEY (to_email) REFERENCES users (email)
                ON DELETE CASCADE ON UPDATE CASCADE',
+        ]],
+        ['chats', 'read_at', [
+            'ALTER TABLE chats ADD COLUMN read_at TIMESTAMP NULL DEFAULT NULL AFTER timestamp',
+            'UPDATE chats SET read_at = CURRENT_TIMESTAMP WHERE to_email IS NOT NULL',
         ]],
     ];
 
