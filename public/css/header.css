@@ -4,8 +4,8 @@
 .site-header__logo {
     display: block;
     flex: none;
-    width: 146px;
-    height: 45px; /* the logo's own proportions at this width */
+    width: 170px;
+    height: 52px; /* the logo's own proportions at this width */
     background-image: url("../res/logo-mapchat-white.svg");
     background-repeat: no-repeat;
     background-size: contain;
