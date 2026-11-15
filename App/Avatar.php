@@ -26,30 +26,46 @@ class Avatar
     ];
 
     const EYES = [
-        '<circle cx="40" cy="48" r="2.4"/><circle cx="56" cy="48" r="2.4"/>',
-        '<path d="M36.5 48.5Q40 45 43.5 48.5M52.5 48.5Q56 45 59.5 48.5" fill="none" stroke="#1f1f1f" stroke-width="2.4" stroke-linecap="round"/>',
-        '<ellipse cx="40" cy="48" rx="2" ry="3"/><ellipse cx="56" cy="48" rx="2" ry="3"/>',
+        'dots' => '<circle cx="40" cy="48" r="2.4"/><circle cx="56" cy="48" r="2.4"/>',
+        'happy' => '<path d="M36.5 48.5Q40 45 43.5 48.5M52.5 48.5Q56 45 59.5 48.5" fill="none" stroke="#1f1f1f" stroke-width="2.4" stroke-linecap="round"/>',
+        'oval' => '<ellipse cx="40" cy="48" rx="2" ry="3"/><ellipse cx="56" cy="48" rx="2" ry="3"/>',
     ];
 
     const BROWS = [
-        '',
-        '<path d="M36 41.5L43 40.5M53 40.5L60 41.5" fill="none" stroke="#1f1f1f" stroke-width="2.4" stroke-linecap="round"/>',
+        'none' => '',
+        'brows' => '<path d="M36 41.5L43 40.5M53 40.5L60 41.5" fill="none" stroke="#1f1f1f" stroke-width="2.4" stroke-linecap="round"/>',
     ];
 
     const MOUTHS = [
-        '<path d="M42 59Q48 64 54 59" fill="none" stroke="#1f1f1f" stroke-width="2.4" stroke-linecap="round"/>',
-        '<path d="M41 57.5Q48 66 55 57.5Z"/>',
-        '<path d="M43.5 60H52.5" stroke="#1f1f1f" stroke-width="2.4" stroke-linecap="round"/>',
-        '<path d="M43 60Q49 63 54 58" fill="none" stroke="#1f1f1f" stroke-width="2.4" stroke-linecap="round"/>',
-        '<circle cx="48" cy="60" r="2.2"/>',
+        'smile' => '<path d="M42 59Q48 64 54 59" fill="none" stroke="#1f1f1f" stroke-width="2.4" stroke-linecap="round"/>',
+        'open' => '<path d="M41 57.5Q48 66 55 57.5Z"/>',
+        'flat' => '<path d="M43.5 60H52.5" stroke="#1f1f1f" stroke-width="2.4" stroke-linecap="round"/>',
+        'smirk' => '<path d="M43 60Q49 63 54 58" fill="none" stroke="#1f1f1f" stroke-width="2.4" stroke-linecap="round"/>',
+        'o' => '<circle cx="48" cy="60" r="2.2"/>',
     ];
 
     const EXTRAS = [
-        '',
-        '',
-        '',
+        'none' => '',
+        'none2' => '',
+        'none3' => '',
         'glasses' => '<g fill="none" stroke="#1f1f1f" stroke-width="2.2"><circle cx="40" cy="48" r="6"/><circle cx="56" cy="48" r="6"/><path d="M46 48H50M34 47L29 45M62 47L67 45"/></g>',
         'freckles' => '<g opacity="0.55"><circle cx="35" cy="55" r="0.9"/><circle cx="38" cy="56.5" r="0.9"/><circle cx="58" cy="56.5" r="0.9"/><circle cx="61" cy="55" r="0.9"/></g>',
+        // A hole around the mouth, so the mouth drawn after it still shows
+        'beard' => '<path fill-rule="evenodd" d="M28.5 50C29 63 37 70.5 48 70.5C59 70.5 67 63 67.5 50C65 56 61 57.5 57 57C54 54.5 51 55 48 55.5C45 55 42 54.5 39 57C35 57.5 31 56 28.5 50ZM48 57.5C43 57.5 40.5 59 40.5 60.5C40.5 63 44 65 48 65C52 65 55.5 63 55.5 60.5C55.5 59 53 57.5 48 57.5Z"/>',
+        'moustache' => '<path d="M40.5 58C43 55 46 55 48 56.5C50 55 53 55 55.5 58C53 59 50.5 58.6 48 57.8C45.5 58.6 43 59 40.5 58Z"/>',
+    ];
+
+    /** The demo people's faces, picked to suit each of them */
+    const LOOKS = [
+        'Aiko Tanaka' => ['hair' => 'bun', 'eyes' => 'happy', 'mouth' => 'smile', 'brows' => 'none', 'extra' => 'none', 'bg' => '#fde2e4'],
+        'Maya Thompson' => ['hair' => 'long', 'eyes' => 'dots', 'mouth' => 'open', 'brows' => 'none', 'extra' => 'glasses', 'bg' => '#dfe7fd'],
+        'Wanjiru Kamau' => ['hair' => 'curly', 'eyes' => 'dots', 'mouth' => 'open', 'brows' => 'none', 'extra' => 'none', 'bg' => '#fcefb4'],
+        'Sofia Ramírez' => ['hair' => 'long', 'eyes' => 'oval', 'mouth' => 'smile', 'brows' => 'brows', 'extra' => 'freckles', 'bg' => '#fad2e1'],
+        'Emily Carter' => ['hair' => 'long', 'eyes' => 'happy', 'mouth' => 'smirk', 'brows' => 'none', 'extra' => 'none', 'bg' => '#e9f5db'],
+        'Rafael Costa' => ['hair' => 'crop', 'eyes' => 'dots', 'mouth' => 'smile', 'brows' => 'brows', 'extra' => 'beard', 'bg' => '#e2ece9'],
+        'Tanvir Hasan' => ['hair' => 'swoop', 'eyes' => 'oval', 'mouth' => 'smirk', 'brows' => 'brows', 'extra' => 'moustache', 'bg' => '#fff1e6'],
+        'Lukas Becker' => ['hair' => 'beanie', 'eyes' => 'dots', 'mouth' => 'flat', 'brows' => 'none', 'extra' => 'glasses', 'bg' => '#d7e3fc'],
+        'Jae-won Park' => ['hair' => 'crop', 'eyes' => 'happy', 'mouth' => 'open', 'brows' => 'brows', 'extra' => 'none', 'bg' => '#e4dcf1'],
     ];
 
     /** Pairs of gradient colours to choose from */
@@ -103,7 +119,7 @@ class Avatar
             return $photo;
         }
 
-        $svg = $is_demo ? static::face($id) : static::svg($name, $id);
+        $svg = $is_demo ? static::face($id, $name) : static::svg($name, $id);
 
         return 'data:image/svg+xml;base64,' . base64_encode($svg);
     }
@@ -113,13 +129,17 @@ class Avatar
      * together from the parts above. The same person always gets the same face
      *
      * @param int $seed The person's id
+     * @param string|null $name A name in LOOKS gets that look; anyone else a mix
      *
      * @return string SVG
      */
-    public static function face($seed)
+    public static function face($seed, $name = null)
     {
+        $look = static::LOOKS[$name] ?? null;
         // A separate hash per part, so neighbouring ids look nothing alike
-        $pick = fn ($parts, $name) => array_values($parts)[crc32($name . $seed) % count($parts)];
+        $pick = fn ($parts, $part) => $look
+            ? ($part === 'bg' ? $look['bg'] : $parts[$look[$part]])
+            : array_values($parts)[crc32($part . $seed) % count($parts)];
 
         $hair = $pick(static::HAIR, 'hair');
         // Long hair falls behind the shoulders, so it's drawn first
@@ -136,8 +156,8 @@ class Avatar
             . '<ellipse cx="67" cy="50" rx="3.5" ry="5" fill="#fff" ' . $line . '/>'
             . '<ellipse cx="48" cy="47" rx="20" ry="22" fill="#fff" ' . $line . '/>'
             . '<g fill="' . static::INK . '">'
-            . ($is_long ? '' : $hair) . $pick(static::EYES, 'eyes') . $pick(static::MOUTHS, 'mouth')
-            . $pick(static::BROWS, 'brows') . $pick(static::EXTRAS, 'extra')
+            . ($is_long ? '' : $hair) . $pick(static::EYES, 'eyes') . $pick(static::BROWS, 'brows')
+            . $pick(static::EXTRAS, 'extra') . $pick(static::MOUTHS, 'mouth')
             . '</g>'
             . '<path d="M48 50Q45.5 55 49 55.5" fill="none" stroke="' . static::INK . '" stroke-width="2" stroke-linecap="round"/>'
             . '</svg>';

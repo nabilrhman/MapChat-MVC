@@ -14,12 +14,6 @@ class UserInfo extends \Core\Model
     const ONLINE_SECONDS = 60;
 
     /**
-     * So the room never looks empty, about a third of the demo people (from
-     * demo.sql) always show as online; which third changes every hour
-     */
-    const DEMO_ONLINE = "(users.email LIKE '%@demo.mapchat.local' AND MOD(users.id + HOUR(NOW()), 3) = 0)";
-
-    /**
      * Save a user's IP and look up where it is
      *
      * @param string $email
@@ -299,15 +293,17 @@ class UserInfo extends \Core\Model
      */
     public static function getRecentPeople()
     {
+        $demo_online = static::demoOnlineSql();
+
         $sql = 'SELECT users.id, users.name, users.avatar, users.email LIKE \'%@demo.mapchat.local\' AS is_demo,
                        IF(users.share_location, userinfo.city, NULL) AS city,
                        IF(users.share_location, userinfo.country, NULL) AS country,
-                       (userinfo.online_at > NOW() - INTERVAL :online SECOND OR ' . static::DEMO_ONLINE . ') AS is_online,
+                       (userinfo.online_at > NOW() - INTERVAL :online SECOND OR ' . $demo_online . ') AS is_online,
                        TIMESTAMPDIFF(MINUTE, userinfo.online_at, NOW()) AS minutes_ago
                 FROM userinfo
                 JOIN users
                 ON userinfo.email = users.email
-                WHERE userinfo.online_at > NOW() - INTERVAL 1 DAY OR ' . static::DEMO_ONLINE . '
+                WHERE userinfo.online_at > NOW() - INTERVAL 1 DAY OR ' . $demo_online . '
                 ORDER BY userinfo.online_at DESC';
 
         $stmt = static::getDB()->prepare($sql);
@@ -315,6 +311,18 @@ class UserInfo extends \Core\Model
         $stmt->execute();
 
         return static::withAvatarSrc($stmt->fetchAll(PDO::FETCH_ASSOC), 'id');
+    }
+
+    /**
+     * SQL that's true for the demo people in the room now (DemoChat::presentNow)
+     *
+     * @return string
+     */
+    protected static function demoOnlineSql()
+    {
+        $emails = array_map([static::getDB(), 'quote'], DemoChat::presentNow());
+
+        return $emails ? 'users.email IN (' . implode(', ', $emails) . ')' : 'FALSE';
     }
 
     /**
