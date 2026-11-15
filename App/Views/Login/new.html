@@ -32,8 +32,11 @@
 
     <div class="form-divider"><span>or</span></div>
 
-    <form action="/login/guest" method="post">
-        <button type="submit" class="button button-outline button-block">Try it as a guest</button>
+    <form action="/login/guest" method="post" id="guestForm">
+        <button type="submit" class="button button-outline button-block">
+            <span class="button-label">Try it as a guest</span>
+            <span class="loading-dots" aria-hidden="true"><span></span><span></span><span></span></span>
+        </button>
     </form>
 
     <p class="form-switch"><span>New to MapChat?</span> <a href="/signup/new">Create an account</a></p>
@@ -43,4 +46,19 @@
 
 {% block footer %}
 <script src="/js/passwordToggle.js"></script>
+<script>
+    // Making a guest account and finding its location takes a few seconds
+    var guestButton = $('#guestForm button');
+    $('#guestForm').on('submit', function (event) {
+        if (guestButton.hasClass('is-loading')) {
+            event.preventDefault();
+            return;
+        }
+        guestButton.addClass('is-loading').attr('aria-busy', 'true');
+    });
+    // Coming back with the Back button shows the page as it was left
+    $(window).on('pageshow', function () {
+        guestButton.removeClass('is-loading').removeAttr('aria-busy');
+    });
+</script>
 {% endblock %}
