@@ -16,8 +16,31 @@
     <div class="site-header__nav" id="site-nav">
 
         {% if current_user %}
-        <a href="/logout" class="site-header__link">LOG OUT</a>
-        {{ nav.link('/profile/show', 'PROFILE', '/profile') }}
+        {# Your avatar and name; opens Profile and Log out #}
+        {% set on_profile = current_path starts with '/profile' %}
+        <div class="account-menu" id="account-menu">
+            <button type="button" class="account-menu__button{{ on_profile ? ' is-current' }}" id="account-menu-button"
+                    aria-controls="account-menu-list" aria-expanded="false" aria-haspopup="true">
+                <img class="account-menu__avatar" src="{{ avatar_src(current_user.id, current_user.name, current_user.avatar) }}" alt="">
+                <span class="account-menu__name">{{ current_user.name }}</span>
+                <i class="material-icons account-menu__chevron">expand_more</i>
+            </button>
+            <div class="account-menu__list" id="account-menu-list">
+                <div class="account-menu__who">
+                    <img class="account-menu__avatar account-menu__avatar--large" src="{{ avatar_src(current_user.id, current_user.name, current_user.avatar) }}" alt="">
+                    <span>
+                        <span class="account-menu__who-name">{{ current_user.name }}</span>
+                        <span class="account-menu__who-detail">{{ current_user.is_guest ? 'Guest account' : current_user.email }}</span>
+                    </span>
+                </div>
+                <a href="/profile/show" class="account-menu__item{{ on_profile ? ' is-current' }}"{{ on_profile ? ' aria-current="page"' }}>
+                    <i class="material-icons">person</i>Profile
+                </a>
+                <a href="/logout" class="account-menu__item">
+                    <i class="material-icons">logout</i>Log out
+                </a>
+            </div>
+        </div>
         {% else %}
         {{ nav.link('/login', 'LOG IN', '/login') }}
         {{ nav.link('/signup/new', 'SIGN UP', '/signup') }}

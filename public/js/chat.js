@@ -108,6 +108,7 @@ $(document).ready(function () {
         $('#textarea-send').attr('placeholder', isPrivate ? 'Message ' + name : 'Type your message');
         addDayDividers();
         $('#chat-list').scrollTop($('#chat-list').prop('scrollHeight'));
+        newWhileAway = 0;
     }
 
     // Uploaded photos fade in over a soft circle once loaded; letter avatars
@@ -271,7 +272,8 @@ $(document).ready(function () {
             .toggleClass('is-online', person.is_online == 1)
             .toggleClass('person--can-message', !isMe)
             .attr('data-user-id', person.id)
-            .attr('title', isMe ? '' : 'Chat privately with ' + person.name);
+            .attr('title', isMe ? '' : 'Chat privately with ' + person.name)
+            .attr('data-tip-side', 'left'); // over the map, not the rows above
 
         $('<div class="person__avatar"></div>')
             .append($('<img class="person__photo" alt="">').attr('src', person.avatar_src))
@@ -481,6 +483,52 @@ $(document).ready(function () {
         }
     }
 
+    // The "Latest" button: shows once you've scrolled up a screen's worth of
+    // pixels, counts messages in this tab that arrive meanwhile, and takes you
+    // back down
+    var newWhileAway = 0;
+
+    function updateJumpButton() {
+        var list = $('#chat-list')[0];
+        var away = list.scrollHeight - list.scrollTop - list.clientHeight > 200;
+        if (!away) newWhileAway = 0;
+
+        var button = $('#jump-latest')[0];
+        var label = $('#jump-latest-text');
+        var text = newWhileAway === 0 ? 'Latest'
+            : newWhileAway + (newWhileAway === 1 ? ' new message' : ' new messages');
+
+        button.hidden = !away;
+        if (!away || label.text() === text) {
+            label.text(text);
+            button.style.width = '';
+            return;
+        }
+
+        // The pill eases to the new label's width instead of jumping. Going
+        // from "Latest" to a count, the words fade in; after that only the
+        // number changes, so nothing fades and nothing flickers
+        var wasLatest = label.text() === 'Latest';
+        var from = button.offsetWidth;
+        label.text(text);
+        button.style.width = '';
+        var to = button.offsetWidth;
+        button.style.width = from + 'px';
+        button.offsetWidth; // start from the old width
+        button.style.width = to + 'px';
+        if (wasLatest) {
+            label.removeClass('is-changing');
+            label[0].offsetWidth;
+            label.addClass('is-changing');
+        }
+    }
+
+    $('#chat-list').on('scroll', updateJumpButton);
+
+    $('#jump-latest').on('click', function () {
+        $('#chat-list').animate({scrollTop: $('#chat-list').prop('scrollHeight')}, SCROLL_DURATION);
+    });
+
     // Scrolls down for new messages only if you're at the bottom already, or forced
     // (after you send); someone reading older messages stays where they are
     function checkForMessages(forceScroll) {
@@ -506,6 +554,10 @@ $(document).ready(function () {
 
             if (atBottom || forceScroll) {
                 $('#chat-list').animate({scrollTop: $('#chat-list').prop('scrollHeight')}, SCROLL_DURATION);
+            } else {
+                // Only ones in the open tab; the others get a count on their tab
+                newWhileAway += chats.filter(function () { return this.style.display !== 'none'; }).length;
+                updateJumpButton();
             }
         });
     }

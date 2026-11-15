@@ -158,3 +158,224 @@
         font-size: 14px;
     }
 }
+
+/* ACCOUNT MENU */
+/* Your avatar and name on the right; a click opens Profile and Log out */
+
+.account-menu
+{
+    position: relative;
+    margin-left: 10px;
+}
+
+.account-menu__button
+{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 44px;
+    padding: 0 6px 0 5px; /* with the chevron glyph's own space, ~12px after it */
+    border: none;
+    border-radius: 22px;
+    background: none;
+    color: #fff;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color var(--dur-fast) var(--ease-out);
+}
+
+/* materialize.css turns a focused button teal */
+.account-menu__button:focus
+{
+    background: none;
+}
+
+.account-menu__button:hover,
+.account-menu__button.is-current,
+.account-menu.is-open .account-menu__button
+{
+    background-color: rgba(18, 0, 94, 0.3); /* the links' hover colour */
+}
+
+.account-menu__button:focus-visible
+{
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.4);
+}
+
+.account-menu__avatar
+{
+    flex: none;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.account-menu__avatar--large
+{
+    width: 40px;
+    height: 40px;
+}
+
+.account-menu__name
+{
+    max-width: 140px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+/* Pulled toward the name, so it sits as far from the name as from the edge */
+.account-menu__chevron
+{
+    margin-left: -2px;
+    font-size: 20px;
+    transition: transform var(--dur) var(--ease-out);
+}
+
+.account-menu.is-open .account-menu__chevron
+{
+    transform: rotate(180deg);
+}
+
+/* The dropdown: a white card under the header, against the right edge */
+.account-menu__list
+{
+    display: none;
+    position: absolute;
+    top: calc(100% + 14px);
+    right: 0;
+    min-width: 240px;
+    padding: 8px 0;
+    background-color: #fff;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+    color: #212121;
+}
+
+.account-menu.is-open .account-menu__list
+{
+    display: block;
+    animation: fade-in-down var(--dur) var(--ease-out);
+}
+
+.account-menu__who
+{
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 16px 12px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid #ede7f6;
+}
+
+.account-menu__who-name
+{
+    display: block;
+    font-weight: 600;
+}
+
+.account-menu__who-detail
+{
+    display: block;
+    max-width: 170px;
+    overflow: hidden;
+    color: #757575;
+    font-size: 13px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.account-menu__item
+{
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    color: #212121;
+    font-size: 14px;
+    text-decoration: none;
+}
+
+.account-menu__item .material-icons
+{
+    color: #512da8;
+    font-size: 20px;
+}
+
+.account-menu__item:hover,
+.account-menu__item:focus-visible,
+.account-menu__item.is-current
+{
+    outline: none;
+    background-color: #f5f1fb;
+}
+
+/* Phones: inside the menu that drops from the hamburger, the account comes
+   first, already open, as rows like the other links */
+@media (max-width: 700px)
+{
+    .account-menu
+    {
+        order: 1; /* the list runs bottom-up, so this puts it on top */
+        margin: 0;
+    }
+
+    .account-menu__button
+    {
+        display: none;
+    }
+
+    .account-menu__list
+    {
+        display: block;
+        position: static;
+        min-width: 0;
+        padding: 0;
+        background: none;
+        box-shadow: none;
+        color: #fff;
+    }
+
+    .account-menu.is-open .account-menu__list
+    {
+        animation: none;
+    }
+
+    .account-menu__who
+    {
+        margin: 0;
+        padding: 14px 20px;
+        border-bottom: none;
+        background-color: rgba(18, 0, 94, 0.2);
+    }
+
+    .account-menu__who-detail
+    {
+        max-width: none;
+        color: rgba(255, 255, 255, 0.7);
+    }
+
+    .account-menu__item
+    {
+        padding: 14px 20px;
+        border-top: 1px solid rgba(255, 255, 255, 0.12);
+        color: #fff;
+        font-size: 14px;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .account-menu__item .material-icons
+    {
+        color: rgba(255, 255, 255, 0.85);
+    }
+
+    .account-menu__item:hover,
+    .account-menu__item:focus-visible,
+    .account-menu__item.is-current
+    {
+        background-color: rgba(18, 0, 94, 0.3);
+    }
+}

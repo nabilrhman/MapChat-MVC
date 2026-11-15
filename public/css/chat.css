@@ -1,3 +1,11 @@
+/* Column widths, scaling with the screen. The chat matters most, so it gets
+   about one and a half times the people list's width */
+:root
+{
+    --chat-width: clamp(380px, 30vw, 440px);
+    --people-width: clamp(220px, 18vw, 280px);
+}
+
 html
 {
     height:100%;
@@ -43,8 +51,8 @@ body
     position: fixed;
     top: var(--header-height);
     bottom: var(--footer-height);
-    left: max(350px, 30%); /* the chat panel's width */
-    right: 220px; /* the people list's */
+    left: var(--chat-width); /* the chat panel */
+    right: var(--people-width); /* the people list */
     z-index: 1;
     display: flex;
     align-items: center;
@@ -120,8 +128,7 @@ body
 {
     display: flex;
     flex-direction: column;
-    max-width: 30%;
-    min-width: 350px;
+    max-width: var(--chat-width);
     overflow: hidden;
     position: absolute;
     top: var(--header-height);
@@ -133,12 +140,83 @@ body
 
 }
 
+/* The messages, with room for the jump button to float over their bottom */
+.chat-list-wrap
+{
+    position: relative;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+}
+
 .chat-list
 {
     max-height: 100%;
     overflow-y: auto;
     overflow-x: hidden;
     flex: 1;
+}
+
+/* "Latest" / "3 new messages": a pill at the bottom centre of the messages
+   while you read further up */
+.jump-latest
+{
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 34px;
+    padding: 0 14px 0 10px;
+    border: none;
+    border-radius: 17px;
+    background-color: #512da8;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    overflow: hidden;
+    white-space: nowrap;
+    transform: translateX(-50%);
+    cursor: pointer;
+    transition: width var(--dur) var(--ease-out);
+    animation: fade-in-up var(--dur) var(--ease-out);
+}
+
+/* The new label fades in as the pill widens (chat.js) */
+#jump-latest-text.is-changing
+{
+    animation: fade-in var(--dur) var(--ease-out);
+}
+
+.jump-latest[hidden]
+{
+    display: none;
+}
+
+/* materialize.css turns a focused button teal */
+.jump-latest:focus
+{
+    background-color: #512da8;
+}
+
+.jump-latest:hover
+{
+    background-color: #4527a0;
+}
+
+.jump-latest:focus-visible
+{
+    outline: none;
+    box-shadow: 0 0 0 3px #d1c4e9;
+}
+
+.jump-latest__icon
+{
+    font-size: 18px;
 }
 
 /* Tabs: the open room first, then one per private chat. The open tab joins
@@ -394,7 +472,7 @@ body
     top: var(--header-height);
     bottom: var(--footer-height);
     right: 0;
-    width: 220px;
+    width: var(--people-width);
     display: flex;
     flex-direction: column; /* the header stays put; only the list below scrolls */
     background-color: #fafafa;
@@ -487,10 +565,10 @@ body
 .person
 {
     display: grid;
-    grid-template-columns: 28px 1fr;
-    column-gap: 10px;
+    grid-template-columns: 32px 1fr; /* avatar as big as in the chat */
+    column-gap: 12px;
     align-items: center;
-    padding: 6px 16px;
+    padding: 8px 16px;
     cursor: default;
     transition: background-color var(--dur-fast) var(--ease-out);
 }
@@ -508,14 +586,14 @@ body
 .person__avatar
 {
     position: relative;
-    width: 28px;
-    height: 28px;
+    width: 32px;
+    height: 32px;
 }
 
 .person__photo
 {
-    width: 28px;
-    height: 28px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     object-fit: cover;
     display: block;
@@ -574,6 +652,7 @@ body
 {
     color: #424242;
     font-size: 13px;
+    line-height: 18px;
 }
 
 .person:not(.is-online) .person__name
@@ -583,6 +662,7 @@ body
 
 .person__detail
 {
+    margin-top: 2px;
     color: #9e9e9e;
     font-size: 12px;
     line-height: 16px; /* same as the city line in the chat */
@@ -909,7 +989,7 @@ body
     display: grid;
     grid-template-columns: 32px 1fr;
     column-gap: 12px;
-    padding: 14px 16px;
+    padding: 16px;
     border-bottom: 1px solid #ececec;
     background-color: #fafafa;
     transition: background-color var(--dur-fast) var(--ease-out);
@@ -1007,9 +1087,9 @@ body
 .chat__body
 {
     grid-column: 1 / -1;
-    margin: 4px 0 0;
+    margin: 6px 0 0;
     font-size: 14px;
-    line-height: 20px;
+    line-height: 21px;
     text-align: left;
     overflow-wrap: anywhere;
     white-space: pre-line; /* keep line breaks people typed */
@@ -1020,7 +1100,7 @@ body
     grid-column: 1 / -1;
     display: flex;
     justify-content: flex-end; /* bottom right corner, under the time */
-    margin-top: 6px;
+    margin-top: 8px;
     color: #7e57c2;
     font-size: 12px;
     line-height: 16px;
