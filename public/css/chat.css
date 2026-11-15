@@ -1334,6 +1334,15 @@ body
     transition: border-color var(--dur-fast) var(--ease-out);
 }
 
+/* Phones: Safari on iPhone zooms in on a field whose text is under 16px */
+@media (max-width: 700px)
+{
+    .chat-composer__textarea
+    {
+        font-size: 16px;
+    }
+}
+
 .chat-composer__textarea:focus
 {
     border: 1px solid #7e57c2;
