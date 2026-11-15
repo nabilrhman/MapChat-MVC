@@ -6,7 +6,14 @@
 {% import _self as nav %}
 <div class="site-header">
     <a href="/" class="site-header__logo hover-grow">MapChat</a>
-    <div class="site-header__nav">
+
+    {# Phones fold the links into this menu #}
+    <button type="button" class="site-header__menu-button" id="menu-button"
+            aria-controls="site-nav" aria-expanded="false" aria-label="Menu">
+        <i class="material-icons">menu</i>
+    </button>
+
+    <div class="site-header__nav" id="site-nav">
 
         {% if current_user %}
         <a href="/logout" class="site-header__link">LOG OUT</a>
