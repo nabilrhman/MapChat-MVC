@@ -2,7 +2,7 @@
 :root
 {
     --header-height: 95px;
-    --footer-height: 40px;
+    --footer-height: 48px;
 }
 
 /* Phones: a shorter header (see header.css) */
