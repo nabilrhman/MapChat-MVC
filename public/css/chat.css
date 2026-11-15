@@ -141,13 +141,6 @@ body
     flex: 1;
 }
 
-/* On this page the yellow line under the nav bar is enough; its shadow would
-   fall across the top of the chat and people panels */
-.site-header
-{
-    box-shadow: none;
-}
-
 /* Tabs: the open room first, then one per private chat. The open tab joins
    the messages below; the rest sit on a darker strip */
 .chat-tabs
@@ -808,22 +801,50 @@ body
         box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.12);
     }
 
-    /* Both buttons sit at the end of the tab row, with room kept for them */
+    /* Both buttons move up into the header, left of the menu button, as
+       white icons on the purple, so the tab row keeps its full width */
+    .map-toggle,
+    .people-toggle
+    {
+        position: fixed;
+        top: calc((var(--header-height) - 4px - 36px) / 2); /* centred, above the yellow line */
+        z-index: 111;
+        height: 36px;
+        background: none;
+        box-shadow: none;
+        color: #fff;
+    }
+
     .map-toggle
     {
         display: flex;
-        top: calc(var(--header-height) + 6px);
+        right: 52px;
     }
 
     .people-toggle
     {
-        top: calc(var(--header-height) + 6px);
-        right: 56px;
+        right: 92px;
+        padding: 0 8px;
     }
 
-    .chat-tabs
+    .map-toggle:focus,
+    .people-toggle:focus
     {
-        padding-right: 124px;
+        background: none;
+    }
+
+    .map-toggle:hover,
+    .people-toggle:hover,
+    .map-toggle[aria-pressed="true"]
+    {
+        background-color: rgba(255, 255, 255, 0.15);
+        box-shadow: none;
+    }
+
+    .map-toggle:focus-visible,
+    .people-toggle:focus-visible
+    {
+        box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.4);
     }
 
     /* Map open: the strip shows and the buttons float on it, as before */
@@ -835,17 +856,6 @@ body
     .is-map-open .map-loading
     {
         display: flex;
-    }
-
-    .is-map-open .map-toggle,
-    .is-map-open .people-toggle
-    {
-        top: calc(var(--header-height) + 12px);
-    }
-
-    .is-map-open .chat-tabs
-    {
-        padding-right: 8px;
     }
 
     /* The chat covers the bottom of the map here, so the credits sit at the
