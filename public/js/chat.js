@@ -35,9 +35,31 @@ const getConversation = (chat) => chat.dataset.conversation;
 const getChats = () => Array.from(chatList.querySelectorAll('.chat'));
 const getDistanceFromBottom = () => chatList.scrollHeight - chatList.scrollTop - chatList.clientHeight;
 
+// True while the list scrolls itself down, so the "Latest" button doesn't
+// flash up during the smooth scroll
+let isScrollingToNewest = false;
+let scrollToNewestTimer = null;
+
+function stopScrollingToNewest() {
+    if (!isScrollingToNewest) return;
+    clearTimeout(scrollToNewestTimer);
+    isScrollingToNewest = false;
+    updateJumpButton();
+}
+
 function scrollToNewest(behavior = SCROLL_BEHAVIOR) {
+    // Only when it will move, or nothing would end it until the timer
+    if (getDistanceFromBottom() > 1) {
+        isScrollingToNewest = true;
+        clearTimeout(scrollToNewestTimer);
+        // scrollend ends it; the timer is for browsers without scrollend and
+        // hidden tabs, which don't animate the scroll
+        scrollToNewestTimer = setTimeout(stopScrollingToNewest, 1000);
+    }
     chatList.scrollTo({top: chatList.scrollHeight, behavior});
 }
+
+chatList.addEventListener('scrollend', stopScrollingToNewest);
 
 /* Tabs */
 
@@ -378,7 +400,7 @@ function changeJumpLabel(text) {
 }
 
 function updateJumpButton() {
-    const isScrolledUp = getDistanceFromBottom() > SCROLLED_UP_DISTANCE;
+    const isScrolledUp = !isScrollingToNewest && getDistanceFromBottom() > SCROLLED_UP_DISTANCE;
     if (!isScrolledUp) newMessagesWhileScrolledUp = 0;
 
     const text = getJumpLabelText();
