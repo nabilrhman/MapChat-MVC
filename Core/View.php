@@ -67,6 +67,7 @@ class View
             $twig->addGlobal('current_user', \App\Auth::getUser());
             // A function, so only the page that shows messages uses them up
             $twig->addFunction(new \Twig\TwigFunction('flash_messages', [\App\Flash::class, 'getMessages']));
+            $twig->addFunction(new \Twig\TwigFunction('avatar_src', [\App\Avatar::class, 'src']));
             $twig->addGlobal('app_url', \App\Config::appUrl());
             $twig->addGlobal('cloudinary_cloud_name', \App\Config::cloudinaryCloudName());
             $twig->addGlobal('cloudinary_upload_preset', \App\Config::cloudinaryUploadPreset());

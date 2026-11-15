@@ -6,7 +6,7 @@ RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoload
 FROM php:8.4-apache
 
 RUN docker-php-ext-install pdo_mysql \
-    && a2enmod rewrite remoteip \
+    && a2enmod rewrite remoteip headers \
     && sed -ri 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/*.conf \
     && sed -ri 's!AllowOverride None!AllowOverride All!g' /etc/apache2/apache2.conf \
     # Hosts tell the container which port to use through $PORT

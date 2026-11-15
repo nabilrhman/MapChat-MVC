@@ -340,7 +340,7 @@ class UserInfo extends \Core\Model
         {
 
             $sql = 'SELECT userinfo.lat, userinfo.lng, userinfo.city, userinfo.country,
-                           users.id AS user_id, users.name
+                           users.id AS user_id, users.name, users.avatar
                     FROM userinfo
                     LEFT JOIN users
                     ON userinfo.email = users.email
@@ -354,7 +354,7 @@ class UserInfo extends \Core\Model
 
             $locations = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            return $locations;
+            return static::withAvatarSrc($locations, 'user_id');
         }
 
         return false;
@@ -454,7 +454,23 @@ class UserInfo extends \Core\Model
         $stmt->bindValue(':online', static::ONLINE_SECONDS, PDO::PARAM_INT);
         $stmt->execute();
 
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return static::withAvatarSrc($stmt->fetchAll(PDO::FETCH_ASSOC), 'id');
     }
 
+    /**
+     * Add each person's avatar image address (see Avatar::src)
+     *
+     * @param array $people Rows with a name, an avatar and an id
+     * @param string $id_column Which column holds the user's id
+     *
+     * @return array
+     */
+    protected static function withAvatarSrc($people, $id_column)
+    {
+        foreach ($people as &$person) {
+            $person['avatar_src'] = \App\Avatar::src($person[$id_column], $person['name'], $person['avatar']);
+        }
+
+        return $people;
+    }
 }
