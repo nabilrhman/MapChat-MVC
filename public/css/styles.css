@@ -143,3 +143,10 @@ body
     width: fit-content;   /* short messages get a short toast */
     margin-left: auto;    /* keep them against the right edge */
 }
+
+/* Flag of Null Island (XN), the MapChat bot's made-up country at 0°, 0°;
+   flag-icons has none. The equator and prime meridian meet at our dot */
+.fi-xn
+{
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 480'%3E%3Crect width='640' height='480' fill='%237fc8ec'/%3E%3Cpath d='M0 240H640M320 0V480' stroke='%23fff' stroke-width='28'/%3E%3Ccircle cx='320' cy='240' r='70' fill='%23ffc107'/%3E%3Ccircle cx='320' cy='240' r='36' fill='%23512da8'/%3E%3C/svg%3E");
+}

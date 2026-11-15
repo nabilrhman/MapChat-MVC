@@ -7,6 +7,9 @@ var MESSAGES_HIDDEN_INTERVAL = 8000;
 var PEOPLE_INTERVAL = 15000;
 // Matches the breakpoint in chat.css
 var NARROW_SCREEN = '(max-width: 1100px)';
+// The MapChat bot's made-up country, at 0°, 0° (a code free for private use,
+// so Intl has no name for it)
+var NULL_ISLAND = 'XN';
 // Scrolling down to new messages; none for people who ask for less motion
 var SCROLL_DURATION = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 400;
 
@@ -106,7 +109,11 @@ $(document).ready(function () {
     function showTimes(chats) {
         chats.find('.country-name').each(function () {
             var code = $(this).data('country');
-            $(this).text(countryNames ? countryNames.of(code) : code);
+            if (code === NULL_ISLAND) {
+                $(this).text('Republic of Null Island');
+            } else {
+                $(this).text(countryNames ? countryNames.of(code) : code);
+            }
         });
 
         chats.each(function () {
@@ -117,7 +124,10 @@ $(document).ready(function () {
             if (!tip.length) return;
 
             var info = $(this).find('.time');
-            var local = senderTime(date, info.data('timezone'), parseFloat(info.data('lng')));
+            // Always midnight on Null Island, where the time zones meet
+            var local = info.data('country') === NULL_ISLAND
+                ? {text: '00:00', hour: 0}
+                : senderTime(date, info.data('timezone'), parseFloat(info.data('lng')));
             var day = local.hour >= 6 && local.hour < 18;
 
             tip.find('.daylight').text(day ? 'wb_sunny' : 'nights_stay').addClass(day ? 'day' : 'night');

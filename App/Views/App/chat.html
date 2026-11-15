@@ -26,7 +26,7 @@
         {# The page fills in the time in the reader's own time zone. On hover it
            slides to the sender's own time, with a sun or moon #}
         <span class="time{% if chat.lng is not null %} swap{% endif %}"
-              data-timezone="{{ chat.timezone }}" data-lng="{{ chat.lng }}">
+              data-timezone="{{ chat.timezone }}" data-lng="{{ chat.lng }}" data-country="{{ chat.country }}">
             <span class="swap-track">
                 <time datetime="{{ chat.timestamp|date('c') }}"></time>
                 {% if chat.lng is not null %}
