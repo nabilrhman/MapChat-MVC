@@ -18,6 +18,9 @@ class DemoChat extends \Core\Model
     /** The demo people's email addresses end with this */
     const DOMAIN = '@demo.mapchat.local';
 
+    /** The demo day starts at midnight here unless DEMO_TIMEZONE says otherwise */
+    const TIMEZONE = 'America/Toronto';
+
     /** Minutes between messages within a conversation */
     const REPLY_MINUTES = [2, 6];
 
@@ -39,14 +42,25 @@ class DemoChat extends \Core\Model
     {
         $db = static::getDB();
         $today = static::today();
-        $start = gmdate('Y-m-d H:i:s', static::dayStart($today));
+        $day_start = static::dayStart($today);
+        $start = gmdate('Y-m-d H:i:s', $day_start);
 
-        // The welcome messages open each day, so they're never under "Yesterday"
-        $stmt = $db->prepare('SELECT id FROM chats WHERE email = :bot AND to_email IS NULL AND timestamp < :start ORDER BY id');
+        // The welcome messages open each day, so they're never under "Yesterday".
+        // The chat is in id order, so they're added again after the older messages
+        $stmt = $db->prepare('SELECT id, body FROM chats WHERE email = :bot AND to_email IS NULL AND timestamp < :start ORDER BY id');
         $stmt->execute([':bot' => Chat::BOT_EMAIL, ':start' => $start]);
-        $restamp = $db->prepare('UPDATE chats SET timestamp = :time WHERE id = :id');
-        foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $i => $id) {
-            $restamp->execute([':time' => gmdate('Y-m-d H:i:s', static::dayStart($today) + ($i + 1) * 60), ':id' => $id]);
+        $remove = $db->prepare('DELETE FROM chats WHERE id = :id');
+        $add = $db->prepare('INSERT INTO chats (email, body, timestamp) VALUES (:email, :body, :time)');
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $i => $welcome) {
+            $remove->execute([':id' => $welcome['id']]);
+
+            // Unless another request at the same moment already moved it
+            if ($remove->rowCount()) {
+                $add->execute([
+                    ':email' => Chat::BOT_EMAIL, ':body' => $welcome['body'],
+                    ':time' => gmdate('Y-m-d H:i:s', $day_start + ($i + 1) * 60),
+                ]);
+            }
         }
 
         $now = gmdate('Y-m-d H:i:s');
@@ -149,7 +163,8 @@ class DemoChat extends \Core\Model
         }
 
         $day_start = static::dayStart($date);
-        $day_minutes = (static::dayStart(date('Y-m-d', strtotime($date . ' +1 day'))) - $day_start) / 60;
+        $next_day = (new \DateTime($date, static::timezone()))->modify('+1 day')->format('Y-m-d');
+        $day_minutes = (static::dayStart($next_day) - $day_start) / 60;
 
         // Quiet at night: the room wakes up around 7am
         $start = static::WAKE_HOUR * 60 + mt_rand(0, 20);
@@ -199,11 +214,18 @@ class DemoChat extends \Core\Model
     }
 
     /**
+     * DEMO_TIMEZONE, or Toronto when it's unset or not a real time zone, so a
+     * typo doesn't take the chat down
+     *
      * @return \DateTimeZone
      */
     protected static function timezone()
     {
-        return new \DateTimeZone(Config::get('DEMO_TIMEZONE', 'America/Toronto'));
+        try {
+            return new \DateTimeZone(Config::get('DEMO_TIMEZONE', static::TIMEZONE));
+        } catch (\Exception $e) {
+            return new \DateTimeZone(static::TIMEZONE);
+        }
     }
 
     /**
