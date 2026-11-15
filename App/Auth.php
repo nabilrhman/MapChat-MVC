@@ -128,17 +128,17 @@ class Auth
      */
     public static function getUser()
     {
-        if (isset($_SESSION['user_id']))
-        {
+        // Asked for many times per request; each lookup is a database round trip
+        static $user = false;
 
-            return User::findByID($_SESSION['user_id']);
-
+        // Look again if someone logged in or out since
+        if ($user === false || $user?->id != ($_SESSION['user_id'] ?? null)) {
+            $user = isset($_SESSION['user_id'])
+                ? User::findByID($_SESSION['user_id'])
+                : static::loginFromRememberCookie();
         }
-        else
-        {
 
-            return static::loginFromRememberCookie();
-        }
+        return $user;
     }
 
     /**
@@ -148,10 +148,7 @@ class Auth
      */
     public static function getEmail()
     {
-        if (static::getUser())
-            return static::getUser()->email;
-        else
-            return null;
+        return static::getUser()?->email;
     }
 
     /**
