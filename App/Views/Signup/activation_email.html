@@ -7,7 +7,7 @@
 {% block heading %}Welcome to MapChat{% endblock %}
 
 {% block body %}
-<p style="margin: 0 0 14px;">Hi {{ name }},</p>
+<p style="margin: 0 0 14px;">Hi <strong style="color: #512da8;">{{ name }}</strong>,</p>
 <p style="margin: 0;">Thanks for signing up. Activate your account to start chatting and to put your city on the map.</p>
 
 {% include 'email_button.html' with {label: 'Activate account'} %}
