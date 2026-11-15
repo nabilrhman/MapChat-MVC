@@ -7,6 +7,13 @@
 
 var STYLE_URL = 'https://tiles.openfreemap.org/styles/positron';
 
+// Where the map starts (Boise), until the pins are in
+var START = {lat: 43.4599, lng: -116.244, zoom: 3};
+// Fitting the pins never zooms in closer than a city
+var MAX_PIN_ZOOM = 9;
+// Same pace as the people list in chat.js
+var PINS_INTERVAL = 15000;
+
 // The old Google Maps style, by map layer
 var THEME = {
     land: '#f5f5f5',
@@ -58,7 +65,6 @@ function themeLayer(layer) {
     }
 }
 
-// A yellow map pin like the original marker icon
 // Shown when hovering a pin: the name, then the flag and city
 function pinLabel(location) {
     var label = document.createElement('div');
@@ -82,7 +88,8 @@ function pinLabel(location) {
     return label;
 }
 
-// userId lets the people list highlight this pin
+// A yellow map pin like the original marker icon. userId lets the people
+// list highlight this pin
 function pinElement(userId) {
     var el = document.createElement('div');
     el.className = 'map-pin';
@@ -116,36 +123,91 @@ function mapPadding() {
     return {top: 60, bottom: 60, left: panel.width + 60, right: peopleWidth + 60};
 }
 
-function addPins(map, locations) {
+// Adds a MapLibre pin; returns a function that removes it
+function addPin(map, location) {
+    var lngLat = [parseFloat(location.lng), parseFloat(location.lat)];
+    var popup = new maplibregl.Popup({closeButton: false, offset: 26})
+        .setDOMContent(pinLabel(location));
+    var marker = new maplibregl.Marker({element: pinElement(location.user_id), anchor: 'bottom'})
+        .setLngLat(lngLat)
+        .addTo(map);
+
+    var el = marker.getElement();
+    el.addEventListener('mouseenter', function () { popup.setLngLat(lngLat).addTo(map); });
+    el.addEventListener('mouseleave', function () { popup.remove(); });
+
+    return function () {
+        popup.remove();
+        marker.remove();
+    };
+}
+
+function fitPins(map, locations) {
     var bounds = new maplibregl.LngLatBounds();
-
     locations.forEach(function (location) {
-        var lngLat = [parseFloat(location.lng), parseFloat(location.lat)];
-        var popup = new maplibregl.Popup({closeButton: false, offset: 26})
-            .setDOMContent(pinLabel(location));
-        var marker = new maplibregl.Marker({element: pinElement(location.user_id), anchor: 'bottom'})
-            .setLngLat(lngLat)
-            .addTo(map);
-
-        var el = marker.getElement();
-        el.addEventListener('mouseenter', function () { popup.setLngLat(lngLat).addTo(map); });
-        el.addEventListener('mouseleave', function () { popup.remove(); });
-
-        bounds.extend(lngLat);
+        bounds.extend([parseFloat(location.lng), parseFloat(location.lat)]);
     });
 
     var padding = mapPadding();
     if (locations.length === 1) {
-        map.jumpTo({center: bounds.getCenter(), zoom: 9, padding: padding});
+        map.jumpTo({center: bounds.getCenter(), zoom: MAX_PIN_ZOOM, padding: padding});
     } else if (locations.length > 1) {
-        map.fitBounds(bounds, {padding: padding, maxZoom: 9, animate: false});
+        map.fitBounds(bounds, {padding: padding, maxZoom: MAX_PIN_ZOOM, animate: false});
     }
 }
 
-function loadLocations(callback) {
-    postForm('/app/get-locations').then(function (response) {
-        callback(response.data);
+function loadLocations() {
+    return postForm('/app/get-locations').then(function (response) {
+        return response.data;
     });
+}
+
+// Drops the dots over the map
+function mapReady() {
+    $('#map-loading').addClass('is-done');
+}
+
+// Fetches the pins now and on every round after, adding new people, dropping
+// those gone or hidden, and moving anyone whose place changed. The map only
+// zooms to the pins the first time, so it never jumps while someone looks at it
+function keepPinsUpdated(addPin, fitPins) {
+    var pins = {};
+    var first = true;
+
+    (function refresh() {
+        loadLocations()
+            .then(function (locations) {
+                var seen = {};
+                locations.forEach(function (location) {
+                    var key = [location.lat, location.lng, location.name, location.city, location.country].join('|');
+                    var pin = pins[location.user_id];
+                    seen[location.user_id] = true;
+
+                    if (pin && pin.key === key) return;
+                    if (pin) pin.remove();
+                    pins[location.user_id] = {key: key, remove: addPin(location)};
+                });
+
+                Object.keys(pins).forEach(function (id) {
+                    if (!seen[id]) {
+                        pins[id].remove();
+                        delete pins[id];
+                    }
+                });
+
+                if (first) {
+                    fitPins(locations);
+                    first = false;
+                }
+            })
+            .catch(function () {
+                // Try again on the next round
+            })
+            .finally(function () {
+                mapReady();
+                setTimeout(refresh, PINS_INTERVAL);
+            });
+    })();
 }
 
 function supportsWebGL() {
@@ -221,7 +283,7 @@ function initializeFallback() {
             // Stop dragging past the top and bottom of the world
             maxBounds: [[-85, -Infinity], [85, Infinity]],
             maxBoundsViscosity: 1
-        }).setView([43.4599, -116.244], 3);
+        }).setView([START.lat, START.lng], START.zoom);
 
         window.addEventListener('resize', function () { map.setMinZoom(minZoomToFill(256)); });
 
@@ -253,26 +315,27 @@ function initializeFallback() {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
 
-        loadLocations(function (locations) {
-            var bounds = [];
-            locations.forEach(function (location) {
-                var latLng = [parseFloat(location.lat), parseFloat(location.lng)];
-                var icon = L.divIcon({className: '', html: pinElement(location.user_id).outerHTML, iconSize: [20, 27], iconAnchor: [10, 27]});
-                L.marker(latLng, {icon: icon})
-                    .bindTooltip(pinLabel(location).outerHTML, {direction: 'top', offset: [0, -26]})
-                    .addTo(map);
-                bounds.push(latLng);
+        keepPinsUpdated(function (location) {
+            var latLng = [parseFloat(location.lat), parseFloat(location.lng)];
+            var icon = L.divIcon({className: '', html: pinElement(location.user_id).outerHTML, iconSize: [20, 27], iconAnchor: [10, 27]});
+            var marker = L.marker(latLng, {icon: icon})
+                .bindTooltip(pinLabel(location).outerHTML, {direction: 'top', offset: [0, -26]})
+                .addTo(map);
+            return function () { marker.remove(); };
+        }, function (locations) {
+            var bounds = locations.map(function (location) {
+                return [parseFloat(location.lat), parseFloat(location.lng)];
             });
 
             var padding = mapPadding();
             var fit = {
                 paddingTopLeft: [padding.left, padding.top],
                 paddingBottomRight: [padding.right, padding.bottom],
-                maxZoom: 9
+                maxZoom: MAX_PIN_ZOOM
             };
             if (bounds.length) map.fitBounds(bounds, fit);
         });
-    });
+    }).catch(mapReady);
 }
 
 function initialize() {
@@ -282,15 +345,18 @@ function initialize() {
     }
 
     fetch(STYLE_URL)
-        .then(function (response) { return response.json(); })
+        .then(function (response) {
+            if (!response.ok) throw new Error('Map style ' + response.status);
+            return response.json();
+        })
         .then(function (style) {
             style.layers.forEach(themeLayer);
 
             var map = new maplibregl.Map({
                 container: 'map',
                 style: style,
-                center: [-116.244, 43.4599],
-                zoom: 3,
+                center: [START.lng, START.lat],
+                zoom: START.zoom,
                 minZoom: minZoomToFill(512),
                 attributionControl: false
             });
@@ -307,9 +373,15 @@ function initialize() {
             window.addEventListener('resize', function () { map.setMinZoom(minZoomToFill(512)); });
 
             map.on('load', function () {
-                loadLocations(function (locations) { addPins(map, locations); });
+                keepPinsUpdated(function (location) {
+                    return addPin(map, location);
+                }, function (locations) {
+                    fitPins(map, locations);
+                });
             });
-        });
+        })
+        // Without the vector style, the tile map still shows the pins
+        .catch(initializeFallback);
 }
 
 $(initialize);

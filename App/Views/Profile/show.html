@@ -1,7 +1,9 @@
-{% extends "base_new.html" %}
+{% extends "base_app.html" %}
+
+{% block title %}Profile{% endblock %}
 
 {% block head %}
-<link rel="stylesheet" href="/css/profile.css?v=14"/>
+<link rel="stylesheet" href="/css/profile.css?v=15"/>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flag-icons@7.2.3/css/flag-icons.min.css">
 {% endblock %}
 
@@ -9,10 +11,10 @@
 
 <div class="profile-page">
 
-    <h4 class="animated fadeInDown">{% block title %}Profile{% endblock %}</h4>
+    <h4 class="appear-down">Profile</h4>
 
     {% if user.is_guest %}
-    <div class="guest-banner animated fadeInDownSubtle">
+    <div class="guest-banner appear-down">
         <i class="material-icons">schedule</i>
         <div class="guest-text">
             <strong>Guest account</strong>
@@ -22,7 +24,10 @@
     </div>
     {% endif %}
 
-    <form action="/profile/update" method="post" id="formProfile" class="animated fadeInDownSubtle">
+    {# What profile.js needs from the server #}
+    <form action="/profile/update" method="post" id="formProfile" class="appear-down"
+          data-user-id="{{ user.id|e('html_attr') }}"
+          data-guest="{{ user.is_guest ? 'true' : 'false' }}">
 
         {# Each card shows its details, and Edit turns them into fields with Cancel and Save #}
         <section class="settings-card" id="card-profile">
@@ -33,8 +38,12 @@
 
             {# The photo saves as soon as it's uploaded or removed, apart from Save #}
             <div class="photo-row">
-                <img class="circle" id="avatar" alt="Your photo"
-                     src="{{ user.avatar is not empty ? user.avatar : default_avatar }}"/>
+                <div class="photo-frame" id="photo-frame">
+                    <img class="circle" id="avatar" alt="Your photo"
+                         src="{{ avatar_src(user.id, user.name, user.avatar) }}"
+                         data-default-src="{{ default_avatar|e('html_attr') }}"/>
+                    <span class="loading-dots" aria-label="Uploading"><span></span><span></span><span></span></span>
+                </div>
                 <div>
                     <label for="file-upload" class="button button-quiet button-small">
                         <i class="material-icons">photo_camera</i>Change photo
@@ -42,7 +51,9 @@
                     <button type="button" class="link-button" id="remove-photo"
                             {% if user.avatar is empty %}hidden{% endif %}>Remove</button>
                     <p class="field-hint">JPG, PNG or GIF</p>
-                    <input id="file-upload" type="file" accept="image/png,image/gif,image/jpeg" hidden>
+                    <input id="file-upload" type="file" accept="image/png,image/gif,image/jpeg" hidden
+                           data-cloud-name="{{ cloudinary_cloud_name|e('html_attr') }}"
+                           data-upload-preset="{{ cloudinary_upload_preset|e('html_attr') }}">
                 </div>
             </div>
 
@@ -80,31 +91,31 @@
 
             {# A guest's placeholder email isn't shown; they type their own to keep the account #}
             <div class="edit-only">
-            <div class="input-field">
-                <input type="email" id="inputEmail" name="email" value="{{ user.is_guest ? '' : user.email }}" autocomplete="email"/>
-                <label for="inputEmail">Email</label>
-                <span id="error-msg-email"></span>
-            </div>
+                <div class="input-field">
+                    <input type="email" id="inputEmail" name="email" value="{{ user.is_guest ? '' : user.email }}" autocomplete="email"/>
+                    <label for="inputEmail">Email</label>
+                    <span id="error-msg-email"></span>
+                </div>
 
-            <div class="input-field">
-                <input type="password" id="inputPassword" name="password" class="has-toggle" autocomplete="new-password"/>
-                <label for="inputPassword">{{ user.is_guest ? 'Password' : 'New password' }}</label>
-                <button type="button" class="password-toggle material-icons" aria-label="Show password">visibility</button>
-                <span class="helper-text">
-                    {{ user.is_guest ? '6+ characters, a letter and a number. Needed to keep your account.' : 'Leave blank to keep your current password.' }}
-                </span>
-                <span id="error-msg-password"></span>
-            </div>
+                <div class="input-field">
+                    <input type="password" id="inputPassword" name="password" class="has-toggle" autocomplete="new-password"/>
+                    <label for="inputPassword">{{ user.is_guest ? 'Password' : 'New password' }}</label>
+                    <button type="button" class="password-toggle material-icons" aria-label="Show password">visibility</button>
+                    <span class="helper-text">
+                        {{ user.is_guest ? '6+ characters, a letter and a number. Needed to keep your account.' : 'Leave blank to keep your current password.' }}
+                    </span>
+                    <span id="error-msg-password"></span>
+                </div>
 
-            {% if not user.is_guest %}
-            <div class="input-field" id="current-password" hidden>
-                <input type="password" id="inputCurrentPassword" name="current_password" class="has-toggle" autocomplete="current-password"/>
-                <label for="inputCurrentPassword">Current password</label>
-                <button type="button" class="password-toggle material-icons" aria-label="Show password">visibility</button>
-                <span class="helper-text">Needed to change your email or password.</span>
-                <span id="error-msg-current_password"></span>
-            </div>
-            {% endif %}
+                {% if not user.is_guest %}
+                <div class="input-field" id="current-password" hidden>
+                    <input type="password" id="inputCurrentPassword" name="current_password" class="has-toggle" autocomplete="current-password"/>
+                    <label for="inputCurrentPassword">Current password</label>
+                    <button type="button" class="password-toggle material-icons" aria-label="Show password">visibility</button>
+                    <span class="helper-text">Needed to change your email or password.</span>
+                    <span id="error-msg-current_password"></span>
+                </div>
+                {% endif %}
             </div>
 
             <div class="card-actions edit-only">
@@ -115,7 +126,7 @@
 
     </form>
 
-    <section class="settings-card animated fadeInDownSubtle">
+    <section class="settings-card appear-down">
         <div class="card-head">
             <h5>Privacy</h5>
         </div>
@@ -147,201 +158,9 @@
 
 {% endblock %}
 
-
 {% block footer %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.15.0/jquery.validate.min.js"></script>
 <script src="/js/passwordToggle.js"></script>
-<script src="/js/validatorExtended.js"></script>
-
-<script>
-    $(document).ready(function () {
-
-        var userId = '{{ user.id }}';
-        var isGuest = {{ user.is_guest ? 'true' : 'false' }};
-        var defaultAvatar = '{{ default_avatar|e('js') }}';
-
-        $('#keep-account').on('click', function () {
-            startEditing($('#card-account'));
-            $('#inputEmail')[0].scrollIntoView({block: 'center', behavior: 'smooth'});
-            $('#inputEmail').focus();
-        });
-
-        /* Privacy: saves as soon as it's switched */
-
-        function showPlace(shared)
-        {
-            $('#profile-place').toggleClass('is-hidden', !shared);
-        }
-        showPlace($('#share-location').prop('checked'));
-
-        $('#share-location').on('change', function () {
-            var checkbox = this;
-            postForm('/profile/update-location-sharing', {share: checkbox.checked ? 1 : 0})
-                .then(function () {
-                    showPlace(checkbox.checked);
-                    M.toast({html: checkbox.checked ? 'You are shown on the map' : 'You are hidden from the map'});
-                })
-                .catch(function () {
-                    checkbox.checked = !checkbox.checked;
-                    M.toast({html: 'Could not save. Try again.'});
-                });
-        });
-
-        /* Photo: saves as soon as it's uploaded or removed */
-
-        var CLOUDINARY_URL = 'https://api.cloudinary.com/v1_1/{{ cloudinary_cloud_name|e('js') }}/image/upload';
-        var CLOUDINARY_UPLOAD_PRESET = '{{ cloudinary_upload_preset|e('js') }}';
-
-        // Upload the photo, then save it; on any failure put the old one back
-        $('#file-upload').on('change', function () {
-            var file = this.files[0];
-            if (!file) return;
-
-            var avatar = $('#avatar');
-            var previous = avatar.attr('src');
-            avatar.attr('src', '/res/loading.gif');
-
-            var formData = new FormData();
-            formData.append('file', file);
-            formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-
-            axios.post(CLOUDINARY_URL, formData)
-                .then(function (res) {
-                    var url = res.data.secure_url;
-                    return postForm('/profile/update-avatar', {avatar: url}).then(function () {
-                        avatar.attr('src', url);
-                        $('#remove-photo').prop('hidden', false);
-                        M.toast({html: 'Photo updated'});
-                    });
-                })
-                .catch(function () {
-                    avatar.attr('src', previous);
-                    M.toast({html: 'Your photo could not be saved. Try again.'});
-                });
-
-            this.value = '';
-        });
-
-        $('#remove-photo').on('click', function () {
-            postForm('/profile/remove-avatar')
-                .then(function () {
-                    $('#avatar').attr('src', defaultAvatar);
-                    $('#remove-photo').prop('hidden', true);
-                    M.toast({html: 'Photo removed'});
-                })
-                .catch(function () {
-                    M.toast({html: 'Your photo could not be removed. Try again.'});
-                });
-        });
-
-        /* Name, email and password: each card opens with Edit and saves with Save */
-
-        var fields = $('#inputName, #inputEmail, #inputPassword');
-        fields.each(function () {
-            $(this).data('initial', this.value);
-        });
-
-        function changed(field)
-        {
-            return field.value !== $(field).data('initial');
-        }
-
-        function signInChanged()
-        {
-            return changed($('#inputEmail')[0]) || $('#inputPassword').val() !== '';
-        }
-
-        function startEditing(card)
-        {
-            card.addClass('editing');
-            M.updateTextFields();
-        }
-
-        // Back to the saved values and out of edit mode
-        function stopEditing(card)
-        {
-            card.find('input').each(function () {
-                this.value = $(this).data('initial') || '';
-            });
-            card.find('label.error').remove();
-            card.find('input.error').removeClass('error');
-            card.removeClass('editing');
-            $('#current-password').prop('hidden', !signInChanged());
-            M.updateTextFields();
-        }
-
-        $('.edit-button').on('click', function () {
-            var card = $(this).closest('.settings-card');
-            startEditing(card);
-            card.find('.edit-only input').first().focus();
-        });
-
-        $('.cancel-button').on('click', function () {
-            stopEditing($(this).closest('.settings-card'));
-        });
-
-        // The current password is asked for only when the email or password changes
-        $('#inputEmail, #inputPassword').on('input', function () {
-            $('#current-password').prop('hidden', !signInChanged());
-        });
-
-        var validator = $('#formProfile').validate({
-            // Each message goes in the span under its field
-            errorPlacement: function (error, element) {
-                error.appendTo('#error-msg-' + element.attr('name'));
-            },
-            rules: {
-                name: 'required',
-                email: {
-                    // A guest only needs an email when setting a password
-                    required: function () {
-                        return !isGuest || $('#inputPassword').val() !== '';
-                    },
-                    email: true,
-                    remote: {
-                        url: '/account/validate-email',
-                        data: {
-                            ignore_id: function () {
-                                return userId;
-                            }
-                        }
-                    }
-                },
-                password: {
-                    minlength: 6,
-                    validPassword: true
-                },
-                current_password: {
-                    required: signInChanged
-                }
-            },
-            messages: {
-                email: {
-                    required: isGuest ? 'Enter your email to keep your account.' : "Can't be blank.",
-                    remote: 'Email already registered.'
-                },
-                current_password: {
-                    required: 'Enter your current password to make this change.'
-                }
-            }
-        });
-
-        var saving = false;
-
-        $('#formProfile').on('submit', function () {
-            if ($(this).valid()) {
-                saving = true;
-                $(this).find('button[type=submit]').prop('disabled', true).text('Saving…');
-            }
-        });
-
-        // Warn before leaving with unsaved changes
-        window.addEventListener('beforeunload', function (e) {
-            if (!saving && fields.toArray().some(changed)) {
-                e.preventDefault();
-                e.returnValue = '';
-            }
-        });
-    });
-</script>
-
+<script src="/js/validatorExtended.js?v=1"></script>
+<script src="/js/profile.js?v=1"></script>
 {% endblock %}

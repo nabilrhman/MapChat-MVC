@@ -1,31 +1,23 @@
-{% extends "base_new.html" %}
+{% extends "base_app.html" %}
 
 {% block title %}About{% endblock %}
-
-{% block head %}
-<style>
-    .about-intro { max-width: 720px; margin-left: auto !important; margin-right: auto !important; }
-    .about-logo { width: 100%; max-width: 360px; margin: 32px auto 24px; display: block; }
-    .about-intro p { font-size: 15px; line-height: 1.7; text-align: center; }
-</style>
-{% endblock %}
 
 {% block body %}
 
 <div class="row main-content-wrapper">
     <div class="col s12">
-        <h4 class="animated fadeInDown">About</h4>
+        <h4 class="appear-down">About</h4>
         <div class="divider"></div>
     </div>
 </div>
 
-<div class="row main-content-wrapper animated fadeInDownSubtle about-intro">
+<div class="row main-content-wrapper appear-down about-intro">
     <div class="col s12 center-align">
         <img class="about-logo" src="/res/logo-mapchat.svg" alt="MapChat">
     </div>
     <div class="col s12">
         <p>
-            <span style="font-weight: bolder">MapChat</span> is an open chat room on a map.
+            <strong>MapChat</strong> is an open chat room on a map.
             Everyone who signs in talks in the same room, and a pin on the map shows which
             city each person is chatting from.
         </p>
@@ -44,8 +36,8 @@
 
 <div class="row main-content-wrapper">
     <div class="col s12 m6">
-        <h5 class="animated fadeInDown h5WithPadding">What you can do</h5>
-        <ul class="collection animated fadeInDownSubtle">
+        <h5 class="appear-down h5-with-padding">What you can do</h5>
+        <ul class="collection appear-down">
             <li class="collection-item">Chat with everyone who is signed in, in one shared room.</li>
             <li class="collection-item">Try it as a guest without signing up. Guest accounts disappear after 24 hours unless you keep them.</li>
             <li class="collection-item">See on the map which city each person is chatting from.</li>
@@ -55,8 +47,8 @@
         </ul>
     </div>
     <div class="col s12 m6">
-        <h5 class="animated fadeInDown h5WithPadding">How it's built</h5>
-        <ul class="collection animated fadeInDownSubtle">
+        <h5 class="appear-down h5-with-padding">How it's built</h5>
+        <ul class="collection appear-down">
             <li class="collection-item">A model-view-controller (MVC) framework written from scratch in PHP.</li>
             <li class="collection-item">MySQL for users and messages, queried with prepared statements to block SQL injection.</li>
             <li class="collection-item">Twig templates, which escape everything users type to block cross-site scripting.</li>
@@ -69,8 +61,8 @@
 
 <div class="row main-content-wrapper">
     <div class="col s12">
-        <h5 class="animated fadeInDown h5WithPadding">Good to know</h5>
-        <ul class="collection animated fadeInDownSubtle">
+        <h5 class="appear-down h5-with-padding">Good to know</h5>
+        <ul class="collection appear-down">
             <li class="collection-item">Your location comes from your IP address, so the map only knows roughly which city you are in. It never uses GPS, and you can hide your pin and city from your profile.</li>
             <li class="collection-item">There is one room for everyone. Anything you write is visible to everyone signed in.</li>
             <li class="collection-item">This is a portfolio project, so please don't share anything private here.</li>

@@ -1,0 +1,15 @@
+<div class="header">
+    <a href="/" class="logo hover-grow">MapChat</a>
+    <div class="nav-container pull-left appear-down">
+
+        {% if current_user %}
+        <a href="/logout">LOG OUT</a>
+        <a href="/profile/show">PROFILE</a>
+        {% else %}
+        <a href="/login">LOG IN</a>
+        <a href="/signup/new">SIGN UP</a>
+        {% endif %}
+        <a href="/about">ABOUT</a>
+
+    </div>
+</div>
