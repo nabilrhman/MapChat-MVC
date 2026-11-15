@@ -407,7 +407,7 @@ label.error
     left: 0;
     z-index: 10000;
     width: 0;
-    height: 3px;
+    height: 4px; /* as thick as the header's yellow line */
     background-color: #ffc107;
     box-shadow: 0 0 6px rgba(255, 193, 7, 0.7);
     opacity: 0;
@@ -425,7 +425,6 @@ label.error
 {
     top: calc(var(--header-height) - 4px);
     z-index: 111; /* just above the header */
-    height: 4px;
     background-color: #ff6f00;
     box-shadow: none;
 }
