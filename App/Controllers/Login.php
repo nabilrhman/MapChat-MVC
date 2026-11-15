@@ -65,11 +65,20 @@ class Login extends \Core\Controller
             $this->redirect('/login');
         }
 
-        $user = User::createGuest();
+        // Someone who was a guest in this browser gets that account back
+        $user = User::findGuestByToken($_COOKIE['guest_token'] ?? '');
+
+        if ($user) {
+            Flash::addMessage('Welcome back, ' . $user->name, Flash::INFO);
+        } else {
+            $user = User::createGuest();
+            Auth::rememberGuest($user);
+            Flash::addMessage('Signed in as ' . $user->name, Flash::INFO);
+        }
+
         Auth::login($user, false);
         UserInfo::locate($user->email, UserInfo::getRealIP());
 
-        Flash::addMessage('Signed in as ' . $user->name, Flash::INFO);
         $this->redirect('/app');
     }
 

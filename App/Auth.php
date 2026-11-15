@@ -80,7 +80,34 @@ class Auth
      */
     protected static function setRememberCookie($value, $expires)
     {
-        setcookie('remember_me', $value, [
+        static::setCookie('remember_me', $value, $expires);
+    }
+
+    /**
+     * Keep a guest's token in their browser until the account is deleted, so
+     * "Try it as a guest" brings them back to it
+     *
+     * @param User $guest A guest just created by User::createGuest
+     *
+     * @return void
+     */
+    public static function rememberGuest($guest)
+    {
+        static::setCookie('guest_token', $guest->guest_token, $guest->guestExpiresAt());
+    }
+
+    /**
+     * Set a cookie with the session cookie's rules
+     *
+     * @param string $name
+     * @param string $value
+     * @param int $expires
+     *
+     * @return void
+     */
+    protected static function setCookie($name, $value, $expires)
+    {
+        setcookie($name, $value, [
             'expires' => $expires,
             'path' => '/',
             'httponly' => true,
