@@ -9,7 +9,7 @@ An open chat room on a map, running on an MVC framework<br>
 I wrote from scratch in PHP.
 
 [![PHP](https://img.shields.io/badge/PHP-8.4-512da8?logo=php&logoColor=white&labelColor=1e0839)](composer.json)
-[![MySQL](https://img.shields.io/badge/MySQL-8.4-512da8?logo=mysql&logoColor=white&labelColor=1e0839)](init.sql)
+[![MySQL](https://img.shields.io/badge/MySQL-8.4-512da8?logo=mysql&logoColor=white&labelColor=1e0839)](database/init.sql)
 [![Docker](https://img.shields.io/badge/Docker-ready-512da8?logo=docker&logoColor=white&labelColor=1e0839)](Dockerfile)
 [![License](https://img.shields.io/badge/license-MIT-512da8?labelColor=1e0839)](LICENSE)
 
@@ -90,7 +90,7 @@ docker compose up --build
 Open http://localhost:8080 and either sign up or press **Try it as a guest**.
 
 The room starts with a sample conversation between nine made-up people around
-the world, from `demo.sql`, so the chat and the map aren't empty. Their
+the world, from `database/demo.sql`, so the chat and the map aren't empty. Their
 accounts can't be logged into. To start with an empty room instead, remove the
 `demo.sql` line from `docker-compose.yml`.
 
@@ -129,8 +129,8 @@ with the database on [TiDB Cloud Starter](https://tidbcloud.com), a free
 MySQL-compatible service.
 
 1. Create a TiDB Cloud Starter cluster. In its SQL editor, run
-   `CREATE DATABASE mapchat; USE mapchat;`, then the contents of `init.sql`,
-   and, if you want the sample conversation, `demo.sql`.
+   `CREATE DATABASE mapchat; USE mapchat;`, then the contents of `database/init.sql`,
+   and, if you want the sample conversation, `database/demo.sql`.
 2. In Render, choose **New > Blueprint** and pick this repository. Render reads
    `render.yaml` and asks for the database host, user and password from TiDB's
    **Connect** dialog, and for `APP_URL` (the `onrender.com` address).
@@ -142,7 +142,7 @@ after a quiet spell takes about a minute.
 
 A database made before private messages, local times and countries were added
 needs these columns. The container adds them itself when it starts
-(`migrate.php`); to add them by hand:
+(`database/migrate.php`); to add them by hand:
 
 ```sql
 ALTER TABLE chats
@@ -164,8 +164,10 @@ App/Controllers/ One class per page or action
 App/Models/      Database access for users, chats and locations
 App/Views/       Twig templates
 public/          Web root: index.php, CSS, JavaScript and images
-init.sql         Database schema and the welcome messages
-demo.sql         Optional sample people and conversation
+database/        init.sql (schema and welcome messages), demo.sql (optional
+                 sample people and conversation), migrate.php (adds columns an
+                 older database is missing, run when the container starts)
+docs/images/     The screenshots in this README
 ```
 
 ## Author

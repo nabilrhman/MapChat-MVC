@@ -33,8 +33,8 @@ services:
       MYSQL_ROOT_PASSWORD: mapchat
     volumes:
       # Run in name order on first start: the schema, then the sample people
-      - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
-      - ./demo.sql:/docker-entrypoint-initdb.d/02-demo.sql:ro
+      - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./database/demo.sql:/docker-entrypoint-initdb.d/02-demo.sql:ro
       - db-data:/var/lib/mysql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-pmapchat"]

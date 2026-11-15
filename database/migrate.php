@@ -2,9 +2,9 @@
 
 /**
  * Adds columns an older database is missing. The container runs this before
- * starting Apache: php migrate.php
+ * starting Apache: php database/migrate.php
  */
-require __DIR__ . '/vendor/autoload.php';
+require dirname(__DIR__) . '/vendor/autoload.php';
 
 try {
     $added = App\Models\Schema::upgrade();

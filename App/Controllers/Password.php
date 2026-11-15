@@ -66,10 +66,8 @@ class Password extends \Core\Controller
 
         if ($user->resetPassword($_POST['password'])) {
 
-            //echo "password valid";
             Flash::addMessage('Password changed. Log in with your new password.', Flash::SUCCESS);
             $this->redirect('/login/new');
-            //View::renderTemplate('Password/reset_success.html');
         
         } else {
 
