@@ -8,7 +8,14 @@ was to understand what a web framework actually does, so instead of using one, I
 wrote my own: the router, controllers, models, views, sessions and login are all
 hand-written PHP.
 
-![MapChat](docs/images/mapchat-app.png)
+**Live:** https://mapchat-z4tj.onrender.com (free hosting, so the first visit
+after a quiet spell takes about a minute to wake up)
+
+![The chat room with the map of who is chatting from where](docs/images/mapchat-app.png)
+
+| Log in, or try it as a guest | About |
+|---|---|
+| ![Login page](docs/images/mapchat-login.jpg) | ![About page](docs/images/mapchat-about.png) |
 
 ## Features
 
