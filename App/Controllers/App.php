@@ -130,7 +130,7 @@ class App extends Authenticated
     {
         // Only ever update the signed-in user's own location, from their real IP
         $userInfo = new UserInfo(['email' => Auth::getEmail(), 'ip' => UserInfo::getRealIP()]);
-        if ($userInfo->hasIPUpdated() || $userInfo->isMissingCountry())
+        if ($userInfo->hasIPUpdated() || $userInfo->isMissingLocation())
         {
             $userInfo->saveIP();
             $userInfo->findLocationFromIP();
