@@ -35,6 +35,30 @@ $(document).ready(function () {
         });
     }
 
+    // Run a change that resizes or removes tabs, then let the tabs that moved
+    // slide to their new place instead of jumping. translate, not transform,
+    // which would undo the tabs' flip
+    function slideTabs(change) {
+        var tabs = $('#chat-tabs .chat-tab');
+        var before = tabs.map(function () { return this.getBoundingClientRect().left; }).get();
+
+        change();
+
+        var moved = tabs.filter(function (i) {
+            if (!this.isConnected) return false;
+            var shift = before[i] - this.getBoundingClientRect().left;
+            if (Math.round(shift) === 0) return false;
+            this.style.translate = shift + 'px 0';
+            return true;
+        });
+
+        requestAnimationFrame(function () {
+            moved.addClass('tab-shift').css('translate', '').one('transitionend', function () {
+                $(this).removeClass('tab-shift');
+            });
+        });
+    }
+
     // Tabs from the history just appear; ones opened later ease in
     var tabsReady = false;
 
@@ -62,7 +86,9 @@ $(document).ready(function () {
 
         $('#chat-tabs .chat-tab').removeClass('active');
         var tab = tabFor(activeConversation).addClass('active');
-        tab.find('.unread').prop('hidden', true).text('');
+        slideTabs(function () {
+            tab.find('.unread').prop('hidden', true).text('');
+        });
         tab[0].scrollIntoView({block: 'nearest', inline: 'nearest'});
 
         $('#chat-list .chat').each(function () {
@@ -186,7 +212,10 @@ $(document).ready(function () {
             if (conversation !== activeConversation) {
                 $(this).hide();
                 var unread = tab.find('.unread');
-                unread.text((parseInt(unread.text(), 10) || 0) + 1).prop('hidden', false);
+                slideTabs(function () {
+                    unread.toggleClass('unread-enter', unread.prop('hidden'))
+                        .text((parseInt(unread.text(), 10) || 0) + 1).prop('hidden', false);
+                });
             }
         });
     }
@@ -215,7 +244,9 @@ $(document).ready(function () {
         if (tab.hasClass('active')) {
             showConversation('everyone');
         }
-        fadeOut(tab, 'tab-leave');
+        tab.addClass('tab-leave').one('animationend', function () {
+            slideTabs(function () { tab.remove(); });
+        });
     });
 
     function openPrivateChat(userId, name) {
