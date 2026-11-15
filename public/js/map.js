@@ -11,7 +11,7 @@ const STYLE_URL = 'https://tiles.openfreemap.org/styles/positron';
 const START = {lat: 43.4599, lng: -116.244, zoom: 3};
 // Fitting the pins never zooms in closer than a city
 const MAX_PIN_ZOOM = 9;
-// Same pace as the people list in chat.js
+// Same pace as the people list in people.js
 const PINS_INTERVAL = 15000;
 // The map fades in even if a slow tile never arrives
 const SHOW_MAP_TIMEOUT = 4000;

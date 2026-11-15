@@ -1,12 +1,9 @@
-// The chat page: messages, tabs for private chats, and the people list.
-// The server's values come from data attributes on #chat (see base_chat.html)
+// The chat page: messages, tabs for private chats, and sending. The people
+// list is in people.js. The server's values come from data attributes on
+// #chat (see base_chat.html)
 
 const MESSAGES_INTERVAL = 1000;
 const MESSAGES_HIDDEN_INTERVAL = 8000;
-// The list changes slowly, so every 15 seconds is enough
-const PEOPLE_INTERVAL = 15000;
-// Matches the breakpoint in chat.css
-const NARROW_SCREEN = '(max-width: 1100px)';
 // The MapChat bot's made-up country, at 0°, 0° (a code free for private use,
 // so Intl has no name for it)
 const NULL_ISLAND = 'XN';
@@ -24,20 +21,16 @@ const chatList = document.getElementById('chat-list');
 const composerForm = document.getElementById('input-container-form');
 const messageInput = document.getElementById('textarea-send');
 const sendButton = document.getElementById('button-send');
-const peoplePanel = document.getElementById('people');
-
-const myUserId = Number(chatPanel.dataset.myId);
 
 // The tab being shown: "everyone", or the id of the person in a private chat
 let activeConversation = EVERYONE;
 
-// Ids of the people online, from the last people list
+// Ids of the people online, from the last people list (people.js)
 let onlineUserIds = new Set();
 
 // Messages that came into the open tab while you were scrolled up
 let newMessagesWhileScrolledUp = 0;
 
-const isOnline = (person) => Number(person.is_online) === 1;
 const getConversation = (chat) => chat.dataset.conversation;
 const getChats = () => Array.from(chatList.querySelectorAll('.chat'));
 const getDistanceFromBottom = () => chatList.scrollHeight - chatList.scrollTop - chatList.clientHeight;
@@ -152,6 +145,26 @@ function openPrivateChat(userId, name) {
     messageInput.focus();
 }
 
+// A green dot on the tab of each private chat partner who's online;
+// it fades only when that changes
+function updateOnlineDots(userIds) {
+    onlineUserIds = userIds;
+    chatTabs.querySelectorAll('.chat-tab__online').forEach((dot) => {
+        const isPartnerOnline = onlineUserIds.has(Number(dot.closest('.chat-tab').dataset.conversation));
+        if (isPartnerOnline === !dot.hidden) return;
+
+        if (isPartnerOnline) {
+            dot.hidden = false;
+            return;
+        }
+        dot.classList.add('is-leaving');
+        onAnimationEnd(dot, () => {
+            dot.hidden = true;
+            dot.classList.remove('is-leaving');
+        });
+    });
+}
+
 chatTabs.addEventListener('click', (event) => {
     const tab = event.target.closest('.chat-tab');
     if (!tab) return;
@@ -172,20 +185,6 @@ chatTabs.addEventListener('wheel', (event) => {
 });
 
 /* Messages */
-
-// Uploaded photos fade in over a soft circle once loaded; letter avatars
-// are inline images and show at once
-function fadeInPhotos(images) {
-    images.forEach((image) => {
-        if (image.complete || image.src.startsWith('data:')) return;
-
-        const frame = image.parentElement;
-        frame.classList.add('is-loading');
-        const onPhotoSettled = () => frame.classList.remove('is-loading');
-        image.addEventListener('load', onPhotoSettled, {once: true});
-        image.addEventListener('error', onPhotoSettled, {once: true});
-    });
-}
 
 // The time where the sender was. Without their time zone, an estimate from
 // longitude (an hour per 15 degrees), marked with "~"
@@ -300,212 +299,6 @@ chatList.addEventListener('click', (event) => {
     if (senderName) {
         openPrivateChat(senderName.dataset.userId, senderName.dataset.userName);
     }
-});
-
-/* The people list */
-
-const personByRow = new WeakMap();
-
-function getTimeAgo(minutes) {
-    if (minutes < 60) return `${minutes} min ago`;
-    return `${Math.floor(minutes / 60)} h ago`;
-}
-
-// Point out the person's pin on the map
-function highlightPin(userId, isHighlighted) {
-    document.querySelector(`.map-pin[data-user-id="${CSS.escape(userId)}"]`)?.classList.toggle('is-highlighted', isHighlighted);
-}
-
-// Online: flag and city. Recently here: how long ago
-function createPersonDetail(person) {
-    const detail = createElement('span', 'person__detail');
-    if (!isOnline(person)) {
-        detail.textContent = getTimeAgo(person.minutes_ago);
-        return detail;
-    }
-    if (person.country) {
-        detail.append(createElement('span', `fi fi-${person.country.toLowerCase()}`));
-    }
-    detail.append(createElement('span', 'person__city', person.city || ''));
-    return detail;
-}
-
-function createPersonRow(person) {
-    const isMe = Number(person.id) === myUserId;
-    const userId = String(person.id);
-
-    const row = createElement('div', 'person');
-    row.classList.toggle('is-online', isOnline(person));
-    row.classList.toggle('person--can-message', !isMe);
-    row.dataset.userId = userId;
-    row.title = isMe ? '' : `Chat privately with ${person.name}`;
-    row.dataset.tipSide = 'left'; // over the map, not the rows above
-
-    const avatarFrame = createElement('div', 'person__avatar');
-    const photo = createElement('img', 'person__photo');
-    photo.alt = '';
-    photo.src = person.avatar_src;
-    avatarFrame.append(photo);
-
-    const text = createElement('div', 'person__text');
-    text.append(
-        createElement('span', 'person__name', person.name + (isMe ? ' (you)' : '')),
-        createPersonDetail(person),
-    );
-
-    row.append(avatarFrame, text);
-    row.addEventListener('mouseenter', () => highlightPin(userId, true));
-    row.addEventListener('mouseleave', () => highlightPin(userId, false));
-    personByRow.set(row, person);
-    return row;
-}
-
-// Rows that were already there start where they were and slide to their
-// new place, so someone joining pushes the list down smoothly
-function slideToNewPlaces(section, topsBefore) {
-    const shiftedRows = [];
-    section.querySelectorAll(':scope > .person:not(.is-entering, .is-leaving)').forEach((row) => {
-        const topBefore = topsBefore.get(row.dataset.userId);
-        if (topBefore === undefined) return;
-        const shift = topBefore - row.getBoundingClientRect().top;
-        if (Math.round(shift) === 0) return;
-        row.style.transform = `translateY(${shift}px)`;
-        shiftedRows.push(row);
-    });
-
-    // The next frame, so the browser draws them at the old place first
-    requestAnimationFrame(() => {
-        shiftedRows.forEach((row) => {
-            row.classList.add('is-shifting');
-            row.style.transform = '';
-            onTransitionEnd(row, () => row.classList.remove('is-shifting'));
-        });
-    });
-}
-
-// The rows are rebuilt each round, but only people new to the section
-// ease in; those gone ease out where they were. Moving between online and
-// recent counts as both, so the green dot fades with the row
-function fillPeople(section, people) {
-    const oldRows = new Map();
-    section.querySelectorAll(':scope > .person:not(.is-leaving)').forEach((row, index) => {
-        oldRows.set(row.dataset.userId, {row, index, top: row.getBoundingClientRect().top});
-    });
-    const topsBefore = new Map(Array.from(oldRows, ([userId, oldRow]) => [userId, oldRow.top]));
-
-    const rows = people.map((person) => {
-        const userId = String(person.id);
-        const row = createPersonRow(person);
-        row.classList.toggle('is-entering', !oldRows.has(userId));
-        oldRows.delete(userId);
-        return row;
-    });
-    section.replaceChildren(...rows);
-
-    // Whoever is left in oldRows has gone
-    oldRows.forEach(({row, index}) => {
-        section.insertBefore(row, section.children[index] ?? null);
-        removeWithAnimation(row, 'is-leaving');
-    });
-
-    slideToNewPlaces(section, topsBefore);
-}
-
-// A green dot on the tab of each private chat partner who's online;
-// it fades only when that changes
-function updateOnlineDots() {
-    chatTabs.querySelectorAll('.chat-tab__online').forEach((dot) => {
-        const isPartnerOnline = onlineUserIds.has(Number(dot.closest('.chat-tab').dataset.conversation));
-        if (isPartnerOnline === !dot.hidden) return;
-
-        if (isPartnerOnline) {
-            dot.hidden = false;
-            return;
-        }
-        dot.classList.add('is-leaving');
-        onAnimationEnd(dot, () => {
-            dot.hidden = true;
-            dot.classList.remove('is-leaving');
-        });
-    });
-}
-
-function showPeople(people) {
-    const onlinePeople = people.filter(isOnline);
-    const recentPeople = people.filter((person) => !isOnline(person));
-
-    // You first, then everyone else by name
-    const isMeFirst = (person) => Number(Number(person.id) === myUserId);
-    onlinePeople.sort((a, b) => isMeFirst(b) - isMeFirst(a) || a.name.localeCompare(b.name));
-
-    // The rows are replaced, so a hovered row never gets its mouseleave
-    document.querySelectorAll('.map-pin.is-highlighted').forEach((pin) => pin.classList.remove('is-highlighted'));
-
-    onlineUserIds = new Set(onlinePeople.map((person) => Number(person.id)));
-    updateOnlineDots();
-
-    document.getElementById('online-count').textContent = onlinePeople.length;
-    document.getElementById('people-toggle-count').textContent = onlinePeople.length;
-    fillPeople(document.getElementById('people-online'), onlinePeople);
-    document.getElementById('recent-heading').hidden = recentPeople.length === 0;
-    fillPeople(document.getElementById('people-recent'), recentPeople);
-    fadeInPhotos(peoplePanel.querySelectorAll('img'));
-}
-
-function loadPeople() {
-    postForm('/app/get-people', {timezone: Intl.DateTimeFormat().resolvedOptions().timeZone})
-        .then((response) => showPeople(response.data))
-        .catch(() => {
-            // Try again on the next round
-        })
-        .finally(() => setTimeout(loadPeople, PEOPLE_INTERVAL));
-}
-
-// A drawer on narrow screens, a column that can be closed on wide ones
-const narrowScreen = window.matchMedia(NARROW_SCREEN);
-
-const peopleToggle = document.getElementById('people-toggle');
-
-function setPeopleOpen(isOpen) {
-    peopleToggle.setAttribute('aria-expanded', String(isOpen));
-    const applyOpen = () => {
-        if (narrowScreen.matches) {
-            peoplePanel.classList.toggle('is-open', isOpen);
-        } else {
-            document.body.classList.toggle('is-people-closed', !isOpen);
-        }
-    };
-
-    if (isOpen) {
-        applyOpen();
-        return;
-    }
-
-    // Slide out first, then hide
-    peoplePanel.classList.add('is-closing');
-    onAnimationEnd(peoplePanel, () => {
-        peoplePanel.classList.remove('is-closing');
-        applyOpen();
-    });
-}
-
-peopleToggle.addEventListener('click', () => {
-    setPeopleOpen(!isShown(peoplePanel));
-});
-
-document.getElementById('people-close').addEventListener('click', () => {
-    setPeopleOpen(false);
-});
-
-peoplePanel.addEventListener('click', (event) => {
-    const row = event.target.closest('.person--can-message');
-    if (!row) return;
-
-    const person = personByRow.get(row);
-    if (narrowScreen.matches) {
-        setPeopleOpen(false);
-    }
-    openPrivateChat(person.id, person.name);
 });
 
 /* The map toggle and the chat's fold caret, on phones */
@@ -751,7 +544,7 @@ historyChats.forEach((chat) => addTab(getConversation(chat), chat.dataset.partne
 showConversation(EVERYONE);
 shouldAnimateNewTabs = true;
 
-loadPeople();
+keepPeopleUpdated(updateOnlineDots, openPrivateChat);
 keepCheckingForMessages();
 
 // Slide the panels in
