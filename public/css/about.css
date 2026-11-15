@@ -105,7 +105,7 @@
     font-size: 22px;
 }
 
-/* A small purple square before each line instead of a bullet */
+/* A small purple dot before each line */
 .about-list
 {
     margin: 0;
@@ -126,5 +126,6 @@
     left: 2px;
     width: 6px;
     height: 6px;
+    border-radius: 50%;
     background-color: #9575cd;
 }
