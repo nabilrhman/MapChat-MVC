@@ -580,7 +580,13 @@ body
 /* Someone who comes or goes slides in or out of their part of the list */
 @keyframes person-in
 {
-    from { opacity: 0; transform: translateX(12px); }
+    from { opacity: 0; transform: translateX(24px); }
+}
+
+/* A soft highlight on whoever just arrived, so the eye finds them */
+@keyframes person-arrived
+{
+    from { background-color: #ede7f6; }
 }
 
 @keyframes person-out
@@ -590,7 +596,14 @@ body
 
 .person.person-enter
 {
-    animation: person-in var(--dur) var(--ease-out) backwards;
+    animation: person-in var(--dur-slow) var(--ease-out) backwards,
+               person-arrived 1.5s var(--ease-out);
+}
+
+/* The rest of the list slides to its new place instead of jumping */
+.person.person-shift
+{
+    transition: transform var(--dur) var(--ease-out);
 }
 
 .person.person-leave
@@ -728,22 +741,41 @@ body
     }
 
     /* The chat covers the bottom of the map here, so the credits sit at the
-       bottom left of the strip that shows, small (the people button is top
-       right) */
+       bottom right of the strip that shows, small */
     .maplibregl-ctrl-bottom-right,
     .leaflet-bottom.leaflet-right
     {
         top: 30vh;
-        right: auto;
         bottom: auto;
-        left: 0;
         transform: translateY(-100%);
     }
 
     .leaflet-control-attribution
     {
         font-size: 10px;
-        opacity: 0.75;
+        opacity: 0.85;
+    }
+
+    .leaflet-control-attribution:not(.is-open)
+    {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 22px;
+        height: 22px;
+        margin: 0 6px 6px 0;
+        padding: 0;
+        border-radius: 50%;
+        font-size: 0;
+        cursor: pointer;
+    }
+
+    .leaflet-control-attribution:not(.is-open)::before
+    {
+        content: 'i';
+        color: #512da8;
+        font-size: 13px;
+        font-weight: 600;
     }
 
     .people

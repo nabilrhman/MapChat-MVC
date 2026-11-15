@@ -298,6 +298,14 @@ function initializeFallback() {
         // Credits beside the people list (see chat.css); the tiles add theirs to it
         map.attributionControl = L.control.attribution({position: 'bottomright', prefix: false}).addTo(map);
 
+        // On phones it's an "i" that opens on tap, like MapLibre's (see chat.css)
+        var credit = map.attributionControl.getContainer();
+        L.DomEvent.on(credit, 'click', function (event) {
+            if (event.target.tagName !== 'A') {
+                credit.classList.toggle('is-open');
+            }
+        });
+
         var ThemedTiles = L.GridLayer.extend({
             createTile: function (coords, done) {
                 var canvas = document.createElement('canvas');
