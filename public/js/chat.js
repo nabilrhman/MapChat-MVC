@@ -450,10 +450,22 @@ $(document).ready(function () {
     // The newest message this page has; each tab keeps its own
     var lastChatId = $('#chat').data('last-chat-id');
 
+    // A new version went live: reload, so new messages don't arrive in markup
+    // the page's old CSS and JS don't know. Not while something is typed
+    var build = $('#chat').attr('data-build');
+
+    function reloadIfUpdated(liveBuild) {
+        if (build && liveBuild && liveBuild !== build && $('#textarea-send').val().trim() === '') {
+            location.reload();
+        }
+    }
+
     // Scrolls down for new messages only if you're at the bottom already, or forced
     // (after you send); someone reading older messages stays where they are
     function checkForMessages(forceScroll) {
         return postForm('/app/get', {after: lastChatId}).then(function (response) {
+            reloadIfUpdated(response.headers['x-build']);
+
             // Two checks can overlap (e.g. right after sending), so skip any already shown
             var chats = $($.parseHTML(response.data)).filter('.chat').filter(function () {
                 return $(this).data('id') > lastChatId;

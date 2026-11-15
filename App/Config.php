@@ -67,6 +67,18 @@ class Config
     }
 
     /**
+     * Id of the running build (see the Dockerfile), or '' outside Docker
+     *
+     * @return string
+     */
+    public static function buildId(): string
+    {
+        $file = dirname(__DIR__) . '/build-id';
+
+        return is_readable($file) ? trim(file_get_contents($file)) : '';
+    }
+
+    /**
      * Cloudinary account that profile photos are uploaded to
      *
      * @return string
