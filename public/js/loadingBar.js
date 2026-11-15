@@ -9,8 +9,9 @@
     var running = false;
     var timer = null;
 
+    // Pages with the header run it along the header's yellow line instead
     var bar = document.createElement('div');
-    bar.className = 'loading-bar';
+    bar.className = 'loading-bar' + (document.querySelector('.site-header') ? ' loading-bar--header' : '');
     document.body.appendChild(bar);
 
     function remember(value) {

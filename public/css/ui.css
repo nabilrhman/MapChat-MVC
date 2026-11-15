@@ -420,6 +420,16 @@ label.error
     animation: loading-bar-grow 10s linear forwards;
 }
 
+/* Under the header it fills the header's yellow line in a deeper orange */
+.loading-bar--header
+{
+    top: calc(var(--header-height) - 4px);
+    z-index: 111; /* just above the header */
+    height: 4px;
+    background-color: #ff6f00;
+    box-shadow: none;
+}
+
 @keyframes loading-bar-grow
 {
     0%   { width: 0; }
