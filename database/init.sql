@@ -61,6 +61,8 @@ CREATE TABLE chats (
   `to_email`  VARCHAR(255) NULL DEFAULT NULL,
   `body`      MEDIUMTEXT,
   `timestamp` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  -- When the recipient saw this private message; NULL while it's unread
+  `read_at`   TIMESTAMP    NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `fk_m_email` (`email`),
   KEY `fk_m_to_email` (`to_email`),

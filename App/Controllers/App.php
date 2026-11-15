@@ -27,10 +27,12 @@ class App extends Authenticated
         $this->catchUpDemoChat();
 
         $chats = Chat::getRecent(Auth::getEmail());
+        $lastChatId = $chats ? end($chats)['id'] : 0;
 
         View::renderTemplate('App/index.html', [
             'chats' => $chats,
-            'last_chat_id' => $chats ? end($chats)['id'] : 0,
+            'last_chat_id' => $lastChatId,
+            'conversations' => Chat::getConversations(Auth::getEmail(), $lastChatId),
             'build_id' => Config::buildId()
         ]);
     }
@@ -81,6 +83,17 @@ class App extends Authenticated
                 'initial' => true
             ]);
         }
+    }
+
+    /**
+     * Mark the private chat with a person as read up to a message id, once
+     * the viewer has it open (for AJAX)
+     *
+     * @return void
+     */
+    public function markReadAction()
+    {
+        Chat::markRead(Auth::getEmail(), (int) ($_POST['from'] ?? 0), (int) ($_POST['up_to'] ?? 0));
     }
 
     /**
