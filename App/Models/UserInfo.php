@@ -194,7 +194,8 @@ class UserInfo extends \Core\Model
     }
 
     /**
-     * Everyone's pin for the map, except people who hide from it
+     * Everyone's pin for the map, except people who hide from it and the
+     * MapChat bot, whose Null Island isn't a real place to chat from
      *
      * @return array
      */
@@ -207,9 +208,11 @@ class UserInfo extends \Core\Model
                 LEFT JOIN users
                 ON userinfo.email = users.email
                 WHERE userinfo.lat IS NOT NULL AND userinfo.lng IS NOT NULL
-                  AND users.share_location = 1';
+                  AND users.share_location = 1
+                  AND users.email <> :bot_email';
 
         $stmt = static::getDB()->prepare($sql);
+        $stmt->bindValue(':bot_email', Chat::BOT_EMAIL, PDO::PARAM_STR);
         $stmt->execute();
 
         return static::withAvatarSrc($stmt->fetchAll(PDO::FETCH_ASSOC), 'user_id');
