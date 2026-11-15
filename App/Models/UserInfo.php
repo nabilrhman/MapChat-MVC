@@ -272,9 +272,11 @@ class UserInfo extends \Core\Model
     /**
      * Look up the approximate location of an IP address.
      *
-     * Uses ipstack when IPSTACK_API_KEY is set, otherwise the keyless
-     * ipapi.co service. Private and local addresses (e.g. in Docker) fall
-     * back to DEV_FAKE_IP when set, so the map still has a point locally.
+     * Free services limit or block requests from hosting providers, so
+     * several are tried in turn until one answers: ipstack (only when
+     * IPSTACK_API_KEY is set), then ipapi.co, ipwho.is and GeoJS. Private and
+     * local addresses (e.g. in Docker) use DEV_FAKE_IP when it is set, so the
+     * map still has a point locally.
      *
      * @param string $ip
      *
@@ -292,28 +294,54 @@ class UserInfo extends \Core\Model
             }
         }
 
-        $key = Config::get('IPSTACK_API_KEY');
-        $url = $key
-            ? 'http://api.ipstack.com/' . urlencode($ip) . '?access_key=' . urlencode($key)
-            : 'https://ipapi.co/' . urlencode($ip) . '/json/';
+        $ip = urlencode($ip);
+        $services = [];
+        if ($key = Config::get('IPSTACK_API_KEY')) {
+            $services['ipstack'] = 'http://api.ipstack.com/' . $ip . '?access_key=' . urlencode($key);
+        }
+        $services['ipapi.co'] = 'https://ipapi.co/' . $ip . '/json/';
+        $services['ipwho.is'] = 'https://ipwho.is/' . $ip;
+        $services['geojs'] = 'https://get.geojs.io/v1/ip/geo/' . $ip . '.json';
 
+        foreach ($services as $name => $url) {
+            $location = static::fetchLocation($url);
+            if ($location !== null) {
+                return $location;
+            }
+            error_log("IP location lookup failed with $name, trying the next service");
+        }
+
+        return $empty;
+    }
+
+    /**
+     * Ask one IP location service. All of them answer with JSON that has
+     * latitude, longitude and (usually) city fields.
+     *
+     * @param string $url
+     *
+     * @return array|null The location, or null if the service didn't give one
+     */
+    protected static function fetchLocation($url)
+    {
         $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT => 5,
+            CURLOPT_TIMEOUT => 4,
             CURLOPT_USERAGENT => 'MapChat',
         ]);
         $json = curl_exec($ch);
+        $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
         $result = json_decode((string) $json, true);
-        if (!is_array($result) || !isset($result['latitude'], $result['longitude'])) {
-            return $empty;
+        if ($status !== 200 || !is_array($result) || !isset($result['latitude'], $result['longitude'])) {
+            return null;
         }
 
         return [
-            'lat' => $result['latitude'],
-            'lng' => $result['longitude'],
+            'lat' => (float) $result['latitude'],
+            'lng' => (float) $result['longitude'],
             'city' => $result['city'] ?? null,
         ];
     }
