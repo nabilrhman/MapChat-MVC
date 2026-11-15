@@ -47,7 +47,13 @@
 /* Every card: 20px inside, a 32px header row, then its content 12px below */
 .profile-page h4
 {
-    margin: 24px 0 16px;
+    margin: 24px 0 12px;
+}
+
+/* The line under the title, as on About */
+.profile-page .divider
+{
+    margin-bottom: 16px;
 }
 
 .settings-card
