@@ -947,11 +947,24 @@ body
     }
 
     .map-toggle:hover,
-    .people-toggle:hover,
-    .map-toggle[aria-pressed="true"]
+    .people-toggle:hover
     {
         background-color: rgba(255, 255, 255, 0.15);
         box-shadow: none;
+    }
+
+    /* Map on: a white button with a purple map, so on and off differ at a
+       glance, not only by a faint tint */
+    .map-toggle[aria-pressed="true"],
+    .map-toggle[aria-pressed="true"]:hover
+    {
+        background-color: #fff;
+        color: #512da8;
+    }
+
+    .map-toggle
+    {
+        transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
     }
 
     .map-toggle:focus-visible,
