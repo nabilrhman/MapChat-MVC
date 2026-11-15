@@ -1020,9 +1020,10 @@ body
     }
 
     /* The chat covers the bottom of the map here, so the credits sit at the
-       bottom right of the strip that shows, small */
-    .maplibregl-ctrl-bottom-right,
-    .leaflet-bottom.leaflet-right
+       bottom right of the strip that shows, small. The map libraries' CSS
+       loads later and sets bottom: 0, hence .map */
+    .map .maplibregl-ctrl-bottom-right,
+    .map .leaflet-bottom.leaflet-right
     {
         top: 30vh;
         bottom: auto;
@@ -1030,10 +1031,10 @@ body
     }
 
     /* With the chat folded, they sit just above its tab row */
-    .is-chat-folded .maplibregl-ctrl-bottom-right,
-    .is-chat-folded .leaflet-bottom.leaflet-right
+    .is-chat-folded .map .maplibregl-ctrl-bottom-right,
+    .is-chat-folded .map .leaflet-bottom.leaflet-right
     {
-        top: calc(100% - var(--header-height) - var(--footer-height) - 48px);
+        top: calc(100% - 48px);
     }
 
     /* Leaflet's credit as MapLibre draws its own: a see-through round "i"
