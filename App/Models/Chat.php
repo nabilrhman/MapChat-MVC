@@ -150,7 +150,8 @@ class Chat extends \Core\Model
                     LEFT JOIN users
                     ON chats.email = users.email
                     LEFT JOIN userinfo
-                    ON users.email = userinfo.email';
+                    ON users.email = userinfo.email
+                    ORDER BY chats.id';
 
             $db = static::getDB();
             $stmt = $db->prepare($sql);
@@ -183,7 +184,8 @@ class Chat extends \Core\Model
                     ON chats.email = users.email
                     LEFT JOIN userinfo
                     ON users.email = userinfo.email
-	                WHERE chats.id > :last_chat_id';
+	                WHERE chats.id > :last_chat_id
+                    ORDER BY chats.id';
 
             $db = static::getDB();
             $stmt = $db->prepare($sql);
