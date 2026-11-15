@@ -292,7 +292,7 @@
 {
     display: flex;
     align-items: center;
-    gap: var(--icon-gap);
+    gap: 6px; /* 8px or so to the drawing, past the icon's blank side */
     padding: 10px 16px;
     color: #212121;
     font-size: 14px;
@@ -310,8 +310,12 @@
     cursor: pointer;
 }
 
-.account-menu__icon
+/* Menu items' words line up in one column, so each icon keeps its whole
+   box (the gap is the item's) rather than losing its blank sides as icons
+   beside text do. Two classes, to win over .icon in styles.css */
+.account-menu__item .account-menu__icon
 {
+    margin-inline: 0;
     color: #512da8;
     font-size: 20px;
 }
@@ -379,7 +383,7 @@
         text-transform: uppercase;
     }
 
-    .account-menu__icon
+    .account-menu__item .account-menu__icon
     {
         color: rgba(255, 255, 255, 0.85);
     }
