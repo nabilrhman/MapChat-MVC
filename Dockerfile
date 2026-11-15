@@ -3,7 +3,11 @@ WORKDIR /app
 COPY composer.json composer.lock ./
 RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader --no-scripts
 
-FROM php:8.4-apache
+# The same, plus PHPUnit
+FROM vendor AS vendor-dev
+RUN composer install --no-interaction --prefer-dist --no-scripts
+
+FROM php:8.4-apache AS base
 
 RUN docker-php-ext-install pdo_mysql \
     && a2enmod rewrite remoteip headers \
@@ -16,6 +20,15 @@ RUN docker-php-ext-install pdo_mysql \
 
 ENV PORT=8080
 WORKDIR /var/www/html
+
+# The tests, with PHPUnit: `docker compose run --rm test`
+FROM base AS test
+COPY --from=vendor-dev /app/vendor ./vendor
+COPY . .
+CMD ["vendor/bin/phpunit"]
+
+# The app. Last, so it is what a plain `docker build` makes
+FROM base
 COPY --from=vendor /app/vendor ./vendor
 COPY . .
 # A new id for each build, so open chat pages can tell a new version is live

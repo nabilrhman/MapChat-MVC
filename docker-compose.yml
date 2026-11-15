@@ -21,6 +21,27 @@ services:
       db:
         condition: service_healthy
 
+  # The tests: `docker compose run --rm test`. They use their own database,
+  # mapchat_test, and never touch the app's
+  test:
+    build:
+      context: .
+      target: test
+    profiles: ["test"]
+    environment:
+      DB_HOST: db
+      DB_PASSWORD: mapchat
+      DB_NAME: mapchat_test
+    volumes:
+      # Edit code and tests without rebuilding
+      - ./App:/var/www/html/App
+      - ./Core:/var/www/html/Core
+      - ./database:/var/www/html/database
+      - ./tests:/var/www/html/tests
+    depends_on:
+      db:
+        condition: service_healthy
+
   # Catches every email the app sends, with an inbox at http://localhost:8025
   mailpit:
     image: axllent/mailpit:v1.21
