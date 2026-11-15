@@ -11,7 +11,7 @@ use PDO;
  * later, which wipes session files and logs everyone out. Rows in the
  * sessions table survive that.
  */
-class DatabaseSessionHandler extends Model implements \SessionHandlerInterface
+class DatabaseSessionHandler extends Model implements \SessionHandlerInterface, \SessionUpdateTimestampHandlerInterface
 {
     public function open($path, $name): bool
     {
@@ -42,6 +42,30 @@ class DatabaseSessionHandler extends Model implements \SessionHandlerInterface
         $stmt->bindValue(':id', $id, PDO::PARAM_STR);
         $stmt->bindValue(':data', $data, PDO::PARAM_LOB);
         $stmt->bindValue(':updated_at', time(), PDO::PARAM_INT);
+
+        return $stmt->execute();
+    }
+
+    public function validateId($id): bool
+    {
+        $stmt = static::getDB()->prepare('SELECT 1 FROM sessions WHERE id = :id');
+        $stmt->bindValue(':id', $id, PDO::PARAM_STR);
+        $stmt->execute();
+
+        return $stmt->fetchColumn() !== false;
+    }
+
+    /**
+     * Called instead of write() when the session didn't change. The chat asks
+     * for messages every second, so only mark the session as used once an hour
+     */
+    public function updateTimestamp($id, $data): bool
+    {
+        $stmt = static::getDB()->prepare(
+            'UPDATE sessions SET updated_at = :now WHERE id = :id AND updated_at < :now - 3600'
+        );
+        $stmt->bindValue(':id', $id, PDO::PARAM_STR);
+        $stmt->bindValue(':now', time(), PDO::PARAM_INT);
 
         return $stmt->execute();
     }

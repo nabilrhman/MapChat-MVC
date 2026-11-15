@@ -1,30 +1,25 @@
 {% extends 'base_login.html' %}
 
-{% block title %}Password reset{% endblock %}
+{% block title %}Reset password{% endblock %}
 
-{% block heading %}REQUEST PASSWORD RESET{% endblock %}
+{% block heading %}Reset your password{% endblock %}
 
 {% block body %}
 
-<div class="container" >
-    <div class="z-depth-1 grey lighten-4 row form-container form-container-custom" style="">
+<div class="auth-card">
 
-        <form class="col s12" action="/password/request-reset" method="post" id="formForgot">
+    <form action="/password/request-reset" method="post" id="formForgot">
 
-            <div class='row'>
-                <div class='input-field col s12'>
-                    <input type="email" id="inputEmail" name="email" autofocus value="{{ email }}"/>
-                    <label for="inputEmail" data-error="Type your email">Email address</label>
-                    <span id="error-msg-email" class="helper-text"></span>
-                </div>
-            </div>
+        <div class="input-field">
+            <input type="email" id="inputEmail" name="email" value="{{ email }}" autocomplete="email" autofocus/>
+            <label for="inputEmail">Email</label>
+            <span id="error-msg-email"></span>
+        </div>
 
-            <div class='row form-actions'>
-                <button type='submit' class='btn waves-effect purple' id="submitButton">Send reset link</button>
-            </div>
-        </form>
-    <p class="col s12 form-switch"><span>Remembered it?</span> <a href="/login">Log in</a></p>
-    </div>
+        <button type="submit" class="button button-primary button-block" id="submitButton">Send reset link</button>
+    </form>
+
+    <p class="form-switch"><span>Remembered it?</span> <a href="/login">Log in</a></p>
 </div>
 
 {% endblock %}

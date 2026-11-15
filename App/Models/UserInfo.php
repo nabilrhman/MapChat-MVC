@@ -15,6 +15,14 @@ use \App\Config;
  */
 class UserInfo extends \Core\Model
 {
+    /** Someone counts as online if the chat heard from them this many seconds ago */
+    const ONLINE_SECONDS = 60;
+
+    /**
+     * So the room never looks empty, about a third of the demo people (from
+     * demo.sql) always show as online; which third changes every hour
+     */
+    const DEMO_ONLINE = "(users.email LIKE '%@demo.mapchat.local' AND MOD(users.id + HOUR(NOW()), 3) = 0)";
 
     /**
      * Error messages
@@ -122,7 +130,7 @@ class UserInfo extends \Core\Model
         if (empty($this->errors))
         {
             $sql = 'UPDATE userinfo
-                    SET lat = :lat, lng = :lng, city = :city
+                    SET lat = :lat, lng = :lng, city = :city, country = :country
                     WHERE email = :email';
 
             $db = static::getDB();
@@ -132,6 +140,7 @@ class UserInfo extends \Core\Model
             $stmt->bindValue(':lat', $this->lat, PDO::PARAM_STR);
             $stmt->bindValue(':lng', $this->long, PDO::PARAM_STR);
             $stmt->bindValue(':city', $this->city, PDO::PARAM_STR);
+            $stmt->bindValue(':country', $this->country, PDO::PARAM_STR);
 
             return $stmt->execute();
         }
@@ -183,6 +192,7 @@ class UserInfo extends \Core\Model
             $this->lat = $location['lat'];
             $this->long = $location['lng'];
             $this->city = $location['city'];
+            $this->country = $location['country'];
 
         }
 
@@ -284,7 +294,7 @@ class UserInfo extends \Core\Model
      */
     public static function lookupIP($ip)
     {
-        $empty = ['lat' => null, 'lng' => null, 'city' => null];
+        $empty = ['lat' => null, 'lng' => null, 'city' => null, 'country' => null];
 
         $isPublic = filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE);
         if (!$isPublic) {
@@ -343,6 +353,7 @@ class UserInfo extends \Core\Model
             'lat' => (float) $result['latitude'],
             'lng' => (float) $result['longitude'],
             'city' => $result['city'] ?? null,
+            'country' => isset($result['country_code']) ? strtoupper($result['country_code']) : null,
         ];
     }
 
@@ -352,7 +363,8 @@ class UserInfo extends \Core\Model
         if (empty($this->errors))
         {
 
-            $sql = 'SELECT userinfo.lat, userinfo.lng, users.name
+            $sql = 'SELECT userinfo.lat, userinfo.lng, userinfo.city, userinfo.country,
+                           users.id AS user_id, users.name
                     FROM userinfo
                     LEFT JOIN users
                     ON userinfo.email = users.email
@@ -373,7 +385,100 @@ class UserInfo extends \Core\Model
     }
 
 
+    /**
+     * Mark the user as online now. The chat asks for messages every second, so
+     * this only writes when the last mark is over 30 seconds old
+     *
+     * @param string $email
+     *
+     * @return void
+     */
+    public static function markOnline($email)
+    {
+        $sql = 'UPDATE userinfo
+                SET online_at = NOW()
+                WHERE email = :email
+                  AND (online_at IS NULL OR online_at < NOW() - INTERVAL 30 SECOND)';
+
+        $stmt = static::getDB()->prepare($sql);
+        $stmt->bindValue(':email', $email, PDO::PARAM_STR);
+        $stmt->execute();
+    }
+
+    /**
+     * Where others see the user: their city and country code, if known
+     *
+     * @param string $email
+     *
+     * @return array|false
+     */
+    public static function getPlace($email)
+    {
+        $stmt = static::getDB()->prepare('SELECT city, country FROM userinfo WHERE email = :email');
+        $stmt->bindValue(':email', $email, PDO::PARAM_STR);
+        $stmt->execute();
+
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * True if the user has a city but no country, i.e. was located before
+     * countries were saved
+     *
+     * @return boolean
+     */
+    public function isMissingCountry()
+    {
+        $stmt = static::getDB()->prepare(
+            'SELECT 1 FROM userinfo WHERE email = :email AND city IS NOT NULL AND country IS NULL'
+        );
+        $stmt->bindValue(':email', $this->email, PDO::PARAM_STR);
+        $stmt->execute();
+
+        return $stmt->fetchColumn() !== false;
+    }
+
+    /**
+     * Save the time zone the user's browser reports, e.g. "Asia/Dhaka"
+     *
+     * @param string $email
+     * @param string $timezone
+     *
+     * @return void
+     */
+    public static function saveTimezone($email, $timezone)
+    {
+        $sql = 'UPDATE userinfo SET timezone = :timezone WHERE email = :email';
+
+        $stmt = static::getDB()->prepare($sql);
+        $stmt->bindValue(':timezone', $timezone, PDO::PARAM_STR);
+        $stmt->bindValue(':email', $email, PDO::PARAM_STR);
+        $stmt->execute();
+    }
+
+    /**
+     * People seen in the chat in the last day, most recent first
+     *
+     * @return array
+     */
+    public static function getRecentPeople()
+    {
+        $sql = 'SELECT users.id, users.name, users.avatar,
+                       IF(users.share_location, userinfo.city, NULL) AS city,
+                       IF(users.share_location, userinfo.country, NULL) AS country,
+                       (userinfo.online_at > NOW() - INTERVAL :online SECOND OR ' . static::DEMO_ONLINE . ') AS is_online,
+                       TIMESTAMPDIFF(MINUTE, userinfo.online_at, NOW()) AS minutes_ago
+                FROM userinfo
+                JOIN users
+                ON userinfo.email = users.email
+                WHERE userinfo.online_at > NOW() - INTERVAL 1 DAY OR ' . static::DEMO_ONLINE . '
+                ORDER BY userinfo.online_at DESC';
+
+        $stmt = static::getDB()->prepare($sql);
+        $stmt->bindValue(':online', static::ONLINE_SECONDS, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
 }
-
-
-
