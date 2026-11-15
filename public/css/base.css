@@ -4,11 +4,49 @@
 
 @layer base
 {
+    /* Material 3 colour roles for MapChat's purple, which stays the primary.
+       The rest come from its tonal palettes (Google's material-color-utilities,
+       tonal spot scheme). Shapes stay square: only colour, state and depth
+       follow Material 3 */
+    :root
+    {
+        --md-primary: #512da8;
+        --md-on-primary: #fff;
+        --md-primary-container: #e8ddff;
+        --md-on-primary-container: #21005d;
+        --md-secondary-container: #e8def8;
+        --md-on-secondary-container: #1d192b;
+        --md-error: #ba1a1a;
+
+        --md-surface: #fdf7ff;
+        --md-surface-container-lowest: #fff;
+        --md-surface-container-low: #f8f2fa;
+        --md-surface-container: #f2ecf4;
+        --md-surface-container-high: #ece6ee;
+        --md-on-surface: #1c1b20;
+        --md-on-surface-variant: #48454e;
+        --md-outline: #79757f;
+        --md-outline-variant: #cac4cf;
+
+        --md-inverse-surface: #322f35;
+        --md-inverse-on-surface: #f5eff7;
+        --md-inverse-primary: #cebdff;
+
+        /* Shadows for raised things, lowest first */
+        --md-elevation-1: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px 1px rgba(0, 0, 0, 0.15);
+        --md-elevation-2: 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 6px 2px rgba(0, 0, 0, 0.15);
+        --md-elevation-3: 0 1px 3px rgba(0, 0, 0, 0.3), 0 4px 8px 3px rgba(0, 0, 0, 0.15);
+
+        /* How much of a button's text colour tints it on hover and press */
+        --md-hover: 8%;
+        --md-pressed: 12%;
+    }
+
     html
     {
         box-sizing: border-box;
         line-height: 1.5;
-        color: rgba(0, 0, 0, 0.87);
+        color: var(--md-on-surface);
         -webkit-text-size-adjust: 100%;
     }
 

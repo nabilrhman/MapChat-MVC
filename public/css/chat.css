@@ -173,11 +173,11 @@ body
     padding: 0 14px 0 10px;
     border: none;
     border-radius: 17px;
-    background-color: #512da8;
-    color: #fff;
+    background-color: var(--md-primary);
+    color: var(--md-on-primary);
     font-size: 13px;
     font-weight: 600;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    box-shadow: var(--md-elevation-3);
     overflow: hidden;
     white-space: nowrap;
     transform: translateX(-50%);
@@ -199,7 +199,7 @@ body
 
 .jump-latest:hover
 {
-    background-color: #4527a0;
+    background-color: color-mix(in srgb, var(--md-on-primary) var(--md-hover), var(--md-primary));
 }
 
 /* The transparent outline only shows in forced-colors mode, which drops
@@ -743,19 +743,19 @@ body
     padding: 0 12px;
     border: none;
     border-radius: 4px;
-    background-color: #fff;
-    color: #512da8;
+    background-color: var(--md-surface-container-low);
+    color: var(--md-primary);
     font-size: 13px;
     font-weight: 600;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    box-shadow: var(--md-elevation-2);
     cursor: pointer;
     transition: background-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
 }
 
 .people-toggle:hover
 {
-    background-color: #f5f1fb;
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
+    background-color: color-mix(in srgb, var(--md-primary) var(--md-hover), var(--md-surface-container-low));
+    box-shadow: var(--md-elevation-3);
 }
 
 .people-toggle:focus-visible
@@ -953,16 +953,19 @@ body
         box-shadow: none;
     }
 
-    /* Map on: a white button with a purple map, so on and off differ at a
-       glance, not only by a faint tint */
+    /* On (the map shown, the people list open): a white button with purple
+       inside, so on and off differ at a glance, not only by a faint tint */
     .map-toggle[aria-pressed="true"],
-    .map-toggle[aria-pressed="true"]:hover
+    .map-toggle[aria-pressed="true"]:hover,
+    .people-toggle[aria-expanded="true"],
+    .people-toggle[aria-expanded="true"]:hover
     {
         background-color: #fff;
-        color: #512da8;
+        color: var(--md-primary);
     }
 
-    .map-toggle
+    .map-toggle,
+    .people-toggle
     {
         transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
     }
@@ -1358,8 +1361,8 @@ body
     padding: 0;
     border: none;
     border-radius: 4px;
-    background-color: #512da8;
-    color: #fff;
+    background-color: var(--md-primary);
+    color: var(--md-on-primary);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -1367,14 +1370,16 @@ body
     transition: background-color var(--dur-fast) var(--ease-out);
 }
 
-.chat-composer__send:hover
+.chat-composer__send:hover:not(:disabled)
 {
-    background-color: #5e35b1;
+    background-color: color-mix(in srgb, var(--md-on-primary) var(--md-hover), var(--md-primary));
 }
 
+/* Material 3's disabled look, as on the other buttons */
 .chat-composer__send:disabled
 {
-    background-color: #d1c4e9;
+    background-color: color-mix(in srgb, var(--md-on-surface) 12%, transparent);
+    color: color-mix(in srgb, var(--md-on-surface) 38%, transparent);
     cursor: default;
 }
 

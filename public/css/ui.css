@@ -1,5 +1,6 @@
 /* Buttons, form fields and text sizes shared by every page outside the chat,
-   so they look the same everywhere: square corners, normal case, no shadows */
+   so they look the same everywhere: Material 3's colours and states (see the
+   tokens in base.css), with square corners and normal case */
 
 /* One type scale, the same sizes the chat uses: 12 hints, 13 labels and small
    text, 14 body text, 17 card titles, 28 page titles. The root size stays
@@ -52,12 +53,16 @@ h4
 .button:focus-visible
 {
     outline: none;
-    box-shadow: 0 0 0 3px #d1c4e9;
+    box-shadow: 0 0 0 3px var(--md-inverse-primary);
 }
 
+/* Material 3's disabled look, the same for every kind of button */
 .button:disabled
 {
-    opacity: 0.6;
+    border-color: transparent;
+    background-color: color-mix(in srgb, var(--md-on-surface) 12%, transparent);
+    box-shadow: none;
+    color: color-mix(in srgb, var(--md-on-surface) 38%, transparent);
     cursor: default;
 }
 
@@ -83,72 +88,107 @@ h4
     width: 100%;
 }
 
-/* The main action of a page or form */
+/* Each kind of button follows a Material 3 button. On hover and press its
+   text colour tints the background a little (a "state layer") */
+
+/* The main action of a page or form: a filled button */
 .button--primary
 {
-    background-color: #512da8;
-    color: #fff;
+    background-color: var(--md-primary);
+    color: var(--md-on-primary);
 }
 
-.button--primary:hover
+.button--primary:hover:not(:disabled)
 {
-    background-color: #5e35b1;
+    background-color: color-mix(in srgb, var(--md-on-primary) var(--md-hover), var(--md-primary));
+    box-shadow: var(--md-elevation-1);
 }
 
-/* A second, lesser action next to the main one */
+.button--primary:active:not(:disabled)
+{
+    background-color: color-mix(in srgb, var(--md-on-primary) var(--md-pressed), var(--md-primary));
+    box-shadow: none;
+}
+
+/* A second, lesser action next to the main one: an outlined button */
 .button--outline
 {
-    border-color: #512da8;
-    background-color: #fff;
-    color: #512da8;
+    border-color: var(--md-outline);
+    background-color: transparent;
+    color: var(--md-primary);
 }
 
-.button--outline:hover
+.button--outline:hover:not(:disabled)
 {
-    background-color: #f5f1fb;
+    background-color: color-mix(in srgb, var(--md-primary) var(--md-hover), transparent);
 }
 
-/* A small action inside a form, like "Change photo" */
+.button--outline:active:not(:disabled)
+{
+    background-color: color-mix(in srgb, var(--md-primary) var(--md-pressed), transparent);
+}
+
+/* A small action inside a card, like Edit or "Change photo": a tonal button */
 .button--quiet
 {
-    border-color: #d6d6d6;
-    background-color: #fff;
-    color: #424242;
-    font-weight: 400;
+    background-color: var(--md-secondary-container);
+    color: var(--md-on-secondary-container);
 }
 
-.button--quiet:hover
+.button--quiet:hover:not(:disabled)
 {
-    border-color: #7e57c2;
-    color: #512da8;
+    background-color: color-mix(in srgb, var(--md-on-secondary-container) var(--md-hover), var(--md-secondary-container));
+    box-shadow: var(--md-elevation-1);
 }
 
-/* Looks like a link: Discard, Remove */
+.button--quiet:active:not(:disabled)
+{
+    background-color: color-mix(in srgb, var(--md-on-secondary-container) var(--md-pressed), var(--md-secondary-container));
+    box-shadow: none;
+}
+
+/* The least action, like Cancel or Remove: a text button */
 .link-button
 {
-    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    height: 32px;
+    padding: 0 12px;
     border: none;
     background: none;
-    color: #757575;
+    color: var(--md-primary);
     font-size: 13px;
+    font-weight: 600;
     cursor: pointer;
+    transition: background-color var(--dur-fast) var(--ease-out);
 }
 
 .link-button:hover
 {
-    color: #424242;
+    background-color: color-mix(in srgb, currentColor var(--md-hover), transparent);
 }
 
-.link-button--danger:hover
+.link-button:active
 {
-    color: #e53935;
+    background-color: color-mix(in srgb, currentColor var(--md-pressed), transparent);
+}
+
+.link-button:focus-visible
+{
+    outline: none;
+    box-shadow: 0 0 0 3px var(--md-inverse-primary);
+}
+
+.link-button--danger
+{
+    color: var(--md-error);
 }
 
 /* Small grey note under a setting or button */
 .field-hint
 {
     margin: 6px 0 0;
-    color: #9e9e9e;
+    color: var(--md-outline);
     font-size: 12px;
     text-align: left;
 }
@@ -162,7 +202,7 @@ h4
     top: 11px;
     right: 8px;
     z-index: 2; /* above Beer's input */
-    color: #9e9e9e;
+    color: var(--md-on-surface-variant);
     font-family: "Material Icons";
     font-size: 20px;
     line-height: 1;
@@ -172,12 +212,12 @@ h4
 .password-toggle:hover,
 .password-toggle:focus-visible
 {
-    color: #512da8;
+    color: var(--md-primary);
 }
 
 .password-toggle:focus-visible
 {
-    outline: 2px solid #d1c4e9;
+    outline: 2px solid var(--md-inverse-primary);
     outline-offset: 2px;
 }
 
@@ -204,7 +244,7 @@ h4
 {
     display: inline-flex;
     gap: 5px;
-    color: #512da8;
+    color: var(--md-primary);
     animation: fade-in var(--dur) var(--ease-out) 200ms backwards;
 }
 
@@ -263,13 +303,14 @@ h4
 
 .beer
 {
-    --primary: #512da8;
-    --on-primary: #fff;
-    --primary-container: #ede7f6;
-    --error: #e53935;
-    --outline: #9e9e9e;
-    --on-surface: rgba(0, 0, 0, 0.87);
-    --on-surface-variant: #757575;
+    --primary: var(--md-primary);
+    --on-primary: var(--md-on-primary);
+    --primary-container: var(--md-primary-container);
+    --error: var(--md-error);
+    --outline: var(--md-outline);
+    --on-surface: var(--md-on-surface);
+    --on-surface-variant: var(--md-on-surface-variant);
+    --surface-container-highest: var(--md-surface-container-high);
     --font: 'Montserrat', sans-serif;
 }
 
@@ -315,9 +356,9 @@ h4
     gap: 12px;
     padding: 14px 16px;
     border-radius: 4px;
-    background-color: #313033;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
-    color: #f4eff4;
+    background-color: var(--md-inverse-surface);
+    box-shadow: var(--md-elevation-3);
+    color: var(--md-inverse-on-surface);
     font-size: 14px;
     line-height: 1.4;
     cursor: pointer; /* a tap closes it */
@@ -334,7 +375,7 @@ h4
 {
     flex-shrink: 0;
     font-size: 20px;
-    color: #cfbcff;
+    color: var(--md-inverse-primary);
 }
 
 .toast--success .toast__icon { color: #a5d6a7; }

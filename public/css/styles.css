@@ -52,8 +52,8 @@ textarea
    pages' map) still fill the window too. */
 body
 {
-    background-color: #fff;
-    color: rgba(0, 0, 0, 0.87);
+    background-color: var(--md-surface);
+    color: var(--md-on-surface);
 }
 
 /* Flag of Null Island (XN), the MapChat bot's made-up country at 0°, 0°;

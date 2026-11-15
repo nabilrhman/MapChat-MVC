@@ -464,7 +464,10 @@ function loadPeople() {
 // A drawer on narrow screens, a column that can be closed on wide ones
 const narrowScreen = window.matchMedia(NARROW_SCREEN);
 
+const peopleToggle = document.getElementById('people-toggle');
+
 function setPeopleOpen(isOpen) {
+    peopleToggle.setAttribute('aria-expanded', String(isOpen));
     const applyOpen = () => {
         if (narrowScreen.matches) {
             peoplePanel.classList.toggle('is-open', isOpen);
@@ -486,7 +489,7 @@ function setPeopleOpen(isOpen) {
     });
 }
 
-document.getElementById('people-toggle').addEventListener('click', () => {
+peopleToggle.addEventListener('click', () => {
     setPeopleOpen(!isShown(peoplePanel));
 });
 
