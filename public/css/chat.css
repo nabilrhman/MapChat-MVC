@@ -1,8 +1,9 @@
-/* The chat on the left and the people list on the right are the same
-   width, so the map sits between two even columns */
+/* Column widths, scaling with the screen. The chat matters most, so it gets
+   about one and a half times the people list's width */
 :root
 {
-    --sidebar-width: clamp(300px, 25vw, 360px);
+    --chat-width: clamp(320px, 28vw, 420px);
+    --people-width: clamp(220px, 18vw, 280px);
 }
 
 html
@@ -50,8 +51,8 @@ body
     position: fixed;
     top: var(--header-height);
     bottom: var(--footer-height);
-    left: var(--sidebar-width); /* the chat panel */
-    right: var(--sidebar-width); /* the people list */
+    left: var(--chat-width); /* the chat panel */
+    right: var(--people-width); /* the people list */
     z-index: 1;
     display: flex;
     align-items: center;
@@ -127,7 +128,7 @@ body
 {
     display: flex;
     flex-direction: column;
-    max-width: var(--sidebar-width);
+    max-width: var(--chat-width);
     overflow: hidden;
     position: absolute;
     top: var(--header-height);
@@ -400,7 +401,7 @@ body
     top: var(--header-height);
     bottom: var(--footer-height);
     right: 0;
-    width: var(--sidebar-width);
+    width: var(--people-width);
     display: flex;
     flex-direction: column; /* the header stays put; only the list below scrolls */
     background-color: #fafafa;

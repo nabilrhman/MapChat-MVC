@@ -174,7 +174,7 @@
     align-items: center;
     gap: 8px;
     height: 44px;
-    padding: 0 6px 0 6px; /* the chevron's glyph has its own space; this evens the ends */
+    padding: 0 14px 0 6px;
     border: none;
     border-radius: 22px;
     background: none;
@@ -229,7 +229,6 @@
 
 .account-menu__chevron
 {
-    margin-right: -2px;
     font-size: 20px;
     transition: transform var(--dur) var(--ease-out);
 }
