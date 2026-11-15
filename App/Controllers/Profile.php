@@ -40,7 +40,7 @@ class Profile extends Authenticated
         View::renderTemplate('Profile/show.html', [
             'user' => $this->user,
             'place' => UserInfo::getPlace($this->user->email),
-            'default_avatar' => \App\Avatar::src($this->user->id, $this->user->name)
+            'default_avatar' => \App\Avatar::src($this->user->id, $this->user->name, null, $this->user->is_guest)
         ]);
     }
 

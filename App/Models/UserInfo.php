@@ -207,7 +207,7 @@ class UserInfo extends \Core\Model
     public static function getAllLocations()
     {
         $sql = 'SELECT userinfo.lat, userinfo.lng, userinfo.city, userinfo.country,
-                       users.id AS user_id, users.name, users.avatar
+                       users.id AS user_id, users.name, users.avatar, users.is_guest
                 FROM userinfo
                 LEFT JOIN users
                 ON userinfo.email = users.email
@@ -298,7 +298,7 @@ class UserInfo extends \Core\Model
      */
     public static function getRecentPeople()
     {
-        $sql = 'SELECT users.id, users.name, users.avatar,
+        $sql = 'SELECT users.id, users.name, users.avatar, users.is_guest,
                        IF(users.share_location, userinfo.city, NULL) AS city,
                        IF(users.share_location, userinfo.country, NULL) AS country,
                        (userinfo.online_at > NOW() - INTERVAL :online SECOND OR ' . static::DEMO_ONLINE . ') AS is_online,
@@ -319,7 +319,7 @@ class UserInfo extends \Core\Model
     /**
      * Add each person's avatar image address (see Avatar::src)
      *
-     * @param array $people Rows with a name, an avatar and an id
+     * @param array $people Rows with a name, an avatar, is_guest and an id
      * @param string $id_column Which column holds the user's id
      *
      * @return array
@@ -327,7 +327,7 @@ class UserInfo extends \Core\Model
     protected static function withAvatarSrc($people, $id_column)
     {
         foreach ($people as &$person) {
-            $person['avatar_src'] = \App\Avatar::src($person[$id_column], $person['name'], $person['avatar']);
+            $person['avatar_src'] = \App\Avatar::src($person[$id_column], $person['name'], $person['avatar'], $person['is_guest']);
         }
 
         return $people;
