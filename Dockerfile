@@ -18,6 +18,8 @@ ENV PORT=8080
 WORKDIR /var/www/html
 COPY --from=vendor /app/vendor ./vendor
 COPY . .
+# A new id for each build, so open chat pages can tell a new version is live
+RUN date +%s > build-id
 RUN chown -R www-data:www-data logs
 
 EXPOSE 8080

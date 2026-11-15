@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Auth;
+use App\Config;
 use Core\View;
 use App\Models\Chat;
 use App\Models\DemoChat;
@@ -29,7 +30,8 @@ class App extends Authenticated
 
         View::renderTemplate('App/index.html', [
             'chats' => $chats,
-            'last_chat_id' => $chats ? end($chats)['id'] : 0
+            'last_chat_id' => $chats ? end($chats)['id'] : 0,
+            'build_id' => Config::buildId()
         ]);
     }
 
@@ -41,6 +43,9 @@ class App extends Authenticated
      */
     public function getAction()
     {
+        // The page reloads when this changes, so it never mixes old and new code
+        header('X-Build: ' . Config::buildId());
+
         UserInfo::markOnline(Auth::getEmail());
 
         // A page from before this change doesn't send it; don't flood it with old messages

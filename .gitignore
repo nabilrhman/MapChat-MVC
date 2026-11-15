@@ -2,4 +2,5 @@
 /.env
 /.idea/
 /logs/*.txt
+/build-id
 /.claude/worktrees/

@@ -24,7 +24,8 @@
 {# What chat.js needs from the server #}
 <div class="chat-panel" id="chat"
      data-my-id="{{ current_user.id|e('html_attr') }}"
-     data-last-chat-id="{{ last_chat_id|e('html_attr') }}">
+     data-last-chat-id="{{ last_chat_id|e('html_attr') }}"
+     data-build="{{ build_id|default('')|e('html_attr') }}">
 
     <div class="chat-tabs" id="chat-tabs">
         <a class="chat-tab" href="#" data-conversation="everyone">
@@ -78,7 +79,7 @@
 {% endblock %}
 
 {% block footer %}
-<script src="/js/chat.js?v=6"></script>
+<script src="/js/chat.js?v=7"></script>
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="/js/map.js?v=18"></script>
 {% endblock %}
