@@ -128,23 +128,26 @@ h4
     background-color: color-mix(in srgb, var(--md-primary) var(--md-pressed), transparent);
 }
 
-/* A small action inside a card, like Edit or "Change photo": a tonal button */
+/* A small action inside a card, like Edit or "Change photo": a quiet
+   outlined button, grey until hovered, so it doesn't compete with the card */
 .button--quiet
 {
-    background-color: var(--md-secondary-container);
-    color: var(--md-on-secondary-container);
+    border-color: var(--md-outline-variant);
+    background-color: transparent;
+    color: var(--md-on-surface-variant);
+    font-weight: 400;
 }
 
 .button--quiet:hover:not(:disabled)
 {
-    background-color: color-mix(in srgb, var(--md-on-secondary-container) var(--md-hover), var(--md-secondary-container));
-    box-shadow: var(--md-elevation-1);
+    border-color: var(--md-outline);
+    background-color: color-mix(in srgb, var(--md-primary) var(--md-hover), transparent);
+    color: var(--md-primary);
 }
 
 .button--quiet:active:not(:disabled)
 {
-    background-color: color-mix(in srgb, var(--md-on-secondary-container) var(--md-pressed), var(--md-secondary-container));
-    box-shadow: none;
+    background-color: color-mix(in srgb, var(--md-primary) var(--md-pressed), transparent);
 }
 
 /* The least action, like Cancel or Remove: a text button */
