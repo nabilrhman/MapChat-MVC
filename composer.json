@@ -6,7 +6,9 @@
         "twig/twig": "^3.0",
         "symfony/mailer": "^7.0",
         "symfony/brevo-mailer": "^7.0",
-        "symfony/http-client": "^7.0"
+        "symfony/http-client": "^7.0",
+        "anthropic-ai/sdk": "^1.8",
+        "nyholm/psr7": "^1.8"
     },
     "autoload": {
         "psr-4": {

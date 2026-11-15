@@ -24,7 +24,7 @@ class Chat extends \Core\Model
     // Private chats the page opens a tab for, however busy the room has been
     const CONVERSATIONS = 20;
 
-    /** The welcome account; nobody can message it privately */
+    /** The MapChat account: the welcome messages, and it chats back (Bot) */
     const BOT_EMAIL = 'bot@mapchat.local';
 
     /**
@@ -66,6 +66,16 @@ class Chat extends \Core\Model
         $stmt->bindValue(':to_email', $this->to_email ?? null, PDO::PARAM_STR);
 
         return $stmt->execute();
+    }
+
+    /**
+     * The id of the message this request saved last
+     *
+     * @return string
+     */
+    public static function lastId()
+    {
+        return static::getDB()->lastInsertId();
     }
 
     /**

@@ -7,17 +7,6 @@ use PDO;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Gives the tests the app's own database connection
- */
-class TestDb extends \Core\Model
-{
-    public static function get(): PDO
-    {
-        return static::getDB();
-    }
-}
-
-/**
  * Who sees which messages. Each test runs in a transaction that is rolled back
  */
 class ChatTest extends TestCase

@@ -46,6 +46,7 @@ class View
             $twig->addFunction(new \Twig\TwigFunction('asset', [Asset::class, 'url']));
             $twig->addFunction(new \Twig\TwigFunction('icon', [Icon::class, 'svg'], ['is_safe' => ['html']]));
             $twig->addGlobal('app_url', Config::appUrl());
+            $twig->addGlobal('mapchat_can_reply', \App\Models\Bot::canReply());
             // For marking the current page in the header
             $twig->addGlobal('current_path', parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH));
             $twig->addGlobal('cloudinary_cloud_name', Config::cloudinaryCloudName());

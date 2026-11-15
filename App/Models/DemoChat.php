@@ -85,8 +85,11 @@ class DemoChat extends \Core\Model
         $start = gmdate('Y-m-d H:i:s', $day_start);
 
         // The welcome messages open each day, so they're never under "Yesterday".
-        // The chat is in id order, so they're added again after the older messages
-        $stmt = $db->prepare('SELECT id, body FROM chats WHERE email = :bot AND to_email IS NULL AND timestamp < :start ORDER BY id');
+        // The chat is in id order, so they're added again after the older messages.
+        // What MapChat said to people (mapchat_jobs) stays where it was said
+        $stmt = $db->prepare('SELECT id, body FROM chats WHERE email = :bot AND to_email IS NULL AND timestamp < :start
+                                AND id NOT IN (SELECT posted_id FROM mapchat_jobs WHERE posted_id IS NOT NULL)
+                              ORDER BY id');
         $stmt->execute([':bot' => Chat::BOT_EMAIL, ':start' => $start]);
         $remove = $db->prepare('DELETE FROM chats WHERE id = :id');
         $add = $db->prepare('INSERT INTO chats (email, body, timestamp) VALUES (:email, :body, :time)');

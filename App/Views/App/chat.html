@@ -7,8 +7,10 @@
 {% set conversation = mine ? chat.to_user_id : chat.user_id %}
 {% set partner = mine ? chat.to_name : chat.name %}
 {% endif %}
-{# Only in the open room; inside a private chat you're already talking to them #}
-{% set can_message = conversation == 'everyone' and not mine and chat.email != constant('App\\Models\\Chat::BOT_EMAIL') %}
+{# Only in the open room; inside a private chat you're already talking to them.
+   MapChat only while it can write back #}
+{% set can_message = conversation == 'everyone' and not mine
+    and (chat.email != constant('App\\Models\\Chat::BOT_EMAIL') or mapchat_can_reply) %}
 {# Messages from the poll ease in; the history and your own appear at once #}
 <div class="chat{% if not initial|default(false) and not mine %} is-entering{% endif %}"
      data-id="{{ chat.id }}" data-conversation="{{ conversation }}" data-partner="{{ partner }}">
