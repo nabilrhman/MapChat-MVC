@@ -246,6 +246,18 @@ body
     pointer-events: none;
 }
 
+/* A tab that moves because a neighbour grew, shrank or closed (see slideTabs) */
+.chat-tab.tab-shift
+{
+    transition: translate var(--dur) var(--ease-out);
+}
+
+/* A new unread count pops in */
+.chat-tab .unread.unread-enter
+{
+    animation: grow-in var(--dur) var(--ease-out) backwards;
+}
+
 /* Long names are cut short so more tabs fit */
 .chat-tab .tab-name
 {
@@ -264,7 +276,8 @@ body
 {
     background-color: #fafafa; /* same as the messages, so they join */
     color: #512da8;
-    font-weight: 600;
+    /* Heavier without real bold, which is wider and shifts the tabs */
+    text-shadow: 0 0 0.6px currentColor, 0 0 0.6px currentColor;
 }
 
 .chat-tab .unread
@@ -750,32 +763,31 @@ body
         transform: translateY(-100%);
     }
 
-    .leaflet-control-attribution
+    /* Leaflet's credit as MapLibre draws its own: a see-through round "i"
+       that opens into a white box (icon from maplibre-gl.css). Leaflet's
+       own rule is loaded later, hence the longer selectors */
+    .leaflet-container .leaflet-bottom .leaflet-control-attribution
     {
-        font-size: 10px;
-        opacity: 0.85;
-    }
-
-    .leaflet-control-attribution:not(.is-open)
-    {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 22px;
-        height: 22px;
-        margin: 0 6px 6px 0;
-        padding: 0;
-        border-radius: 50%;
-        font-size: 0;
+        min-height: 20px;
+        margin: 0 8px 8px 0;
+        padding: 2px 28px 2px 8px;
+        border-radius: 12px;
+        background: #fff url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' fill-rule='evenodd' viewBox='0 0 20 20'%3E%3Cpath d='M4 10a6 6 0 1 0 12 0 6 6 0 1 0-12 0m5-3a1 1 0 1 0 2 0 1 1 0 1 0-2 0m0 3a1 1 0 1 1 2 0v3a1 1 0 1 1-2 0'/%3E%3C/svg%3E") no-repeat right center / 24px;
+        color: #000;
+        font-size: 12px;
+        line-height: 20px;
         cursor: pointer;
     }
 
-    .leaflet-control-attribution:not(.is-open)::before
+    .leaflet-container .leaflet-bottom .leaflet-control-attribution:not(.is-open)
     {
-        content: 'i';
-        color: #512da8;
-        font-size: 13px;
-        font-weight: 600;
+        width: 24px;
+        height: 24px;
+        min-height: 0;
+        padding: 0;
+        background-color: rgba(255, 255, 255, 0.5);
+        background-position: center;
+        font-size: 0;
     }
 
     .people
