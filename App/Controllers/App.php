@@ -3,7 +3,6 @@
 namespace App\Controllers;
 
 use App\Auth;
-use App\Config;
 use \Core\View;
 use \App\Models\Chat;
 use \App\Models\UserInfo;
@@ -76,10 +75,42 @@ class App extends Authenticated
      */
     public function sendAction()
     {
-        $_POST['email'] = Auth::getEmail();
-        $chat = new Chat($_POST);
-        $chat->send();;
+        $user = Auth::getUser();
+        $body = trim($_POST['body'] ?? '');
 
+        if ($body === '') {
+            return;
+        }
+
+        if (mb_strlen($body) > Chat::MAX_LENGTH) {
+            $this->refuse(400, 'Messages can be up to ' . Chat::MAX_LENGTH . ' characters.');
+            return;
+        }
+
+        // Keep one person from flooding the room; guests get a lower limit
+        $limit = $user->is_guest ? Chat::GUEST_PER_MINUTE : Chat::USER_PER_MINUTE;
+        if (Chat::countRecent($user->email, 60) >= $limit) {
+            $this->refuse(429, 'You are sending messages too fast. Wait a moment and try again.');
+            return;
+        }
+
+        $chat = new Chat(['email' => $user->email, 'body' => $body]);
+        $chat->send();
+    }
+
+    /**
+     * Reply to an AJAX request with an error message
+     *
+     * @param int $status HTTP status
+     * @param string $message Shown to the user
+     *
+     * @return void
+     */
+    protected function refuse($status, $message)
+    {
+        http_response_code($status);
+        header('Content-Type: application/json');
+        echo json_encode(['error' => $message]);
     }
 
     /**
@@ -89,7 +120,8 @@ class App extends Authenticated
      */
     public function updatelocationAction()
     {
-        $userInfo = new UserInfo($_POST);
+        // Only ever update the signed-in user's own location, from their real IP
+        $userInfo = new UserInfo(['email' => Auth::getEmail(), 'ip' => UserInfo::getRealIP()]);
         if ($userInfo->hasIPUpdated())
         {
             $userInfo->saveIP();
@@ -98,30 +130,12 @@ class App extends Authenticated
         }
     }
 
-    public function testAction()
-    {
-        // Initialize CURL
-        $_SERVER['REMOTE_ADDR'] = '134.201.250.155';
-        echo $_SERVER['REMOTE_ADDR'];
-        $ch = curl_init('http://api.ipstack.com/' . $_SERVER['REMOTE_ADDR'] . '?access_key=' . Config::IPSTACK_API_KEY);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-
-        // Store the data
-        $json = curl_exec($ch);
-        curl_close($ch);
-
-        //Decode JSON response
-        $api_result = json_decode($json, true);
-
-        echo $api_result['latitude'];
-
-        //$this->long = $api_result['longitude'];
-    }
-
     public function getLocationsAction()
     {
-        $userInfo = new UserInfo($_POST);
+        $userInfo = new UserInfo();
         $locations = $userInfo->getAllLocations();
+
+        header('Content-Type: application/json');
         echo json_encode($locations);
 
 

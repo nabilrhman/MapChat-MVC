@@ -178,20 +178,11 @@ class UserInfo extends \Core\Model
         if (empty($this->errors))
         {
 
-            // Initialize CURL
-            $ch = curl_init('http://api.ipstack.com/' . $this->ip . '?access_key=' . Config::IPSTACK_API_KEY);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            $location = static::lookupIP($this->ip);
 
-            // Store the data
-            $json = curl_exec($ch);
-            curl_close($ch);
-
-            //Decode JSON response
-            $api_result = json_decode($json, true);
-
-            $this->lat = $api_result['latitude'];
-            $this->long = $api_result['longitude'];
-            $this->city = $api_result['city'];
+            $this->lat = $location['lat'];
+            $this->long = $location['lng'];
+            $this->city = $location['city'];
 
         }
 
@@ -263,21 +254,68 @@ class UserInfo extends \Core\Model
         }
     }
 
+    /**
+     * The visitor's IP address. Behind a host's proxy the real address is the
+     * first entry of X-Forwarded-For.
+     *
+     * @return string
+     */
     public static function getRealIP()
     {
-        if (!empty($_SERVER['HTTP_CLIENT_IP']))   //check ip from share internet
-        {
-            $ip=$_SERVER['HTTP_CLIENT_IP'];
+        if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+            return trim(explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0]);
         }
-        elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR']))   //to check ip is pass from proxy
-        {
-            $ip=$_SERVER['HTTP_X_FORWARDED_FOR'];
+
+        return $_SERVER['REMOTE_ADDR'] ?? '';
+    }
+
+    /**
+     * Look up the approximate location of an IP address.
+     *
+     * Uses ipstack when IPSTACK_API_KEY is set, otherwise the keyless
+     * ipapi.co service. Private and local addresses (e.g. in Docker) fall
+     * back to DEV_FAKE_IP when set, so the map still has a point locally.
+     *
+     * @param string $ip
+     *
+     * @return array ['lat' => ?float, 'lng' => ?float, 'city' => ?string]
+     */
+    public static function lookupIP($ip)
+    {
+        $empty = ['lat' => null, 'lng' => null, 'city' => null];
+
+        $isPublic = filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE);
+        if (!$isPublic) {
+            $ip = Config::get('DEV_FAKE_IP');
+            if ($ip === null) {
+                return $empty;
+            }
         }
-        else
-        {
-            $ip=$_SERVER['REMOTE_ADDR'];
+
+        $key = Config::get('IPSTACK_API_KEY');
+        $url = $key
+            ? 'http://api.ipstack.com/' . urlencode($ip) . '?access_key=' . urlencode($key)
+            : 'https://ipapi.co/' . urlencode($ip) . '/json/';
+
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 5,
+            CURLOPT_USERAGENT => 'MapChat',
+        ]);
+        $json = curl_exec($ch);
+        curl_close($ch);
+
+        $result = json_decode((string) $json, true);
+        if (!is_array($result) || !isset($result['latitude'], $result['longitude'])) {
+            return $empty;
         }
-        return $ip;
+
+        return [
+            'lat' => $result['latitude'],
+            'lng' => $result['longitude'],
+            'city' => $result['city'] ?? null,
+        ];
     }
 
     public function getAllLocations()
@@ -289,7 +327,9 @@ class UserInfo extends \Core\Model
             $sql = 'SELECT userinfo.lat, userinfo.lng, users.name
                     FROM userinfo
                     LEFT JOIN users
-                    ON userinfo.email = users.email';
+                    ON userinfo.email = users.email
+                    WHERE userinfo.lat IS NOT NULL AND userinfo.lng IS NOT NULL
+                      AND users.share_location = 1';
 
             $db = static::getDB();
             $stmt = $db->prepare($sql);

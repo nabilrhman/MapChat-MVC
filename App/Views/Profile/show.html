@@ -1,7 +1,7 @@
 {% extends "base_new.html" %}
 
 {% block head %}
-<link rel="stylesheet" href="/css/profile.css"/>
+<link rel="stylesheet" href="/css/profile.css?v=3"/>
 {% endblock %}
 
 {% block body %}
@@ -12,6 +12,13 @@
 
         <h4 class="animated fadeInDown">{% block title %}Profile{% endblock %}</h4>
         <div class="divider" style="margin-bottom: 15px;"></div>
+
+        {% if user.is_guest %}
+        <p class="guest-note">
+            You are using a guest account. It is deleted after 24 hours, along with your
+            messages. To keep it, press Edit, set your own email and a password, and save.
+        </p>
+        {% endif %}
 
 
     </div>
@@ -24,7 +31,7 @@
             <img class="responsive-img circle" src="{{ user.avatar }}" alt="avatar" id="avatar"/>
 
             {% else %}
-            <img class="responsive-img circle" src="../../res/avatar1.png" alt="avatar" id="avatar"/>
+            <img class="responsive-img circle" src="/avatar/{{ user.id }}?v={{ user.name|url_encode }}" alt="avatar" id="avatar"/>
 
             {% endif %}
 
@@ -88,6 +95,22 @@
 
     </form>
 
+    <div class="col s12 animated fadeInDownSubtle" id="location-setting">
+        <div class="divider" style="margin: 10px 0 20px;"></div>
+        <h6>Show me on the map</h6>
+        <p class="grey-text text-darken-1">
+            When this is off, your pin and your city are hidden from everyone in the chat.
+        </p>
+        <div class="switch">
+            <label>
+                Off
+                <input type="checkbox" id="share-location" {% if user.share_location %}checked{% endif %}>
+                <span class="lever"></span>
+                On
+            </label>
+        </div>
+    </div>
+
 </div>
 
 {% endblock %}
@@ -96,10 +119,21 @@
 {% block footer %}
 <script src="/js/hideShowPassword.min.js"></script>
 <script src="/js/validatorExtended.js"></script>
-<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
 
 <script>
     $(document).ready(function () {
+
+        $('#share-location').on('change', function () {
+            var checkbox = this;
+            postForm('/profile/update-location-sharing', {share: checkbox.checked ? 1 : 0})
+                .then(function () {
+                    M.toast({html: checkbox.checked ? 'You are shown on the map' : 'You are hidden from the map'});
+                })
+                .catch(function () {
+                    checkbox.checked = !checkbox.checked;
+                    M.toast({html: 'Could not save. Try again.'});
+                });
+        });
 
         var userId = '{{ user.id }}';
 
@@ -208,8 +242,8 @@
 
         var avatarImgURL;
 
-        var CLOUDINARY_URL = 'https://api.cloudinary.com/v1_1/nabilr/image/upload';
-        var CLOUDINARY_UPLOAD_PRESET = 'eu0zgzwd';
+        var CLOUDINARY_URL = 'https://api.cloudinary.com/v1_1/{{ cloudinary_cloud_name|default('nabilr')|e('js') }}/image/upload';
+        var CLOUDINARY_UPLOAD_PRESET = '{{ cloudinary_upload_preset|default('eu0zgzwd')|e('js') }}';
 
         var imgPreview = document.getElementById('avatar');
         var fileUplaod = document.getElementById('file-upload');
@@ -256,35 +290,17 @@
             {
                 e.preventDefault();
 
-                $.ajax({
-
-                    type: 'POST',
-                    dataType: 'html',
-                    url: '/profile/update-avatar',
-                    data: {
-                        avatar: avatarImgURL,
-                        id: userId
-                    },
-                    success: function (response) {
-                        window.location.replace("/profile/update-success");
-
-                    }
-                });
-
-                $.ajax({
-
-                    type: 'POST',
-                    dataType: 'html',
-                    url: '/profile/update',
-                    data: {
+                // Save the new avatar and the form fields, then show the result
+                Promise.all([
+                    postForm('/profile/update-avatar', {avatar: avatarImgURL, id: userId}),
+                    postForm('/profile/update', {
                         id: userId,
                         email: $("#inputEmail").val(),
                         name: $("#inputName").val(),
                         password: $("#inputPassword").val()
-                    },
-                    success: function (response) {
-                        window.location.replace("/profile/update-success");
-                    }
+                    })
+                ]).then(function () {
+                    window.location.replace("/profile/update-success");
                 });
             }
 
@@ -347,29 +363,6 @@
                 $('#overlay').hide();
             }
         };
-
-        function updateAvatar()
-        {
-            if(avatarImgURL != null)
-            {
-                e.preventDefault();
-
-                $.ajax({
-
-                    type: 'POST',
-                    dataType: 'html',
-                    url: '/profile/update-avatar',
-                    data: {
-                        avatar: avatarImgURL,
-                        id: userId
-                    },
-                    success: function (response) {
-                        $('#submitButton').prop("disabled",true);
-                    }
-                });
-
-            }
-        }
     });
 </script>
 

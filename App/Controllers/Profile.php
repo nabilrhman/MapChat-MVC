@@ -99,6 +99,19 @@ class Profile extends Authenticated
     }
 
     /**
+     * Turn showing the user on the map on or off (AJAX)
+     *
+     * @return void
+     */
+    public function updateLocationSharingAction()
+    {
+        $this->user->setLocationSharing(!empty($_POST['share']));
+
+        header('Content-Type: application/json');
+        echo json_encode(['share_location' => !empty($_POST['share'])]);
+    }
+
+    /**
      * Show save success on the profile page
      *
      * @return void

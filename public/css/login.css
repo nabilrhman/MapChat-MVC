@@ -22,20 +22,20 @@ body {
 
 }
 
+/* Normal page flow with room above the logo and below the footer, so the
+   page scrolls with even space at both ends */
 main {
     flex: 1 0 auto;
-    margin: 0;
-    position: absolute;
     width: 100%;
-    margin-top: 5%;
-    margin-bottom: 5%;
-
+    margin: 0;
+    padding: 48px 16px 32px;
 }
 
 #divLogo {
-    background-image: url("../res/logo.png");
+    /* Vector logo, so it stays sharp at any size */
+    background: url("../res/logo-mapchat-white.svg") no-repeat center / contain;
     width: 290px;
-    height: 68px;
+    height: 89px;
     cursor: pointer;
 
 }
@@ -81,15 +81,14 @@ a {
 
 
 
-.footer-login {
-    
+/* Same content as the in-app footer, on one centred line under the card */
+.footer-login
+{
     width: 100%;
-    color: white;
-    text-align: center;
-    z-index: 999;
-    font-size: small;
     margin-top: 30px;
-
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 13px;
+    text-align: center;
 }
 
 button #login
@@ -140,7 +139,7 @@ button #login
     color: red !important;
 }
 
-#heading, #submitButton
+#heading
 {
     letter-spacing: 5px;
 }
@@ -149,4 +148,169 @@ button #login
     font-weight: 900;
     text-transform: uppercase;
     margin-top: 20px;
+}
+
+/* Buttons line up with the inputs above them */
+.form-actions
+{
+    padding: 0 0.75rem;
+}
+
+.form-actions .btn
+{
+    width: 100%;
+    height: 40px;
+    line-height: 40px;
+    font-size: 13px;
+    letter-spacing: 2px;
+    box-shadow: none;
+}
+
+/* "Forgot password?" sits under the password field, on the right */
+.forgot-link
+{
+    display: block;
+    text-align: right;
+    margin-top: -4px;
+    font-size: 12px;
+    text-decoration: none;
+}
+
+.form-options
+{
+    display: flex;
+    align-items: center;
+    padding: 0;
+    margin-top: -4px;
+    font-size: 13px;
+}
+
+.form-options span
+{
+    font-size: 13px;
+}
+
+.form-options > *
+{
+    white-space: nowrap;
+}
+
+.forgot-link,
+.form-switch a
+{
+    color: #512da8;
+    font-weight: 600;
+}
+
+.forgot-link:hover,
+.form-switch a:hover
+{
+    text-decoration: underline;
+}
+
+#submitButton
+{
+    background-color: #512da8 !important;
+}
+
+/* Secondary action: same size as the main button, outlined */
+.btn-outline,
+.btn-outline:hover,
+.btn-outline:focus
+{
+    background-color: transparent;
+    color: #512da8;
+    border: 1px solid #512da8;
+    box-shadow: none;
+}
+
+.btn-outline:hover
+{
+    background-color: rgba(81, 45, 168, 0.06);
+}
+
+/* "or" with a line on each side */
+.form-divider
+{
+    display: flex;
+    align-items: center;
+    margin: -10px 0 14px;
+    padding: 0 10px !important;
+    color: #9e9e9e;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+.form-divider::before,
+.form-divider::after
+{
+    content: "";
+    flex: 1;
+    border-bottom: 1px solid #ddd;
+}
+
+.form-divider span
+{
+    padding: 0 12px;
+}
+
+/* "New here?" on the left, the action on the right, at the bottom of the card */
+.form-switch
+{
+    display: flex !important;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    text-align: left;
+    border-top: 1px solid #e0e0e0;
+    width: calc(100% - 1.5rem) !important;
+    margin-left: 0.75rem !important;
+        padding: 18px 0 20px !important;
+    font-size: 13px;
+    color: #616161;
+}
+
+/* Even vertical rhythm inside the login, sign-up and reset cards */
+.form-container-custom form .row
+{
+    margin-bottom: 0;
+}
+
+.form-container-custom .input-field
+{
+    margin-top: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.form-container-custom .forgot-link
+{
+    margin-top: 10px;
+}
+
+.form-container-custom form .row.form-options
+{
+    margin: 4px 0 20px;
+}
+
+.form-container-custom form .row.form-actions
+{
+    margin-top: 8px;
+    margin-bottom: 20px;
+}
+
+.form-container-custom .form-divider
+{
+    margin: 0 0 20px;
+}
+
+/* Forms inside the card get their spacing from the rows, not their own margin */
+.form-container-custom form
+{
+    margin-bottom: 0;
+}
+
+.form-container-custom .form-switch
+{
+    margin-top: 0 !important;
 }

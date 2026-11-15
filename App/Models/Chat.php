@@ -15,6 +15,36 @@ use \App\Auth;
  */
 class Chat extends \Core\Model
 {
+    /** Longest message allowed, in characters */
+    const MAX_LENGTH = 500;
+
+    /** Messages a signed-up user can send per minute */
+    const USER_PER_MINUTE = 30;
+
+    /** Messages a guest can send per minute */
+    const GUEST_PER_MINUTE = 10;
+
+    /**
+     * How many messages this person sent in the last few seconds
+     *
+     * @param string $email
+     * @param int $seconds
+     *
+     * @return int
+     */
+    public static function countRecent($email, $seconds)
+    {
+        $sql = 'SELECT COUNT(*) FROM chats
+                WHERE email = :email
+                  AND timestamp > NOW() - INTERVAL :seconds SECOND';
+
+        $stmt = static::getDB()->prepare($sql);
+        $stmt->bindValue(':email', $email, PDO::PARAM_STR);
+        $stmt->bindValue(':seconds', $seconds, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return (int) $stmt->fetchColumn();
+    }
 
     /**
      * Error messages
@@ -53,7 +83,7 @@ class Chat extends \Core\Model
 
             if (!empty($this->body))
             {
-                $this->body = htmlspecialchars($this->body);
+                // Stored as typed; Twig escapes it when the chat is shown
                 $sql = 'INSERT INTO chats (email, body)
                             VALUES (:email, :body)';
 
@@ -114,7 +144,8 @@ class Chat extends \Core\Model
         if (empty($this->errors))
         {
 
-            $sql = 'SELECT chats.id, chats.body, chats.timestamp, users.name, users.email, users.avatar, userinfo.city
+            $sql = 'SELECT chats.id, chats.body, chats.timestamp, users.id AS user_id, users.name, users.email, users.avatar,
+                           IF(users.share_location, userinfo.city, NULL) AS city
                     FROM chats
                     LEFT JOIN users
                     ON chats.email = users.email
@@ -145,7 +176,8 @@ class Chat extends \Core\Model
     {
         if (empty($this->errors))
         {
-            $sql = 'SELECT chats.id, chats.body, chats.timestamp, users.name, users.email, users.avatar, userinfo.city
+            $sql = 'SELECT chats.id, chats.body, chats.timestamp, users.id AS user_id, users.name, users.email, users.avatar,
+                           IF(users.share_location, userinfo.city, NULL) AS city
                     FROM chats
                     LEFT JOIN users
                     ON chats.email = users.email

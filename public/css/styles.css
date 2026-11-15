@@ -56,6 +56,7 @@
     box-shadow: 0px 0px 5px #888888;
     padding: 10px 10px 40px 10px;
     top: 96.5px;
+    margin-bottom: 140px; /* clear the fixed footer */
 }
 
 /* Paste this css to your style sheet file or under head tag */
@@ -83,4 +84,54 @@ if it's not present, don't show loader */
 {
     float: left;
     margin-left: 20px;
+}
+/* Explicit page colours, so a dark browser theme can't turn the page black
+   behind the dark text. Set on body only: the browser then paints it across
+   the whole window, and pages with their own body background (the login
+   pages' map) still fill the window too. */
+body
+{
+    background-color: #fff;
+    color: rgba(0, 0, 0, 0.87);
+}
+
+/* Purple switches, matching the rest of the app */
+.switch label input[type=checkbox]:checked + .lever
+{
+    background-color: #b39ddb;
+}
+
+.switch label input[type=checkbox]:checked + .lever:after
+{
+    background-color: #512da8;
+}
+
+/* Toasts always appear bottom right, just above the footer (Materialize
+   puts them top right or bottom left depending on the screen width) */
+@media only screen and (min-width: 601px) {
+    #toast-container
+    {
+        top: auto !important;
+        left: auto !important;
+        right: 24px;
+        bottom: 64px;
+        max-width: 340px;
+    }
+}
+
+/* Toast colours by message type: a coloured stripe on the left */
+.toast.toast-success { border-left: 4px solid #66bb6a; }
+.toast.toast-info    { border-left: 4px solid #9575cd; }
+.toast.toast-warning { border-left: 4px solid #ffa726; }
+
+/* Compact toasts: short line, wraps if needed, never wider than 340px */
+#toast-container .toast
+{
+    min-height: 0;
+    padding: 10px 16px;
+    font-size: 14px;
+    line-height: 1.4;
+    word-break: normal;
+    width: fit-content;   /* short messages get a short toast */
+    margin-left: auto;    /* keep them against the right edge */
 }

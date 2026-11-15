@@ -10,6 +10,7 @@ use \App\Flash;
  *
  * PHP version 7.0
  */
+#[\AllowDynamicProperties]
 abstract class Controller
 {
 
@@ -83,7 +84,7 @@ abstract class Controller
      */
     public function redirect($url)
     {
-        header('Location: http://' . $_SERVER['HTTP_HOST'] . $url, true, 303);
+        header('Location: ' . $url, true, 303);
         exit;
     }
 
@@ -97,8 +98,17 @@ abstract class Controller
     {
         if (! Auth::getUser()) {
 
+            // Background requests (chat polling, sending) can't follow a
+            // redirect to the login page; tell them to sign in again instead
+            if (($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'XMLHttpRequest') {
+                http_response_code(401);
+                header('Content-Type: application/json');
+                echo json_encode(['error' => 'Please log in again.']);
+                exit;
+            }
+
             //Flash::addMessage('Please login to access that page');
-            Flash::addMessage('Please login first', Flash::INFO);
+            Flash::addMessage('Please log in first', Flash::INFO);
 
             Auth::rememberRequestedPage();
 

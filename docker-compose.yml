@@ -1,0 +1,45 @@
+# Local development: `docker compose up --build`, then open http://localhost:8080
+services:
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    env_file: .env
+    environment:
+      DB_HOST: db
+      # Local emails go to Mailpit; read them at http://localhost:8025
+      MAILER_DSN: ${MAILER_DSN:-smtp://mailpit:1025}
+    volumes:
+      # Edit code without rebuilding (vendor stays from the image)
+      - ./App:/var/www/html/App
+      - ./Core:/var/www/html/Core
+      - ./public:/var/www/html/public
+    depends_on:
+      mailpit:
+        condition: service_started
+      db:
+        condition: service_healthy
+
+  # Catches every email the app sends, with an inbox at http://localhost:8025
+  mailpit:
+    image: axllent/mailpit:v1.21
+    ports:
+      - "8025:8025"
+
+  db:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: mapchat
+      MYSQL_ROOT_PASSWORD: mapchat
+    volumes:
+      # Run in name order on first start: the schema, then the sample people
+      - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./demo.sql:/docker-entrypoint-initdb.d/02-demo.sql:ro
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-pmapchat"]
+      interval: 3s
+      retries: 30
+
+volumes:
+  db-data:

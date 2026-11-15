@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <!-- The design is light only; stop browsers from auto-darkening it -->
+    <meta name="color-scheme" content="only light">
 
     <meta charset="UTF-8">
     <title>{% block title %}{% endblock %}</title>
@@ -13,10 +15,10 @@
     <link rel="stylesheet" href="/css/animate.css" />
 
     <!-- Styles for the header and footer -->
-    <link rel="stylesheet" href="/css/header.css" />
-    <link rel="stylesheet" href="/css/footer.css" />
+    <link rel="stylesheet" href="/css/header.css?v=3" />
+    <link rel="stylesheet" href="/css/footer.css?v=3" />
 
-    <link rel="stylesheet" href="/css/styles.css" />
+    <link rel="stylesheet" href="/css/styles.css?v=7" />
     <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/all.css" integrity="sha384-B4dIYHKNBt8Bc12p+WXckhzcICo0wtJAoU8YZTY5qE0Id1GSseTk6S+L3BlXeVIU" crossorigin="anonymous">
 
     {% block head %}
@@ -51,23 +53,26 @@
 {% endblock %}
 
 
-<div class="footer animated fadeIn">
-    <p class="footer-icon"><a href="https://github.com/nabilrhman/MapChat-MVC" class="white-text"><i class="fab fa-github"></i></a></p>
-    <p>MapChat &copy; {{ 'now'|date('Y') }} <span class="grey-text">|</span> <a href="http://www.nr-creation.com" class="amber-text">Nabil Rahman</a></p>
-</div>
+<footer class="footer">
+    <a href="https://github.com/nabilrhman/MapChat-MVC" class="footer-source" title="Source code on GitHub" aria-label="Source code on GitHub"><i class="fab fa-github"></i></a>
+    <span>&copy; {{ 'now'|date('Y') }} <a href="https://nabilr.com" class="footer-author">Nabil Rahman</a></span>
+</footer>
 
 
 </body>
 <div class="se-pre-con"></div>
 
-<script src="http://cdnjs.cloudflare.com/ajax/libs/modernizr/2.8.2/modernizr.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.8.2/modernizr.js"></script>
 
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+<script src="https://unpkg.com/axios@1.7.9/dist/axios.min.js"></script>
+<script src="/js/http.js?v=2"></script>
 
 
-<script src="http://ajax.aspnetcdn.com/ajax/jquery.validate/1.15.0/jquery.validate.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.15.0/jquery.validate.min.js"></script>
 <!-- Compiled and minified JavaScript -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+{% include '_flash.html' %}
 
 <script src="/js/loading.js"></script>
 

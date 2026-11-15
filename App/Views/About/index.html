@@ -1,142 +1,81 @@
 {% extends "base_new.html" %}
 
 {% block title %}About{% endblock %}
-{% block body %}
 
+{% block head %}
+<style>
+    .about-intro { max-width: 720px; margin-left: auto !important; margin-right: auto !important; }
+    .about-logo { width: 100%; max-width: 360px; margin: 32px auto 24px; display: block; }
+    .about-intro p { font-size: 1.1rem; line-height: 1.7; text-align: center; }
+</style>
+{% endblock %}
+
+{% block body %}
 
 <div class="row main-content-wrapper">
     <div class="col s12">
         <h4 class="animated fadeInDown">About</h4>
         <div class="divider"></div>
     </div>
-
 </div>
 
-<div class="row main-content-wrapper animated fadeInDownSubtle">
-
-    <div class="col s6 valign-wrapper">
-        <img class="responsive-img" src="/res/mapchat_thumb.png"
-             style="margin: auto !important; padding-top: 20px !important;">
+<div class="row main-content-wrapper animated fadeInDownSubtle about-intro">
+    <div class="col s12 center-align">
+        <img class="about-logo" src="/res/logo-mapchat.svg" alt="MapChat">
     </div>
-
-    <div class="col s6">
-
-
-        <p class="animated animated fadeInDownSubtle"><span style="font-weight: bolder">MapChat</span> is a location-based chatting application that lets you
-                                                      talk to people from all around the world. MapChat focuses on real-time
-                                                      interaction with people who don’t know each other. A common use case of the app could be
-                                                      to make new friends in your area or have a conversation with someone at the
-                                                      same event as you. You can also tap into the local knowledge of someone from
-                                                      somewhere else before you arrive on holiday in a foreign country perhaps. </p>
-        <p class="animated animated fadeInDownSubtle">
-            It is currently under development, but we are working hard to implement the features our users are
-            interested in. If you have an idea about a feature that you want us to implement
-            for better usage of the application, feel free to contact us.
+    <div class="col s12">
+        <p>
+            <span style="font-weight: bolder">MapChat</span> is an open chat room on a map.
+            Everyone who signs in talks in the same room, and a pin on the map shows which
+            city each person is chatting from.
         </p>
-
-        <p class="animated animated fadeInDownSubtle">
-            E-mail us at contact@map-chat.com
+        <p>
+            I built it in 2018 as a university project at Boise State University. The goal was
+            to understand what a web framework actually does, so instead of using one, I wrote
+            my own: the router, controllers, models, views, sessions and login are all
+            hand-written PHP.
         </p>
-
-        <p class="animated animated fadeInDownSubtle">The project is fully open-sourced. Visit <a href="https://github.com/nabilrhman/MapChat-MVC" class="purple-text"><i class="fab fa-github"></i> GitHub.</a></p>
-
+        <p>
+            The code is open source on
+            <a href="https://github.com/nabilrhman/MapChat-MVC" class="purple-text"><i class="fab fa-github"></i> GitHub</a>.
+        </p>
     </div>
-
 </div>
 
 <div class="row main-content-wrapper">
-
-    <div class="col s6">
-
-
-        <h5 class="animated fadeInDown h5WithPadding">Software specifications</h5>
-
-
-        <p>
+    <div class="col s12 m6">
+        <h5 class="animated fadeInDown h5WithPadding">What you can do</h5>
         <ul class="collection animated fadeInDownSubtle">
-            <li class="collection-item">The backend is developed in PHP.</li>
-            <li class="collection-item">Utilizes MVC design pattern.</li>
-            <li class="collection-item">Uses Twig as it's templating engine to generate views.</li>
-            <li class="collection-item">Prevents vulnerabilities like cross-site scripting attack, SQL injection by
-                                        implementing best practices.
-            </li>
-            <li class="collection-item">Real-time communication is implemented through AJAX and in some places through
-                                        Axios.
-            </li>
-            <li class="collection-item">Open-sourced, available on <a href="https://github.com/nabilrhman/MapChat-MVC" class="black-text"><i class="fab fa-github"></i> GitHub.</a>
+            <li class="collection-item">Chat with everyone who is signed in, in one shared room.</li>
+            <li class="collection-item">Try it as a guest without signing up. Guest accounts disappear after 24 hours unless you keep them.</li>
+            <li class="collection-item">See on the map which city each person is chatting from.</li>
+            <li class="collection-item">Hide yourself from the map whenever you want.</li>
+            <li class="collection-item">Set up a profile with your name and an avatar.</li>
+            <li class="collection-item">Reset your password by email if you forget it.</li>
         </ul>
-        </p>
-
     </div>
-
-    <div class="col s6">
-
-
-        <h5 class="animated fadeInDown h5WithPadding">Tools used</h5>
-
-
-        <p>
+    <div class="col s12 m6">
+        <h5 class="animated fadeInDown h5WithPadding">How it's built</h5>
         <ul class="collection animated fadeInDownSubtle">
-            <li class="collection-item">PHP</li>
-            <li class="collection-item">JavaScript, jQuery</li>
-            <li class="collection-item">AJAX</li>
-            <li class="collection-item">HTML</li>
-            <li class="collection-item">CSS, materialize.css, animate.css, hover.css</li>
-            <li class="collection-item">Twig (A template engine for the PHP programming language)</li>
-            <li class="collection-item">Composer (An application-level package manager for the PHP programming language)</li>
-            <li class="collection-item">JetBrains PhpStorm IDE</li>
+            <li class="collection-item">A model-view-controller (MVC) framework written from scratch in PHP.</li>
+            <li class="collection-item">MySQL for users and messages, queried with prepared statements to block SQL injection.</li>
+            <li class="collection-item">Twig templates, which escape everything users type to block cross-site scripting.</li>
+            <li class="collection-item">Axios to send messages and fetch new ones every second.</li>
+            <li class="collection-item">MapLibre and OpenStreetMap for the map.</li>
+            <li class="collection-item">Materialize CSS for the interface.</li>
         </ul>
-        </p>
-
     </div>
-
 </div>
 
 <div class="row main-content-wrapper">
-
-    <div class="col s6">
-
-
-        <h5 class="animated fadeInDown h5WithPadding">Developed features</h5>
-
-
-        <p>
+    <div class="col s12">
+        <h5 class="animated fadeInDown h5WithPadding">Good to know</h5>
         <ul class="collection animated fadeInDownSubtle">
-            <li class="collection-item">Converse real-time with people in a common group.</li>
-            <li class="collection-item">See other people's locations, more specifically which cities they are from.</li>
-            <li class="collection-item">Share your location by your IP address.</li>
-            <li class="collection-item">Easy to use user experience.</li>
-            <li class="collection-item">Create your profile along with your own avatar.</li>
+            <li class="collection-item">Your location comes from your IP address, so the map only knows roughly which city you are in. It never uses GPS, and you can hide your pin and city from your profile.</li>
+            <li class="collection-item">There is one room for everyone. Anything you write is visible to everyone signed in.</li>
+            <li class="collection-item">This is a portfolio project, so please don't share anything private here.</li>
         </ul>
-        </p>
-
     </div>
-
-    <div class="col s6">
-
-
-        <h5 class="animated fadeInDown h5WithPadding">Coming soon</h5>
-
-
-        <p>
-        <ul class="collection animated fadeInDownSubtle">
-            <li class="collection-item">Create your own groups and invite your friends.</li>
-            <li class="collection-item">Ability to share your location not only by your IP address but also through your
-                                        GPS sensor.
-            </li>
-            <li class="collection-item">Ability to control location sharing.</li>
-            <li class="collection-item">Ability to register anonymously.</li>
-            <li class="collection-item">SHA-256 encryption for all your messages.</li>
-            <li class="collection-item">Utilize the HTTPS protocol for all the communications between the client and the
-                                        server to ensure security.
-            </li>
-        </ul>
-        </p>
-
-    </div>
-
 </div>
 
 {% endblock %}
-
-

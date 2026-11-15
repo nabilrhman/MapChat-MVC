@@ -1,12 +1,15 @@
 <html>
 <head>
+    <!-- The design is light only; stop browsers from auto-darkening it -->
+    <meta name="color-scheme" content="only light">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css?family=Montserrat" rel="stylesheet">
 
     <link rel="stylesheet" type="text/css" href="/css/materialize.css">
-    <link rel="stylesheet" type="text/css" href="/css/login.css">
+    <link rel="stylesheet" type="text/css" href="/css/login.css?v=16">
     <link rel="stylesheet" type="text/css" href="/css/animate.css">
-    <link rel="stylesheet" href="/css/styles.css" />
+    <link rel="stylesheet" href="/css/styles.css?v=7" />
+    <link rel="stylesheet" href="/css/footer.css?v=3" />
     <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/all.css" integrity="sha384-B4dIYHKNBt8Bc12p+WXckhzcICo0wtJAoU8YZTY5qE0Id1GSseTk6S+L3BlXeVIU" crossorigin="anonymous">
 
 
@@ -16,7 +19,7 @@
 
 </head>
 
-<body class="animated bounce" >
+<body>
 <div class="section"></div>
 <main>
     <center>
@@ -27,21 +30,14 @@
         </div>
         </a>
         <div class="section"></div>
-        {% for message in flash_messages %}
-        <p class="alert alert-{{ message.type }}-noline">
-            {{ message.body }}
-        </p>
-        {% endfor %}
-
         <h5 class="white-text" id="heading">{% block heading %}{% endblock %}</h5>
         <div class="section"></div>
 
         {% block body %}{% endblock %}
 
-        <div class="footer-login">
-            <p><a href="https://github.com/nabilrhman/MapChat-MVC" class="white-text"><i class="fab fa-github"></i></a></p>
-            <p>MapChat &copy; {{ 'now'|date('Y') }} <span class="grey-text">|</span> <a href="http://www.nr-creation.com" class="amber-text">Nabil Rahman</a></p>
-        </div>
+        <footer class="footer-login">
+            <span>&copy; {{ 'now'|date('Y') }} <a href="https://nabilr.com" class="footer-author">Nabil Rahman</a></span>
+        </footer>
 
 
     </center>
@@ -53,6 +49,7 @@
 
 <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.1/jquery.min.js"></script>
 <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0-beta/js/materialize.min.js"></script>
+{% include '_flash.html' %}
 
 {% block footer %}{% endblock %}
 

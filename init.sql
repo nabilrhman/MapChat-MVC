@@ -1,3 +1,6 @@
+-- The file is UTF-8 (names with accents, emoji); make sure MySQL reads it that way
+SET NAMES utf8mb4;
+
 --
 -- Table structure for table users
 --
@@ -9,7 +12,7 @@ CREATE TABLE users (
   `password_hash` varchar(255) NOT NULL
 )
   ENGINE = InnoDB
-  DEFAULT CHARSET = utf8;
+  DEFAULT CHARSET = utf8mb4;
 
 --
 -- Indexes for table users
@@ -34,7 +37,7 @@ CREATE TABLE remembered_logins (
   `expires_at` datetime    NOT NULL
 )
   ENGINE = InnoDB
-  DEFAULT CHARSET = utf8;
+  DEFAULT CHARSET = utf8mb4;
 
 --
 -- Indexes for table `remembered_logins`
@@ -66,6 +69,30 @@ ALTER TABLE `users`
   ADD UNIQUE (`activation_hash`);
 
 
+ALTER TABLE users
+  ADD avatar VARCHAR(2083);
+
+--
+-- PHP sessions (see Core/DatabaseSessionHandler.php)
+--
+CREATE TABLE sessions (
+  `id`         VARCHAR(128) NOT NULL,
+  `data`       MEDIUMBLOB   NOT NULL,
+  `updated_at` INT UNSIGNED NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `updated_at` (`updated_at`)
+)
+  ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4;
+
+--
+-- Guest accounts and the "show me on the map" setting
+--
+ALTER TABLE users
+  ADD `is_guest`       BOOLEAN NOT NULL DEFAULT FALSE,
+  ADD `share_location` BOOLEAN NOT NULL DEFAULT TRUE,
+  ADD `created_at`     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
 CREATE TABLE chats (
   id        INT          NOT NULL AUTO_INCREMENT,
   email     vARCHAR(255) NOT NULL,
@@ -79,7 +106,10 @@ CREATE TABLE chats (
 )
   ENGINE = InnoDB
   AUTO_INCREMENT = 1
-  DEFAULT CHARSET = utf8;
+  DEFAULT CHARSET = utf8mb4
+  -- On TiDB, keep chat ids strictly increasing (the chat polls for id > last
+  -- seen id). MySQL ignores this comment.
+  /*T![auto_id_cache] AUTO_ID_CACHE = 1 */;
 
 CREATE TABLE `userinfo` (
   `id`        INT          NOT NULL AUTO_INCREMENT,
@@ -97,12 +127,14 @@ CREATE TABLE `userinfo` (
 )
   ENGINE = InnoDB
   AUTO_INCREMENT = 1
-  DEFAULT CHARSET = utf8;
+  DEFAULT CHARSET = utf8mb4;
 
-INSERT INTO chats (id, email, body, timestamp) VALUES (771, 'nabilr@outlook.com', 'Hi there, welcome to MapChat!', '2018-10-28 21:40:21');
-INSERT INTO chats (id, email, body, timestamp) VALUES (781, 'nabilr@outlook.com', 'Here you can chat with random people from all around the world and see which cities they are from.', '2018-10-28 21:40:38');
-INSERT INTO chats (id, email, body, timestamp) VALUES (791, 'nabilr@outlook.com', 'FUN FACT: Press CTRL+Y to generate random dialogues from your favorite show, the Game of Thrones. The dialogues are here for educational purpose only.', '2018-10-28 21:42:21');
+-- A built-in account that posts the welcome messages. It has no usable
+-- password (the hash below matches nothing) and cannot log in.
+INSERT INTO users (name, email, password_hash, is_active, avatar)
+VALUES ('MapChat', 'bot@mapchat.local', '!', TRUE, '/res/avatar-mapchat.svg');
 
+INSERT INTO chats (id, email, body, timestamp) VALUES (771, 'bot@mapchat.local', 'Welcome to MapChat! This is one open room, shared by everyone who signs in.', NOW() - INTERVAL 180 MINUTE);
+INSERT INTO chats (id, email, body, timestamp) VALUES (781, 'bot@mapchat.local', 'Each pin on the map is someone in the chat. Hover over a pin to see their name.', NOW() - INTERVAL 179 MINUTE);
+INSERT INTO chats (id, email, body, timestamp) VALUES (791, 'bot@mapchat.local', 'Your pin comes from your IP address, so it only shows roughly which city you are in, never your exact location.', NOW() - INTERVAL 178 MINUTE);
 
-ALTER TABLE users
-ADD avatar VARCHAR(2083);

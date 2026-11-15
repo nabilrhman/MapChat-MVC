@@ -3,94 +3,66 @@
 namespace App;
 
 /**
- * App configuration
+ * App configuration, read from environment variables.
  *
- * PHP version 7.0
+ * Copy .env.example to .env for local development; on a host, set the same
+ * variables in its dashboard. Nothing secret lives in the repository.
  */
 class Config
 {
     /**
-     * Domain name
-     * @var string
-     */
-    const DOMAIN_NAME = 'ADD YOUR OWN';
-
-
-    /**
-     * Database host
-     * @var string
-     */
-    const DB_HOST = 'ADD YOUR OWN';
-
-    /**
-     * Database name
-     * @var string
-     */
-    const DB_NAME = 'ADD YOUR OWN';
-
-    /**
-     * Database user
-     * @var string
-     */
-    const DB_USER = 'ADD YOUR OWN';
-
-    /**
-     * Database password
-     * @var string
-     */
-    const DB_PASSWORD = 'ADD YOUR OWN';
-
-    /**
-     * Show or hide error messages on screen
-     * @var boolean
-     */
-    const SHOW_ERRORS = false;
-
-    /**
-     * Secret key for hashing
-     * @var boolean
-     */
-    const SECRET_KEY = 'ADD YOUR OWN';
-
-    /**
-     * Mailgun API key
+     * Read a setting from the environment
      *
-     * @var string
+     * @param string $key Variable name
+     * @param mixed $default Value used when the variable is unset or empty
+     *
+     * @return mixed
      */
-    const MAILGUN_API_KEY = 'ADD YOUR OWN';
+    public static function get(string $key, $default = null)
+    {
+        $value = getenv($key);
+
+        return ($value === false || $value === '') ? $default : $value;
+    }
 
     /**
-     * Mailgun domain
+     * Read a true/false setting from the environment
      *
-     * @var string
+     * @param string $key Variable name
+     *
+     * @return bool
      */
-    const MAILGUN_DOMAIN = 'ADD YOUR OWN';
+    public static function flag(string $key): bool
+    {
+        return filter_var(static::get($key, false), FILTER_VALIDATE_BOOLEAN);
+    }
 
     /**
-     * ipstack API key
+     * Base URL of the site, used in links inside emails, e.g. https://mapchat.example.com
      *
-     * @var string
+     * @return string
      */
-    const IPSTACK_API_KEY = 'ADD YOUR OWN';
+    public static function appUrl(): string
+    {
+        $url = static::get('APP_URL');
+
+        if ($url === null) {
+            $https = ($_SERVER['HTTPS'] ?? '') === 'on'
+                || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
+            $url = ($https ? 'https://' : 'http://') . ($_SERVER['HTTP_HOST'] ?? 'localhost');
+        }
+
+        return rtrim($url, '/');
+    }
 
     /**
-     * Cloudinary Cloud name
+     * Whether outgoing email is configured. Without it, new accounts are
+     * activated straight away so the app still works as a demo.
      *
-     * @var string
+     * @return bool
      */
-    const CLOUDINARY_CLOUD_NAME = 'ADD YOUR OWN';
-
-    /**
-     * Cloudinary API Key
-     *
-     * @var string
-     */
-    const CLOUDINARY_API_KEY = 'ADD YOUR OWN';
-
-    /**
-     * Cloudinary API Secret
-     *
-     * @var string
-     */
-    const CLOUDINARY_API_SECRET = 'ADD YOUR OWN';
+    public static function mailEnabled(): bool
+    {
+        return static::get('MAILER_DSN') !== null;
+    }
 }

@@ -1,14 +1,9 @@
 MapChat
-http://www.map-chat.com
+{{ app_url }}
 
-Account activation
+Welcome to MapChat, {{ name }}!
 
-Welcome to MapChat
+Open this link to activate your account:
+{{ url }}
 
-{{ name }}
-
-Please activate your account
-
-ACTIVATE: {{ url }}
-
-- The MapChat Team
+If you didn't sign up for MapChat, you can ignore this email.

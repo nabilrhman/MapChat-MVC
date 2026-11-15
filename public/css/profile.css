@@ -108,8 +108,35 @@ img
     background-color: #512da8;
 }
 
+/* A fixed-size avatar, whatever the window width */
 #col-avatar
 {
-    min-width: 100px !important;
+    width: 120px !important;
+    min-width: 120px !important;
 }
 
+.wrapper-avatar,
+.wrapper-avatar #avatar
+{
+    width: 96px;
+    height: 96px;
+}
+
+.wrapper-avatar #avatar
+{
+    object-fit: cover;
+}
+
+
+.guest-note
+{
+    background: #ede7f6;
+    border-left: 4px solid #512da8;
+    padding: 10px 14px;
+    margin: 0 0 20px;
+}
+
+#location-setting
+{
+    margin-bottom: 30px;
+}
