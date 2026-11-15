@@ -50,12 +50,26 @@ class User extends \Core\Model
             $stmt->bindValue(':activation_hash', $hashed_token, PDO::PARAM_STR);
             $stmt->bindValue(':is_active', Config::mailEnabled() ? 0 : 1, PDO::PARAM_INT);
 
-            return $stmt->execute();
+            if ($stmt->execute()) {
+                $this->id = $db->lastInsertId();
+                return true;
+            }
         }
 
         return false;
     }
 
+    /**
+     * Delete this user, e.g. a sign-up whose activation email never went out
+     *
+     * @return void
+     */
+    public function delete()
+    {
+        $stmt = static::getDB()->prepare('DELETE FROM users WHERE id = :id');
+        $stmt->bindValue(':id', $this->id, PDO::PARAM_INT);
+        $stmt->execute();
+    }
 
     /**
      * Validate current property values, adding valiation error messages to the errors array property
@@ -328,7 +342,7 @@ class User extends \Core\Model
     /**
      * Send an email to the user containing the activation link
      *
-     * @return void
+     * @return boolean True if it was sent
      */
     public function sendActivationEmail()
     {
@@ -337,7 +351,7 @@ class User extends \Core\Model
         $text = View::getTemplate('Signup/activation_email.txt', ['url' => $url, 'name' => $this->name]);
         $html = View::getTemplate('Signup/activation_email.html', ['url' => $url, 'name' => $this->name]);
 
-        Mail::send($this->email, 'Activate your MapChat account', $text, $html);
+        return Mail::send($this->email, 'Activate your MapChat account', $text, $html);
     }
 
     /**
