@@ -1,4 +1,28 @@
-# MapChat
+<div align="center">
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="public/res/logo-mapchat-white.svg">
+  <img src="public/res/logo-mapchat.svg" width="260" alt="MapChat">
+</picture>
+
+An open chat room on a map, running on an MVC framework<br>
+I wrote from scratch in PHP.
+
+[![PHP](https://img.shields.io/badge/PHP-8.4-512da8?logo=php&logoColor=white&labelColor=1e0839)](composer.json)
+[![MySQL](https://img.shields.io/badge/MySQL-8.4-512da8?logo=mysql&logoColor=white&labelColor=1e0839)](init.sql)
+[![Docker](https://img.shields.io/badge/Docker-ready-512da8?logo=docker&logoColor=white&labelColor=1e0839)](Dockerfile)
+[![License](https://img.shields.io/badge/license-MIT-512da8?labelColor=1e0839)](LICENSE)
+
+**[Live demo](https://mapchat.swiftsolve.net)** &nbsp;·&nbsp;
+**[Run it locally](#run-it-locally)** &nbsp;·&nbsp;
+**[Deploy for free](#deploy-for-free)** &nbsp;·&nbsp;
+**[Project layout](#project-layout)**
+
+</div>
+
+---
+
+## Overview
 
 MapChat is an open chat room on a map. Everyone who signs in talks in the same
 room, and a pin on the map shows which city each person is chatting from.
@@ -8,14 +32,14 @@ was to understand what a web framework actually does, so instead of using one, I
 wrote my own: the router, controllers, models, views, sessions and login are all
 hand-written PHP.
 
-**Live:** https://mapchat.swiftsolve.net (free hosting, so the first visit
-after a quiet spell takes about a minute to wake up)
+The [live demo](https://mapchat.swiftsolve.net) runs on free hosting, so the
+first visit after a quiet spell takes about a minute to wake up.
 
 ![The chat room with the map of who is chatting from where](docs/images/mapchat-app.png)
 
-| Log in, or try it as a guest | About |
+| Log in, or try it as a guest | Profile |
 |---|---|
-| ![Login page](docs/images/mapchat-login.jpg) | ![About page](docs/images/mapchat-about.png) |
+| ![Login page](docs/images/mapchat-login.jpg) | ![Profile page](docs/images/mapchat-profile.png) |
 
 ## Features
 
