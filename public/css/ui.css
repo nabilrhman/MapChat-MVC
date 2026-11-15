@@ -222,3 +222,14 @@ label.error
     padding-right: 28px;
     box-sizing: border-box;
 }
+
+/* 404 and 500 pages */
+.error-page
+{
+    text-align: center;
+}
+
+.error-page p
+{
+    margin-bottom: 28px;
+}
