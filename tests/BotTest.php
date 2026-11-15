@@ -222,6 +222,21 @@ class BotTest extends TestCase
         $this->assertCount(2, $this->botSaid());
     }
 
+    public function testRoomRepliesLeaveTheDemoPeopleOut()
+    {
+        $maya = 'maya@demo.mapchat.local';
+        $this->db->prepare("INSERT INTO users (name, email, password_hash, is_active) VALUES ('Maya', ?, '!', TRUE)")
+            ->execute([$maya]);
+        $this->send($maya, 'i want to move to Null Island');
+        $this->send(self::ANN, 'hello? is anyone here');
+
+        $this->wait(Bot::GRACE_SECONDS);
+
+        $this->assertCount(1, TestBot::$asked);
+        $this->assertStringContainsString('hello? is anyone here', TestBot::$asked[0][1]);
+        $this->assertStringNotContainsString('Null Island', TestBot::$asked[0][1]);
+    }
+
     public function testBotAndDemoMessagesNeverMakeJobs()
     {
         $this->send(Chat::BOT_EMAIL, 'Welcome to MapChat!');

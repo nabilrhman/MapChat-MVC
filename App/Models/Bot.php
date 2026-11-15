@@ -294,7 +294,8 @@ class Bot extends \Core\Model
     }
 
     /**
-     * The open room's messages up to this one, oldest first
+     * The open room's messages up to this one, oldest first. The demo
+     * people's are left out: MapChat only talks with real people
      *
      * @param int $upToId
      *
@@ -304,7 +305,7 @@ class Bot extends \Core\Model
     {
         $stmt = static::getDB()->prepare('SELECT users.name, chats.email, chats.body FROM chats
                                           JOIN users ON chats.email = users.email
-                                          WHERE chats.to_email IS NULL AND chats.id <= :id
+                                          WHERE chats.to_email IS NULL AND chats.id <= :id' . static::notDemoSql() . '
                                           ORDER BY chats.id DESC LIMIT ' . static::CONTEXT_MESSAGES);
         $stmt->execute([':id' => $upToId]);
 
@@ -563,7 +564,17 @@ class Bot extends \Core\Model
      */
     protected static function peopleOnlySql()
     {
-        return ' AND chats.email <> \'' . Chat::BOT_EMAIL . '\' AND chats.email NOT LIKE \'%' . DemoChat::DOMAIN . '\'';
+        return ' AND chats.email <> \'' . Chat::BOT_EMAIL . '\'' . static::notDemoSql();
+    }
+
+    /**
+     * Leaves the demo people out of a query on chats
+     *
+     * @return string
+     */
+    protected static function notDemoSql()
+    {
+        return ' AND chats.email NOT LIKE \'%' . DemoChat::DOMAIN . '\'';
     }
 
     /**
