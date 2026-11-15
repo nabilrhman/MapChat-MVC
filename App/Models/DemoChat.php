@@ -112,14 +112,18 @@ class DemoChat extends \Core\Model
         $schedule = static::schedule($today);
 
         // Clear every demo line today's schedule doesn't have: earlier days',
-        // and any left from before the conversations were rewritten
-        $planned = array_flip(array_map(fn ($line) => $line[1] . ' ' . $line[0], $schedule));
-        $stmt = $db->prepare('SELECT id, email, timestamp FROM chats WHERE email LIKE :demo AND to_email IS NULL');
+        // and any left from before the conversations were rewritten. Who and
+        // when aren't enough: a rewritten day can put the same person at the
+        // same second with different words
+        $planned = array_flip(array_map(fn ($line) => $line[1] . ' ' . $line[0] . ' ' . $line[2], $schedule));
+        $stmt = $db->prepare('SELECT id, email, timestamp, body FROM chats WHERE email LIKE :demo AND to_email IS NULL');
         $stmt->execute([':demo' => '%' . static::DOMAIN]);
         $drop = $db->prepare('DELETE FROM chats WHERE id = :id');
+        $rewritten = false;
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-            if (!isset($planned[$row['email'] . ' ' . $row['timestamp']])) {
+            if (!isset($planned[$row['email'] . ' ' . $row['timestamp'] . ' ' . $row['body']])) {
                 $drop->execute([':id' => $row['id']]);
+                $rewritten = $rewritten || $row['timestamp'] >= $start;
             }
         }
 
@@ -127,8 +131,10 @@ class DemoChat extends \Core\Model
         $stmt->execute([':demo' => '%' . static::DOMAIN]);
         $last = $stmt->fetchColumn() ?: '';
 
-        // A fast-forwarded day (DEMO_SPEED) loops; start it over
-        if ($last > $now) {
+        // A fast-forwarded day (DEMO_SPEED) loops, and a day rewritten part way
+        // (a deploy changed the stories) can't have its earlier lines slotted
+        // in, as the chat runs in id order; either way, start the day over
+        if ($last > $now || $rewritten) {
             $db->prepare('DELETE FROM chats WHERE email LIKE :demo AND to_email IS NULL')
                ->execute([':demo' => '%' . static::DOMAIN]);
             $last = '';
