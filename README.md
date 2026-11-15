@@ -70,6 +70,8 @@ first visit after a quiet spell takes about a minute to wake up.
 
 ## How it's built
 
+![A request goes from public/index.php to the router and a controller, which reads from MySQL through a model and answers with a Twig view or JSON](docs/images/request-path.svg)
+
 - **Framework:** a model-view-controller (MVC) framework written from scratch in
   PHP 8.4, in `Core/`. The app itself is in `App/`.
 - **Database:** MySQL, queried with prepared statements to block SQL injection.
@@ -201,7 +203,8 @@ database/        init.sql (schema and welcome messages), demo.sql (optional
                  migrate.php (adds columns an older database is missing, run
                  when the container starts)
 tests/           PHPUnit tests
-docs/images/     The screenshots in this README
+docs/images/     The screenshots and diagram in this README
+docs/diagrams/   Draws the diagram: node docs/diagrams/draw.ts
 ```
 
 ## Author
