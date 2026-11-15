@@ -233,6 +233,9 @@ function keepPinsUpdated(addPin, fitPins) {
 
 /* The vector map (MapLibre) */
 
+// One label at a time, so tapping another pin swaps them
+let openPinPopup = null;
+
 // Adds a MapLibre pin; returns a function that removes it
 function addVectorPin(map, location, shouldAnimate) {
     const lngLat = getLngLat(location);
@@ -242,10 +245,23 @@ function addVectorPin(map, location, shouldAnimate) {
         .setLngLat(lngLat)
         .addTo(map);
 
+    function showLabel() {
+        if (openPinPopup !== popup) openPinPopup?.remove();
+        openPinPopup = popup;
+        popup.setLngLat(lngLat).addTo(map);
+    }
+
     const pin = marker.getElement();
     pin.classList.toggle('is-entering', shouldAnimate);
-    pin.addEventListener('mouseenter', () => popup.setLngLat(lngLat).addTo(map));
-    pin.addEventListener('mouseleave', () => popup.remove());
+    // A mouse shows the label while over the pin; a tap keeps it until the
+    // next tap on the map
+    pin.addEventListener('pointerenter', (event) => event.pointerType === 'mouse' && showLabel());
+    pin.addEventListener('pointerleave', (event) => event.pointerType === 'mouse' && popup.remove());
+    pin.addEventListener('click', (event) => {
+        // Or the map's own click would close the label straight away
+        event.stopPropagation();
+        showLabel();
+    });
 
     return () => {
         popup.remove();
