@@ -697,6 +697,49 @@ body
     font-size: 20px;
 }
 
+/* The map button, only on phones; styled like the people button */
+.map-toggle
+{
+    display: none;
+    position: absolute;
+    top: calc(var(--header-height) + 12px);
+    right: 12px;
+    z-index: 2;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: none;
+    border-radius: 4px;
+    background-color: #fff;
+    color: #512da8;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+}
+
+.map-toggle:focus
+{
+    background-color: #fff;
+}
+
+.map-toggle:hover,
+.map-toggle[aria-pressed="true"]
+{
+    background-color: #f5f1fb;
+}
+
+.map-toggle:focus-visible
+{
+    outline: none;
+    box-shadow: 0 0 0 3px #d1c4e9;
+}
+
+.map-toggle__icon
+{
+    font-size: 20px;
+}
+
 /* Wide screens: the list shows unless it was closed */
 @media (min-width: 1101px)
 {
@@ -737,11 +780,13 @@ body
     }
 }
 
-/* Phones: a strip of map on top, the chat below it at full width */
+/* Phones: the chat at full width and height, the map hidden under it.
+   The map button opens a strip of map on top, with the chat below */
 @media (max-width: 700px)
 {
     .map-loading
     {
+        display: none;
         left: 0;
         bottom: auto;
         height: 30vh;
@@ -749,10 +794,50 @@ body
 
     .chat-panel
     {
-        top: calc(var(--header-height) + 30vh);
+        top: var(--header-height);
         max-width: none;
         min-width: 0;
         box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.12);
+    }
+
+    /* Both buttons sit at the end of the tab row, with room kept for them */
+    .map-toggle
+    {
+        display: flex;
+        top: calc(var(--header-height) + 6px);
+    }
+
+    .people-toggle
+    {
+        top: calc(var(--header-height) + 6px);
+        right: 56px;
+    }
+
+    .chat-tabs
+    {
+        padding-right: 124px;
+    }
+
+    /* Map open: the strip shows and the buttons float on it, as before */
+    .is-map-open .chat-panel
+    {
+        top: calc(var(--header-height) + 30vh);
+    }
+
+    .is-map-open .map-loading
+    {
+        display: flex;
+    }
+
+    .is-map-open .map-toggle,
+    .is-map-open .people-toggle
+    {
+        top: calc(var(--header-height) + 12px);
+    }
+
+    .is-map-open .chat-tabs
+    {
+        padding-right: 8px;
     }
 
     /* The chat covers the bottom of the map here, so the credits sit at the

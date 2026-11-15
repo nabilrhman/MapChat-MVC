@@ -3,7 +3,7 @@
 {% block title %}Chat{% endblock %}
 
 {% block head %}
-<link rel="stylesheet" href="/css/chat.css?v=100">
+<link rel="stylesheet" href="/css/chat.css?v=101">
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flag-icons@7.2.3/css/flag-icons.min.css">
 {% endblock %}
@@ -15,6 +15,11 @@
 <div class="map-loading" id="map-loading">
     <span class="loading-dots" aria-label="Loading the map"><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span></span>
 </div>
+
+<!-- Shows the map on phones, where it starts hidden to give the chat the room -->
+<button class="map-toggle" id="map-toggle" type="button" aria-pressed="false" aria-label="Show the map" title="Show the map">
+    <i class="material-icons map-toggle__icon">map</i>
+</button>
 
 <!-- Opens the people list on screens too narrow to show it beside the map -->
 <button class="people-toggle" id="people-toggle" type="button" aria-label="Who's online">
@@ -79,7 +84,7 @@
 {% endblock %}
 
 {% block footer %}
-<script src="/js/chat.js?v=8"></script>
+<script src="/js/chat.js?v=9"></script>
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="/js/map.js?v=18"></script>
 {% endblock %}
