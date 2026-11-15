@@ -525,11 +525,12 @@ body
 }
 
 /* Count and "Online" sit on one baseline, so the digit and the letters line up */
+/* The count's pill, then a clear space before the word */
 .people__title
 {
     display: flex;
     align-items: baseline;
-    gap: var(--icon-gap);
+    gap: 10px;
 }
 
 .people__close

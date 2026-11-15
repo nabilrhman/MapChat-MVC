@@ -31,15 +31,15 @@ textarea
 
 /* Icons from public/icons.svg (Core\Icon): sized by font-size and drawn in
    the text colour, as the icon font was.
-   Beside text, the space between them is --icon-gap from the drawing itself,
-   half the text's size, so small text gets a small gap. It's in em, so it's
-   used as the gap of the icon and text's container:
-   each glyph's blank sides (--icon-bearing, in 24ths of the icon) are taken
-   back. --icon-nudge moves a glyph that looks low up to the middle of
-   the capitals */
+   Beside text, the space between them is --icon-gap, from the drawing
+   itself: each glyph's blank sides (--icon-bearing, in 24ths of the icon)
+   are taken back. The gap grows faster than the text: 6px beside 12px text,
+   8px beside 14px. It's in em, so it's set as the gap of the icon and
+   text's container. --icon-nudge moves a glyph that looks low up to the
+   middle of the capitals */
 :root
 {
-    --icon-gap: 0.5em;
+    --icon-gap: calc(1em - 6px);
 }
 
 .icon
@@ -54,8 +54,8 @@ textarea
     translate: 0 var(--icon-nudge, 0);
 }
 
-.icon--map-point,
 .icon--user { --icon-bearing: 4; }
+.icon--map-point { --icon-bearing: 5; } /* its sides curve away, so it looks narrower */
 .icon--alt-arrow-down { --icon-bearing: 5; }
 .icon--arrow-down { --icon-bearing: 5.2; }
 .icon--sun { --icon-bearing: 1.2; }
