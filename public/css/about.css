@@ -8,7 +8,7 @@
     --space-m: clamp(16px, 2.5vw, 24px);
     --space-l: clamp(24px, 4vw, 40px);
 
-    max-width: 960px;
+    max-width: 720px;   /* same as Profile, so the titles line up */
     margin: 0 auto;
 }
 

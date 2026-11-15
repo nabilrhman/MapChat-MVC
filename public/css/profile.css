@@ -1,7 +1,8 @@
 /* One centred column of setting cards */
+/* Same width as About, so the title sits in the same place on both */
 .profile-page
 {
-    max-width: 560px;
+    max-width: 720px;
     margin: 0 auto;
 }
 
