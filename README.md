@@ -41,6 +41,10 @@ first visit after a quiet spell takes about a minute to wake up.
 |---|---|
 | ![Login page](docs/images/mapchat-login.jpg) | ![Profile page](docs/images/mapchat-profile.png) |
 
+| Account activation email | Password reset email |
+|---|---|
+| ![Account activation email](docs/images/mapchat-email-activation.png) | ![Password reset email](docs/images/mapchat-email-reset.png) |
+
 ## Features
 
 - One shared chat room for everyone who is signed in. New messages show up
