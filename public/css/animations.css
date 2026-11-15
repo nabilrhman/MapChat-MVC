@@ -41,6 +41,30 @@
     }
 }
 
+/* Going to another page on the site cross-fades from the old page to the
+   new one, instead of the window blanking in between. The header and
+   footer are named so they stay put while the content changes */
+@view-transition
+{
+    navigation: auto;
+}
+
+::view-transition-old(root),
+::view-transition-new(root)
+{
+    animation-duration: var(--dur);
+}
+
+.site-header
+{
+    view-transition-name: site-header;
+}
+
+.site-footer
+{
+    view-transition-name: site-footer;
+}
+
 /* Page content as it loads. backwards, not both, so a hover can still move
    the element afterwards */
 .appear
@@ -82,5 +106,12 @@
         animation-duration: 1ms !important;
         animation-delay: 0s !important;
         transition-duration: 1ms !important;
+    }
+
+    ::view-transition-group(*),
+    ::view-transition-old(*),
+    ::view-transition-new(*)
+    {
+        animation: none !important;
     }
 }
