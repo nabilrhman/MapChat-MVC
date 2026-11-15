@@ -916,7 +916,7 @@ body
     display: grid;
     grid-template-columns: 32px 1fr;
     column-gap: 12px;
-    padding: 14px 16px;
+    padding: 16px;
     border-bottom: 1px solid #ececec;
     background-color: #fafafa;
     transition: background-color var(--dur-fast) var(--ease-out);
@@ -1014,9 +1014,9 @@ body
 .chat__body
 {
     grid-column: 1 / -1;
-    margin: 4px 0 0;
+    margin: 6px 0 0;
     font-size: 14px;
-    line-height: 20px;
+    line-height: 21px;
     text-align: left;
     overflow-wrap: anywhere;
     white-space: pre-line; /* keep line breaks people typed */
@@ -1027,7 +1027,7 @@ body
     grid-column: 1 / -1;
     display: flex;
     justify-content: flex-end; /* bottom right corner, under the time */
-    margin-top: 6px;
+    margin-top: 8px;
     color: #7e57c2;
     font-size: 12px;
     line-height: 16px;
