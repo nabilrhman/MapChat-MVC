@@ -111,9 +111,9 @@ class Schema extends \Core\Model
      */
     protected static function placeBot($db)
     {
-        $db->exec("INSERT INTO userinfo (email, ip, lat, lng, city)
-                   SELECT email, '0.0.0.0', 0, 0, 'Null Island' FROM users WHERE email = 'bot@mapchat.local'
-                   ON DUPLICATE KEY UPDATE city = COALESCE(city, 'Null Island'),
+        $db->exec("INSERT INTO userinfo (email, ip, lat, lng, city, country)
+                   SELECT email, '0.0.0.0', 0, 0, 'Null Island', 'XN' FROM users WHERE email = 'bot@mapchat.local'
+                   ON DUPLICATE KEY UPDATE city = COALESCE(city, 'Null Island'), country = COALESCE(country, 'XN'),
                                            lat = COALESCE(lat, 0), lng = COALESCE(lng, 0)");
     }
 
