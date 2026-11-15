@@ -4,7 +4,7 @@
 {% block title %}Profile{% endblock %}
 
 {% block head %}
-<link rel="stylesheet" href="/css/profile.css?v=22"/>
+<link rel="stylesheet" href="{{ asset('/css/profile.css') }}"/>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flag-icons@7.2.3/css/flag-icons.min.css">
 {% endblock %}
 
@@ -144,7 +144,7 @@
 {% endblock %}
 
 {% block footer %}
-<script src="/js/passwordToggle.js?v=3"></script>
-<script src="/js/formChecks.js?v=2"></script>
-<script src="/js/profile.js?v=5"></script>
+<script src="{{ asset('/js/passwordToggle.js') }}"></script>
+<script src="{{ asset('/js/formChecks.js') }}"></script>
+<script src="{{ asset('/js/profile.js') }}"></script>
 {% endblock %}
