@@ -525,8 +525,12 @@ $(document).ready(function () {
 
     $('#chat-list').on('scroll', updateJumpButton);
 
+    // The button hides once you're down, so keyboard focus moves on to the
+    // composer instead of falling back to the top of the page. Taps leave
+    // focus alone so a phone's keyboard doesn't pop up
     $('#jump-latest').on('click', function () {
         $('#chat-list').animate({scrollTop: $('#chat-list').prop('scrollHeight')}, SCROLL_DURATION);
+        if (this.matches(':focus-visible')) $('#textarea-send').focus();
     });
 
     // Scrolls down for new messages only if you're at the bottom already, or forced

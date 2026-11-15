@@ -208,9 +208,11 @@ body
     background-color: #4527a0;
 }
 
+/* The transparent outline only shows in forced-colors mode, which drops
+   box-shadows */
 .jump-latest:focus-visible
 {
-    outline: none;
+    outline: 3px solid transparent;
     box-shadow: 0 0 0 3px #d1c4e9;
 }
 
