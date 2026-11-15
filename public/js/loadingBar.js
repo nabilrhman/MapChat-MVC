@@ -2,9 +2,12 @@
 // slow click (the free host waking up, say) doesn't look like nothing happened.
 // The old page can't finish the bar, since it's gone the moment the new one
 // is ready, so the new page picks the bar up where it was and fills it.
+// Pages that load quickly get no bar at all, so it doesn't just flash.
 (function () {
     var KEY = 'loadingBar';
+    var DELAY = 200;
     var running = false;
+    var timer = null;
 
     var bar = document.createElement('div');
     bar.className = 'loading-bar';
@@ -23,13 +26,17 @@
     }
 
     function start() {
-        running = true;
-        bar.classList.remove('loading-bar--running');
-        void bar.offsetWidth; // restart the animation
-        bar.classList.add('loading-bar--running');
+        clearTimeout(timer);
+        timer = setTimeout(function () {
+            running = true;
+            bar.classList.remove('loading-bar--running');
+            void bar.offsetWidth; // restart the animation
+            bar.classList.add('loading-bar--running');
+        }, DELAY);
     }
 
     function stop() {
+        clearTimeout(timer);
         running = false;
         bar.classList.remove('loading-bar--running');
     }
@@ -87,6 +94,7 @@
 
     // Leaving: note how far the bar got, for the next page to finish it
     window.addEventListener('pagehide', function () {
+        clearTimeout(timer);
         if (running) {
             remember(bar.getBoundingClientRect().width / window.innerWidth);
         }
