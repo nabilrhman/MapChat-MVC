@@ -1,4 +1,5 @@
 {% extends 'base_login.html' %}
+{% import '_form_errors.html' as form %}
 
 {% block title %}Sign up{% endblock %}
 
@@ -13,13 +14,13 @@
         <div class="input-field">
             <input type="text" id="inputName" name="name" value="{{ user.name }}" autocomplete="name" autofocus/>
             <label for="inputName">Name</label>
-            <span id="error-msg-name"></span>
+            <span id="error-msg-name">{{ form.field_errors(user.errors, 'Name', 'inputName') }}</span>
         </div>
 
         <div class="input-field">
             <input type="email" id="inputEmail" name="email" value="{{ user.email }}" autocomplete="email"/>
             <label for="inputEmail">Email</label>
-            <span id="error-msg-email"></span>
+            <span id="error-msg-email">{{ form.field_errors(user.errors, 'Email', 'inputEmail') }}</span>
         </div>
 
         <div class="input-field">
@@ -27,22 +28,13 @@
             <label for="inputPassword">Password</label>
             <button type="button" class="password-toggle material-icons" aria-label="Show password">visibility</button>
             <span class="helper-text">6+ characters, a letter and a number</span>
-            <span id="error-msg-password"></span>
+            <span id="error-msg-password">{{ form.field_errors(user.errors, 'Password', 'inputPassword') }}</span>
         </div>
 
-        <button type="submit" class="button button-primary button-block" id="submitButton">Create account</button>
+        <button type="submit" class="button button-primary button-block">Create account</button>
     </form>
 
     <p class="form-switch"><span>Already have an account?</span> <a href="/login">Log in</a></p>
 </div>
-
-{% endblock %}
-
-{% block footer %}
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.15.0/jquery.validate.min.js"></script>
-<script src="/js/passwordToggle.js"></script>
-<script src="/js/validatorExtended.js"></script>
-<script src="/js/validateInput.js"></script>
 
 {% endblock %}

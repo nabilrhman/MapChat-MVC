@@ -1,4 +1,5 @@
 {% extends 'base_login.html' %}
+{% import '_form_errors.html' as form %}
 
 {% block title %}Reset password{% endblock %}
 
@@ -18,22 +19,13 @@
             <label for="inputPassword">New password</label>
             <button type="button" class="password-toggle material-icons" aria-label="Show password">visibility</button>
             <span class="helper-text">6+ characters, a letter and a number</span>
-            <span id="error-msg-password"></span>
+            <span id="error-msg-password">{{ form.field_errors(user.errors, 'Password', 'inputPassword') }}</span>
         </div>
 
-        <button type="submit" class="button button-primary button-block" id="submitButton">Set new password</button>
+        <button type="submit" class="button button-primary button-block">Set new password</button>
     </form>
 
     <p class="form-switch"><span>Remembered it?</span> <a href="/login">Log in</a></p>
 </div>
-
-{% endblock %}
-
-{% block footer %}
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.15.0/jquery.validate.min.js"></script>
-<script src="/js/validatorExtended.js"></script>
-<script src="/js/passwordToggle.js"></script>
-<script src="/js/validatePasswordForgotPassword.js"></script>
 
 {% endblock %}
