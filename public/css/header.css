@@ -227,10 +227,8 @@
     text-overflow: ellipsis;
 }
 
-/* Pulled toward the name, so it sits as far from the name as from the edge */
 .account-menu__chevron
 {
-    margin-left: -2px;
     font-size: 20px;
     transition: transform var(--dur) var(--ease-out);
 }
