@@ -35,7 +35,7 @@ export const DIAGRAMS: Diagram[] = [
           },
           {
             id: 'controller',
-            icon: 'shield-check',
+            icon: 'sliders-horizontal',
             column: 2,
             title: 'Core\\Controller',
             isCodeTitle: true,
