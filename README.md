@@ -76,7 +76,7 @@ first visit after a quiet spell takes about a minute to wake up.
   needed for either.
 - **Location:** looked up from the visitor's IP address with ipapi.co, or
   ipstack when `IPSTACK_API_KEY` is set.
-- **Email:** Symfony Mailer, sending through any SMTP provider.
+- **Email:** Symfony Mailer, sending through any SMTP provider or Brevo's API.
 - **Sessions:** stored in MySQL rather than files, so restarting or waking up
   the container doesn't log anyone out.
 - **Avatars:** uploaded from the browser straight to Cloudinary.
@@ -123,7 +123,7 @@ explanations. The main ones:
 | `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | Database connection |
 | `DB_SSL` | `true` for hosted MySQL that requires TLS |
 | `SECRET_KEY` | Secret for hashing login and reset tokens. Required |
-| `MAILER_DSN` | SMTP address for outgoing email. Empty turns email off (locally it defaults to Mailpit) |
+| `MAILER_DSN` | Where outgoing email goes: an SMTP address, or `brevo+api://API_KEY@default`. Empty turns email off (locally it defaults to Mailpit) |
 | `IPSTACK_API_KEY` | Optional. Without it, ipapi.co is used |
 | `DEV_FAKE_IP` | Locally every visitor has a private IP; this public IP is used for the map instead |
 | `DEMO_TIMEZONE` | Optional. Where the demo people's day starts at midnight. Default `America/Toronto` |
@@ -142,7 +142,8 @@ MySQL-compatible service.
 2. In Render, choose **New > Blueprint** and pick this repository. Render reads
    `render.yaml` and asks for the database host, user and password from TiDB's
    **Connect** dialog, and for `APP_URL` (the `onrender.com` address).
-3. Optional: set `MAILER_DSN` to turn on activation and password-reset emails,
+3. Optional: set `MAILER_DSN` to turn on activation and password-reset emails
+   (Render's free plan blocks SMTP ports, so use `brevo+api://API_KEY@default`),
    and `CLOUDINARY_CLOUD_NAME` / `CLOUDINARY_UPLOAD_PRESET` for avatar uploads.
 
 Free Render services sleep after 15 minutes without visitors, so the first visit
