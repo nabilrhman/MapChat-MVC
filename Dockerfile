@@ -21,3 +21,6 @@ COPY . .
 RUN chown -R www-data:www-data logs
 
 EXPOSE 8080
+
+# Bring an older database up to date, then serve
+CMD ["sh", "-c", "php migrate.php; exec apache2-foreground"]

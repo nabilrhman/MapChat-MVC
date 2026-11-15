@@ -117,7 +117,8 @@ Free Render services sleep after 15 minutes without visitors, so the first visit
 after a quiet spell takes about a minute.
 
 A database made before private messages, local times and countries were added
-needs these columns:
+needs these columns. The container adds them itself when it starts
+(`migrate.php`); to add them by hand:
 
 ```sql
 ALTER TABLE chats
