@@ -16,7 +16,7 @@
         </div>
 
         <div class="input-field">
-            <input type="password" id="inputPassword" name="password" class="has-toggle" autocomplete="current-password"/>
+            <input type="password" id="inputPassword" name="password" class="password-input" autocomplete="current-password"/>
             <label for="inputPassword">Password</label>
             <button type="button" class="password-toggle material-icons" aria-label="Show password">visibility</button>
         </div>
@@ -27,15 +27,15 @@
             <span>Remember me</span>
         </label>
 
-        <button type="submit" class="button button-primary button-block">Log in</button>
+        <button type="submit" class="button button--primary button--block">Log in</button>
     </form>
 
     <div class="form-divider"><span>or</span></div>
 
     <form action="/login/guest" method="post" id="guestForm">
-        <button type="submit" class="button button-outline button-block">
-            <span class="button-label">Try it as a guest</span>
-            <span class="loading-dots" aria-hidden="true"><span></span><span></span><span></span></span>
+        <button type="submit" class="button button--outline button--block">
+            <span class="button__label">Try it as a guest</span>
+            <span class="loading-dots button__dots" aria-hidden="true"><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span></span>
         </button>
     </form>
 

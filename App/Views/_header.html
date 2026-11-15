@@ -1,15 +1,15 @@
-<div class="header">
-    <a href="/" class="logo hover-grow">MapChat</a>
-    <div class="nav-container pull-left appear-down">
+<div class="site-header">
+    <a href="/" class="site-header__logo hover-grow">MapChat</a>
+    <div class="site-header__nav appear-down">
 
         {% if current_user %}
-        <a href="/logout">LOG OUT</a>
-        <a href="/profile/show">PROFILE</a>
+        <a href="/logout" class="site-header__link">LOG OUT</a>
+        <a href="/profile/show" class="site-header__link">PROFILE</a>
         {% else %}
-        <a href="/login">LOG IN</a>
-        <a href="/signup/new">SIGN UP</a>
+        <a href="/login" class="site-header__link">LOG IN</a>
+        <a href="/signup/new" class="site-header__link">SIGN UP</a>
         {% endif %}
-        <a href="/about">ABOUT</a>
+        <a href="/about" class="site-header__link">ABOUT</a>
 
     </div>
 </div>

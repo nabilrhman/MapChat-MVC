@@ -75,7 +75,7 @@
    as they're the only sign something is happening */
 @media (prefers-reduced-motion: reduce)
 {
-    *:not(.loading-dots span),
+    *:not(.loading-dots__dot),
     *::before,
     *::after
     {

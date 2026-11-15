@@ -133,7 +133,7 @@ body
 
 /* On this page the yellow line under the nav bar is enough; its shadow would
    fall across the top of the chat and people panels */
-.header
+.site-header
 {
     box-shadow: none;
 }

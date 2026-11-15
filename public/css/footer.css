@@ -1,6 +1,6 @@
 /* One slim bar on every page inside the app: source link on the left,
    copyright on the right */
-.footer
+.site-footer
 {
     position: fixed;
     left: 0;
@@ -17,25 +17,20 @@
     font-size: 13px;
 }
 
-.footer a,
-.footer-login a
+.site-footer__source
 {
     color: #fff;
+    font-size: 16px;
 }
 
-.footer .footer-author,
-.footer-login .footer-author
+/* The copyright line, here and under the login pages */
+.copyright__author
 {
     color: #ffc107;
 }
 
-.footer a:hover,
-.footer-login a:hover
+.site-footer__source:hover,
+.copyright__author:hover
 {
     text-decoration: underline;
-}
-
-.footer-source
-{
-    font-size: 16px;
 }

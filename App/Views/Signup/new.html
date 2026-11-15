@@ -24,14 +24,14 @@
         </div>
 
         <div class="input-field">
-            <input type="password" id="inputPassword" name="password" class="has-toggle" autocomplete="new-password"/>
+            <input type="password" id="inputPassword" name="password" class="password-input" autocomplete="new-password"/>
             <label for="inputPassword">Password</label>
             <button type="button" class="password-toggle material-icons" aria-label="Show password">visibility</button>
             <span class="helper-text">6+ characters, a letter and a number</span>
             <span id="error-msg-password">{{ form.field_errors(user.errors, 'Password', 'inputPassword') }}</span>
         </div>
 
-        <button type="submit" class="button button-primary button-block">Create account</button>
+        <button type="submit" class="button button--primary button--block">Create account</button>
     </form>
 
     <p class="form-switch"><span>Already have an account?</span> <a href="/login">Log in</a></p>

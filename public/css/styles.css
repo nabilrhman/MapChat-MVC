@@ -37,7 +37,7 @@ textarea
 
 /* Page content straight on the page, no framed box; centred by materialize's
    .container width */
-#container-main
+.site-main
 {
     position: relative;
     top: var(--header-height);
@@ -47,7 +47,7 @@ textarea
     overflow-x: clip;
 }
 
-.h5-with-padding
+.about-heading
 {
     margin-bottom: 30px !important;
 }
@@ -58,7 +58,7 @@ textarea
     max-width: 720px;
 }
 
-.about-logo
+.about-intro__logo
 {
     display: block;
     width: 100%;
@@ -66,7 +66,7 @@ textarea
     margin: 32px auto 24px;
 }
 
-.about-intro p
+.about-intro__text
 {
     font-size: 15px;
     line-height: 1.7;
@@ -81,67 +81,6 @@ body
 {
     background-color: #fff;
     color: rgba(0, 0, 0, 0.87);
-}
-
-/* Purple switches, matching the rest of the app */
-.switch label input[type=checkbox]:checked + .lever
-{
-    background-color: #b39ddb;
-}
-
-.switch label input[type=checkbox]:checked + .lever:after
-{
-    background-color: #512da8;
-}
-
-/* Toasts always appear bottom right, just above the footer (Materialize
-   puts them top right or bottom left depending on the screen width). On
-   phones they're centred */
-#toast-container
-{
-    top: auto !important;
-    right: 24px !important;
-    bottom: var(--toast-bottom, calc(var(--footer-height) + 24px)) !important;
-    left: auto !important;
-    max-width: 340px;
-}
-
-@media (max-width: 600px)
-{
-    #toast-container
-    {
-        right: auto !important;
-        bottom: calc(var(--footer-height) + 16px) !important;
-        left: 50% !important;
-        min-width: 0 !important;
-        width: max-content;
-        max-width: calc(100% - 32px);
-        transform: translateX(-50%);
-    }
-
-    /* Not floated right (materialize.css), so a short toast centres too */
-    #toast-container .toast
-    {
-        float: none;
-        margin: 0 auto 8px;
-    }
-}
-
-/* Toast colours by message type: a coloured stripe on the left */
-.toast.toast-success { border-left: 4px solid #66bb6a; }
-.toast.toast-info    { border-left: 4px solid #9575cd; }
-.toast.toast-warning { border-left: 4px solid #ffa726; }
-
-/* Compact toasts: short line, wraps if needed, never wider than 340px */
-#toast-container .toast
-{
-    min-height: 0;
-    padding: 10px 16px;
-    font-size: 14px;
-    line-height: 1.4;
-    word-break: normal;
-    width: fit-content;   /* short messages get a short toast */
-    margin-left: auto;    /* keep them against the right edge */
 }
 
 /* Flag of Null Island (XN), the MapChat bot's made-up country at 0°, 0°;

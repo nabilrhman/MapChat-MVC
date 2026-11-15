@@ -7,7 +7,7 @@
         messages.forEach(function (message) {
             var text = document.createElement('div');
             text.textContent = message.body;
-            M.toast({html: text.innerHTML, classes: 'toast-' + message.type, displayLength: 4500});
+            M.toast({html: text.innerHTML, classes: 'toast--' + message.type, displayLength: 4500});
         });
     })();
 </script>

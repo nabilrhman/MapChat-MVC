@@ -20,7 +20,7 @@
             <strong>Guest account</strong>
             <span>Deleted in {{ user.guestHoursLeft() }} h along with your messages.</span>
         </div>
-        <button type="button" class="button button-primary button-small" id="keep-account">Keep my account</button>
+        <button type="button" class="button button--primary button--small" id="keep-account">Keep my account</button>
     </div>
     {% endif %}
 
@@ -33,7 +33,7 @@
         <section class="settings-card" id="card-profile">
             <div class="card-head">
                 <h5>Profile</h5>
-                <button type="button" class="button button-quiet button-small edit-button">Edit</button>
+                <button type="button" class="button button--quiet button--small edit-button">Edit</button>
             </div>
 
             {# The photo saves as soon as it's uploaded or removed, apart from Save #}
@@ -42,11 +42,11 @@
                     <img class="circle" id="avatar" alt="Your photo"
                          src="{{ avatar_src(user.id, user.name, user.avatar) }}"
                          data-default-src="{{ default_avatar|e('html_attr') }}"/>
-                    <span class="loading-dots" aria-label="Uploading"><span></span><span></span><span></span></span>
+                    <span class="loading-dots" aria-label="Uploading"><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span></span>
                 </div>
                 <div>
-                    <label for="file-upload" class="button button-quiet button-small">
-                        <i class="material-icons">photo_camera</i>Change photo
+                    <label for="file-upload" class="button button--quiet button--small">
+                        <i class="material-icons button__icon">photo_camera</i>Change photo
                     </label>
                     <button type="button" class="link-button" id="remove-photo"
                             {% if user.avatar is empty %}hidden{% endif %}>Remove</button>
@@ -72,14 +72,14 @@
 
             <div class="card-actions edit-only">
                 <button type="button" class="link-button cancel-button">Cancel</button>
-                <button type="submit" class="button button-primary button-small">Save</button>
+                <button type="submit" class="button button--primary button--small">Save</button>
             </div>
         </section>
 
         <section class="settings-card" id="card-account">
             <div class="card-head">
                 <h5>Account</h5>
-                <button type="button" class="button button-quiet button-small edit-button">Edit</button>
+                <button type="button" class="button button--quiet button--small edit-button">Edit</button>
             </div>
 
             <dl class="view-only">
@@ -98,7 +98,7 @@
                 </div>
 
                 <div class="input-field">
-                    <input type="password" id="inputPassword" name="password" class="has-toggle" autocomplete="new-password"/>
+                    <input type="password" id="inputPassword" name="password" class="password-input" autocomplete="new-password"/>
                     <label for="inputPassword">{{ user.is_guest ? 'Password' : 'New password' }}</label>
                     <button type="button" class="password-toggle material-icons" aria-label="Show password">visibility</button>
                     <span class="helper-text">
@@ -109,7 +109,7 @@
 
                 {% if not user.is_guest %}
                 <div class="input-field" id="current-password" hidden>
-                    <input type="password" id="inputCurrentPassword" name="current_password" class="has-toggle" autocomplete="current-password"/>
+                    <input type="password" id="inputCurrentPassword" name="current_password" class="password-input" autocomplete="current-password"/>
                     <label for="inputCurrentPassword">Current password</label>
                     <button type="button" class="password-toggle material-icons" aria-label="Show password">visibility</button>
                     <span class="helper-text">Needed to change your email or password.</span>
@@ -120,7 +120,7 @@
 
             <div class="card-actions edit-only">
                 <button type="button" class="link-button cancel-button">Cancel</button>
-                <button type="submit" class="button button-primary button-small">Save</button>
+                <button type="submit" class="button button--primary button--small">Save</button>
             </div>
         </section>
 

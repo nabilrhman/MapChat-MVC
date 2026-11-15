@@ -110,7 +110,7 @@ main
     border-bottom-color: #512da8;
 }
 
-.auth-card .button-block
+.auth-card .button--block
 {
     margin-top: 16px;
 }
@@ -154,7 +154,7 @@ main
 
 /* Same content as the in-app footer, on one centred line at the bottom of the
    screen; on a page taller than the screen it comes after the card */
-.footer-login
+.auth-page__footer
 {
     width: 100%;
     padding-top: 30px;
