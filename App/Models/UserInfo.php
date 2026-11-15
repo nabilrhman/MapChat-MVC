@@ -287,7 +287,9 @@ class UserInfo extends \Core\Model
     }
 
     /**
-     * People seen in the chat in the last day, most recent first
+     * People seen in the chat in the last day, most recent first. Guests
+     * only while they're online: they're throwaway accounts, and a day of
+     * them buries everyone else
      *
      * @return array
      */
@@ -303,11 +305,14 @@ class UserInfo extends \Core\Model
                 FROM userinfo
                 JOIN users
                 ON userinfo.email = users.email
-                WHERE userinfo.online_at > NOW() - INTERVAL 1 DAY OR ' . $demo_online . '
+                WHERE (userinfo.online_at > NOW() - INTERVAL 1 DAY AND users.is_guest = 0)
+                   OR (userinfo.online_at > NOW() - INTERVAL :guest_online SECOND AND users.is_guest = 1)
+                   OR ' . $demo_online . '
                 ORDER BY userinfo.online_at DESC';
 
         $stmt = static::getDB()->prepare($sql);
         $stmt->bindValue(':online', static::ONLINE_SECONDS, PDO::PARAM_INT);
+        $stmt->bindValue(':guest_online', static::ONLINE_SECONDS, PDO::PARAM_INT);
         $stmt->execute();
 
         return static::withAvatarSrc($stmt->fetchAll(PDO::FETCH_ASSOC), 'id');
