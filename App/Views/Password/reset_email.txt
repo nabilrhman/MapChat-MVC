@@ -1,9 +1,11 @@
-MapChat
-{{ app_url }}
+Reset your password
 
 Hi {{ name }},
 
-Someone asked to reset the password for your MapChat account. Open this link to choose a new one:
+Someone asked to reset the password for your MapChat account. Open this link to choose a new one. It works for 2 hours:
 {{ url }}
 
-The link works for 2 hours. If you didn't ask for this, ignore this email and your password stays the same.
+Didn't ask for this? Ignore this email and your password stays the same.
+
+MapChat, an open chat room on a map
+{{ app_url }}

@@ -1,50 +1,66 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
 
 <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <meta name="supported-color-schemes" content="light">
+    <title>{% block title %}{% endblock %} · MapChat</title>
     <style>
-        @media screen {
-            @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap');
+
+        /* Phones: less padding so the text gets the width */
+        @media screen and (max-width: 600px) {
+            .card-body { padding: 28px 22px !important; }
+            .heading { font-size: 22px !important; }
         }
     </style>
-    <title>MapChat - Account activation</title>
 </head>
 
-<body style="font-family: 'Montserrat', sans-serif">
+{# Tables and inline styles, since most mail apps ignore anything newer #}
+<body style="margin: 0; padding: 0; background-color: #f3f0f9; -webkit-text-size-adjust: 100%;">
 
-<table style="width: 100%" cellspacing="0" cellpadding="0" border="0" >
+{# Shown next to the subject in the inbox, never in the email itself #}
+<div style="display: none; max-height: 0; overflow: hidden; opacity: 0;">{% block preheader %}{% endblock %}</div>
 
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #f3f0f9;">
     <tr>
+        <td align="center" style="padding: 32px 12px;">
 
-        <td align="center" style="background-color: #512DA8; padding: 75px 0;"><a href="{{ app_url }}"><img
-                src="https://res.cloudinary.com/nabilr/image/upload/v1540770257/logo.png"></a></td>
-    </tr>
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width: 560px; font-family: Montserrat, 'Helvetica Neue', Arial, sans-serif;">
 
-    <tr>
+                <tr>
+                    <td align="center" style="background-color: #512da8; border-bottom: 4px solid #ffc107; padding: 32px 0;">
+                        <a href="{{ app_url }}"><img src="{{ app_url }}/res/logo-email.png" width="180" height="56" alt="MapChat" style="display: block; border: 0;"></a>
+                    </td>
+                </tr>
 
-        <td align="center" style="padding-top: 20px; font-size: 1.8em;"><p>{% block title %}{% endblock %}</p></td>
+                <tr>
+                    <td class="card-body" align="center" style="text-align: center; background-color: #ffffff; padding: 40px 44px; color: #3b3647; font-size: 15px; line-height: 1.6;">
+                        <h1 class="heading" style="margin: 0 0 20px; color: #1f1b2e; font-size: 24px; font-weight: 700; line-height: 1.3;">{% block heading %}{% endblock %}</h1>
 
-    </tr>
+                        {% block body %}{% endblock %}
 
-    <tr>
-        <td align="center" style="padding: 20px 0;"><p style="color: #512da8">&mdash;</p>
+                        {# Some mail apps strip links from buttons; the plain link always works #}
+                        <p style="margin: 28px 0 0; padding-top: 20px; border-top: 1px solid #ece8f3; color: #7a7489; font-size: 12px; line-height: 1.5;">
+                            Button not working? Paste this link into your browser:<br>
+                            <a href="{{ url }}" style="color: #512da8; word-break: break-all;">{{ url }}</a>
+                        </p>
+                    </td>
+                </tr>
+
+                <tr>
+                    <td align="center" style="padding: 24px 12px; color: #8c869a; font-size: 12px; line-height: 1.6;">
+                        <a href="{{ app_url }}" style="color: #512da8; font-weight: 600; text-decoration: none;">MapChat</a>, an open chat room on a map<br>
+                        &copy; {{ 'now'|date('Y') }} <a href="https://nabilr.com" style="color: #8c869a;">Nabil Rahman</a>
+                    </td>
+                </tr>
+
+            </table>
+
         </td>
     </tr>
-
-    {% block body %}{% endblock %}
-
-
-    <tr>
-        <td align="center" style="padding: 20px 0;"><p style="color: #512da8">&mdash;</p>
-            <p>The MapChat Team</p>
-        </td>
-    </tr>
-
-    <tr style="background-color: #333333; ">
-
-        <td align="center" style="border-top: 4px solid #ffc107; color: white; padding: 20px 0;"><p>&copy; {{ 'now'|date('Y') }} <a
-                href="https://nabilr.com" style="color: #ffc107; text-decoration: none;">Nabil Rahman</a></p></td>
-    </tr>
-
 </table>
 
 </body>

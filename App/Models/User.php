@@ -393,7 +393,7 @@ class User extends \Core\Model
         $text = View::getTemplate('Signup/activation_email.txt', ['url' => $url, 'name' => User::getNameFromToken($this->activation_token)]);
         $html = View::getTemplate('Signup/activation_email.html', ['url' => $url, 'name' => User::getNameFromToken($this->activation_token)]);
 
-        Mail::send($this->email, 'Account activation', $text, $html);
+        Mail::send($this->email, 'Activate your MapChat account', $text, $html);
     }
 
     /**
@@ -408,7 +408,7 @@ class User extends \Core\Model
         $text = View::getTemplate('Password/reset_email.txt', ['url' => $url, 'name' => User::findByPasswordReset($this->password_reset_token)->name]);
         $html = View::getTemplate('Password/reset_email.html', ['url' => $url, 'name' => User::findByPasswordReset($this->password_reset_token)->name]);
 
-        Mail::send($this->email, 'Password reset requested', $text, $html);
+        Mail::send($this->email, 'Reset your MapChat password', $text, $html);
     }
 
     /**
