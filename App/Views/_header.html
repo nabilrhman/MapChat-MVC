@@ -1,15 +1,21 @@
+{# The link to the page being shown is marked, e.g. /profile/... for PROFILE #}
+{% macro link(href, label, section) %}
+{% set here = current_path starts with section %}
+<a href="{{ href }}" class="site-header__link{{ here ? ' is-current' }}"{{ here ? ' aria-current="page"' }}>{{ label }}</a>
+{% endmacro %}
+{% import _self as nav %}
 <div class="site-header">
     <a href="/" class="site-header__logo hover-grow">MapChat</a>
     <div class="site-header__nav">
 
         {% if current_user %}
         <a href="/logout" class="site-header__link">LOG OUT</a>
-        <a href="/profile/show" class="site-header__link">PROFILE</a>
+        {{ nav.link('/profile/show', 'PROFILE', '/profile') }}
         {% else %}
-        <a href="/login" class="site-header__link">LOG IN</a>
-        <a href="/signup/new" class="site-header__link">SIGN UP</a>
+        {{ nav.link('/login', 'LOG IN', '/login') }}
+        {{ nav.link('/signup/new', 'SIGN UP', '/signup') }}
         {% endif %}
-        <a href="/about" class="site-header__link">ABOUT</a>
+        {{ nav.link('/about', 'ABOUT', '/about') }}
 
     </div>
 </div>

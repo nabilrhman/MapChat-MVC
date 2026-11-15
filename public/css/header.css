@@ -77,6 +77,18 @@
     transform: scaleX(1);
 }
 
+/* The page being shown: a yellow line under its link, like the header's */
+.site-header__link.is-current:after
+{
+    content: '';
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    bottom: 0;
+    height: 3px;
+    background-color: #ffc107;
+}
+
 /* Phones: a shorter header with smaller links */
 @media (max-width: 700px)
 {

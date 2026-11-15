@@ -43,6 +43,8 @@ class View
             $twig->addFunction(new \Twig\TwigFunction('flash_messages', [\App\Flash::class, 'getMessages']));
             $twig->addFunction(new \Twig\TwigFunction('avatar_src', [\App\Avatar::class, 'src']));
             $twig->addGlobal('app_url', Config::appUrl());
+            // For marking the current page in the header
+            $twig->addGlobal('current_path', parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH));
             $twig->addGlobal('cloudinary_cloud_name', Config::cloudinaryCloudName());
             $twig->addGlobal('cloudinary_upload_preset', Config::cloudinaryUploadPreset());
         }
