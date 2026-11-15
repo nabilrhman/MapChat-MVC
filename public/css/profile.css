@@ -76,9 +76,51 @@
 
 .photo-row #avatar
 {
+    display: block;
     width: 72px;
     height: 72px;
     object-fit: cover;
+    transition: opacity var(--dur) var(--ease-out);
+}
+
+/* A soft circle while the photo loads, and dots over a dimmed photo while a
+   new one uploads */
+.photo-frame
+{
+    position: relative;
+    flex: none;
+    border-radius: 50%;
+}
+
+.photo-frame.photo-loading
+{
+    background-color: #ede7f6;
+}
+
+.photo-frame.photo-loading #avatar
+{
+    opacity: 0;
+}
+
+.photo-frame.is-uploading #avatar
+{
+    opacity: 0.4;
+}
+
+.photo-frame > .loading-dots
+{
+    position: absolute;
+    inset: 0;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    animation: none;
+    transition: opacity var(--dur) var(--ease-out);
+}
+
+.photo-frame.is-uploading > .loading-dots
+{
+    opacity: 1;
 }
 
 .photo-row [hidden],
@@ -128,6 +170,13 @@
 .settings-card.editing .edit-button
 {
     display: none;
+}
+
+/* Each swap fades in */
+.view-only,
+.edit-only
+{
+    animation: fade-in var(--dur) var(--ease-out);
 }
 
 .card-actions

@@ -1,3 +1,19 @@
+/* The fixed header and footer; the pages leave room for them */
+:root
+{
+    --header-height: 95px;
+    --footer-height: 40px;
+}
+
+/* Phones: a shorter header (see header.css) */
+@media (max-width: 700px)
+{
+    :root
+    {
+        --header-height: 61px;
+    }
+}
+
 /* One font everywhere. materialize.css gives fields and buttons the system
    font, which beats a plain * rule; make them use the page's font instead */
 body
@@ -13,90 +29,50 @@ textarea
     font-family: inherit;
 }
 
-.alert {
-
-
+.material-icons
+{
+    font-family: "Material Icons";
+    font-feature-settings: "liga";
 }
-
-.alert-info {
-    color: #FFC107;
-    border-bottom: 1px solid #FFC107;
-    border-bottom-left-radius: 20px;
-    border-bottom-right-radius: 20px;
-    padding: 20px;
-
-}
-.alert-success {
-    color: #43A047;
-    border-bottom: 1px solid #43A047;
-    border-bottom-left-radius: 20px;
-    border-bottom-right-radius: 20px;
-    padding: 20px;
-
-}
-.alert-warning {
-    color: red;
-    border-bottom: 1px solid red;
-    border-bottom-left-radius: 20px;
-    border-bottom-right-radius: 20px;
-    padding: 20px;
-
-}
-
-.alert-info-noline {
-    color: #FFC107;
-
-
-}
-.alert-success-noline {
-    color: #23CF5F;
-
-
-}
-.alert-warning-noline {
-    color: red;
-
-}
-
 
 /* Page content straight on the page, no framed box; centred by materialize's
    .container width */
-#container-main {
+#container-main
+{
     position: relative;
-    top: 96.5px;
+    top: var(--header-height);
     margin: 0 auto 140px; /* bottom: clear the fixed footer */
     padding: 10px 16px 40px;
-    /* clip, not hidden: hidden would make this its own scroll box and stop
-       sticky things inside (the profile save bar) from sticking */
+    /* clip, not hidden: hidden would make this its own scroll box */
     overflow-x: clip;
 }
 
-/* Paste this css to your style sheet file or under head tag */
-/* This only works with JavaScript,
-if it's not present, don't show loader */
-.no-js #loader { display: none;  }
-.js #loader { display: block; position: absolute; left: 100px; top: 0; }
-.se-pre-con {
-    position: fixed;
-    left: 0px;
-    top: 0px;
-    width: 100%;
-    height: 100%;
-    z-index: 9999;
-    background: url(/res/loading.gif) center no-repeat #fff;
-
-}
-
-.h5WithPadding
+.h5-with-padding
 {
     margin-bottom: 30px !important;
 }
 
-.footer-icon
+/* About page: the intro is one narrow column, centred like every .row */
+.about-intro
 {
-    float: left;
-    margin-left: 20px;
+    max-width: 720px;
 }
+
+.about-logo
+{
+    display: block;
+    width: 100%;
+    max-width: 360px;
+    margin: 32px auto 24px;
+}
+
+.about-intro p
+{
+    font-size: 15px;
+    line-height: 1.7;
+    text-align: center;
+}
+
 /* Explicit page colours, so a dark browser theme can't turn the page black
    behind the dark text. Set on body only: the browser then paints it across
    the whole window, and pages with their own body background (the login
@@ -119,15 +95,35 @@ body
 }
 
 /* Toasts always appear bottom right, just above the footer (Materialize
-   puts them top right or bottom left depending on the screen width) */
-@media only screen and (min-width: 601px) {
+   puts them top right or bottom left depending on the screen width). On
+   phones they're centred */
+#toast-container
+{
+    top: auto !important;
+    right: 24px !important;
+    bottom: var(--toast-bottom, calc(var(--footer-height) + 24px)) !important;
+    left: auto !important;
+    max-width: 340px;
+}
+
+@media (max-width: 600px)
+{
     #toast-container
     {
-        top: auto !important;
-        left: auto !important;
-        right: 24px;
-        bottom: 64px;
-        max-width: 340px;
+        right: auto !important;
+        bottom: calc(var(--footer-height) + 16px) !important;
+        left: 50% !important;
+        min-width: 0 !important;
+        width: max-content;
+        max-width: calc(100% - 32px);
+        transform: translateX(-50%);
+    }
+
+    /* Not floated right (materialize.css), so a short toast centres too */
+    #toast-container .toast
+    {
+        float: none;
+        margin: 0 auto 8px;
     }
 }
 

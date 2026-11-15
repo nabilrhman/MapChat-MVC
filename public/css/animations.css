@@ -1,0 +1,86 @@
+/* Motion for the whole app: one easing and three durations, so everything
+   moves alike. Only opacity and transform are animated */
+:root
+{
+    --ease-out: cubic-bezier(0.22, 1, 0.36, 1); /* fast start, soft stop */
+    --ease-in: cubic-bezier(0.64, 0, 0.78, 0); /* for things leaving */
+    --dur-fast: 150ms; /* hovers and small changes */
+    --dur: 250ms; /* things appearing */
+    --dur-slow: 350ms; /* panels and page content */
+}
+
+@keyframes fade-in
+{
+    from { opacity: 0; }
+}
+
+@keyframes fade-in-down
+{
+    from
+    {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+}
+
+@keyframes fade-in-up
+{
+    from
+    {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+}
+
+@keyframes pop-in
+{
+    from
+    {
+        opacity: 0;
+        transform: scale(0.92);
+    }
+}
+
+/* Page content as it loads. backwards, not both, so a hover can still move
+   the element afterwards */
+.appear
+{
+    animation: fade-in var(--dur-slow) var(--ease-out) backwards;
+}
+
+.appear-down
+{
+    animation: fade-in-down var(--dur-slow) var(--ease-out) backwards;
+}
+
+/* The login logo */
+.pop-in
+{
+    animation: pop-in var(--dur-slow) var(--ease-out) backwards;
+}
+
+/* The logos grow a little on hover */
+.hover-grow
+{
+    transition: transform var(--dur) var(--ease-out);
+}
+
+.hover-grow:hover,
+.hover-grow:focus
+{
+    transform: scale(1.05);
+}
+
+/* Movement off for people who ask for less; the loading dots keep pulsing,
+   as they're the only sign something is happening */
+@media (prefers-reduced-motion: reduce)
+{
+    *:not(.loading-dots span),
+    *::before,
+    *::after
+    {
+        animation-duration: 1ms !important;
+        animation-delay: 0s !important;
+        transition-duration: 1ms !important;
+    }
+}
