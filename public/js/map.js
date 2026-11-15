@@ -123,8 +123,14 @@ function mapPadding() {
     return {top: 60, bottom: 60, left: panel.width + 60, right: peopleWidth + 60};
 }
 
+// Fades a pin out, then takes it off the map
+function fadeOutPin(el, remove) {
+    el.classList.add('pin-leave');
+    el.addEventListener('animationend', remove, {once: true});
+}
+
 // Adds a MapLibre pin; returns a function that removes it
-function addPin(map, location) {
+function addPin(map, location, animate) {
     var lngLat = [parseFloat(location.lng), parseFloat(location.lat)];
     var popup = new maplibregl.Popup({closeButton: false, offset: 26})
         .setDOMContent(pinLabel(location));
@@ -133,12 +139,13 @@ function addPin(map, location) {
         .addTo(map);
 
     var el = marker.getElement();
+    el.classList.toggle('pin-enter', animate);
     el.addEventListener('mouseenter', function () { popup.setLngLat(lngLat).addTo(map); });
     el.addEventListener('mouseleave', function () { popup.remove(); });
 
     return function () {
         popup.remove();
-        marker.remove();
+        fadeOutPin(el, function () { marker.remove(); });
     };
 }
 
@@ -169,7 +176,8 @@ function mapReady() {
 
 // Fetches the pins now and on every round after, adding new people, dropping
 // those gone or hidden, and moving anyone whose place changed. The map only
-// zooms to the pins the first time, so it never jumps while someone looks at it
+// zooms to the pins the first time, so it never jumps while someone looks at
+// it. Pins after the first round ease in
 function keepPinsUpdated(addPin, fitPins) {
     var pins = {};
     var first = true;
@@ -185,7 +193,7 @@ function keepPinsUpdated(addPin, fitPins) {
 
                     if (pin && pin.key === key) return;
                     if (pin) pin.remove();
-                    pins[location.user_id] = {key: key, remove: addPin(location)};
+                    pins[location.user_id] = {key: key, remove: addPin(location, !first)};
                 });
 
                 Object.keys(pins).forEach(function (id) {
@@ -315,13 +323,18 @@ function initializeFallback() {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
 
-        keepPinsUpdated(function (location) {
+        keepPinsUpdated(function (location, animate) {
             var latLng = [parseFloat(location.lat), parseFloat(location.lng)];
-            var icon = L.divIcon({className: '', html: pinElement(location.user_id).outerHTML, iconSize: [20, 27], iconAnchor: [10, 27]});
+            var pin = pinElement(location.user_id);
+            pin.classList.toggle('pin-enter', animate);
+            var icon = L.divIcon({className: '', html: pin.outerHTML, iconSize: [20, 27], iconAnchor: [10, 27]});
             var marker = L.marker(latLng, {icon: icon})
                 .bindTooltip(pinLabel(location).outerHTML, {direction: 'top', offset: [0, -26]})
                 .addTo(map);
-            return function () { marker.remove(); };
+            return function () {
+                marker.closeTooltip();
+                fadeOutPin(marker.getElement().querySelector('.map-pin'), function () { marker.remove(); });
+            };
         }, function (locations) {
             var bounds = locations.map(function (location) {
                 return [parseFloat(location.lat), parseFloat(location.lng)];
@@ -373,8 +386,8 @@ function initialize() {
             window.addEventListener('resize', function () { map.setMinZoom(minZoomToFill(512)); });
 
             map.on('load', function () {
-                keepPinsUpdated(function (location) {
-                    return addPin(map, location);
+                keepPinsUpdated(function (location, animate) {
+                    return addPin(map, location, animate);
                 }, function (locations) {
                     fitPins(map, locations);
                 });

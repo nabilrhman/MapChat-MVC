@@ -23,8 +23,23 @@ $(document).ready(function () {
     // Ids of the people online, from the last people list
     var onlineIds = {};
 
+    // Plays a leaving animation, then removes the element. One that isn't
+    // shown (e.g. in the closed people drawer) never animates, so it goes at once
+    function fadeOut(el, className) {
+        if (!el.is(':visible')) {
+            el.remove();
+            return;
+        }
+        el.addClass(className).one('animationend', function () {
+            el.remove();
+        });
+    }
+
+    // Tabs from the history just appear; ones opened later ease in
+    var tabsReady = false;
+
     function tabFor(conversation) {
-        return $('#chat-tabs .chat-tab[data-conversation="' + conversation + '"]');
+        return $('#chat-tabs .chat-tab[data-conversation="' + conversation + '"]').not('.tab-leave');
     }
 
     function addTab(conversation, name) {
@@ -35,7 +50,8 @@ $(document).ready(function () {
                 .append($('<span class="tab-online" title="Online"></span>').prop('hidden', !onlineIds[conversation]))
                 .append($('<span class="tab-name"></span>').text(name).attr('title', name))
                 .append('<span class="unread" hidden></span>')
-                .append('<span class="close-tab" title="Close">&times;</span>');
+                .append('<span class="close-tab" title="Close">&times;</span>')
+                .toggleClass('tab-enter', tabsReady);
             $('#chat-tabs').append(tab);
         }
         return tab;
@@ -181,6 +197,7 @@ $(document).ready(function () {
         addTab(String($(this).data('conversation')), $(this).data('partner'));
     });
     showConversation('everyone');
+    tabsReady = true;
 
     $('#chat-tabs').on('click', '.chat-tab', function (e) {
         e.preventDefault();
@@ -198,7 +215,7 @@ $(document).ready(function () {
         if (tab.hasClass('active')) {
             showConversation('everyone');
         }
-        tab.remove();
+        fadeOut(tab, 'tab-leave');
     });
 
     function openPrivateChat(userId, name) {
@@ -259,18 +276,57 @@ $(document).ready(function () {
         // The rows are replaced, so a hovered row never gets its mouseleave
         $('.map-pin').removeClass('highlight');
 
-        // A green dot on the tab of each private chat partner who's online
+        // A green dot on the tab of each private chat partner who's online;
+        // it fades only when that changes
         onlineIds = {};
         online.forEach(function (p) { onlineIds[p.id] = true; });
         $('#chat-tabs .tab-online').each(function () {
-            $(this).prop('hidden', !onlineIds[$(this).closest('.chat-tab').data('conversation')]);
+            var dot = $(this);
+            var isOnline = !!onlineIds[dot.closest('.chat-tab').data('conversation')];
+            if (isOnline === !dot.prop('hidden')) return;
+
+            if (isOnline) {
+                dot.prop('hidden', false);
+            } else {
+                dot.addClass('dot-leave').one('animationend', function () {
+                    dot.prop('hidden', true).removeClass('dot-leave');
+                });
+            }
         });
 
         $('#online-count, #people-toggle-count').text(online.length);
-        $('#people-online').empty().append(online.map(personRow));
+        fillPeople($('#people-online'), online);
         $('#recent-heading').prop('hidden', !recent.length);
-        $('#people-recent').empty().append(recent.map(personRow));
+        fillPeople($('#people-recent'), recent);
         fadeInPhotos($('#people img'));
+    }
+
+    // The rows are rebuilt each round, but only people new to the section
+    // ease in; those gone ease out where they were. Moving between online and
+    // recent counts as both, so the green dot fades with the row
+    function fillPeople(section, people) {
+        var old = {};
+        section.children('.person').not('.person-leave').each(function (index) {
+            old[$(this).attr('data-user-id')] = {row: $(this), index: index};
+        });
+
+        var rows = people.map(function (person) {
+            var row = personRow(person).toggleClass('person-enter', !old[person.id]);
+            delete old[person.id];
+            return row;
+        });
+        section.empty().append(rows);
+
+        Object.keys(old).forEach(function (id) {
+            var gone = old[id];
+            var next = section.children().eq(gone.index);
+            if (next.length) {
+                gone.row.insertBefore(next);
+            } else {
+                section.append(gone.row);
+            }
+            fadeOut(gone.row, 'person-leave');
+        });
     }
 
     (function loadPeople() {

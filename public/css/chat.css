@@ -218,6 +218,32 @@ body
     background-color: #43a047;
 }
 
+/* A private-chat tab grows in when opened and shrinks out when closed; so
+   does its green dot when the person comes or goes. scale, not transform,
+   which would undo the tab's flip */
+@keyframes grow-in
+{
+    from { opacity: 0; scale: 0.6; }
+}
+
+@keyframes shrink-out
+{
+    to { opacity: 0; scale: 0.6; }
+}
+
+.chat-tab.tab-enter,
+.chat-tab .tab-online
+{
+    animation: grow-in var(--dur) var(--ease-out) backwards;
+}
+
+.chat-tab.tab-leave,
+.chat-tab .tab-online.dot-leave
+{
+    animation: shrink-out var(--dur-fast) var(--ease-in) forwards;
+    pointer-events: none;
+}
+
 /* Long names are cut short so more tabs fit */
 .chat-tab .tab-name
 {
@@ -547,6 +573,39 @@ body
 .person-detail .fi
 {
     flex: none;
+}
+
+/* Someone who comes or goes slides in or out of their part of the list */
+@keyframes person-in
+{
+    from { opacity: 0; transform: translateX(12px); }
+}
+
+@keyframes person-out
+{
+    to { opacity: 0; transform: translateX(12px); }
+}
+
+.person.person-enter
+{
+    animation: person-in var(--dur) var(--ease-out) backwards;
+}
+
+.person.person-leave
+{
+    animation: person-out var(--dur-fast) var(--ease-in) forwards;
+    pointer-events: none;
+}
+
+/* Pins that come or go after the first load grow from their point */
+.map-pin.pin-enter svg
+{
+    animation: grow-in var(--dur) var(--ease-out) backwards;
+}
+
+.map-pin.pin-leave svg
+{
+    animation: shrink-out var(--dur-fast) var(--ease-in) forwards;
 }
 
 /* The pin of the person hovered in the list */
