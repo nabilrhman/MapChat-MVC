@@ -847,7 +847,7 @@ body
 /* Points down to fold, up to bring the chat back */
 .chat-fold__icon
 {
-    font-size: 26px;
+    font-size: 18px; /* the thick chevron fills more of its box than the old glyph */
     transition: transform var(--dur) var(--ease-out);
 }
 
