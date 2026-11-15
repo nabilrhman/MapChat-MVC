@@ -6,7 +6,7 @@ RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoload
 FROM php:8.4-apache
 
 RUN docker-php-ext-install pdo_mysql \
-    && a2enmod rewrite remoteip \
+    && a2enmod rewrite remoteip headers \
     && sed -ri 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/*.conf \
     && sed -ri 's!AllowOverride None!AllowOverride All!g' /etc/apache2/apache2.conf \
     # Hosts tell the container which port to use through $PORT
@@ -22,5 +22,6 @@ RUN chown -R www-data:www-data logs
 
 EXPOSE 8080
 
-# Bring an older database up to date, then serve
-CMD ["sh", "-c", "php database/migrate.php; exec apache2-foreground"]
+# Bring an older database up to date in the background, so Apache starts
+# serving right away after the free plan wakes the service
+CMD ["sh", "-c", "php database/migrate.php & exec apache2-foreground"]

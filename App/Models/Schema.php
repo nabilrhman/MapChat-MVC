@@ -6,8 +6,6 @@ use PDO;
 
 /**
  * Brings an older database up to date with init.sql
- *
- * PHP version 7.0
  */
 class Schema extends \Core\Model
 {
@@ -66,6 +64,8 @@ class Schema extends \Core\Model
         }
 
         static::fillDemoPlaces($db);
+        static::dropDemoPictures($db);
+        static::placeBot($db);
 
         return $added;
     }
@@ -86,6 +86,35 @@ class Schema extends \Core\Model
         foreach (static::DEMO_PLACES as $email => [$country, $timezone]) {
             $stmt->execute([':email' => $email, ':country' => $country, ':timezone' => $timezone]);
         }
+    }
+
+    /**
+     * The demo people used to have picture files; now they get drawn faces
+     * (Avatar::face), which only show when no picture is stored
+     *
+     * @param PDO $db
+     *
+     * @return void
+     */
+    protected static function dropDemoPictures($db)
+    {
+        $db->exec("UPDATE users SET avatar = NULL
+                   WHERE email LIKE '%@demo.mapchat.local' AND avatar LIKE '/res/avatars/%'");
+    }
+
+    /**
+     * Give the welcome bot its place on the map, as in init.sql
+     *
+     * @param PDO $db
+     *
+     * @return void
+     */
+    protected static function placeBot($db)
+    {
+        $db->exec("INSERT INTO userinfo (email, ip, lat, lng, city)
+                   SELECT email, '0.0.0.0', 0, 0, 'Null Island' FROM users WHERE email = 'bot@mapchat.local'
+                   ON DUPLICATE KEY UPDATE city = COALESCE(city, 'Null Island'),
+                                           lat = COALESCE(lat, 0), lng = COALESCE(lng, 0)");
     }
 
     /**

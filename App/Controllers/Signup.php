@@ -2,18 +2,16 @@
 
 namespace App\Controllers;
 
-use \Core\View;
-use \App\Models\User;
-use \App\Flash;
+use Core\View;
+use App\Models\User;
+use App\Flash;
+use App\Config;
 
 /**
  * Signup controller
- *
- * PHP version 7.0
  */
 class Signup extends \Core\Controller
 {
-
     /**
      * Show the signup page
      *
@@ -39,20 +37,16 @@ class Signup extends \Core\Controller
         ]);
 
         if ($user->save()) {
-
-            if (\App\Config::mailEnabled()) {
+            if (Config::mailEnabled()) {
                 $user->sendActivationEmail();
                 $this->redirect('/signup/success');
             }
 
             $this->redirect('/signup/activated');
-
         } else {
-
             View::renderTemplate('Signup/new.html', [
                 'user' => $user
             ]);
-
         }
     }
 
@@ -63,7 +57,6 @@ class Signup extends \Core\Controller
      */
     public function successAction()
     {
-
         Flash::addMessage('Account created. Check your email to activate it.', Flash::SUCCESS);
         $this->redirect('/login');
     }

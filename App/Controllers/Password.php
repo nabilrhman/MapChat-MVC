@@ -2,18 +2,15 @@
 
 namespace App\Controllers;
 
-use \Core\View;
-use \App\Models\User;
-use \App\Flash;
+use Core\View;
+use App\Models\User;
+use App\Flash;
 
 /**
  * Password controller
- *
- * PHP version 7.0
  */
 class Password extends \Core\Controller
 {
-
     /**
      * Show the forgotten password page
      *
@@ -31,7 +28,7 @@ class Password extends \Core\Controller
      */
     public function requestResetAction()
     {
-        User::sendPasswordReset($_POST['email']);
+        User::sendPasswordReset($_POST['email'] ?? '');
 
         Flash::addMessage('Check your email for a reset link', Flash::INFO);
         $this->redirect('/login/new');
@@ -46,7 +43,7 @@ class Password extends \Core\Controller
     {
         $token = $this->route_params['token'];
 
-        $user = $this->getUserOrExit($token);
+        $this->getUserOrExit($token);
 
         View::renderTemplate('Password/reset.html', [
             'token' => $token
@@ -60,17 +57,14 @@ class Password extends \Core\Controller
      */
     public function resetPasswordAction()
     {
-        $token = $_POST['token'];
+        $token = $_POST['token'] ?? '';
 
         $user = $this->getUserOrExit($token);
 
-        if ($user->resetPassword($_POST['password'])) {
-
+        if ($user->resetPassword($_POST['password'] ?? '')) {
             Flash::addMessage('Password changed. Log in with your new password.', Flash::SUCCESS);
             $this->redirect('/login/new');
-        
         } else {
-
             View::renderTemplate('Password/reset.html', [
                 'token' => $token,
                 'user' => $user
@@ -83,23 +77,17 @@ class Password extends \Core\Controller
      *
      * @param string $token Password reset token sent to user
      *
-     * @return mixed User object if found and the token hasn't expired, null otherwise
+     * @return User The user, if the token is valid and hasn't expired
      */
     protected function getUserOrExit($token)
     {
         $user = User::findByPasswordReset($token);
 
-        if ($user) {
-
-            return $user;
-
-        } else {
-
+        if (!$user) {
             Flash::addMessage('Password reset link is invalid or expired. Try again.', Flash::WARNING);
             $this->redirect('/password/forgot');
-            //View::renderTemplate('Password/token_expired.html');
-            exit;
-
         }
+
+        return $user;
     }
 }

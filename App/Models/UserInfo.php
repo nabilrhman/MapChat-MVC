@@ -3,15 +3,10 @@
 namespace App\Models;
 
 use PDO;
-use \App\Token;
-use \App\Mail;
-use \Core\View;
-use \App\Config;
+use App\Config;
 
 /**
- * User model
- *
- * PHP version 7.0
+ * Where each person is chatting from, and when they were last seen
  */
 class UserInfo extends \Core\Model
 {
@@ -19,32 +14,20 @@ class UserInfo extends \Core\Model
     const ONLINE_SECONDS = 60;
 
     /**
-     * So the room never looks empty, about a third of the demo people (from
-     * demo.sql) always show as online; which third changes every hour
-     */
-    const DEMO_ONLINE = "(users.email LIKE '%@demo.mapchat.local' AND MOD(users.id + HOUR(NOW()), 3) = 0)";
-
-    /**
-     * Error messages
+     * Save a user's IP and look up where it is
      *
-     * @var array
-     */
-    public $errors = [];
-
-    /**
-     * Class constructor
-     *
-     * @param array $data Initial property values (optional)
+     * @param string $email
+     * @param string $ip
      *
      * @return void
      */
-    public function __construct($data = [])
+    public static function locate($email, $ip)
     {
-        foreach ($data as $key => $value)
-        {
-            $this->$key = $value;
-        };
+        $userInfo = new static(['email' => $email, 'ip' => $ip]);
 
+        $userInfo->saveIP();
+        $userInfo->findLocationFromIP();
+        $userInfo->saveLocation();
     }
 
     /**
@@ -63,176 +46,53 @@ class UserInfo extends \Core\Model
     }
 
     /**
-     * Gets the user IP address
-     *
-     * @return boolean  True if the IP was saved, false otherwise
-     */
-    public function getIP()
-    {
-
-        if (empty($this->errors))
-        {
-
-            $sql = 'SELECT userinfo.ip FROM userinfo
-                    WHERE userinfo.email = (:email)';
-
-            $db = static::getDB();
-            $stmt = $db->prepare($sql);
-
-            $stmt->bindValue(':email', $this->email, PDO::PARAM_STR);
-            $stmt->execute();
-
-            $ip = $stmt->fetchColumn();
-
-            return $ip;
-        }
-
-        return false;
-    }
-
-    /**
      * Saves the user's location
      *
-     * @return boolean  True if the IP was saved, false otherwise
+     * @return boolean  True if the location was saved, false otherwise
      */
     public function saveLocation()
     {
+        $sql = 'UPDATE userinfo
+                SET lat = :lat, lng = :lng, city = :city, country = :country
+                WHERE email = :email';
 
-        if (empty($this->errors))
-        {
-            $sql = 'UPDATE userinfo
-                    SET lat = :lat, lng = :lng, city = :city, country = :country
-                    WHERE email = :email';
+        $stmt = static::getDB()->prepare($sql);
+        $stmt->bindValue(':email', $this->email, PDO::PARAM_STR);
+        $stmt->bindValue(':lat', $this->lat, PDO::PARAM_STR);
+        $stmt->bindValue(':lng', $this->long, PDO::PARAM_STR);
+        $stmt->bindValue(':city', $this->city, PDO::PARAM_STR);
+        $stmt->bindValue(':country', $this->country, PDO::PARAM_STR);
 
-            $db = static::getDB();
-            $stmt = $db->prepare($sql);
-
-            $stmt->bindValue(':email', $this->email, PDO::PARAM_STR);
-            $stmt->bindValue(':lat', $this->lat, PDO::PARAM_STR);
-            $stmt->bindValue(':lng', $this->long, PDO::PARAM_STR);
-            $stmt->bindValue(':city', $this->city, PDO::PARAM_STR);
-            $stmt->bindValue(':country', $this->country, PDO::PARAM_STR);
-
-            return $stmt->execute();
-        }
-
-        return false;
+        return $stmt->execute();
     }
 
     /**
-     * Gets the user IP address
+     * Look up where the user's IP address is
      *
-     * @return boolean  True if the IP was saved, false otherwise
-     */
-    public function getLocation()
-    {
-
-        if (empty($this->errors))
-        {
-
-            $sql = 'SELECT userinfo.lat, userinfo.lng FROM userinfo
-                    WHERE userinfo.email = (:email)';
-
-            $db = static::getDB();
-            $stmt = $db->prepare($sql);
-
-            $stmt->bindValue(':email', $this->email, PDO::PARAM_STR);
-            $stmt->execute();
-
-            $ip = $stmt->fetchColumn();
-
-            return $ip;
-        }
-
-        return false;
-    }
-
-    /**
-     * Gets the user IP address
-     *
-     * @return boolean  True if the IP was saved, false otherwise
+     * @return void
      */
     public function findLocationFromIP()
     {
+        $location = static::lookupIP($this->ip);
 
-        if (empty($this->errors))
-        {
-
-            $location = static::lookupIP($this->ip);
-
-            $this->lat = $location['lat'];
-            $this->long = $location['lng'];
-            $this->city = $location['city'];
-            $this->country = $location['country'];
-
-        }
-
-        return false;
+        $this->lat = $location['lat'];
+        $this->long = $location['lng'];
+        $this->city = $location['city'];
+        $this->country = $location['country'];
     }
 
     /**
-     * Gets the user IP address
+     * True if the IP differs from the one saved last time
      *
-     * @return boolean  True if the IP was saved, false otherwise
+     * @return boolean
      */
     public function hasIPUpdated()
     {
-        if (empty($this->errors))
-        {
+        $stmt = static::getDB()->prepare('SELECT ip FROM userinfo WHERE email = :email');
+        $stmt->bindValue(':email', $this->email, PDO::PARAM_STR);
+        $stmt->execute();
 
-            $sql = 'SELECT userinfo.ip FROM userinfo
-                    WHERE userinfo.email = :email ';
-
-            $db = static::getDB();
-            $stmt = $db->prepare($sql);
-
-            $stmt->bindValue(':email', $this->email, PDO::PARAM_STR);
-            $stmt->execute();
-
-            $result = $stmt->fetchColumn();
-
-            if ($result != $this->ip)
-            {
-                return true;
-            }
-            else
-            {
-                return false;
-            }
-        }
-
-        return false;
-    }
-
-    public function isIPAvailable()
-    {
-        {
-            if (empty($this->errors))
-            {
-
-                $sql = 'SELECT userinfo.ip FROM userinfo
-                        WHERE userinfo.email = :email ';
-
-                $db = static::getDB();
-                $stmt = $db->prepare($sql);
-
-                $stmt->bindValue(':email', $this->email, PDO::PARAM_STR);
-                $stmt->execute();
-
-                $result = $stmt->fetchColumn();
-
-                if (empty($result))
-                {
-                    return false;
-                }
-                else
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
+        return $stmt->fetchColumn() != $this->ip;
     }
 
     /**
@@ -266,7 +126,7 @@ class UserInfo extends \Core\Model
      *
      * @param string $ip
      *
-     * @return array ['lat' => ?float, 'lng' => ?float, 'city' => ?string]
+     * @return array ['lat' => ?float, 'lng' => ?float, 'city' => ?string, 'country' => ?string]
      */
     public static function lookupIP($ip)
     {
@@ -333,33 +193,27 @@ class UserInfo extends \Core\Model
         ];
     }
 
-    public function getAllLocations()
+    /**
+     * Everyone's pin for the map, except people who hide from it
+     *
+     * @return array
+     */
+    public static function getAllLocations()
     {
+        $sql = 'SELECT userinfo.lat, userinfo.lng, userinfo.city, userinfo.country,
+                       users.id AS user_id, users.name, users.avatar,
+                       users.email LIKE \'%@demo.mapchat.local\' AS is_demo
+                FROM userinfo
+                LEFT JOIN users
+                ON userinfo.email = users.email
+                WHERE userinfo.lat IS NOT NULL AND userinfo.lng IS NOT NULL
+                  AND users.share_location = 1';
 
-        if (empty($this->errors))
-        {
+        $stmt = static::getDB()->prepare($sql);
+        $stmt->execute();
 
-            $sql = 'SELECT userinfo.lat, userinfo.lng, userinfo.city, userinfo.country,
-                           users.id AS user_id, users.name
-                    FROM userinfo
-                    LEFT JOIN users
-                    ON userinfo.email = users.email
-                    WHERE userinfo.lat IS NOT NULL AND userinfo.lng IS NOT NULL
-                      AND users.share_location = 1';
-
-            $db = static::getDB();
-            $stmt = $db->prepare($sql);
-
-            $stmt->execute();
-
-            $locations = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-            return $locations;
-        }
-
-        return false;
+        return static::withAvatarSrc($stmt->fetchAll(PDO::FETCH_ASSOC), 'user_id');
     }
-
 
     /**
      * Mark the user as online now. The chat asks for messages every second, so
@@ -439,22 +293,52 @@ class UserInfo extends \Core\Model
      */
     public static function getRecentPeople()
     {
-        $sql = 'SELECT users.id, users.name, users.avatar,
+        $demo_online = static::demoOnlineSql();
+
+        $sql = 'SELECT users.id, users.name, users.avatar, users.email LIKE \'%@demo.mapchat.local\' AS is_demo,
                        IF(users.share_location, userinfo.city, NULL) AS city,
                        IF(users.share_location, userinfo.country, NULL) AS country,
-                       (userinfo.online_at > NOW() - INTERVAL :online SECOND OR ' . static::DEMO_ONLINE . ') AS is_online,
+                       (userinfo.online_at > NOW() - INTERVAL :online SECOND OR ' . $demo_online . ') AS is_online,
                        TIMESTAMPDIFF(MINUTE, userinfo.online_at, NOW()) AS minutes_ago
                 FROM userinfo
                 JOIN users
                 ON userinfo.email = users.email
-                WHERE userinfo.online_at > NOW() - INTERVAL 1 DAY OR ' . static::DEMO_ONLINE . '
+                WHERE userinfo.online_at > NOW() - INTERVAL 1 DAY OR ' . $demo_online . '
                 ORDER BY userinfo.online_at DESC';
 
         $stmt = static::getDB()->prepare($sql);
         $stmt->bindValue(':online', static::ONLINE_SECONDS, PDO::PARAM_INT);
         $stmt->execute();
 
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return static::withAvatarSrc($stmt->fetchAll(PDO::FETCH_ASSOC), 'id');
     }
 
+    /**
+     * SQL that's true for the demo people in the room now (DemoChat::presentNow)
+     *
+     * @return string
+     */
+    protected static function demoOnlineSql()
+    {
+        $emails = array_map([static::getDB(), 'quote'], DemoChat::presentNow());
+
+        return $emails ? 'users.email IN (' . implode(', ', $emails) . ')' : 'FALSE';
+    }
+
+    /**
+     * Add each person's avatar image address (see Avatar::src)
+     *
+     * @param array $people Rows with a name, an avatar, is_demo and an id
+     * @param string $id_column Which column holds the user's id
+     *
+     * @return array
+     */
+    protected static function withAvatarSrc($people, $id_column)
+    {
+        foreach ($people as &$person) {
+            $person['avatar_src'] = \App\Avatar::src($person[$id_column], $person['name'], $person['avatar'], $person['is_demo']);
+        }
+
+        return $people;
+    }
 }

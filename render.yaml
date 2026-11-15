@@ -6,7 +6,8 @@ services:
     name: mapchat
     runtime: docker
     plan: free
-    healthCheckPath: /login
+    # A static file: Apache serves it without PHP or the database
+    healthCheckPath: /health.txt
     # Point a CNAME for this name at the service's onrender.com address
     domains:
       - mapchat.swiftsolve.net

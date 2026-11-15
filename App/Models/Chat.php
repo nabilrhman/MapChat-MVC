@@ -3,15 +3,9 @@
 namespace App\Models;
 
 use PDO;
-use \App\Token;
-use \App\Mail;
-use \Core\View;
-use \App\Auth;
 
 /**
- * User model
- *
- * PHP version 7.0
+ * Chat messages: the open room and private messages
  */
 class Chat extends \Core\Model
 {
@@ -53,59 +47,22 @@ class Chat extends \Core\Model
     }
 
     /**
-     * Error messages
+     * Save the message
      *
-     * @var array
-     */
-    public $errors = [];
-
-
-    /**
-     * Class constructor
-     *
-     * @param array $data Initial property values (optional)
-     *
-     * @return void
-     */
-    public function __construct($data = [])
-    {
-        foreach ($data as $key => $value)
-        {
-            $this->$key = $value;
-        };
-
-
-    }
-
-    /**
-     * Save the user model with the current property values
-     *
-     * @return boolean  True if the user was saved, false otherwise
+     * @return boolean  True if the message was saved
      */
     public function send()
     {
-        if (empty($this->errors))
-        {
+        // Stored as typed; Twig escapes it when the chat is shown
+        $sql = 'INSERT INTO chats (email, to_email, body)
+                    VALUES (:email, :to_email, :body)';
 
-            if (!empty($this->body))
-            {
-                // Stored as typed; Twig escapes it when the chat is shown
-                $sql = 'INSERT INTO chats (email, to_email, body)
-                            VALUES (:email, :to_email, :body)';
+        $stmt = static::getDB()->prepare($sql);
+        $stmt->bindValue(':body', $this->body, PDO::PARAM_STR);
+        $stmt->bindValue(':email', $this->email, PDO::PARAM_STR);
+        $stmt->bindValue(':to_email', $this->to_email ?? null, PDO::PARAM_STR);
 
-                $db = static::getDB();
-                $stmt = $db->prepare($sql);
-
-                $stmt->bindValue(':body', $this->body, PDO::PARAM_STR);
-                $stmt->bindValue(':email', $this->email, PDO::PARAM_STR);
-                $stmt->bindValue(':to_email', $this->to_email ?? null, PDO::PARAM_STR);
-
-                $stmt->execute();
-            }
-
-        }
-
-        return false;
+        return $stmt->execute();
     }
 
     /**
@@ -124,7 +81,7 @@ class Chat extends \Core\Model
         $stmt->bindValue(':viewer', $viewer, PDO::PARAM_STR);
         $stmt->execute();
 
-        return $stmt->fetchAll();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     /**
@@ -144,7 +101,7 @@ class Chat extends \Core\Model
         $stmt->bindValue(':after_id', $afterId, PDO::PARAM_INT);
         $stmt->execute();
 
-        return $stmt->fetchAll();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     /**
@@ -156,6 +113,7 @@ class Chat extends \Core\Model
     protected static function visibleSql()
     {
         return 'SELECT chats.id, chats.body, chats.timestamp, users.id AS user_id, users.name, users.email, users.avatar,
+                       users.email LIKE \'%@demo.mapchat.local\' AS is_demo,
                        IF(users.share_location, userinfo.city, NULL) AS city,
                        IF(users.share_location, userinfo.country, NULL) AS country,
                        IF(users.share_location, userinfo.lng, NULL) AS lng,
@@ -170,5 +128,4 @@ class Chat extends \Core\Model
                 ON users.email = userinfo.email
                 WHERE (chats.to_email IS NULL OR chats.to_email = :viewer OR chats.email = :viewer)';
     }
-
 }

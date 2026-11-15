@@ -3,16 +3,13 @@
 namespace App\Models;
 
 use PDO;
-use \App\Token;
+use App\Token;
 
 /**
  * Remembered login model
- *
- * PHP version 7.0
  */
 class RememberedLogin extends \Core\Model
 {
-
     /**
      * Find a remembered login model by the token
      *
@@ -32,7 +29,7 @@ class RememberedLogin extends \Core\Model
         $stmt = $db->prepare($sql);
         $stmt->bindValue(':token_hash', $token_hash, PDO::PARAM_STR);
 
-        $stmt->setFetchMode(PDO::FETCH_CLASS, get_called_class());
+        $stmt->setFetchMode(PDO::FETCH_CLASS, static::class);
 
         $stmt->execute();
 

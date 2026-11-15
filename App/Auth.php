@@ -7,8 +7,6 @@ use App\Models\RememberedLogin;
 
 /**
  * Authentication
- *
- * PHP version 7.0
  */
 class Auth
 {
@@ -24,21 +22,10 @@ class Auth
     {
         session_regenerate_id(true);
 
-        if($user != false)
-        {
-            $_SESSION['user_id'] = $user->id;
-            $_SESSION['email'] = $user->email;
-        }
+        $_SESSION['user_id'] = $user->id;
 
-        if ($remember_me)
-        {
-
-            if ($user->rememberLogin())
-            {
-
-                static::setRememberCookie($user->remember_token, $user->expiry_timestamp);
-
-            }
+        if ($remember_me && $user->rememberLogin()) {
+            static::setRememberCookie($user->remember_token, $user->expiry_timestamp);
         }
     }
 
@@ -53,8 +40,7 @@ class Auth
         $_SESSION = [];
 
         // Delete the session cookie
-        if (ini_get('session.use_cookies'))
-        {
+        if (ini_get('session.use_cookies')) {
             $params = session_get_cookie_params();
 
             setcookie(
@@ -128,17 +114,17 @@ class Auth
      */
     public static function getUser()
     {
-        if (isset($_SESSION['user_id']))
-        {
+        // Asked for many times per request; each lookup is a database round trip
+        static $user = false;
 
-            return User::findByID($_SESSION['user_id']);
-
+        // Look again if someone logged in or out since
+        if ($user === false || $user?->id != ($_SESSION['user_id'] ?? null)) {
+            $user = isset($_SESSION['user_id'])
+                ? User::findByID($_SESSION['user_id'])
+                : static::loginFromRememberCookie();
         }
-        else
-        {
 
-            return static::loginFromRememberCookie();
-        }
+        return $user;
     }
 
     /**
@@ -148,10 +134,7 @@ class Auth
      */
     public static function getEmail()
     {
-        if (static::getUser())
-            return static::getUser()->email;
-        else
-            return null;
+        return static::getUser()?->email;
     }
 
     /**
@@ -163,15 +146,10 @@ class Auth
     {
         $cookie = $_COOKIE['remember_me'] ?? false;
 
-        if ($cookie)
-        {
-
+        if ($cookie) {
             $remembered_login = RememberedLogin::findByToken($cookie);
 
-            //if ($remembered_login) {
-            if ($remembered_login && !$remembered_login->hasExpired())
-            {
-
+            if ($remembered_login && !$remembered_login->hasExpired()) {
                 $user = $remembered_login->getUser();
 
                 static::login($user, false);
@@ -179,6 +157,8 @@ class Auth
                 return $user;
             }
         }
+
+        return null;
     }
 
     /**
@@ -190,14 +170,10 @@ class Auth
     {
         $cookie = $_COOKIE['remember_me'] ?? false;
 
-        if ($cookie)
-        {
-
+        if ($cookie) {
             $remembered_login = RememberedLogin::findByToken($cookie);
 
-            if ($remembered_login)
-            {
-
+            if ($remembered_login) {
                 $remembered_login->delete();
             }
 

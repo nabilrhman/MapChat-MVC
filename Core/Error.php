@@ -2,14 +2,13 @@
 
 namespace Core;
 
+use App\Config;
+
 /**
  * Error and exception handler
- *
- * PHP version 7.0
  */
 class Error
 {
-
     /**
      * Error handler. Convert all errors to Exceptions by throwing an ErrorException.
      *
@@ -33,7 +32,7 @@ class Error
     /**
      * Exception handler.
      *
-     * @param Exception $exception  The exception
+     * @param \Throwable $exception  The exception
      *
      * @return void
      */
@@ -46,7 +45,7 @@ class Error
         }
         http_response_code($code);
 
-        if (\App\Config::flag('SHOW_ERRORS')) {
+        if (Config::flag('SHOW_ERRORS')) {
             echo "<h1>Fatal error</h1>";
             echo "<p>Uncaught exception: '" . get_class($exception) . "'</p>";
             echo "<p>Message: '" . htmlspecialchars($exception->getMessage()) . "'</p>";
