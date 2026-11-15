@@ -9,7 +9,7 @@ An open chat room on a map, running on an MVC framework<br>
 I wrote from scratch in PHP.
 
 [![PHP](https://img.shields.io/badge/PHP-8.4-512da8?logo=php&logoColor=white&labelColor=1e0839)](composer.json)
-[![MySQL](https://img.shields.io/badge/MySQL-TiDB-512da8?logo=mysql&logoColor=white&labelColor=1e0839)](init.sql)
+[![MySQL](https://img.shields.io/badge/MySQL-8.4-512da8?logo=mysql&logoColor=white&labelColor=1e0839)](init.sql)
 [![Docker](https://img.shields.io/badge/Docker-ready-512da8?logo=docker&logoColor=white&labelColor=1e0839)](Dockerfile)
 [![License](https://img.shields.io/badge/license-MIT-512da8?labelColor=1e0839)](LICENSE)
 
