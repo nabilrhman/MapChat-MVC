@@ -481,10 +481,7 @@ function chipMarkup(code: string, left: number, lineTop: number): string {
 }
 
 function iconMarkup(name: keyof typeof ICONS, left: number, top: number): string {
-  return [
-    `<g transform="translate(${round(left)} ${round(top)})" fill="none" stroke="${COLOR.textSecondary}"`,
-    ` stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${ICONS[name].join('')}</g>`,
-  ].join('')
+  return `<path transform="translate(${round(left)} ${round(top)})" fill="${COLOR.textSecondary}" d="${ICONS[name]}"/>`
 }
 
 async function cardMarkup(card: Card, box: Box): Promise<string> {

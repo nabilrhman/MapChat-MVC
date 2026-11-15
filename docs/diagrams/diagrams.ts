@@ -19,7 +19,7 @@ export const DIAGRAMS: Diagram[] = [
         cards: [
           {
             id: 'index',
-            icon: 'file-code',
+            icon: 'description',
             column: 0,
             title: 'public/index.php',
             isCodeTitle: true,
@@ -27,7 +27,7 @@ export const DIAGRAMS: Diagram[] = [
           },
           {
             id: 'router',
-            icon: 'signpost',
+            icon: 'alt_route',
             column: 1,
             title: 'Core\\Router',
             isCodeTitle: true,
@@ -35,7 +35,7 @@ export const DIAGRAMS: Diagram[] = [
           },
           {
             id: 'controller',
-            icon: 'sliders-horizontal',
+            icon: 'settings',
             column: 2,
             title: 'Core\\Controller',
             isCodeTitle: true,
@@ -50,14 +50,14 @@ export const DIAGRAMS: Diagram[] = [
         cards: [
           {
             id: 'browser',
-            icon: 'monitor',
+            icon: 'computer',
             column: 0,
             title: 'The browser',
             body: 'Shows the page, then asks for new messages every second, each a new request at the top.',
           },
           {
             id: 'view',
-            icon: 'layout-template',
+            icon: 'web',
             column: 1,
             title: 'Core\\View',
             isCodeTitle: true,
@@ -65,7 +65,7 @@ export const DIAGRAMS: Diagram[] = [
           },
           {
             id: 'model',
-            icon: 'database',
+            icon: 'storage',
             column: 2,
             title: 'Core\\Model',
             isCodeTitle: true,

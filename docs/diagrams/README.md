@@ -21,7 +21,7 @@ against the code, as the README around it is.
 - A 168px label column on the left: the section title in Montserrat 700, 17px,
   `primary` (`#512da8`), and a one-sentence summary under it.
 - White cards (`surface-container-lowest`), square, 20px padding, 32px apart.
-  Inside: a 24px Lucide line icon, the title, then two or three short lines.
+  Inside: a 24px Material icon, filled, the title, then two or three short lines.
   A code name as a title is a monospace chip on `surface-container-high`.
 - Arrows run only between neighbouring cards, dashed in `primary`. They and
   the section titles are the only colour.
@@ -32,4 +32,5 @@ against the code, as the README around it is.
 - Copy is sentences with full stops, no em dashes, no typed arrows.
 
 Montserrat is under the SIL Open Font License (`LICENSE-montserrat.txt`), and
-the icons are Lucide's, under the ISC license (`LICENSE-lucide.txt`).
+the icons are Material Icons, as on the site, under the Apache 2.0 license
+(`LICENSE-material-icons.txt`).
