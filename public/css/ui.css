@@ -358,10 +358,32 @@ label.error
     }
 }
 
-/* Toast colours by message type: a coloured stripe on the left */
-.toast--success { border-left: 4px solid #66bb6a; }
-.toast--info    { border-left: 4px solid #9575cd; }
-.toast--warning { border-left: 4px solid #ffa726; }
+/* Toasts look like the notices on the log-in pages: tinted by type, with a
+   coloured stripe and a matching icon */
+#toast-container .toast
+{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-left: 4px solid #512da8;
+    background-color: #ede7f6;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    color: #311b92;
+    font-weight: 500;
+}
+
+.toast__icon
+{
+    flex-shrink: 0;
+    font-size: 20px;
+    color: #512da8;
+}
+
+#toast-container .toast--success { border-left-color: #2e7d32; background-color: #e8f5e9; color: #1b5e20; }
+#toast-container .toast--success .toast__icon { color: #2e7d32; }
+
+#toast-container .toast--warning { border-left-color: #ef6c00; background-color: #fff3e0; color: #8a3c00; }
+#toast-container .toast--warning .toast__icon { color: #ef6c00; }
 
 /* Compact toasts: short line, wraps if needed, never wider than 340px */
 #toast-container .toast

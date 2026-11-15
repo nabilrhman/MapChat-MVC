@@ -536,7 +536,7 @@ $(document).ready(function () {
             })
             .catch(function (error) {
                 var message = errorMessage(error, 'Your message could not be sent.');
-                M.toast({html: $('<div>').text(message).html()});
+                showToast(message, 'warning');
             })
             .finally(function () {
                 sending = false;

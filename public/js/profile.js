@@ -25,11 +25,11 @@ $(document).ready(function () {
         postForm('/profile/update-location-sharing', {share: checkbox.checked ? 1 : 0})
             .then(function () {
                 showPlace(checkbox.checked);
-                M.toast({html: checkbox.checked ? 'You are shown on the map' : 'You are hidden from the map'});
+                showToast(checkbox.checked ? 'You are shown on the map' : 'You are hidden from the map', 'info');
             })
             .catch(function () {
                 checkbox.checked = !checkbox.checked;
-                M.toast({html: 'Could not save. Try again.'});
+                showToast('Could not save. Try again.', 'warning');
             });
     });
 
@@ -69,11 +69,11 @@ $(document).ready(function () {
                 return postForm('/profile/update-avatar', {avatar: url}).then(function () {
                     showPhoto(url);
                     $('#remove-photo').prop('hidden', false);
-                    M.toast({html: 'Photo updated'});
+                    showToast('Photo updated');
                 });
             })
             .catch(function () {
-                M.toast({html: 'Your photo could not be saved. Try again.'});
+                showToast('Your photo could not be saved. Try again.', 'warning');
             })
             .finally(function () {
                 $('#photo-frame').removeClass('is-uploading');
@@ -87,10 +87,10 @@ $(document).ready(function () {
             .then(function () {
                 showPhoto(avatar.data('default-src'));
                 $('#remove-photo').prop('hidden', true);
-                M.toast({html: 'Photo removed'});
+                showToast('Photo removed');
             })
             .catch(function () {
-                M.toast({html: 'Your photo could not be removed. Try again.'});
+                showToast('Your photo could not be removed. Try again.', 'warning');
             });
     });
 
