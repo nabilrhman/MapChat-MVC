@@ -21,8 +21,12 @@ class DemoChat extends \Core\Model
     /** The demo day starts at midnight here unless DEMO_TIMEZONE says otherwise */
     const TIMEZONE = 'America/Toronto';
 
-    /** Minutes between messages within a conversation */
-    const REPLY_MINUTES = [2, 6];
+    /**
+     * How fast the demo people read and type, in characters a minute. Slower
+     * than real people on purpose, so the room stays relaxed
+     */
+    const READ_SPEED = 60;
+    const TYPE_SPEED = 30;
 
     /** A demo person shows as online from this many minutes before they speak... */
     const ARRIVE_MINUTES = 5;
@@ -159,9 +163,11 @@ class DemoChat extends \Core\Model
         foreach ($scenes as $scene) {
             $at = 0;
             $lines = [];
-            foreach ($scene as $line) {
+            foreach ($scene as $i => $line) {
+                if ($i > 0) {
+                    $at += static::replyMinutes($scene[$i - 1], $line);
+                }
                 $lines[] = $at;
-                $at += mt_rand(...static::REPLY_MINUTES);
             }
             $offsets[] = $lines;
         }
@@ -258,6 +264,26 @@ class DemoChat extends \Core\Model
         } catch (\Exception $e) {
             return new \DateTimeZone(static::TIMEZONE);
         }
+    }
+
+    /**
+     * How long after one line the next one comes: time to read it (unless
+     * it's the same person adding a line), a moment to think, then typing
+     *
+     * @param array $previous [speaker, body]
+     * @param array $line [speaker, body]
+     *
+     * @return float Minutes
+     */
+    protected static function replyMinutes($previous, $line)
+    {
+        $typing = mb_strlen($line[1]) / static::TYPE_SPEED;
+
+        if ($previous[0] === $line[0]) {
+            return $typing + 0.2;
+        }
+
+        return mb_strlen($previous[1]) / static::READ_SPEED + mt_rand(50, 200) / 100 + $typing;
     }
 
     /**
