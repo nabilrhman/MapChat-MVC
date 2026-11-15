@@ -47,32 +47,6 @@ textarea
     overflow-x: clip;
 }
 
-.about-heading
-{
-    margin-bottom: 30px !important;
-}
-
-/* About page: the intro is one narrow column, centred like every .row */
-.about-intro
-{
-    max-width: 720px;
-}
-
-.about-intro__logo
-{
-    display: block;
-    width: 100%;
-    max-width: 360px;
-    margin: 32px auto 24px;
-}
-
-.about-intro__text
-{
-    font-size: 15px;
-    line-height: 1.7;
-    text-align: center;
-}
-
 /* Explicit page colours, so a dark browser theme can't turn the page black
    behind the dark text. Set on body only: the browser then paints it across
    the whole window, and pages with their own body background (the login
