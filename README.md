@@ -13,9 +13,9 @@ after a quiet spell takes about a minute to wake up)
 
 ![The chat room with the map of who is chatting from where](docs/images/mapchat-app.png)
 
-| Log in, or try it as a guest | About |
+| Log in, or try it as a guest | Profile |
 |---|---|
-| ![Login page](docs/images/mapchat-login.jpg) | ![About page](docs/images/mapchat-about.png) |
+| ![Login page](docs/images/mapchat-login.jpg) | ![Profile page](docs/images/mapchat-profile.png) |
 
 ## Features
 
