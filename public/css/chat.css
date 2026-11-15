@@ -548,12 +548,13 @@ body
 }
 
 /* Same look as the unread count on the tabs */
+/* Lighter than a tab's unread badge: this only informs, the badge wants attention */
 .people__count
 {
     padding: 0 7px;
     border-radius: 10px;
-    background-color: #d1c4e9;
-    color: #311b92;
+    background-color: var(--md-secondary-container);
+    color: var(--md-primary);
     font-size: 11px;
     line-height: 18px;
     letter-spacing: 0;
@@ -752,10 +753,10 @@ body
     transition: background-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
 }
 
+/* Only a faint tint: over the map a stronger one, or a deeper shadow, turns it grey */
 .people-toggle:hover
 {
-    background-color: color-mix(in srgb, var(--md-primary) var(--md-hover), var(--md-surface-container-lowest));
-    box-shadow: var(--md-elevation-3);
+    background-color: color-mix(in srgb, var(--md-primary) 4%, var(--md-surface-container-lowest));
 }
 
 .people-toggle:focus-visible
