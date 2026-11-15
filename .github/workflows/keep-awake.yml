@@ -1,0 +1,14 @@
+# Free Render services sleep after 15 minutes without visitors.
+# Ping the site every 10 minutes so it stays awake.
+name: Keep awake
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - run: curl -fsS --retry 3 --max-time 90 https://mapchat.swiftsolve.net/health.txt

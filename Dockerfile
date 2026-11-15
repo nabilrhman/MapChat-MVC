@@ -22,5 +22,6 @@ RUN chown -R www-data:www-data logs
 
 EXPOSE 8080
 
-# Bring an older database up to date, then serve
-CMD ["sh", "-c", "php database/migrate.php; exec apache2-foreground"]
+# Bring an older database up to date in the background, so Apache starts
+# serving right away after the free plan wakes the service
+CMD ["sh", "-c", "php database/migrate.php & exec apache2-foreground"]
