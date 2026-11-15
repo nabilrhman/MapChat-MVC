@@ -2,79 +2,45 @@
 SET NAMES utf8mb4;
 
 --
--- Table structure for table users
+-- Tables. Written as plain CREATE TABLE statements (no later ALTERs) so the
+-- same file works on MySQL and on TiDB.
 --
 
 CREATE TABLE users (
-  `id`            int(11)      NOT NULL,
-  `name`          varchar(50)  NOT NULL,
-  `email`         varchar(255) NOT NULL,
-  `password_hash` varchar(255) NOT NULL
+  `id`                        INT          NOT NULL AUTO_INCREMENT,
+  `name`                      VARCHAR(50)  NOT NULL,
+  `email`                     VARCHAR(255) NOT NULL,
+  `password_hash`             VARCHAR(255) NOT NULL,
+  `password_reset_hash`       VARCHAR(64)  NULL DEFAULT NULL,
+  `password_reset_expires_at` DATETIME     NULL DEFAULT NULL,
+  `activation_hash`           VARCHAR(64)  NULL DEFAULT NULL,
+  `is_active`                 BOOLEAN      NOT NULL DEFAULT FALSE,
+  `avatar`                    VARCHAR(2083),
+  -- Guest accounts are deleted 24 hours after created_at
+  `is_guest`                  BOOLEAN      NOT NULL DEFAULT FALSE,
+  -- "Show me on the map" in the profile
+  `share_location`            BOOLEAN      NOT NULL DEFAULT TRUE,
+  `created_at`                TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `email` (`email`),
+  UNIQUE KEY `password_reset_hash` (`password_reset_hash`),
+  UNIQUE KEY `activation_hash` (`activation_hash`)
 )
   ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4;
 
---
--- Indexes for table users
---
-ALTER TABLE users
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `email` (`email`);
-
---
--- AUTO_INCREMENT for table users
---
-ALTER TABLE users
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- Table structure for table `remembered_logins`
---
-
+-- "Remember me" logins
 CREATE TABLE remembered_logins (
-  `token_hash` varchar(64) NOT NULL,
-  `user_id`    int(11)     NOT NULL,
-  `expires_at` datetime    NOT NULL
+  `token_hash` VARCHAR(64) NOT NULL,
+  `user_id`    INT         NOT NULL,
+  `expires_at` DATETIME    NOT NULL,
+  PRIMARY KEY (`token_hash`),
+  KEY `user_id` (`user_id`)
 )
   ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4;
 
---
--- Indexes for table `remembered_logins`
---
-ALTER TABLE `remembered_logins`
-  ADD PRIMARY KEY (`token_hash`),
-  ADD KEY `user_id` (`user_id`);
-
---
--- Additional columns for password reset
---
-
-ALTER TABLE `users`
-  ADD `password_reset_hash` VARCHAR(64) NULL DEFAULT NULL
-  AFTER `password_hash`,
-  ADD `password_reset_expires_at` DATETIME NULL DEFAULT NULL
-  AFTER `password_reset_hash`,
-  ADD UNIQUE (`password_reset_hash`);
-
---
--- Additional columns for account activation
---
-
-ALTER TABLE `users`
-  ADD `activation_hash` VARCHAR(64) NULL DEFAULT NULL
-  AFTER `password_reset_expires_at`,
-  ADD `is_active` BOOLEAN NOT NULL DEFAULT FALSE
-  AFTER `activation_hash`,
-  ADD UNIQUE (`activation_hash`);
-
-
-ALTER TABLE users
-  ADD avatar VARCHAR(2083);
-
---
 -- PHP sessions (see Core/DatabaseSessionHandler.php)
---
 CREATE TABLE sessions (
   `id`         VARCHAR(128) NOT NULL,
   `data`       MEDIUMBLOB   NOT NULL,
@@ -85,48 +51,39 @@ CREATE TABLE sessions (
   ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4;
 
---
--- Guest accounts and the "show me on the map" setting
---
-ALTER TABLE users
-  ADD `is_guest`       BOOLEAN NOT NULL DEFAULT FALSE,
-  ADD `share_location` BOOLEAN NOT NULL DEFAULT TRUE,
-  ADD `created_at`     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
-
 CREATE TABLE chats (
-  id        INT          NOT NULL AUTO_INCREMENT,
-  email     vARCHAR(255) NOT NULL,
-  body      MEDIUMTEXT,
-  timestamp TIMESTAMP    NOT NULL default CURRENT_TIMESTAMP,
-  PRIMARY KEY (id),
-  KEY fk_m_email (email),
-  CONSTRAINT fk_m_email FOREIGN KEY (email) REFERENCES users (email)
+  `id`        INT          NOT NULL AUTO_INCREMENT,
+  `email`     VARCHAR(255) NOT NULL,
+  `body`      MEDIUMTEXT,
+  `timestamp` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `fk_m_email` (`email`),
+  CONSTRAINT `fk_m_email` FOREIGN KEY (`email`) REFERENCES users (`email`)
     ON DELETE CASCADE
     ON UPDATE CASCADE
 )
   ENGINE = InnoDB
-  AUTO_INCREMENT = 1
   DEFAULT CHARSET = utf8mb4
   -- On TiDB, keep chat ids strictly increasing (the chat polls for id > last
   -- seen id). MySQL ignores this comment.
   /*T![auto_id_cache] AUTO_ID_CACHE = 1 */;
 
-CREATE TABLE `userinfo` (
-  `id`        INT          NOT NULL AUTO_INCREMENT,
-  `email`     VARCHAR(255) NOT NULL UNIQUE,
-  `ip`        VARCHAR(50)  NOT NULL,
+-- Where each person is chatting from
+CREATE TABLE userinfo (
+  `id`        INT           NOT NULL AUTO_INCREMENT,
+  `email`     VARCHAR(255)  NOT NULL,
+  `ip`        VARCHAR(50)   NOT NULL,
   `lat`       DECIMAL(10, 8),
   `lng`       DECIMAL(11, 8),
-  `city`      varchar(255),
-  `online_at` TIMESTAMP,
-  PRIMARY KEY (id),
-  KEY fk_i_email (email),
-  CONSTRAINT fk_i_email FOREIGN KEY (email) REFERENCES users (email)
+  `city`      VARCHAR(255),
+  `online_at` TIMESTAMP     NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `email` (`email`),
+  CONSTRAINT `fk_i_email` FOREIGN KEY (`email`) REFERENCES users (`email`)
     ON DELETE CASCADE
     ON UPDATE CASCADE
 )
   ENGINE = InnoDB
-  AUTO_INCREMENT = 1
   DEFAULT CHARSET = utf8mb4;
 
 -- A built-in account that posts the welcome messages. It has no usable
