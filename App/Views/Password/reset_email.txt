@@ -7,5 +7,6 @@ Someone asked to reset the password for your MapChat account. Open this link to 
 
 Didn't ask for this? Ignore this email and your password stays the same.
 
-MapChat, an open chat room on a map
+MapChat
+An open chat room on a map
 {{ app_url }}

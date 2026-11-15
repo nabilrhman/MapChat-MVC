@@ -184,3 +184,28 @@ body
         padding: 8px 20px 0;
     }
 }
+
+/* A one-time message above the card, as wide as the card */
+.auth-notice
+{
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 400px;
+    margin-bottom: 12px;
+    padding: 12px 16px;
+    border-left: 4px solid #9575cd;
+    background-color: #f5f5f5;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    color: #333;
+    font-size: 14px;
+    line-height: 1.4;
+    animation: auth-notice-in 0.3s ease-out;
+}
+
+.auth-notice--success { border-left-color: #66bb6a; }
+.auth-notice--warning { border-left-color: #ffa726; }
+
+@keyframes auth-notice-in
+{
+    from { opacity: 0; transform: translateY(-6px); }
+}

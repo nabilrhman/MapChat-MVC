@@ -38,8 +38,16 @@ class Signup extends \Core\Controller
 
         if ($user->save()) {
             if (Config::mailEnabled()) {
-                $user->sendActivationEmail();
-                $this->redirect('/signup/success');
+                if ($user->sendActivationEmail()) {
+                    $this->redirect('/signup/success');
+                }
+
+                // Without the email the account could never be activated,
+                // so remove it and let them try again
+                $user->delete();
+                $user->errors[] = "Email: We couldn't send the activation email, please try again";
+                View::renderTemplate('Signup/new.html', ['user' => $user]);
+                return;
             }
 
             $this->redirect('/signup/activated');

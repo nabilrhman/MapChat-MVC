@@ -2,6 +2,7 @@
 
 namespace App;
 
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 use Symfony\Component\Mailer\Mailer;
 use Symfony\Component\Mailer\Transport;
 use Symfony\Component\Mime\Email;
@@ -17,19 +18,20 @@ use Symfony\Component\Mime\Email;
 class Mail
 {
     /**
-     * Send a message. Does nothing when email is not configured.
+     * Send a message. Does nothing when email is not configured. A failed
+     * send is logged instead of thrown, so the page still loads.
      *
      * @param string $to Recipient
      * @param string $subject Subject
      * @param string $text Text-only content of the message
      * @param string $html HTML content of the message
      *
-     * @return void
+     * @return boolean True if the message was handed to the mail service
      */
     public static function send($to, $subject, $text, $html)
     {
         if (!Config::mailEnabled()) {
-            return;
+            return false;
         }
 
         $mailer = new Mailer(Transport::fromDsn(Config::get('MAILER_DSN')));
@@ -41,6 +43,13 @@ class Mail
             ->text($text)
             ->html($html);
 
-        $mailer->send($email);
+        try {
+            $mailer->send($email);
+        } catch (TransportExceptionInterface $e) {
+            error_log('Mail to ' . $to . ' failed: ' . $e->getMessage());
+            return false;
+        }
+
+        return true;
     }
 }

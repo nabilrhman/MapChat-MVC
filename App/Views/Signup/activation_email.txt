@@ -7,5 +7,6 @@ Thanks for signing up. Open this link to activate your account and start chattin
 
 Didn't sign up for MapChat? You can ignore this email.
 
-MapChat, an open chat room on a map
+MapChat
+An open chat room on a map
 {{ app_url }}
