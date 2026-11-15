@@ -127,6 +127,32 @@ class ChatTest extends TestCase
         $this->assertSame(['new', 'for ann'], $this->bodies(Chat::getAfter(self::ANN, $seen)));
     }
 
+    public function testBeforeReturnsOnlyOlderVisibleMessagesOldestFirst()
+    {
+        $this->send(self::ANN, 'old');
+        $this->send(self::BOB, 'for cat only', self::CAT);
+        $this->send(self::CAT, 'for ann', self::ANN);
+        $this->send(self::CAT, 'from cat to bob', self::BOB);
+        $first = $this->send(self::ANN, 'first shown');
+        $this->send(self::BOB, 'newer');
+
+        $this->assertSame(['old', 'for ann'], $this->bodies(Chat::getBefore(self::ANN, $first)));
+    }
+
+    public function testBeforeKeepsOnlyThePageJustBefore()
+    {
+        $oldest = $this->send(self::ANN, 'too old');
+        $values = implode(',', array_fill(0, Chat::HISTORY, "('" . self::BOB . "', 'm')"));
+        $this->db->exec("INSERT INTO chats (email, body) VALUES $values");
+        $first = $this->send(self::ANN, 'first shown');
+
+        $ids = array_map('intval', array_column(Chat::getBefore(self::ANN, $first), 'id'));
+
+        $this->assertCount(Chat::HISTORY, $ids);
+        $this->assertNotContains($oldest, $ids);
+        $this->assertSame($first - 1, end($ids));
+    }
+
     public function testHiddenLocationIsNotSent()
     {
         $this->db->prepare('UPDATE users SET share_location = FALSE WHERE email = ?')->execute([self::ANN]);

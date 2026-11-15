@@ -18,7 +18,7 @@ class Chat extends \Core\Model
     /** Messages a guest can send per minute */
     const GUEST_PER_MINUTE = 10;
 
-    /** Most messages sent to the page at once, when it opens or checks for new ones */
+    /** Most messages sent to the page at once: when it opens, checks for new ones or asks for older ones */
     const HISTORY = 100;
 
     /** The welcome account; nobody can message it privately */
@@ -114,6 +114,27 @@ class Chat extends \Core\Model
         $stmt->execute();
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * The page of messages the viewer may see just before the given id,
+     * oldest first
+     *
+     * @param string $viewer The viewer's email
+     * @param int $beforeId
+     *
+     * @return array
+     */
+    public static function getBefore($viewer, $beforeId)
+    {
+        $sql = static::visibleSql() . ' AND chats.id < :before_id ORDER BY chats.id DESC LIMIT ' . static::HISTORY;
+
+        $stmt = static::getDB()->prepare($sql);
+        $stmt->bindValue(':viewer', $viewer, PDO::PARAM_STR);
+        $stmt->bindValue(':before_id', $beforeId, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return array_reverse($stmt->fetchAll(PDO::FETCH_ASSOC));
     }
 
     /**
