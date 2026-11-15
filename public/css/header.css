@@ -53,6 +53,11 @@
     display: flex;
     flex-direction: row-reverse; /* links are written right-to-left in the markup */
     align-items: center;
+    /* materialize.css also defines .nav-container (width 70%, max-width,
+       margin auto), which pulls the menu away from the right edge */
+    width: auto;
+    max-width: none;
+    margin: 0;
 }
 
 .nav-container a
