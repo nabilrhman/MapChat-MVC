@@ -11,7 +11,7 @@
 .guest-banner
 {
     display: grid;
-    grid-template-columns: 22px minmax(0, 1fr) auto;
+    grid-template-columns: 18px minmax(0, 1fr) auto;
     column-gap: 8px;
     row-gap: 2px;
     align-items: center;
@@ -26,7 +26,7 @@
     grid-column: 1;
     grid-row: 1;
     color: #512da8;
-    font-size: 22px;
+    font-size: 18px; /* sized to the 14px title, as About's 22px icons are to theirs */
 }
 
 .guest-banner__title
