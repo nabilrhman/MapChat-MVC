@@ -1,4 +1,17 @@
+/* One font everywhere. materialize.css gives fields and buttons the system
+   font, which beats a plain * rule; make them use the page's font instead */
+body
+{
+    font-family: 'Montserrat', sans-serif;
+}
 
+button,
+input,
+select,
+textarea
+{
+    font-family: inherit;
+}
 
 .alert {
 
@@ -46,17 +59,16 @@
 }
 
 
+/* Page content straight on the page, no framed box; centred by materialize's
+   .container width */
 #container-main {
     position: relative;
-    margin-right: 20px;
-    margin-bottom: 20px;
-    margin-left: 20px;
-    overflow-x: hidden;
-    overflow-y: auto;
-    box-shadow: 0px 0px 5px #888888;
-    padding: 10px 10px 40px 10px;
     top: 96.5px;
-    margin-bottom: 140px; /* clear the fixed footer */
+    margin: 0 auto 140px; /* bottom: clear the fixed footer */
+    padding: 10px 16px 40px;
+    /* clip, not hidden: hidden would make this its own scroll box and stop
+       sticky things inside (the profile save bar) from sticking */
+    overflow-x: clip;
 }
 
 /* Paste this css to your style sheet file or under head tag */

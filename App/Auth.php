@@ -128,49 +128,6 @@ class Auth
     }
 
     /**
-     * Get the logged-in user's email
-     *
-     * @return mixed The user email or null if not logged in
-     */
-    public static function getLastChatId()
-    {
-        if (isset($_SESSION['last_chat_id']))
-            return $_SESSION['last_chat_id'];
-        else
-            return null;
-    }
-
-    /**
-     * Set the logged-in user's email
-     *
-     * @return void
-     */
-    public static function setLastChatId($id)
-    {
-        $_SESSION['last_chat_id'] = $id;
-    }
-
-
-    /**
-     * Check if session has the last chat id
-     *
-     * @return true if session has the last chat id, false if not
-     */
-    public static function hasLastChatId()
-    {
-        if (isset($_SESSION['last_chat_id']))
-        {
-            return true;
-        }
-        else
-        {
-            return false;
-        }
-
-    }
-
-
-    /**
      * Login the user from a remembered login cookie
      *
      * @return mixed The user model if login cookie found; null otherwise

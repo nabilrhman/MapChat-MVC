@@ -1,205 +1,85 @@
-html {
-
-}
-
 *
 {
     font-family: 'Montserrat', sans-serif;
 }
 
-
-body {
-    display: flex;
+body
+{
     min-height: 100vh;
-    flex-direction: column;
-    position: relative;
-    background: url("../res/bg.png") no-repeat center center fixed;
-    -webkit-background-size: cover;
-    -moz-background-size: cover;
-    -o-background-size: cover;
+    margin: 0;
+    /* A 4K street map (OpenStreetMap data), so it stays sharp on large screens */
+    background: #1e0839 url("../res/bg-4k.jpg") no-repeat center center fixed;
+    background-image: image-set(url("../res/bg-4k.webp") type("image/webp"), url("../res/bg-4k.jpg") type("image/jpeg"));
     background-size: cover;
-    overflow-y: auto;
-
 }
 
-/* Normal page flow with room above the logo and below the footer, so the
-   page scrolls with even space at both ends */
-main {
-    flex: 1 0 auto;
-    width: 100%;
-    margin: 0;
+/* Logo, heading, card and footer in one centred column that scrolls if it
+   has to, with even space at both ends */
+main
+{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-sizing: border-box;
+    min-height: 100vh;
     padding: 48px 16px 32px;
 }
 
-#divLogo {
-    /* Vector logo, so it stays sharp at any size */
-    background: url("../res/logo-mapchat-white.svg") no-repeat center / contain;
-    width: 290px;
-    height: 89px;
-    cursor: pointer;
-
-}
-
-white-text {
-    color: white;
-}
-
-
-.input-field input[type=date]:focus + label,
-.input-field input[type=text]:focus + label,
-.input-field input[type=email]:focus + label,
-.input-field input[type=password]:focus + label {
-    color: #512da8;
-}
-
-.input-field input[type=date]:focus,
-.input-field input[type=text]:focus,
-.input-field input[type=email]:focus,
-.input-field input[type=password]:focus {
-    border-bottom: 2px solid #512da8;
-    border-bottom: 2px solid #512da8;
-    box-shadow: none;
-}
-
-#logo {
-    cursor: pointer;
-}
-
-#logo:hover {
-    transform: scale(1.1);
-}
-
-a {
-    color: #ffc107;
-}
-
-
-
-.form-container {
-    display: inline-block; padding: 32px 48px 0px 48px; border: 1px solid #EEE; border-top: 4px solid #ffc107;
-}
-
-
-
-/* Same content as the in-app footer, on one centred line under the card */
-.footer-login
+/* Logo, title and card, centred between the top of the page and the footer */
+.auth-center
 {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     width: 100%;
-    margin-top: 30px;
-    color: rgba(255, 255, 255, 0.85);
-    font-size: 13px;
+    margin: auto 0;
+}
+
+.login-logo
+{
+    /* Vector logo, so it stays sharp at any size */
+    display: block;
+    width: 290px;
+    max-width: 80%;
+    height: 89px;
+    background: url("../res/logo-mapchat-white.svg") no-repeat center / contain;
+}
+
+/* Page title above the card */
+.auth-title
+{
+    margin: 24px 0 24px;
+    color: #fff;
+    font-size: 24px;
+    font-weight: 600;
+    line-height: 1.3;
     text-align: center;
 }
 
-button #login
+/* The white card holding the form, with the yellow line on top */
+.auth-card
 {
-    font-weight: 900;
-   
-}
-
-.form-container-custom
-{
-    width: 30%;
-    min-width: 390px;
-}
-
-.inputPassword
-{
-    padding-right: 0px !important;
-}
-
-.hideShowPassword-toggle
-{
-    border: none !important;
-    background: none !important;
-}
-
-.hideShowPassword-toggle-show
-{
-
-}
-
-.hideShowPassword-toggle-hide
-{
-
-}
-
-.hideShowPassword-toggle:hover
-{
-    color: red;
-}
-
-#error-msg-name, #error-msg-email, #error-msg-password
-{
-    float: left;
-}
-
-#error-msg-name > label, #error-msg-email > label, #error-msg-password > label
-{
-    color: red !important;
-}
-
-#heading
-{
-    letter-spacing: 5px;
-}
-
-#link-signup-login-bottom{
-    font-weight: 900;
-    text-transform: uppercase;
-    margin-top: 20px;
-}
-
-/* Buttons line up with the inputs above them */
-.form-actions
-{
-    padding: 0 0.75rem;
-}
-
-.form-actions .btn
-{
+    box-sizing: border-box;
     width: 100%;
-    height: 40px;
-    line-height: 40px;
-    font-size: 13px;
-    letter-spacing: 2px;
-    box-shadow: none;
+    max-width: 400px;
+    padding: 12px 32px 0;
+    border-top: 4px solid #ffc107;
+    background-color: #f5f5f5;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
 }
 
-/* "Forgot password?" sits under the password field, on the right */
-.forgot-link
+.auth-card form
 {
-    display: block;
-    text-align: right;
-    margin-top: -4px;
-    font-size: 12px;
-    text-decoration: none;
-}
-
-.form-options
-{
-    display: flex;
-    align-items: center;
-    padding: 0;
-    margin-top: -4px;
-    font-size: 13px;
-}
-
-.form-options span
-{
-    font-size: 13px;
-}
-
-.form-options > *
-{
-    white-space: nowrap;
+    margin: 0;
 }
 
 .forgot-link,
 .form-switch a
 {
     color: #512da8;
+    font-size: 13px;
     font-weight: 600;
+    text-decoration: none;
 }
 
 .forgot-link:hover,
@@ -208,25 +88,36 @@ button #login
     text-decoration: underline;
 }
 
-#submitButton
+/* Under the password field, on the right */
+.forgot-link
 {
-    background-color: #512da8 !important;
+    display: block;
+    margin-top: -8px;
+    text-align: right;
 }
 
-/* Secondary action: same size as the main button, outlined */
-.btn-outline,
-.btn-outline:hover,
-.btn-outline:focus
+.remember
 {
-    background-color: transparent;
-    color: #512da8;
-    border: 1px solid #512da8;
-    box-shadow: none;
+    display: block;
+    margin: 8px 0 0;
 }
 
-.btn-outline:hover
+.remember span
 {
-    background-color: rgba(81, 45, 168, 0.06);
+    color: #424242;
+    font-size: 13px;
+}
+
+/* The checkbox tick in the site's purple instead of materialize teal */
+.remember [type="checkbox"]:checked + span:not(.lever):before
+{
+    border-right-color: #512da8;
+    border-bottom-color: #512da8;
+}
+
+.auth-card .button-block
+{
+    margin-top: 16px;
 }
 
 /* "or" with a line on each side */
@@ -234,12 +125,9 @@ button #login
 {
     display: flex;
     align-items: center;
-    margin: -10px 0 14px;
-    padding: 0 10px !important;
+    margin: 16px 0 0;
     color: #9e9e9e;
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 2px;
+    font-size: 13px;
 }
 
 .form-divider::before,
@@ -258,59 +146,72 @@ button #login
 /* "New here?" on the left, the action on the right, at the bottom of the card */
 .form-switch
 {
-    display: flex !important;
-    justify-content: space-between;
+    display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 12px;
-    text-align: left;
+    margin: 24px 0 0;
+    padding: 18px 0 20px;
     border-top: 1px solid #e0e0e0;
-    width: calc(100% - 1.5rem) !important;
-    margin-left: 0.75rem !important;
-        padding: 18px 0 20px !important;
-    font-size: 13px;
     color: #616161;
+    font-size: 13px;
 }
 
-/* Even vertical rhythm inside the login, sign-up and reset cards */
-.form-container-custom form .row
+/* Same content as the in-app footer, on one centred line at the bottom of the
+   screen; on a page taller than the screen it comes after the card */
+.footer-login
 {
-    margin-bottom: 0;
+    width: 100%;
+    padding-top: 30px;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 13px;
+    text-align: center;
 }
 
-.form-container-custom .input-field
+.footer-login a
 {
-    margin-top: 0.75rem;
-    margin-bottom: 0.75rem;
+    color: #ffc107;
 }
 
-.form-container-custom .forgot-link
+/* Toasts sit bottom right, like on the other pages; with no fixed footer here
+   they can go lower. On phones they're centred, above the footer line */
+#toast-container
 {
-    margin-top: 10px;
+    top: auto !important;
+    right: 24px !important;
+    bottom: 24px !important;
+    left: auto !important;
 }
 
-.form-container-custom form .row.form-options
+@media (max-width: 600px)
 {
-    margin: 4px 0 20px;
+    #toast-container
+    {
+        right: auto !important;
+        bottom: 56px !important;
+        left: 50% !important;
+        min-width: 0 !important;
+        width: max-content;
+        max-width: calc(100% - 32px);
+        transform: translateX(-50%);
+    }
+
+    #toast-container .toast
+    {
+        margin: 0 auto 8px;
+    }
 }
 
-.form-container-custom form .row.form-actions
+/* Phones: less padding inside the card */
+@media (max-width: 480px)
 {
-    margin-top: 8px;
-    margin-bottom: 20px;
-}
+    main
+    {
+        padding-top: 32px;
+    }
 
-.form-container-custom .form-divider
-{
-    margin: 0 0 20px;
-}
-
-/* Forms inside the card get their spacing from the rows, not their own margin */
-.form-container-custom form
-{
-    margin-bottom: 0;
-}
-
-.form-container-custom .form-switch
-{
-    margin-top: 0 !important;
+    .auth-card
+    {
+        padding: 8px 20px 0;
+    }
 }

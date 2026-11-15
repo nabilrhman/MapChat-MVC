@@ -116,6 +116,21 @@ MySQL-compatible service.
 Free Render services sleep after 15 minutes without visitors, so the first visit
 after a quiet spell takes about a minute.
 
+A database made before private messages, local times and countries were added
+needs these columns:
+
+```sql
+ALTER TABLE chats
+  ADD COLUMN to_email VARCHAR(255) NULL DEFAULT NULL AFTER email,
+  ADD KEY fk_m_to_email (to_email),
+  ADD CONSTRAINT fk_m_to_email FOREIGN KEY (to_email) REFERENCES users (email)
+    ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE userinfo
+  ADD COLUMN country CHAR(2) AFTER city,
+  ADD COLUMN timezone VARCHAR(64) AFTER country;
+```
+
 ## Project layout
 
 ```

@@ -2,52 +2,45 @@
 
 {% block title %}Login{% endblock %}
 
-{% block heading %}LOG IN{% endblock %}
+{% block heading %}Log in{% endblock %}
 
 {% block body %}
 
-<div class="container">
-    <div class="z-depth-1 grey lighten-4 row form-container form-container-custom">
+<div class="auth-card">
 
-        <form class="col s12" action="/login/create" method="post">
+    <form action="/login/create" method="post">
 
-            <div class='row'>
-                <div class='input-field col s12'>
-                    <input type="email" id="inputEmail" name="email" autofocus value="{{ email }}"/>
-                    <label for="inputEmail">Email address</label>
-                </div>
-            </div>
+        <div class="input-field">
+            <input type="email" id="inputEmail" name="email" value="{{ email }}" autocomplete="email" autofocus/>
+            <label for="inputEmail">Email</label>
+        </div>
 
-            <div class='row'>
-                <div class='input-field col s12'>
-                    <input type="password" id="inputPassword" name="password"/>
-                    <label for="inputPassword">Password</label>
-                    <a href="/password/forgot" class="forgot-link">Forgot password?</a>
-                </div>
-            </div>
+        <div class="input-field">
+            <input type="password" id="inputPassword" name="password" class="has-toggle" autocomplete="current-password"/>
+            <label for="inputPassword">Password</label>
+            <button type="button" class="password-toggle material-icons" aria-label="Show password">visibility</button>
+        </div>
+        <a href="/password/forgot" class="forgot-link">Forgot password?</a>
 
-            <div class="row form-options">
-                <label>
-                    <input type="checkbox" name="remember_me" {% if remember_me %} checked="checked"{% endif %} />
-                    <span>Remember me</span>
-                </label>
-            </div>
+        <label class="remember">
+            <input type="checkbox" name="remember_me" {% if remember_me %}checked{% endif %}/>
+            <span>Remember me</span>
+        </label>
 
-            <div class='row form-actions'>
-                <button type='submit' class='btn waves-effect purple' id="submitButton">Log in</button>
-            </div>
-        </form>
+        <button type="submit" class="button button-primary button-block" id="submitButton">Log in</button>
+    </form>
 
-        <div class="col s12 form-divider"><span>or</span></div>
+    <div class="form-divider"><span>or</span></div>
 
-        <form class="col s12" action="/login/guest" method="post">
-            <div class='row form-actions'>
-                <button type="submit" class="btn btn-outline waves-effect">Try it as a guest</button>
-            </div>
-        </form>
+    <form action="/login/guest" method="post">
+        <button type="submit" class="button button-outline button-block">Try it as a guest</button>
+    </form>
 
-        <p class="col s12 form-switch"><span>New to MapChat?</span> <a href="/signup/new">Create an account</a></p>
-    </div>
+    <p class="form-switch"><span>New to MapChat?</span> <a href="/signup/new">Create an account</a></p>
 </div>
 
+{% endblock %}
+
+{% block footer %}
+<script src="/js/passwordToggle.js"></script>
 {% endblock %}

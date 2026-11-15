@@ -22,29 +22,29 @@ INSERT INTO users (name, email, password_hash, is_active, avatar) VALUES
   ('Emily Carter',  'emily@demo.mapchat.local',   '!', TRUE, '/res/avatars/emily.svg');
 
 -- Where each of them is chatting from (city centres, not real addresses)
-INSERT INTO userinfo (email, ip, lat, lng, city, online_at) VALUES
-  ('aiko@demo.mapchat.local',    '0.0.0.0', 35.6762000,  139.6503000, 'Tokyo',       NOW()),
-  ('rafael@demo.mapchat.local',  '0.0.0.0', 38.7223000,  -9.1393000,  'Lisbon',      NOW()),
-  ('maya@demo.mapchat.local',    '0.0.0.0', 43.6532000,  -79.3832000, 'Toronto',     NOW()),
-  ('tanvir@demo.mapchat.local',  '0.0.0.0', 23.8103000,  90.4125000,  'Dhaka',       NOW()),
-  ('wanjiru@demo.mapchat.local', '0.0.0.0', -1.2921000,  36.8219000,  'Nairobi',     NOW()),
-  ('lukas@demo.mapchat.local',   '0.0.0.0', 52.5200000,  13.4050000,  'Berlin',      NOW()),
-  ('sofia@demo.mapchat.local',   '0.0.0.0', 19.4326000,  -99.1332000, 'Mexico City', NOW()),
-  ('jaewon@demo.mapchat.local',  '0.0.0.0', 37.5665000,  126.9780000, 'Seoul',       NOW()),
-  ('emily@demo.mapchat.local',   '0.0.0.0', 43.6150000,  -116.2023000,'Boise',       NOW());
+INSERT INTO userinfo (email, ip, lat, lng, city, country, timezone, online_at) VALUES
+  ('aiko@demo.mapchat.local',    '0.0.0.0', 35.6762000,  139.6503000, 'Tokyo',       'JP', 'Asia/Tokyo', NOW()),
+  ('rafael@demo.mapchat.local',  '0.0.0.0', 38.7223000,  -9.1393000,  'Lisbon',      'PT', 'Europe/Lisbon', NOW()),
+  ('maya@demo.mapchat.local',    '0.0.0.0', 43.6532000,  -79.3832000, 'Toronto',     'CA', 'America/Toronto', NOW()),
+  ('tanvir@demo.mapchat.local',  '0.0.0.0', 23.8103000,  90.4125000,  'Dhaka',       'BD', 'Asia/Dhaka', NOW()),
+  ('wanjiru@demo.mapchat.local', '0.0.0.0', -1.2921000,  36.8219000,  'Nairobi',     'KE', 'Africa/Nairobi', NOW()),
+  ('lukas@demo.mapchat.local',   '0.0.0.0', 52.5200000,  13.4050000,  'Berlin',      'DE', 'Europe/Berlin', NOW()),
+  ('sofia@demo.mapchat.local',   '0.0.0.0', 19.4326000,  -99.1332000, 'Mexico City', 'MX', 'America/Mexico_City', NOW()),
+  ('jaewon@demo.mapchat.local',  '0.0.0.0', 37.5665000,  126.9780000, 'Seoul',       'KR', 'Asia/Seoul', NOW()),
+  ('emily@demo.mapchat.local',   '0.0.0.0', 43.6150000,  -116.2023000,'Boise',       'US', 'America/Boise', NOW());
 
 -- The conversation, a message every few minutes over the last couple of hours
 INSERT INTO chats (email, body, timestamp) VALUES
-  ('maya@demo.mapchat.local',    'Morning everyone! Anyone here from Lisbon? Flying out in two weeks and I have no plan yet', NOW() - INTERVAL 130 MINUTE),
+  ('maya@demo.mapchat.local',    'Hi everyone! Anyone here from Lisbon? Flying out in two weeks and I have no plan yet', NOW() - INTERVAL 130 MINUTE),
   ('rafael@demo.mapchat.local',  'Right here 👋 How many days do you have?', NOW() - INTERVAL 127 MINUTE),
   ('maya@demo.mapchat.local',    'Four days. Mostly want good food and some walking', NOW() - INTERVAL 125 MINUTE),
   ('rafael@demo.mapchat.local',  'Then skip the tram 28 queue and just walk Alfama in the morning before the crowds. Lunch at any tasca with a handwritten menu, the less English on it the better', NOW() - INTERVAL 122 MINUTE),
   ('rafael@demo.mapchat.local',  'And take the train to Sintra on a weekday, not the weekend', NOW() - INTERVAL 121 MINUTE),
   ('maya@demo.mapchat.local',    'This is gold, thank you!!', NOW() - INTERVAL 119 MINUTE),
   ('lukas@demo.mapchat.local',   'Seconding the weekday Sintra advice. I went on a Saturday once and spent more time in lines than in palaces', NOW() - INTERVAL 112 MINUTE),
-  ('tanvir@demo.mapchat.local',  'Late night here in Dhaka and the rain has not stopped since the afternoon 🌧️', NOW() - INTERVAL 96 MINUTE),
-  ('aiko@demo.mapchat.local',    'Same weather in Tokyo yesterday. Today it''s clear and cold, finally sweater season', NOW() - INTERVAL 93 MINUTE),
-  ('tanvir@demo.mapchat.local',  'Lucky. Here it''s the season for cha and shingara at the corner stall', NOW() - INTERVAL 90 MINUTE),
+  ('tanvir@demo.mapchat.local',  'Here in Dhaka the rain hasn''t stopped for hours 🌧️', NOW() - INTERVAL 96 MINUTE),
+  ('aiko@demo.mapchat.local',    'We had the same in Tokyo yesterday. Today it''s clear and sunny, perfect for a long walk', NOW() - INTERVAL 93 MINUTE),
+  ('tanvir@demo.mapchat.local',  'Lucky! Here it''s perfect weather for cha and shingara at the corner stall', NOW() - INTERVAL 90 MINUTE),
   ('wanjiru@demo.mapchat.local', 'Hello from Nairobi! Just found this app. Is it always this international in here?', NOW() - INTERVAL 74 MINUTE),
   ('emily@demo.mapchat.local',   'Pretty much! I''m in Boise, Idaho, which is usually the quietest pin on the map 😄', NOW() - INTERVAL 71 MINUTE),
   ('wanjiru@demo.mapchat.local', 'I had to look up where Idaho is, I''ll be honest', NOW() - INTERVAL 69 MINUTE),
@@ -55,5 +55,5 @@ INSERT INTO chats (email, body, timestamp) VALUES
   ('jaewon@demo.mapchat.local',  'Both going in the guide, thanks 🙏', NOW() - INTERVAL 41 MINUTE),
   ('sofia@demo.mapchat.local',   'And if anyone comes to Mexico City: tacos al pastor from a stand with a long line of locals, always', NOW() - INTERVAL 22 MINUTE),
   ('maya@demo.mapchat.local',    'Adding Mexico City to the list for next year. This room is ruining my savings', NOW() - INTERVAL 19 MINUTE),
-  ('lukas@demo.mapchat.local',   'That''s the whole point of it 😄', NOW() - INTERVAL 17 MINUTE),
-  ('wanjiru@demo.mapchat.local', 'Okay, I''m staying. Good night from Nairobi everyone!', NOW() - INTERVAL 6 MINUTE);
+  ('lukas@demo.mapchat.local',   'Worth every cent 😄', NOW() - INTERVAL 17 MINUTE),
+  ('wanjiru@demo.mapchat.local', 'Okay, I''m staying. Signing off for now, see you all later from Nairobi!', NOW() - INTERVAL 6 MINUTE);

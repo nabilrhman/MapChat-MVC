@@ -59,11 +59,36 @@ function themeLayer(layer) {
 }
 
 // A yellow map pin like the original marker icon
-function pinElement() {
+// Shown when hovering a pin: the name, then the flag and city
+function pinLabel(location) {
+    var label = document.createElement('div');
+    label.className = 'pin-label';
+
+    var name = document.createElement('strong');
+    name.textContent = location.name || '';
+    label.appendChild(name);
+
+    if (location.city) {
+        var place = document.createElement('span');
+        if (location.country) {
+            var flag = document.createElement('span');
+            flag.className = 'fi fi-' + location.country.toLowerCase();
+            place.appendChild(flag);
+        }
+        place.appendChild(document.createTextNode(location.city));
+        label.appendChild(place);
+    }
+
+    return label;
+}
+
+// userId lets the people list highlight this pin
+function pinElement(userId) {
     var el = document.createElement('div');
     el.className = 'map-pin';
+    el.dataset.userId = userId;
     el.innerHTML =
-        '<svg width="28" height="38" viewBox="0 0 28 38" aria-hidden="true">' +
+        '<svg width="20" height="27" viewBox="0 0 28 38" aria-hidden="true">' +
         '<path d="M14 0C6.3 0 0 6.2 0 13.9 0 24.3 14 38 14 38s14-13.7 14-24.1C28 6.2 21.7 0 14 0z" fill="' + THEME.pin + '"/>' +
         '<circle cx="14" cy="14" r="5" fill="#ffffff"/>' +
         '</svg>';
@@ -77,12 +102,18 @@ function minZoomToFill(tileSize) {
     return Math.max(0, Math.log2(height / tileSize));
 }
 
-// Room around the pins when zooming to fit them, with the left side widened by
-// the chat panel so no pin ends up hidden behind it
+// Room around the pins when zooming to fit them, so no pin ends up behind the
+// chat panel or the people list
 function mapPadding() {
-    var panel = document.querySelector('.chat-container');
-    var panelWidth = panel ? panel.getBoundingClientRect().width : 0;
-    return {top: 60, bottom: 60, left: panelWidth + 60, right: 60};
+    var panel = document.querySelector('.chat-container').getBoundingClientRect();
+    // Zero while the people list is a closed drawer
+    var peopleWidth = document.querySelector('.people').getBoundingClientRect().width;
+
+    // On phones the chat sits below the map instead of beside it
+    if (panel.width >= window.innerWidth * 0.9) {
+        return {top: 40, bottom: window.innerHeight - panel.top + 40, left: 40, right: 40};
+    }
+    return {top: 60, bottom: 60, left: panel.width + 60, right: peopleWidth + 60};
 }
 
 function addPins(map, locations) {
@@ -90,9 +121,9 @@ function addPins(map, locations) {
 
     locations.forEach(function (location) {
         var lngLat = [parseFloat(location.lng), parseFloat(location.lat)];
-        var popup = new maplibregl.Popup({closeButton: false, offset: 36})
-            .setText(location.name || '');
-        var marker = new maplibregl.Marker({element: pinElement(), anchor: 'bottom'})
+        var popup = new maplibregl.Popup({closeButton: false, offset: 26})
+            .setDOMContent(pinLabel(location));
+        var marker = new maplibregl.Marker({element: pinElement(location.user_id), anchor: 'bottom'})
             .setLngLat(lngLat)
             .addTo(map);
 
@@ -183,6 +214,7 @@ function initializeFallback() {
     loadAsset('script', {src: version + 'leaflet.js'}).then(function () {
         var map = L.map('map', {
             zoomControl: false,
+            attributionControl: false,
             worldCopyJump: true,
             zoomSnap: 0.25,
             minZoom: minZoomToFill(256),
@@ -192,6 +224,9 @@ function initializeFallback() {
         }).setView([43.4599, -116.244], 3);
 
         window.addEventListener('resize', function () { map.setMinZoom(minZoomToFill(256)); });
+
+        // Credits beside the people list (see chat.css); the tiles add theirs to it
+        map.attributionControl = L.control.attribution({position: 'bottomright', prefix: false}).addTo(map);
 
         var ThemedTiles = L.GridLayer.extend({
             createTile: function (coords, done) {
@@ -218,14 +253,13 @@ function initializeFallback() {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
 
-        var icon = L.divIcon({className: '', html: pinElement().outerHTML, iconSize: [28, 38], iconAnchor: [14, 38]});
-
         loadLocations(function (locations) {
             var bounds = [];
             locations.forEach(function (location) {
                 var latLng = [parseFloat(location.lat), parseFloat(location.lng)];
+                var icon = L.divIcon({className: '', html: pinElement(location.user_id).outerHTML, iconSize: [20, 27], iconAnchor: [10, 27]});
                 L.marker(latLng, {icon: icon})
-                    .bindTooltip($('<div>').text(location.name || '').html(), {direction: 'top', offset: [0, -36]})
+                    .bindTooltip(pinLabel(location).outerHTML, {direction: 'top', offset: [0, -26]})
                     .addTo(map);
                 bounds.push(latLng);
             });
@@ -258,7 +292,16 @@ function initialize() {
                 center: [-116.244, 43.4599],
                 zoom: 3,
                 minZoom: minZoomToFill(512),
-                attributionControl: {compact: true}
+                attributionControl: false
+            });
+
+            // Credits as a small (i) beside the people list (see chat.css). MapLibre
+            // opens them at first; close them once the map is drawn
+            map.addControl(new maplibregl.AttributionControl({compact: true}), 'bottom-right');
+            map.once('load', function () {
+                var credits = map.getContainer().querySelector('.maplibregl-ctrl-attrib');
+                credits.classList.remove('maplibregl-compact-show');
+                credits.removeAttribute('open');
             });
 
             window.addEventListener('resize', function () { map.setMinZoom(minZoomToFill(512)); });

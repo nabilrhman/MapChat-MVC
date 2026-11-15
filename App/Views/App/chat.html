@@ -1,5 +1,16 @@
 {% for chat in chats %}
-<div class="chat animated fadeIn">
+{# Which tab the message belongs in: "everyone", or the other person's id #}
+{% set mine = chat.user_id == current_user.id %}
+{% if chat.to_user_id is null %}
+{% set conversation, partner = 'everyone', '' %}
+{% else %}
+{% set conversation = mine ? chat.to_user_id : chat.user_id %}
+{% set partner = mine ? chat.to_name : chat.name %}
+{% endif %}
+{# Only in the open room; inside a private chat you're already talking to them #}
+{% set can_message = conversation == 'everyone' and not mine and chat.email != constant('App\\Models\\Chat::BOT_EMAIL') %}
+<div class="chat{% if not initial|default(false) %} animated fadeIn{% endif %}"
+     data-id="{{ chat.id }}" data-conversation="{{ conversation }}" data-partner="{{ partner }}">
     <div class="chat-avatar-container">
         {% if chat.avatar is not empty %}
         <img class="avatar" src="{{ chat.avatar }}" alt="Avatar"
@@ -11,11 +22,38 @@
     </div>
 
     <div class="chat-body-container">
+        {% if can_message %}
+        <h3 class="name can-message" data-user-id="{{ chat.user_id }}" data-user-name="{{ chat.name }}"
+            title="Chat privately with {{ chat.name }}">{{ chat.name }}</h3>
+        {% else %}
         <h3 class="name">{{ chat.name }}</h3>
+        {% endif %}
+        {# The page fills in the time in the reader's own time zone. On hover it
+           slides to the sender's own time, with a sun or moon #}
+        <span class="time{% if chat.lng is not null %} swap{% endif %}"
+              data-timezone="{{ chat.timezone }}" data-lng="{{ chat.lng }}">
+            <span class="swap-track">
+                <time datetime="{{ chat.timestamp|date('c') }}"></time>
+                {% if chat.lng is not null %}
+                <span class="sender-time"><i class="material-icons daylight"></i><span></span></span>
+                {% endif %}
+            </span>
+        </span>
         <p class="chat-body">{{ chat.body }}</p>
-        {# No city (e.g. the MapChat bot, or a failed IP lookup): leave the spot empty #}
-        <span class="location">{{ chat.city }}</span>
-        <span class="time">{{ chat.timestamp | date("M j · h:i a", "America/Boise")  }}</span>
+        {# No row at all without a place (e.g. the MapChat bot, or a hidden location) #}
+        {% if chat.city %}
+        {# On hover the city slides to the country's flag and name #}
+        <span class="location">
+            <span{% if chat.country %} class="swap"{% endif %}>
+                <span class="swap-track">
+                    <span><i class="material-icons">place</i>{{ chat.city }}</span>
+                    {% if chat.country %}
+                    <span><span class="fi fi-{{ chat.country|lower }}"></span><span class="country-name" data-country="{{ chat.country }}"></span></span>
+                    {% endif %}
+                </span>
+            </span>
+        </span>
+        {% endif %}
     </div>
 </div>
 {% endfor %}
