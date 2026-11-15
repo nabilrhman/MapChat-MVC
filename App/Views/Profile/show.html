@@ -3,7 +3,7 @@
 {% block title %}Profile{% endblock %}
 
 {% block head %}
-<link rel="stylesheet" href="/css/profile.css?v=18"/>
+<link rel="stylesheet" href="/css/profile.css?v=19"/>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flag-icons@7.2.3/css/flag-icons.min.css">
 {% endblock %}
 
@@ -17,11 +17,9 @@
     {% if user.is_guest %}
     <div class="guest-banner appear-down">
         <i class="material-icons guest-banner__icon">schedule</i>
-        <div class="guest-banner__text">
-            <strong class="guest-banner__title">Guest account</strong>
-            <span class="guest-banner__note">Deleted in {{ user.guestHoursLeft() }} h along with your messages.</span>
-        </div>
-        <button type="button" class="button button--primary button--small" id="keep-account">Keep my account</button>
+        <strong class="guest-banner__title">Guest account</strong>
+        <span class="guest-banner__note">Deleted in {{ user.guestHoursLeft() }} h along with your messages.</span>
+        <button type="button" class="button button--primary button--small guest-banner__button" id="keep-account">Keep my account</button>
     </div>
     {% endif %}
 

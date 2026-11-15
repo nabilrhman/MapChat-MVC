@@ -6,12 +6,15 @@
     margin: 0 auto;
 }
 
+/* Icon beside the title, the note under the title's words, and the button
+   on the right; on phones the button moves under the note */
 .guest-banner
 {
-    display: flex;
-    flex-wrap: wrap; /* the button drops below the text on narrow screens */
+    display: grid;
+    grid-template-columns: 22px minmax(0, 1fr) auto;
+    column-gap: 8px;
+    row-gap: 2px;
     align-items: center;
-    gap: 12px;
     margin-bottom: 16px;
     padding: 12px 16px;
     border-left: 4px solid #512da8;
@@ -20,20 +23,16 @@
 
 .guest-banner__icon
 {
+    grid-column: 1;
+    grid-row: 1;
     color: #512da8;
     font-size: 22px;
 }
 
-.guest-banner__text
-{
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    min-width: 200px;
-}
-
 .guest-banner__title
 {
+    grid-column: 2;
+    grid-row: 1;
     color: #311b92;
     font-size: 14px;
     font-weight: 600;
@@ -41,8 +40,28 @@
 
 .guest-banner__note
 {
+    grid-column: 2;
+    grid-row: 2;
     color: #5e35b1;
     font-size: 13px;
+}
+
+.guest-banner__button
+{
+    grid-column: 3;
+    grid-row: 1 / span 2;
+    margin-left: 8px;
+}
+
+@media (max-width: 600px)
+{
+    .guest-banner__button
+    {
+        grid-column: 2 / span 2;
+        grid-row: 3;
+        justify-self: start;
+        margin: 10px 0 0;
+    }
 }
 
 /* Every card: 20px inside, a 32px header row, then its content 12px below */
