@@ -1,4 +1,5 @@
 {# One-time messages ("Logout successful" etc.) shown as toasts that fade on their own #}
+{% set flash_messages = flash_messages() %}
 {% if flash_messages %}
 <script>
     (function () {

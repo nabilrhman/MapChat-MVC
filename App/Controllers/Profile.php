@@ -84,7 +84,9 @@ class Profile extends Authenticated
      */
     public function updateAvatarAction()
     {
-        if (!$this->user->updateAvatar($_POST)) {
+        $this->requirePost();
+
+        if (!$this->user->updateAvatar($_POST['avatar'] ?? '')) {
             http_response_code(400);
         }
     }
@@ -96,7 +98,9 @@ class Profile extends Authenticated
      */
     public function removeAvatarAction()
     {
-        if (!$this->user->updateAvatar(['avatar' => null])) {
+        $this->requirePost();
+
+        if (!$this->user->updateAvatar(null)) {
             http_response_code(400);
         }
     }
@@ -121,6 +125,8 @@ class Profile extends Authenticated
      */
     public function updateLocationSharingAction()
     {
+        $this->requirePost();
+
         $this->user->setLocationSharing(!empty($_POST['share']));
 
         header('Content-Type: application/json');

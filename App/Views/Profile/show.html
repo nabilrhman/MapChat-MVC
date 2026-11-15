@@ -188,8 +188,8 @@
 
         /* Photo: saves as soon as it's uploaded or removed */
 
-        var CLOUDINARY_URL = 'https://api.cloudinary.com/v1_1/{{ cloudinary_cloud_name|default('nabilr')|e('js') }}/image/upload';
-        var CLOUDINARY_UPLOAD_PRESET = '{{ cloudinary_upload_preset|default('eu0zgzwd')|e('js') }}';
+        var CLOUDINARY_URL = 'https://api.cloudinary.com/v1_1/{{ cloudinary_cloud_name|e('js') }}/image/upload';
+        var CLOUDINARY_UPLOAD_PRESET = '{{ cloudinary_upload_preset|e('js') }}';
 
         // Upload the photo, then save it; on any failure put the old one back
         $('#file-upload').on('change', function () {

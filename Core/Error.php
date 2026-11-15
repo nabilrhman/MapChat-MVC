@@ -22,9 +22,12 @@ class Error
      */
     public static function errorHandler($level, $message, $file, $line)
     {
-        if (error_reporting() !== 0) {  // to keep the @ operator working
-            throw new \ErrorException($message, 0, $level, $file, $line);
+        // Respect @ (PHP 8 masks the level instead of zeroing it)
+        if (!(error_reporting() & $level)) {
+            return false;
         }
+
+        throw new \ErrorException($message, 0, $level, $file, $line);
     }
 
     /**
@@ -46,9 +49,9 @@ class Error
         if (\App\Config::flag('SHOW_ERRORS')) {
             echo "<h1>Fatal error</h1>";
             echo "<p>Uncaught exception: '" . get_class($exception) . "'</p>";
-            echo "<p>Message: '" . $exception->getMessage() . "'</p>";
-            echo "<p>Stack trace:<pre>" . $exception->getTraceAsString() . "</pre></p>";
-            echo "<p>Thrown in '" . $exception->getFile() . "' on line " . $exception->getLine() . "</p>";
+            echo "<p>Message: '" . htmlspecialchars($exception->getMessage()) . "'</p>";
+            echo "<p>Stack trace:<pre>" . htmlspecialchars($exception->getTraceAsString()) . "</pre></p>";
+            echo "<p>Thrown in '" . htmlspecialchars($exception->getFile()) . "' on line " . $exception->getLine() . "</p>";
         } else {
             $message = "Uncaught exception: '" . get_class($exception) . "'";
             $message .= " with message '" . $exception->getMessage() . "'";
@@ -57,7 +60,12 @@ class Error
 
             error_log($message);
 
-            View::renderTemplate("$code.html");
+            // Plain text if the error page itself fails (e.g. database down)
+            try {
+                View::renderTemplate("$code.html");
+            } catch (\Throwable $e) {
+                echo $code === 404 ? 'Page not found' : 'Something went wrong. Please try again in a moment.';
+            }
         }
     }
 }

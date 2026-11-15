@@ -65,4 +65,24 @@ class Config
     {
         return static::get('MAILER_DSN') !== null;
     }
+
+    /**
+     * Cloudinary account that profile photos are uploaded to
+     *
+     * @return string
+     */
+    public static function cloudinaryCloudName(): string
+    {
+        return static::get('CLOUDINARY_CLOUD_NAME', 'nabilr');
+    }
+
+    /**
+     * Cloudinary's unsigned upload preset, which lets the browser upload directly
+     *
+     * @return string
+     */
+    public static function cloudinaryUploadPreset(): string
+    {
+        return static::get('CLOUDINARY_UPLOAD_PRESET', 'eu0zgzwd');
+    }
 }

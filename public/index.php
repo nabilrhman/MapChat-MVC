@@ -29,6 +29,8 @@ set_exception_handler('Core\Error::exceptionHandler');
 session_set_save_handler(new Core\DatabaseSessionHandler(), true);
 session_start([
     'gc_maxlifetime' => 60 * 60 * 24 * 7,
+    // Refuse session ids the server didn't create
+    'use_strict_mode' => true,
     'cookie_httponly' => true,
     'cookie_samesite' => 'Lax',
     'cookie_secure' => str_starts_with(Config::appUrl(), 'https://'),
