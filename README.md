@@ -115,6 +115,16 @@ To start over with an empty database:
 docker compose down -v
 ```
 
+### Tests
+
+The tests cover the router and who can see which chat messages. They run
+against their own database, `mapchat_test`, which is rebuilt from
+`database/init.sql` each run, so the app's data is never touched:
+
+```bash
+docker compose run --rm --build test
+```
+
 ### Settings
 
 All settings come from environment variables. `.env.example` lists them with
@@ -182,6 +192,7 @@ database/        init.sql (schema and welcome messages), demo.sql (optional
                  sample people), demo-chat.php (what they say each day),
                  migrate.php (adds columns an older database is missing, run
                  when the container starts)
+tests/           PHPUnit tests
 docs/images/     The screenshots in this README
 ```
 
