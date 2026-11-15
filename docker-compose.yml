@@ -37,6 +37,8 @@ services:
       - ./App:/var/www/html/App
       - ./Core:/var/www/html/Core
       - ./database:/var/www/html/database
+      # The HTTP tests serve the site from here
+      - ./public:/var/www/html/public
       - ./tests:/var/www/html/tests
     depends_on:
       db:

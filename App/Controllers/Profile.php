@@ -51,6 +51,8 @@ class Profile extends Authenticated
      */
     public function updateAction()
     {
+        $this->requirePost();
+
         $email = trim($_POST['email'] ?? '');
         $password = $_POST['password'] ?? '';
 

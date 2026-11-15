@@ -292,6 +292,17 @@
     text-decoration: none;
 }
 
+/* Log out is a form button; make it look like the links */
+.account-menu__item--button
+{
+    width: 100%;
+    border: 0;
+    background: none;
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
 .account-menu__item .material-icons
 {
     color: #512da8;
