@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Auth;
 use Core\View;
 use App\Models\Chat;
+use App\Models\DemoChat;
 use App\Models\User;
 use App\Models\UserInfo;
 
@@ -22,6 +23,7 @@ class App extends Authenticated
     {
         $this->refreshLocation();
         UserInfo::markOnline(Auth::getEmail());
+        $this->catchUpDemoChat();
 
         $chats = Chat::getRecent(Auth::getEmail());
 
@@ -45,6 +47,8 @@ class App extends Authenticated
         if (!isset($_POST['after'])) {
             return;
         }
+
+        $this->catchUpDemoChat();
 
         $chats = Chat::getAfter(Auth::getEmail(), (int) $_POST['after']);
 
@@ -98,6 +102,20 @@ class App extends Authenticated
 
         $chat = new Chat(['email' => $user->email, 'to_email' => $toEmail, 'body' => $body]);
         $chat->send();
+    }
+
+    /**
+     * Let the demo people post what's due. The chat polls every second, but
+     * once a minute per visitor is plenty for a slow conversation
+     *
+     * @return void
+     */
+    protected function catchUpDemoChat()
+    {
+        if (time() - ($_SESSION['demo_chat_at'] ?? 0) >= 60) {
+            $_SESSION['demo_chat_at'] = time();
+            DemoChat::catchUp();
+        }
     }
 
     /**

@@ -93,10 +93,12 @@ docker compose up --build
 
 Open http://localhost:8080 and either sign up or press **Try it as a guest**.
 
-The room starts with a sample conversation between nine made-up people around
-the world, from `database/demo.sql`, so the chat and the map aren't empty. Their
-accounts can't be logged into. To start with an empty room instead, remove the
-`demo.sql` line from `docker-compose.yml`.
+Nine made-up people around the world, from `database/demo.sql`, keep the chat
+and the map from looking empty. Through the day they post a few running stories
+and short chats from `database/demo-chat.php`, slowly and in a new order each
+day; their messages from earlier days are cleared. Their accounts can't be
+logged into. To start with an empty room instead, remove the `demo.sql` line
+from `docker-compose.yml`.
 
 Emails the app sends locally (account activation, password reset) don't go
 out. They land in Mailpit, an inbox you can open at http://localhost:8025.
@@ -171,8 +173,9 @@ App/Models/      Database access for users, chats and locations
 App/Views/       Twig templates
 public/          Web root: index.php, CSS, JavaScript and images
 database/        init.sql (schema and welcome messages), demo.sql (optional
-                 sample people and conversation), migrate.php (adds columns an
-                 older database is missing, run when the container starts)
+                 sample people), demo-chat.php (what they say each day),
+                 migrate.php (adds columns an older database is missing, run
+                 when the container starts)
 docs/images/     The screenshots in this README
 ```
 

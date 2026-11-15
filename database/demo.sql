@@ -33,27 +33,5 @@ INSERT INTO userinfo (email, ip, lat, lng, city, country, timezone, online_at) V
   ('jaewon@demo.mapchat.local',  '0.0.0.0', 37.5665000,  126.9780000, 'Seoul',       'KR', 'Asia/Seoul', NOW()),
   ('emily@demo.mapchat.local',   '0.0.0.0', 43.6150000,  -116.2023000,'Boise',       'US', 'America/Boise', NOW());
 
--- The conversation, a message every few minutes over the last couple of hours
-INSERT INTO chats (email, body, timestamp) VALUES
-  ('maya@demo.mapchat.local',    'Hi everyone! Anyone here from Lisbon? Flying out in two weeks and I have no plan yet', NOW() - INTERVAL 130 MINUTE),
-  ('rafael@demo.mapchat.local',  'Right here 👋 How many days do you have?', NOW() - INTERVAL 127 MINUTE),
-  ('maya@demo.mapchat.local',    'Four days. Mostly want good food and some walking', NOW() - INTERVAL 125 MINUTE),
-  ('rafael@demo.mapchat.local',  'Then skip the tram 28 queue and just walk Alfama in the morning before the crowds. Lunch at any tasca with a handwritten menu, the less English on it the better', NOW() - INTERVAL 122 MINUTE),
-  ('rafael@demo.mapchat.local',  'And take the train to Sintra on a weekday, not the weekend', NOW() - INTERVAL 121 MINUTE),
-  ('maya@demo.mapchat.local',    'This is gold, thank you!!', NOW() - INTERVAL 119 MINUTE),
-  ('lukas@demo.mapchat.local',   'Seconding the weekday Sintra advice. I went on a Saturday once and spent more time in lines than in palaces', NOW() - INTERVAL 112 MINUTE),
-  ('tanvir@demo.mapchat.local',  'Here in Dhaka the rain hasn''t stopped for hours 🌧️', NOW() - INTERVAL 96 MINUTE),
-  ('aiko@demo.mapchat.local',    'We had the same in Tokyo yesterday. Today it''s clear and sunny, perfect for a long walk', NOW() - INTERVAL 93 MINUTE),
-  ('tanvir@demo.mapchat.local',  'Lucky! Here it''s perfect weather for cha and shingara at the corner stall', NOW() - INTERVAL 90 MINUTE),
-  ('wanjiru@demo.mapchat.local', 'Hello from Nairobi! Just found this app. Is it always this international in here?', NOW() - INTERVAL 74 MINUTE),
-  ('emily@demo.mapchat.local',   'Pretty much! I''m in Boise, Idaho, which is usually the quietest pin on the map 😄', NOW() - INTERVAL 71 MINUTE),
-  ('wanjiru@demo.mapchat.local', 'I had to look up where Idaho is, I''ll be honest', NOW() - INTERVAL 69 MINUTE),
-  ('emily@demo.mapchat.local',   'Most Americans do too. Lots of mountains, lots of potatoes', NOW() - INTERVAL 67 MINUTE),
-  ('jaewon@demo.mapchat.local',  'Question for anyone who has visited Seoul: what surprised you most? I''m writing a small guide for friends', NOW() - INTERVAL 48 MINUTE),
-  ('aiko@demo.mapchat.local',    'How late everything stays open. I had dinner at 2am in Mapo and the place was full', NOW() - INTERVAL 45 MINUTE),
-  ('sofia@demo.mapchat.local',   'The subway! Clean, on time, and the transfer music is so cheerful', NOW() - INTERVAL 43 MINUTE),
-  ('jaewon@demo.mapchat.local',  'Both going in the guide, thanks 🙏', NOW() - INTERVAL 41 MINUTE),
-  ('sofia@demo.mapchat.local',   'And if anyone comes to Mexico City: tacos al pastor from a stand with a long line of locals, always', NOW() - INTERVAL 22 MINUTE),
-  ('maya@demo.mapchat.local',    'Adding Mexico City to the list for next year. This room is ruining my savings', NOW() - INTERVAL 19 MINUTE),
-  ('lukas@demo.mapchat.local',   'Worth every cent 😄', NOW() - INTERVAL 17 MINUTE),
-  ('wanjiru@demo.mapchat.local', 'Okay, I''m staying. Signing off for now, see you all later from Nairobi!', NOW() - INTERVAL 6 MINUTE);
+-- What they say in the room comes from database/demo-chat.php, a few
+-- conversations a day (see App/Models/DemoChat.php)
