@@ -504,8 +504,10 @@ $(document).ready(function () {
             return;
         }
 
-        // The pill grows to the new label's width, and the label fades in,
-        // instead of both jumping
+        // The pill eases to the new label's width instead of jumping. Going
+        // from "Latest" to a count, the words fade in; after that only the
+        // number changes, so nothing fades and nothing flickers
+        var wasLatest = label.text() === 'Latest';
         var from = button.offsetWidth;
         label.text(text);
         button.style.width = '';
@@ -513,9 +515,11 @@ $(document).ready(function () {
         button.style.width = from + 'px';
         button.offsetWidth; // start from the old width
         button.style.width = to + 'px';
-        label.removeClass('is-changing');
-        label[0].offsetWidth;
-        label.addClass('is-changing');
+        if (wasLatest) {
+            label.removeClass('is-changing');
+            label[0].offsetWidth;
+            label.addClass('is-changing');
+        }
     }
 
     $('#chat-list').on('scroll', updateJumpButton);
