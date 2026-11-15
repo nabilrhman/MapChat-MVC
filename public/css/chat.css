@@ -1200,7 +1200,9 @@ body
 {
     display: block;
     height: 16px;
-    overflow: hidden;
+    /* Clip only the line below: sideways the pin pokes out past its line */
+    overflow-x: visible;
+    overflow-y: clip;
     cursor: default; /* only reveals on hover, nothing to click or select */
 }
 
