@@ -1,6 +1,6 @@
 // Tooltips in the app's style instead of the browser's grey box. Anything
 // with a title gets one: on hover the title moves to data-tip (so the
-// browser's own doesn't show too) and a small purple label appears above it,
+// browser's own doesn't show too) and a small dark label appears above it,
 // or below when there's no room. Touch screens keep no tooltips, as before.
 (function () {
     if (!window.matchMedia('(hover: hover)').matches) return;
@@ -29,19 +29,31 @@
         return el.dataset.tip || '';
     }
 
+    // Where the thing's text actually is: a name spans its whole row, but
+    // the tooltip should sit over the name itself
+    function boxOf(el) {
+        if (el.textContent.trim() && !el.querySelector('img, i, svg')) {
+            var range = document.createRange();
+            range.selectNodeContents(el);
+            var rect = range.getBoundingClientRect();
+            if (rect.width) return rect;
+        }
+        return el.getBoundingClientRect();
+    }
+
     function show() {
         var text = target && textOf(target);
         if (!text) return;
 
         tip.textContent = text;
         tip.classList.remove('tooltip--below');
-        var box = target.getBoundingClientRect();
+        var box = boxOf(target);
         var width = tip.offsetWidth;
         var height = tip.offsetHeight;
         var left = Math.min(Math.max(8, box.left + box.width / 2 - width / 2), window.innerWidth - width - 8);
-        var top = box.top - height - 8;
+        var top = box.top - height - 6;
         if (top < 8) {
-            top = box.bottom + 8;
+            top = box.bottom + 6;
             tip.classList.add('tooltip--below');
         }
 

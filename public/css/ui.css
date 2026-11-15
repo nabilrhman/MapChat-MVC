@@ -435,24 +435,22 @@ label.error
     100% { width: 90%; }
 }
 
-/* Tooltips (tooltip.js): a small dark purple label with an arrow, fading in
-   above the thing (or below it near the top of the screen) */
+/* Tooltips (tooltip.js): a small near-black label with a little arrow,
+   fading in just above the thing (or below it near the top of the screen) */
 .tooltip
 {
     position: fixed;
     z-index: 2000;
     max-width: 240px;
-    padding: 6px 10px;
-    border-radius: 4px;
-    background-color: #311b92;
+    padding: 5px 9px;
+    border-radius: 6px;
+    background-color: rgba(33, 33, 33, 0.92);
     color: #fff;
     font-size: 12px;
-    font-weight: 500;
-    line-height: 1.4;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    line-height: 1.35;
     pointer-events: none;
     opacity: 0;
-    transform: translateY(2px);
+    transform: translateY(3px);
     transition: opacity var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
 }
 
@@ -462,6 +460,11 @@ label.error
     transform: none;
 }
 
+.tooltip--below
+{
+    transform: translateY(-3px);
+}
+
 /* The arrow, under the label pointing down, or above it when it's below */
 .tooltip::after
 {
@@ -469,8 +472,8 @@ label.error
     position: absolute;
     top: 100%;
     left: var(--arrow-x, 50%);
-    border: 5px solid transparent;
-    border-top-color: #311b92;
+    border: 4px solid transparent;
+    border-top-color: rgba(33, 33, 33, 0.92);
     transform: translateX(-50%);
 }
 
@@ -479,5 +482,5 @@ label.error
     top: auto;
     bottom: 100%;
     border-top-color: transparent;
-    border-bottom-color: #311b92;
+    border-bottom-color: rgba(33, 33, 33, 0.92);
 }
