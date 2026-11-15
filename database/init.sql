@@ -102,9 +102,9 @@ INSERT INTO users (name, email, password_hash, is_active, avatar)
 VALUES ('MapChat', 'bot@mapchat.local', '!', TRUE, '/res/avatar-mapchat.svg');
 
 -- It "chats from" Null Island, the made-up spot at 0, 0 where maps put things
--- that have no real location
-INSERT INTO userinfo (email, ip, lat, lng, city)
-VALUES ('bot@mapchat.local', '0.0.0.0', 0, 0, 'Null Island');
+-- that have no real location. XN is a code ISO leaves free, with our own flag
+INSERT INTO userinfo (email, ip, lat, lng, city, country)
+VALUES ('bot@mapchat.local', '0.0.0.0', 0, 0, 'Null Island', 'XN');
 
 INSERT INTO chats (id, email, body, timestamp) VALUES (771, 'bot@mapchat.local', 'Welcome to MapChat! This is one open room, shared by everyone who signs in.', NOW() - INTERVAL 180 MINUTE);
 INSERT INTO chats (id, email, body, timestamp) VALUES (781, 'bot@mapchat.local', 'Each pin on the map is someone in the chat. Hover over a pin to see their name.', NOW() - INTERVAL 179 MINUTE);
