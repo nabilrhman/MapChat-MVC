@@ -256,7 +256,7 @@ function showSenderTime(chat) {
     const isDaytime = senderTime.hour >= 6 && senderTime.hour < 18;
 
     const daylightIcon = senderTimeLine.querySelector('.chat__daylight');
-    daylightIcon.textContent = isDaytime ? 'wb_sunny' : 'nights_stay';
+    setIcon(daylightIcon, isDaytime ? 'sun' : 'moon');
     daylightIcon.classList.add(isDaytime ? 'chat__daylight--day' : 'chat__daylight--night');
     senderTimeLine.querySelector('span').textContent = senderTime.text;
 }

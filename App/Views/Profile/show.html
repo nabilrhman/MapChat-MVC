@@ -17,7 +17,7 @@
 
     {% if user.is_guest %}
     <div class="guest-banner appear-down">
-        <i class="material-icons guest-banner__icon">schedule</i>
+        {{ icon('clock-circle', 'guest-banner__icon') }}
         <strong class="guest-banner__title">Guest account</strong>
         <span class="guest-banner__note">Deleted in {{ user.guestHoursLeft() }} h along with your messages.</span>
         <button type="button" class="button button--primary button--small guest-banner__button" id="keep-account">Keep my account</button>
@@ -33,7 +33,7 @@
         <section class="settings-card" id="card-profile">
             <div class="settings-card__head">
                 <h5 class="settings-card__title">Profile</h5>
-                <button type="button" class="button button--quiet button--small settings-card__edit-button">Edit</button>
+                <button type="button" class="button button--quiet button--small settings-card__edit-button">{{ icon('pen-new-square', 'button__icon') }}Edit</button>
             </div>
 
             {# The photo saves as soon as it's uploaded or removed, apart from Save #}
@@ -46,7 +46,7 @@
                 </div>
                 <div>
                     <label for="file-upload" class="button button--quiet button--small profile-photo__button">
-                        <i class="material-icons button__icon">photo_camera</i>Change photo
+                        {{ icon('camera', 'button__icon') }}Change photo
                     </label>
                     <button type="button" class="link-button link-button--danger" id="remove-photo"
                             {% if user.avatar is empty %}hidden{% endif %}>Remove</button>
@@ -75,7 +75,7 @@
         <section class="settings-card" id="card-account">
             <div class="settings-card__head">
                 <h5 class="settings-card__title">Account</h5>
-                <button type="button" class="button button--quiet button--small settings-card__edit-button">Edit</button>
+                <button type="button" class="button button--quiet button--small settings-card__edit-button">{{ icon('pen-new-square', 'button__icon') }}Edit</button>
             </div>
 
             <dl class="settings-card__view">

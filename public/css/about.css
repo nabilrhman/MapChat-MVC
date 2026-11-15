@@ -137,6 +137,12 @@
     margin: 0;
 }
 
+.about-list a
+{
+    color: var(--md-primary);
+    text-decoration: underline;
+}
+
 .about-list li
 {
     position: relative;

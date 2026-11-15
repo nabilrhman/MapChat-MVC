@@ -44,6 +44,7 @@ class View
             $twig->addFunction(new \Twig\TwigFunction('avatar_src', [\App\Avatar::class, 'src']));
             // Links to files in public/ that change when the file does (see Asset)
             $twig->addFunction(new \Twig\TwigFunction('asset', [Asset::class, 'url']));
+            $twig->addFunction(new \Twig\TwigFunction('icon', [Icon::class, 'svg'], ['is_safe' => ['html']]));
             $twig->addGlobal('app_url', Config::appUrl());
             // For marking the current page in the header
             $twig->addGlobal('current_path', parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH));

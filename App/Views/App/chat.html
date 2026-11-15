@@ -30,7 +30,7 @@
             <span class="swap__track">
                 <time class="swap__line" datetime="{{ chat.timestamp|date('c') }}"></time>
                 {% if chat.lng is not null %}
-                <span class="chat__sender-time swap__line"><i class="material-icons chat__daylight"></i><span></span></span>
+                <span class="chat__sender-time swap__line">{{ icon('sun', 'chat__daylight') }}<span></span></span>
                 {% endif %}
             </span>
         </span>
@@ -41,7 +41,7 @@
         <span class="chat__location">
             <span{% if chat.country %} class="swap"{% endif %}>
                 <span class="swap__track">
-                    <span class="swap__line"><i class="material-icons chat__place-icon">place</i>{{ chat.city }}</span>
+                    <span class="swap__line">{{ icon('map-point', 'chat__place-icon') }}{{ chat.city }}</span>
                     {% if chat.country %}
                     <span class="swap__line"><span class="fi fi-{{ chat.country|lower }}"></span><span class="chat__country" data-country="{{ chat.country }}"></span></span>
                     {% endif %}

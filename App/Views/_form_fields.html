@@ -14,7 +14,7 @@
                {%- if problems %} aria-invalid="true" aria-describedby="{{ field.id }}-error"{% endif %}>
         <label for="{{ field.id }}">{{ field.label }}</label>
         {% if type == 'password' %}
-        <button type="button" class="password-toggle material-icons" aria-label="Show password">visibility</button>
+        <button type="button" class="password-toggle" aria-label="Show password">{{ icon('eye') }}</button>
         {% endif %}
         {% if field.hint is defined %}
         <output class="form-field__hint">{{ field.hint }}</output>

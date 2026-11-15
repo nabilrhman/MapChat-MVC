@@ -8,6 +8,6 @@ document.addEventListener('click', (event) => {
 
     input.type = willShowPassword ? 'text' : 'password';
     input.focus();
-    toggle.textContent = willShowPassword ? 'visibility_off' : 'visibility';
+    setIcon(toggle.querySelector('.icon'), willShowPassword ? 'eye-closed' : 'eye');
     toggle.setAttribute('aria-label', willShowPassword ? 'Hide password' : 'Show password');
 });

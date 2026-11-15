@@ -30,13 +30,13 @@
             In 2026 I came back to it to bring parts of it up to date, and I'm still at it.
         </p>
         <a href="https://github.com/nabilrhman/MapChat-MVC" class="button button--outline about-intro__button">
-            <i class="fab fa-github button__icon"></i>The code is open source on GitHub
+            {{ icon('github', 'button__icon') }}The code is open source on GitHub
         </a>
     </section>
 
     <div class="about-grid">
         <section class="about-card appear-down">
-            <h2 class="about-card__title"><i class="material-icons about-card__icon">forum</i>What you can do</h2>
+            <h2 class="about-card__title">{{ icon('chat-round-dots', 'about-card__icon') }}What you can do</h2>
             <ul class="about-list">
                 <li>Chat with everyone who is signed in, in one shared room.</li>
                 <li>Click someone's name to chat with them privately.</li>
@@ -49,7 +49,7 @@
         </section>
 
         <section class="about-card appear-down">
-            <h2 class="about-card__title"><i class="material-icons about-card__icon">build</i>How it's built</h2>
+            <h2 class="about-card__title">{{ icon('programming', 'about-card__icon') }}How it's built</h2>
             <ul class="about-list">
                 <li>A model-view-controller (MVC) framework written from scratch in PHP.</li>
                 <li>MySQL for users and messages, queried with prepared statements to block SQL injection.</li>
@@ -57,11 +57,12 @@
                 <li>Axios to send messages and fetch new ones every second.</li>
                 <li>MapLibre and OpenStreetMap for the map.</li>
                 <li>The site's own CSS, with Beer CSS for the form fields, and plain JavaScript with no jQuery.</li>
+                <li>Icons from the <a href="https://www.figma.com/community/file/1166831539721848736">Solar icon set</a> by 480 Design, under <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.</li>
             </ul>
         </section>
 
         <section class="about-card about-card--note appear-down">
-            <h2 class="about-card__title"><i class="material-icons about-card__icon">info</i>Good to know</h2>
+            <h2 class="about-card__title">{{ icon('info-circle', 'about-card__icon') }}Good to know</h2>
             <ul class="about-list">
                 <li>Your location comes from your IP address, so the map only knows roughly which city you are in. It never uses GPS, and you can hide your pin and city from your profile.</li>
                 <li>Anything you write in Everyone is visible to everyone signed in. Private chats are only shown to the two of you.</li>

@@ -120,6 +120,11 @@
         cursor: pointer;
     }
 
+    .site-header__menu-button .icon
+    {
+        font-size: 24px;
+    }
+
     .site-header__menu-button:focus
     {
         background: none;
@@ -303,7 +308,7 @@
     cursor: pointer;
 }
 
-.account-menu__item .material-icons
+.account-menu__icon
 {
     color: #512da8;
     font-size: 20px;
@@ -372,7 +377,7 @@
         text-transform: uppercase;
     }
 
-    .account-menu__item .material-icons
+    .account-menu__icon
     {
         color: rgba(255, 255, 255, 0.85);
     }
