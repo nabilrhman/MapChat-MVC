@@ -26,6 +26,14 @@ body
     background:#eee;
     overflow:hidden;
     z-index:0; /* keep the map's layers below the chat panel */
+    /* Hidden until it has moved to the pins and drawn them (map.js) */
+    opacity: 0;
+    transition: opacity 400ms var(--ease-out);
+}
+
+.map.is-shown
+{
+    opacity: 1;
 }
 
 /* Dots over the part of the map not under the panels, until the map is
