@@ -38,6 +38,13 @@ class Error
      */
     public static function exceptionHandler($exception)
     {
+        // The caller's mistake, not an error to log
+        if ($exception instanceof MethodNotAllowed) {
+            http_response_code(405);
+            header('Allow: ' . implode(', ', $exception->allowed));
+            return;
+        }
+
         // Code is 404 (not found) or 500 (general error)
         $code = $exception->getCode();
         if ($code != 404) {

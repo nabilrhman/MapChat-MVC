@@ -51,8 +51,6 @@ class Profile extends Authenticated
      */
     public function updateAction()
     {
-        $this->requirePost();
-
         $email = trim($_POST['email'] ?? '');
         $password = $_POST['password'] ?? '';
 
@@ -91,8 +89,6 @@ class Profile extends Authenticated
      */
     public function updateAvatarAction()
     {
-        $this->requirePost();
-
         if (!$this->user->updateAvatar($_POST['avatar'] ?? '')) {
             http_response_code(400);
         }
@@ -105,8 +101,6 @@ class Profile extends Authenticated
      */
     public function removeAvatarAction()
     {
-        $this->requirePost();
-
         if (!$this->user->updateAvatar(null)) {
             http_response_code(400);
         }
@@ -132,8 +126,6 @@ class Profile extends Authenticated
      */
     public function updateLocationSharingAction()
     {
-        $this->requirePost();
-
         $this->user->setLocationSharing(!empty($_POST['share']));
 
         $this->json(['share_location' => !empty($_POST['share'])]);

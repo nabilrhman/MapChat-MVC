@@ -72,8 +72,6 @@ class App extends Authenticated
      */
     public function getOlderAction()
     {
-        $this->requirePost();
-
         $chats = Chat::getBefore(Auth::getEmail(), (int) ($_POST['before'] ?? 0));
 
         if ($chats) {
@@ -92,8 +90,6 @@ class App extends Authenticated
      */
     public function sendAction()
     {
-        $this->requirePost();
-
         $user = Auth::getUser();
         $body = trim($_POST['body'] ?? '');
 

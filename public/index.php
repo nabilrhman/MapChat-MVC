@@ -1,6 +1,15 @@
 <?php
 
 use App\Config;
+use App\Controllers\About;
+use App\Controllers\Account;
+use App\Controllers\App;
+use App\Controllers\Avatar;
+use App\Controllers\Home;
+use App\Controllers\Login;
+use App\Controllers\Password;
+use App\Controllers\Profile;
+use App\Controllers\Signup;
 /**
  * Front controller
  */
@@ -40,16 +49,55 @@ session_start([
  */
 $router = new Core\Router();
 
-// Add the routes
-$router->add('', ['controller' => 'Home', 'action' => 'index']);
-$router->add('about', ['controller' => 'About', 'action' => 'index']);
-$router->add('app', ['controller' => 'App', 'action' => 'index']);
-$router->add('login', ['controller' => 'Login', 'action' => 'new']);
-$router->add('logout', ['controller' => 'Login', 'action' => 'destroy']);
-$router->add('password/reset/{token:[\da-f]+}', ['controller' => 'Password', 'action' => 'reset']);
-$router->add('signup/activate/{token:[\da-f]+}', ['controller' => 'Signup', 'action' => 'activate']);
-$router->add('avatar/{id:\d+}', ['controller' => 'Avatar', 'action' => 'show']);
-$router->add('{controller}/{action}');
+// Each route names its method and the exact action it runs; no other method
+// of a controller can be reached from a URL
 
-$router->dispatch($_SERVER['QUERY_STRING']);
+// Pages
+$router->get('/', [Home::class, 'indexAction']);
+$router->get('/about', [About::class, 'indexAction']);
+$router->get('/app', [App::class, 'indexAction']);
 
+// Login and account
+$router->get('/login', [Login::class, 'newAction']);
+$router->get('/login/new', [Login::class, 'newAction']);
+$router->post('/login/create', [Login::class, 'createAction']);
+$router->post('/login/guest', [Login::class, 'guestAction']);
+$router->post('/logout', [Login::class, 'destroyAction']);
+$router->get('/login/show-logout-message', [Login::class, 'showLogoutMessageAction']);
+$router->get('/account/validate-email', [Account::class, 'validateEmailAction']);
+
+// Signup; activation is a GET, as people open it from an email
+$router->get('/signup/new', [Signup::class, 'newAction']);
+$router->post('/signup/create', [Signup::class, 'createAction']);
+$router->get('/signup/success', [Signup::class, 'successAction']);
+$router->get('/signup/activate/{token:[\da-f]+}', [Signup::class, 'activateAction']);
+$router->get('/signup/activated', [Signup::class, 'activatedAction']);
+
+// Password reset
+$router->get('/password/forgot', [Password::class, 'forgotAction']);
+$router->post('/password/request-reset', [Password::class, 'requestResetAction']);
+$router->get('/password/reset/{token:[\da-f]+}', [Password::class, 'resetAction']);
+$router->post('/password/reset-password', [Password::class, 'resetPasswordAction']);
+
+// Profile and avatar
+$router->get('/profile/show', [Profile::class, 'showAction']);
+$router->post('/profile/update', [Profile::class, 'updateAction']);
+$router->post('/profile/update-avatar', [Profile::class, 'updateAvatarAction']);
+$router->post('/profile/remove-avatar', [Profile::class, 'removeAvatarAction']);
+$router->post('/profile/update-location-sharing', [Profile::class, 'updateLocationSharingAction']);
+$router->get('/avatar/{id:\d+}', [Avatar::class, 'showAction']);
+
+// Chat and map
+$router->post('/app/get', [App::class, 'getAction']);
+$router->post('/app/get-older', [App::class, 'getOlderAction']);
+$router->post('/app/send', [App::class, 'sendAction']);
+$router->post('/app/get-people', [App::class, 'getPeopleAction']);
+$router->post('/app/get-locations', [App::class, 'getLocationsAction']);
+
+// Older URLs, from links and callers made before each route was listed here
+$router->get('/home/index', [Home::class, 'indexAction']);
+$router->get('/about/index', [About::class, 'indexAction']);
+$router->get('/app/index', [App::class, 'indexAction']);
+$router->post('/login/destroy', [Login::class, 'destroyAction']);
+
+$router->dispatch($_SERVER['REQUEST_METHOD'], $_SERVER['REQUEST_URI']);

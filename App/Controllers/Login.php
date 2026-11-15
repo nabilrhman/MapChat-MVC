@@ -30,8 +30,6 @@ class Login extends \Core\Controller
      */
     public function createAction()
     {
-        $this->requirePost();
-
         $remember_me = isset($_POST['remember_me']);
         $user = User::authenticate($_POST['email'] ?? '', $_POST['password'] ?? '');
 
@@ -63,10 +61,6 @@ class Login extends \Core\Controller
      */
     public function guestAction()
     {
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $this->redirect('/login');
-        }
-
         // Someone who was a guest in this browser gets that account back
         $user = User::findGuestByToken($_COOKIE['guest_token'] ?? '');
 
@@ -92,8 +86,6 @@ class Login extends \Core\Controller
      */
     public function destroyAction()
     {
-        $this->requirePost();
-
         Auth::logout();
 
         $this->redirect('/login/show-logout-message');
