@@ -44,3 +44,17 @@ function removeWithAnimation(element, className) {
     element.classList.add(className);
     onAnimationEnd(element, () => element.remove());
 }
+
+// Uploaded photos fade in over a soft circle once loaded; letter avatars
+// are inline images and show at once
+function fadeInPhotos(images) {
+    images.forEach((image) => {
+        if (image.complete || image.src.startsWith('data:')) return;
+
+        const frame = image.parentElement;
+        frame.classList.add('is-loading');
+        const onPhotoSettled = () => frame.classList.remove('is-loading');
+        image.addEventListener('load', onPhotoSettled, {once: true});
+        image.addEventListener('error', onPhotoSettled, {once: true});
+    });
+}
