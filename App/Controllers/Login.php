@@ -34,31 +34,25 @@ class Login extends \Core\Controller
      */
     public function createAction()
     {
-        if(isset($_POST['email']) && $_POST['password'])
+        $remember_me = isset($_POST['remember_me']);
+
+        if (!empty($_POST['email']) && !empty($_POST['password']))
         {
             $user = User::authenticate($_POST['email'], $_POST['password']);
-            $remember_me = isset($_POST['remember_me']);
 
             if ($user)
             {
                 if (!$user->is_active)
                 {
-                    Flash::addMessage('Account not activated, please check your email', Flash::WARNING);
+                    Flash::addMessage('Activate your account first. Check your email for the link.', Flash::WARNING);
                 }
                 else
                 {
                     Auth::login($user, $remember_me);
 
-                    Flash::addMessage('Login successful');
+                    Flash::addMessage('Logged in');
 
-                    $_POST['email'] = $user->email;
-                    $_POST['ip'] = UserInfo::getRealIP();
-
-                    $userInfo = new UserInfo($_POST);
-
-                    $userInfo->saveIP();
-                    $userInfo->findLocationFromIP();
-                    $userInfo->saveLocation();
+                    $this->saveLocation($user);
 
                     /** Bugfix: Since AJAX keeps calling /app/get for chat sync, ignore if requested to return to the AJAX request page (same page) */
                     if (Auth::getReturnToPage() == '/app/get')
@@ -75,19 +69,55 @@ class Login extends \Core\Controller
             }
             else
             {
-                Flash::addMessage('Incorrect username/password', Flash::WARNING);
+                Flash::addMessage('Wrong email or password', Flash::WARNING);
             }
         }
         else
         {
-            Flash::addMessage('Incorrect username/password', Flash::WARNING);
+            Flash::addMessage('Wrong email or password', Flash::WARNING);
         }
 
 
         View::renderTemplate('Login/new.html', [
-            'email' => $_POST['email'],
+            'email' => $_POST['email'] ?? '',
             'remember_me' => $remember_me
         ]);
+    }
+
+    /**
+     * Sign in with a new throwaway guest account (POST only, so link
+     * previews and crawlers can't create accounts)
+     *
+     * @return void
+     */
+    public function guestAction()
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('/login');
+        }
+
+        $user = User::createGuest();
+        Auth::login($user, false);
+        $this->saveLocation($user);
+
+        Flash::addMessage('Signed in as ' . $user->name, Flash::INFO);
+        $this->redirect('/app');
+    }
+
+    /**
+     * Look up and save where the user is signing in from
+     *
+     * @param User $user
+     *
+     * @return void
+     */
+    protected function saveLocation($user)
+    {
+        $userInfo = new UserInfo(['email' => $user->email, 'ip' => UserInfo::getRealIP()]);
+
+        $userInfo->saveIP();
+        $userInfo->findLocationFromIP();
+        $userInfo->saveLocation();
     }
 
     /**
@@ -114,7 +144,7 @@ class Login extends \Core\Controller
      */
     public function showLogoutMessageAction()
     {
-        Flash::addMessage('Logout successful');
+        Flash::addMessage('Logged out');
 
         $this->redirect('/login');
     }

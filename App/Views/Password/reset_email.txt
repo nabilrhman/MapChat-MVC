@@ -1,16 +1,9 @@
 MapChat
-http://www.map-chat.com
+{{ app_url }}
 
-Password Reset
+Hi {{ name }},
 
-Hello
+Someone asked to reset the password for your MapChat account. Open this link to choose a new one:
+{{ url }}
 
-{{ name }}
-
-You are receiving this email because we recently received a password reset request for your account. Go to the link to reset your password.
-
-RESET: {{ url }}
-
-Please ignore if you didn't request for it; your password will not change.
-
-- The MapChat Team
+The link works for 2 hours. If you didn't ask for this, ignore this email and your password stays the same.

@@ -61,13 +61,13 @@ class View
 
         if ($twig === null)
         {
-            $loader = new \Twig_Loader_Filesystem(dirname(__DIR__) . '/App/Views');
-            /*$twig = new \Twig_Environment($loader,
-                                            array('cache' => 'cache/templates',
-                                            'auto_reload' => true));*/
-            $twig = new \Twig_Environment($loader);
+            $loader = new \Twig\Loader\FilesystemLoader(dirname(__DIR__) . '/App/Views');
+            $twig = new \Twig\Environment($loader);
             $twig->addGlobal('current_user', \App\Auth::getUser());
             $twig->addGlobal('flash_messages', \App\Flash::getMessages());
+            $twig->addGlobal('app_url', \App\Config::appUrl());
+            $twig->addGlobal('cloudinary_cloud_name', \App\Config::get('CLOUDINARY_CLOUD_NAME'));
+            $twig->addGlobal('cloudinary_upload_preset', \App\Config::get('CLOUDINARY_UPLOAD_PRESET'));
 
         }
 

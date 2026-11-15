@@ -33,7 +33,7 @@ class Password extends \Core\Controller
     {
         User::sendPasswordReset($_POST['email']);
 
-        Flash::addMessage('Password reset requested. Please check your email.', Flash::INFO);
+        Flash::addMessage('Check your email for a reset link', Flash::INFO);
         $this->redirect('/login/new');
     }
 
@@ -67,7 +67,7 @@ class Password extends \Core\Controller
         if ($user->resetPassword($_POST['password'])) {
 
             //echo "password valid";
-            Flash::addMessage('Suceess! Please login with your new password', Flash::SUCCESS);
+            Flash::addMessage('Password changed. Log in with your new password.', Flash::SUCCESS);
             $this->redirect('/login/new');
             //View::renderTemplate('Password/reset_success.html');
         

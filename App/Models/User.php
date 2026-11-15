@@ -55,8 +55,10 @@ class User extends \Core\Model
             $hashed_token = $token->getHash();
             $this->activation_token = $token->getValue();
 
-            $sql = 'INSERT INTO users (name, email, password_hash, activation_hash)
-                    VALUES (:name, :email, :password_hash, :activation_hash)';
+            // Without email there is no way to send an activation link, so
+            // accounts start active
+            $sql = 'INSERT INTO users (name, email, password_hash, activation_hash, is_active)
+                    VALUES (:name, :email, :password_hash, :activation_hash, :is_active)';
 
             $db = static::getDB();
             $stmt = $db->prepare($sql);
@@ -65,6 +67,7 @@ class User extends \Core\Model
             $stmt->bindValue(':email', $this->email, PDO::PARAM_STR);
             $stmt->bindValue(':password_hash', $password_hash, PDO::PARAM_STR);
             $stmt->bindValue(':activation_hash', $hashed_token, PDO::PARAM_STR);
+            $stmt->bindValue(':is_active', \App\Config::mailEnabled() ? 0 : 1, PDO::PARAM_INT);
 
             return $stmt->execute();
         }
@@ -385,7 +388,7 @@ class User extends \Core\Model
      */
     public function sendActivationEmail()
     {
-        $url = 'http://' . $_SERVER['HTTP_HOST'] . '/signup/activate/' . $this->activation_token;
+        $url = \App\Config::appUrl() . '/signup/activate/' . $this->activation_token;
 
         $text = View::getTemplate('Signup/activation_email.txt', ['url' => $url, 'name' => User::getNameFromToken($this->activation_token)]);
         $html = View::getTemplate('Signup/activation_email.html', ['url' => $url, 'name' => User::getNameFromToken($this->activation_token)]);
@@ -400,7 +403,7 @@ class User extends \Core\Model
      */
     protected function sendPasswordResetEmail()
     {
-        $url = 'http://' . $_SERVER['HTTP_HOST'] . '/password/reset/' . $this->password_reset_token;
+        $url = \App\Config::appUrl() . '/password/reset/' . $this->password_reset_token;
 
         $text = View::getTemplate('Password/reset_email.txt', ['url' => $url, 'name' => User::findByPasswordReset($this->password_reset_token)->name]);
         $html = View::getTemplate('Password/reset_email.html', ['url' => $url, 'name' => User::findByPasswordReset($this->password_reset_token)->name]);
@@ -454,6 +457,74 @@ class User extends \Core\Model
     }
     
     /**
+     * Create a throwaway guest account, so visitors can try the chat without
+     * signing up. Guests get a random name, an email address nobody can
+     * receive mail at, and a password nobody knows.
+     *
+     * @return User The new guest
+     */
+    public static function createGuest()
+    {
+        static::deleteOldGuests();
+
+        $sql = 'INSERT INTO users (name, email, password_hash, is_active, is_guest)
+                VALUES (:name, :email, :password_hash, 1, 1)';
+
+        $db = static::getDB();
+        $stmt = $db->prepare($sql);
+
+        $stmt->bindValue(':name', 'Guest ' . random_int(1000, 9999), PDO::PARAM_STR);
+        $stmt->bindValue(':email', 'guest-' . bin2hex(random_bytes(8)) . '@guest.mapchat.local', PDO::PARAM_STR);
+        $stmt->bindValue(':password_hash', password_hash(bin2hex(random_bytes(32)), PASSWORD_DEFAULT), PDO::PARAM_STR);
+        $stmt->execute();
+
+        return static::findByID($db->lastInsertId());
+    }
+
+    /**
+     * How long a guest account lasts before it is deleted, with its messages
+     */
+    const GUEST_LIFETIME_HOURS = 24;
+
+    /**
+     * Delete guest accounts older than GUEST_LIFETIME_HOURS. Their messages
+     * and location go with them (the chats and userinfo tables cascade on
+     * delete). Runs whenever a new guest signs in, so no scheduled job is
+     * needed. Guests who set a password are no longer guests and are kept.
+     *
+     * @return void
+     */
+    public static function deleteOldGuests()
+    {
+        $db = static::getDB();
+        $old = 'SELECT id FROM users
+                WHERE is_guest = 1
+                  AND created_at < NOW() - INTERVAL ' . (int) static::GUEST_LIFETIME_HOURS . ' HOUR';
+
+        $db->exec('DELETE FROM remembered_logins WHERE user_id IN (SELECT id FROM (' . $old . ') AS old_guests)');
+        $db->exec('DELETE FROM users WHERE id IN (SELECT id FROM (' . $old . ') AS old_guests)');
+    }
+
+    /**
+     * Turn showing this user's pin and city on or off
+     *
+     * @param bool $share
+     *
+     * @return bool True if saved
+     */
+    public function setLocationSharing($share)
+    {
+        $sql = 'UPDATE users SET share_location = :share WHERE id = :id';
+
+        $db = static::getDB();
+        $stmt = $db->prepare($sql);
+        $stmt->bindValue(':share', $share ? 1 : 0, PDO::PARAM_INT);
+        $stmt->bindValue(':id', $this->id, PDO::PARAM_INT);
+
+        return $stmt->execute();
+    }
+
+    /**
      * Update the user's profile
      *
      * @param array $data Data from the edit profile form
@@ -478,9 +549,10 @@ class User extends \Core\Model
                     SET name = :name,
                         email = :email';
 
-            // Add password if it's set
+            // Add password if it's set. A guest who sets their own email and
+            // password turns the guest account into a normal one.
             if (isset($this->password)) {
-                $sql .= ', password_hash = :password_hash';
+                $sql .= ', password_hash = :password_hash, is_guest = 0';
             }
 
 

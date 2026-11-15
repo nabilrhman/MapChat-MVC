@@ -35,9 +35,12 @@ class Signup extends \Core\Controller
 
         if ($user->save()) {
 
-            $user->sendActivationEmail();
+            if (\App\Config::mailEnabled()) {
+                $user->sendActivationEmail();
+                $this->redirect('/signup/success');
+            }
 
-            $this->redirect('/signup/success');
+            $this->redirect('/signup/activated');
 
         } else {
 
@@ -56,7 +59,7 @@ class Signup extends \Core\Controller
     public function successAction()
     {
 
-        Flash::addMessage('Success! Please check your email to activate', Flash::SUCCESS);
+        Flash::addMessage('Account created. Check your email to activate it.', Flash::SUCCESS);
         $this->redirect('/login');
     }
 
@@ -90,7 +93,7 @@ class Signup extends \Core\Controller
      */
     public function activatedAction()
     {
-        Flash::addMessage('Success! Your account is now active', Flash::SUCCESS);
+        Flash::addMessage('Your account is active. Log in to start chatting.', Flash::SUCCESS);
         $this->redirect('/login');
     }
 }

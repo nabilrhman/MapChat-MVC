@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="LB">
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#64b5f6"/><stop offset="1" stop-color="#42a5f5"/></linearGradient></defs>
+<rect width="96" height="96" fill="url(#g)"/>
+<text x="48" y="49" text-anchor="middle" dominant-baseline="central" fill="#fff" font-family="Montserrat, 'Helvetica Neue', Arial, sans-serif" font-size="36" font-weight="600" letter-spacing="1">LB</text>
+</svg>

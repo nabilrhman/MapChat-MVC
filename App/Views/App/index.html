@@ -1,13 +1,13 @@
 {% extends 'base_chat.html' %}
 {% block chats %}
 {% for chat in chats %}
-<div class="chat hover-glow">
+<div class="chat">
     <div class="chat-avatar-container">
         {% if chat.avatar is not empty %}
         <img class="avatar" src="{{ chat.avatar }}" alt="Avatar"
              style="width:100%;">
         {% else %}
-        <img class="avatar" src="res/avatar.png" alt="Avatar"
+        <img class="avatar" src="/avatar/{{ chat.user_id }}?v={{ chat.name|url_encode }}" alt="Avatar"
              style="width:100%;">
         {% endif %}
     </div>
@@ -15,12 +15,9 @@
     <div class="chat-body-container">
         <h3 class="name">{{ chat.name }}</h3>
         <p class="chat-body">{{ chat.body }}</p>
-        {% if chat.city is not empty %}
-            <span class="location">{{ chat.city }}</span>
-        {% else %}
-            <span class="location">Unknown</span>
-        {% endif %}
-        <span class="time">{{ chat.timestamp | date("M j | h:i a", "America/Boise")  }}</span>
+        {# No city (e.g. the MapChat bot, or a failed IP lookup): leave the spot empty #}
+        <span class="location">{{ chat.city }}</span>
+        <span class="time">{{ chat.timestamp | date("M j · h:i a", "America/Boise")  }}</span>
     </div>
 </div>
 {% endfor %}

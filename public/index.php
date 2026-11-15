@@ -24,7 +24,15 @@ set_exception_handler('Core\Error::exceptionHandler');
 /**
  * Sessions
  */
-session_start();
+// Stored in the database, so restarting the container doesn't log anyone out.
+// A session lasts a week without activity.
+session_set_save_handler(new Core\DatabaseSessionHandler(), true);
+session_start([
+    'gc_maxlifetime' => 60 * 60 * 24 * 7,
+    'cookie_httponly' => true,
+    'cookie_samesite' => 'Lax',
+    'cookie_secure' => str_starts_with(Config::appUrl(), 'https://'),
+]);
 
 
 /**
@@ -40,17 +48,8 @@ $router->add('login', ['controller' => 'Login', 'action' => 'new']);
 $router->add('logout', ['controller' => 'Login', 'action' => 'destroy']);
 $router->add('password/reset/{token:[\da-f]+}', ['controller' => 'Password', 'action' => 'reset']);
 $router->add('signup/activate/{token:[\da-f]+}', ['controller' => 'Signup', 'action' => 'activate']);
+$router->add('avatar/{id:\d+}', ['controller' => 'Avatar', 'action' => 'show']);
 $router->add('{controller}/{action}');
 
 $router->dispatch($_SERVER['QUERY_STRING']);
 
-
-/**
- * Cloudinary (API) Config
- */
-
-\Cloudinary::config(array(
-    "cloud_name" => Config::CLOUDINARY_CLOUD_NAME,
-    "api_key" => Config::CLOUDINARY_API_KEY,
-    "api_secret" => Config::CLOUDINARY_API_SECRET
-));

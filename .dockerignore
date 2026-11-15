@@ -1,0 +1,6 @@
+.git
+.env
+.idea
+vendor
+docs
+logs/*.txt

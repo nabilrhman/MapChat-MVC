@@ -4,8 +4,9 @@
 
 {% block head %}
 <link rel="stylesheet" href="/css/app.css">
-<link rel="stylesheet" href="/css/chat.css">
+<link rel="stylesheet" href="/css/chat.css?v=10">
 <link rel="stylesheet" href="/css/styles.css" />
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 {% endblock %}
 
 {% block chatmodule %}
@@ -26,17 +27,15 @@
 
     <form class="input-container" method="post" id="input-container-form">
         <div class="input" id="msg">
-            <textarea name="message" placeholder="Type your message"
-                      class="materialize-textarea" id="textarea-send" autofocus></textarea>
-            <!--<a href="#" onclick="myClick(0);">Open Info Window</a>-->
+            <span class="char-count" id="char-count" hidden></span>
+            <textarea name="message" placeholder="Type your message" rows="1"
+                      class="materialize-textarea" id="textarea-send" maxlength="500" autofocus></textarea>
         </div>
 
-        <div class="button-container">
-            <button name="send" class="btn-floating waves-effect waves-light purple hover-bounce-in" id="button-send"
-                    type="submit">
-                <i class="material-icons">send</i>
-            </button>
-        </div>
+        <button name="send" class="waves-effect waves-light" id="button-send" type="submit"
+                aria-label="Send" title="Send" disabled>
+            <i class="material-icons">send</i>
+        </button>
     </form>
 
 </div>
@@ -47,7 +46,6 @@
 
 
 
-<script src="/js/randomQuote.js"></script>
 
 
 <script>
@@ -70,73 +68,59 @@
 
         var lastResponse;
 
+        // Ask for new messages every second
         (function update() {
-            $.ajax({
-
-                type: 'POST',
-                dataType: 'html',
-                url: '/app/get',
-
-                success: function (response) {
-
-                    if(!$.trim(response))
-                    {
-                        //console.log("No new response");
-                    }
-                    else
-                    {
-                        //console.log("Got new response");
-                        $(".chat-list").append(response);
+            postForm('/app/get')
+                .then(function (response) {
+                    if ($.trim(response.data)) {
+                        $(".chat-list").append(response.data);
                         $(".chat-list").animate({scrollTop: $(".chat-list").prop("scrollHeight")}, 1000);
-                        $('.chat-list').scroll( function(){
-                            //console.log($(this).scrollTop()+' + '+ $(this).height()+' = '+ ($(this).scrollTop() + $(this).height())   +' _ '+ $(this)[0].scrollHeight  );
-                            /*if($(this).scrollTop() + $(this).height() == $(this)[0].scrollHeight){
-                                $(".chat-list").animate({scrollTop: $(".chat-list").prop("scrollHeight")}, 1000);
-                            }*/
-                        });
                     }
-
-                    //elem[0].animate({scrollTop: $(".chat-list").prop("scrollHeight")}, 1000);
-
-
-                }
-            }).then(function() {           // on completion, restart
-                //setTimeout(update, 30000);  // function refers to itself
-                setTimeout(update, 1000);  // function refers to itself
-            });
+                })
+                .catch(function () {
+                    // Try again on the next round
+                })
+                .finally(function () {
+                    setTimeout(update, 1000);
+                });
         })();
 
-
-
         $('#input-container-form').on('submit', function (e) {
-
             e.preventDefault();
-            //alert("Submit called");
+
             var bodyText = $('.materialize-textarea').val().trim();
-            //alert(body);
-            $.ajax({
 
-                type: 'POST',
-                dataType: 'html',
-                url: '/app/send',
-                data: {
-                    body: bodyText
-                },
-                success: function (response) {
-
-                    $('.materialize-textarea').val("");
+            postForm('/app/send', {body: bodyText})
+                .then(function () {
+                    $('.materialize-textarea').val("").trigger('input');
                     M.textareaAutoResize($('.materialize-textarea'));
-
-                }
-            });
-
+                })
+                .catch(function (error) {
+                    var message = errorMessage(error, 'Your message could not be sent.');
+                    M.toast({html: $('<div>').text(message).html()});
+                });
         });
 
+        // Enter sends, Shift+Enter starts a new line
         $(".materialize-textarea").keypress(function (event) {
-            if (event.which == 13) {
+            if (event.which == 13 && !event.shiftKey) {
                 event.preventDefault();
-                $("#input-container-form").submit();
+                if (!$('#button-send').prop('disabled')) {
+                    $("#input-container-form").submit();
+                }
             }
+        });
+
+        // Grey out Send while the box is empty; show the count near the limit
+        $('#textarea-send').on('input', function () {
+            var length = this.value.length;
+            var max = parseInt(this.getAttribute('maxlength'), 10);
+
+            $('#button-send').prop('disabled', this.value.trim() === '');
+            $('#char-count')
+                .prop('hidden', length < max - 100)
+                .toggleClass('over-soon', length > max - 20)
+                .text(length + ' / ' + max);
         });
 
         function scrollToBottom()
@@ -158,8 +142,8 @@
 
 </script>
 
-<script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBQCJ5dE-f708k-2Acw_xxzfRliL9mamxM&callback=initialize"></script>
-<script type='text/javascript' src='/js/map.js'></script>
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script type='text/javascript' src='/js/map.js?v=7'></script>
 
 
 

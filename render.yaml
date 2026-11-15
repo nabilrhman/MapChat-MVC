@@ -1,0 +1,28 @@
+# Render Blueprint: New > Blueprint in the Render dashboard, pick this repo.
+# The database lives elsewhere (e.g. TiDB Cloud Starter); fill in its details
+# when Render asks for the values marked sync: false.
+services:
+  - type: web
+    name: mapchat
+    runtime: docker
+    plan: free
+    healthCheckPath: /login
+    envVars:
+      - key: APP_URL
+        sync: false
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        value: "4000"
+      - key: DB_NAME
+        value: mapchat
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_SSL
+        value: "true"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: SHOW_ERRORS
+        value: "false"

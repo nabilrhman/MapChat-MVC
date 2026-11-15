@@ -2,36 +2,44 @@
 
 namespace App;
 
-use App\Config;
-use Mailgun\Mailgun;
+use Symfony\Component\Mailer\Mailer;
+use Symfony\Component\Mailer\Transport;
+use Symfony\Component\Mime\Email;
 
 /**
  * Mail
  *
- * PHP version 7.0
+ * Sends through whatever MAILER_DSN points at, e.g. any provider's SMTP:
+ * smtp://user:pass@smtp.example.com:587
  */
 class Mail
 {
 
     /**
-     * Send a message
+     * Send a message. Does nothing when email is not configured.
      *
      * @param string $to Recipient
      * @param string $subject Subject
      * @param string $text Text-only content of the message
      * @param string $html HTML content of the message
      *
-     * @return mixed
+     * @return void
      */
     public static function send($to, $subject, $text, $html)
     {
-        $mg = new Mailgun(Config::MAILGUN_API_KEY);
-        $domain = Config::MAILGUN_DOMAIN;
+        if (!Config::mailEnabled()) {
+            return;
+        }
 
-        $mg->sendMessage($domain, ['from'    => 'MapChat <no-reply@' . Config::DOMAIN_NAME . '>',
-                                   'to'      => $to,
-                                   'subject' => $subject,
-                                   'text'    => $text,
-                                   'html'    => $html]);
+        $mailer = new Mailer(Transport::fromDsn(Config::get('MAILER_DSN')));
+
+        $email = (new Email())
+            ->from(Config::get('MAIL_FROM', 'MapChat <no-reply@localhost>'))
+            ->to($to)
+            ->subject($subject)
+            ->text($text)
+            ->html($html);
+
+        $mailer->send($email);
     }
 }

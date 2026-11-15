@@ -27,6 +27,22 @@ body
     position:fixed;
     background:#eee;
     overflow:hidden;
+    z-index:0; /* keep the map's layers below the chat panel */
+}
+
+.map-pin
+{
+    cursor: pointer;
+}
+
+
+/* Name shown when hovering a pin, like the old Google info window */
+#map .maplibregl-popup-content
+{
+    font-family: inherit;
+    padding: 8px 12px;
+    border-radius: 2px;
+    box-shadow: 0 2px 7px 1px rgba(0, 0, 0, 0.3);
 
 }
 
@@ -39,11 +55,11 @@ body
     overflow: hidden;
     position: absolute;
     top: 96px;
-    bottom: 50px;
+    bottom: 43px; /* footer height */
     left: 0;
     right: 0;
-    background-color:rgba(240,240,240,0.9);
-    box-shadow: 0px 0 5px #888;
+    background-color: #fafafa;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.12);
 
 }
 
@@ -60,156 +76,177 @@ body
 
 .chat
 {
-    /*background-color:rgba(255,255,255,0.6);*/
-    /*border-bottom:1px solid #aaa;*/
-    box-shadow:-5px 0 5px #888;
-    width: 100%;
-    padding-bottom: 20px;
-    padding-left: 20px;
-    padding-top: 2px;
-    margin-bottom: 3px;
-    display:grid;
-}
-
-
-.chat-avatar-container
-{
-    width: 35px !important;
-    height: 100%;
-    margin-top: 20px
-}
-
-.chat .avatar
-{
-    border-radius:50%;
-    display: block;
+    /* Avatar on the left, the message on the right; a hairline between cards */
+    display: grid;
+    grid-template-columns: 36px 1fr;
+    column-gap: 14px;
+    padding: 16px 20px;
+    border-bottom: 1px solid #ececec;
+    background-color: #fafafa;
+    transition: background-color 0.2s ease;
 }
 
 .chat:hover
 {
-    background-color:rgba(255,255,255,1);
-    transition: background-color 0.2s ease;
+    background-color: #fff;
 }
 
+.chat-avatar-container
+{
+    width: 36px;
+    height: 36px;
+}
+
+.chat .avatar
+{
+    width: 36px !important;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    display: block;
+}
+
+.chat-body-container
+{
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: baseline;
+    min-width: 0;
+}
 
 .chat .name
 {
-    font-size:16px;
-    text-transform:uppercase;
-    font-weight:600;
-}
-
-.chat .time
-{
-    float:right;
-    color:dimgray;
-    padding-right:15px;
-}
-
-.chat .location
-{
-    float:left;
-    color:#8A2BE2;
-}
-
-
-
-chat-body-container
-{
-    display: flex;
-    width: 91.6666666667%;
-    
+    grid-column: 1 / -1;
+    margin: 0 0 4px;
+    font-size: 13px;
+    line-height: 1.4;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    font-weight: 600;
 }
 
 .chat-body
 {
-    /*left: 70px;*/
-    text-align:left;
-    padding-right:15px;
-    overflow-wrap: break-word;
-    
+    grid-column: 1 / -1;
+    margin: 0 0 8px;
+    text-align: left;
+    overflow-wrap: anywhere;
+    white-space: pre-line; /* keep line breaks people typed */
 }
 
+.chat .location
+{
+    color: #7e57c2;
+    font-size: 12px;
+}
+
+.chat .time
+{
+    color: #9e9e9e;
+    font-size: 12px;
+    text-align: right;
+}
 
 /* Chat - ends */
-/* Input message - starts */
+/* Message box - starts */
 .input-container
 {
-
-    background-color:#FFF;
-    border-top:1px solid #aaa;
-    box-shadow:-5px 0 5px #888;
     display: flex;
-    padding-left: 20px;
-    padding-right: 10px;
-    bottom: 0px;
-    overflow: hidden;
+    align-items: flex-end;
+    gap: 10px;
+    padding: 12px 20px; /* same side padding as the messages above */
+    background-color: #fff;
+    border-top: 1px solid #e0e0e0;
 }
 
-    .input
-    {
-        overflow-y:auto;
-        overflow-x:hidden;
-        overflow-wrap: break-word;
-        max-height: 100px;
-        float: left;
-        flex: auto;
-    }
+.input
+{
+    flex: 1;
+    min-width: 0;
+    position: relative;
+}
 
-        #message-send
-        {
-            /*margin-bottom: auto;*/
-            margin-top: auto;
-            align-self: flex-end;
-            overflow: hidden;
-        }
+/* A field that grows with the text up to five lines, then scrolls */
+.input-container textarea.materialize-textarea
+{
+    display: block; /* no inline gap under it, so it lines up with Send */
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 42px;
+    max-height: 120px;
+    margin: 0;
+    padding: 9px 12px;
+    border: 1px solid #ddd6ee;
+    border-radius: 4px;
+    background-color: #faf9fd;
+    line-height: 22px;
+    font-size: 15px;
+    resize: none;
+    overflow-y: auto !important;
+    overflow-wrap: anywhere;
+    box-shadow: none;
+    transition: box-shadow 0.15s ease;
+}
 
-        .button-container
-        {
-            overflow: hidden;
-            float: right;
-            align-self: flex-end;
-            padding: 10px;
-        }
+.input-container textarea.materialize-textarea:focus
+{
+    border: 1px solid #7e57c2;
+    box-shadow: none;
+}
 
-/* Input message - ends */
-/* Send button - starts */
+/* Characters left, shown only when close to the limit */
+.char-count
+{
+    position: absolute;
+    right: 14px;
+    top: -18px;
+    font-size: 11px;
+    color: #9e9e9e;
+}
+
+.char-count.over-soon
+{
+    color: #e53935;
+}
+
 #button-send
 {
+    flex: none;
+    width: 42px;
+    height: 42px; /* same as a one-line message box */
+    padding: 0;
+    border: none;
+    border-radius: 4px;
+    background-color: #512da8;
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.15s ease;
 }
 
-/*#button-send::after
+#button-send:hover
 {
-    content:"";
-    clear:right;
-    display:table;
-}*/
-
-.material-icons
-{
-    font-family:"Material Icons";
-    font-weight:400;
-    font-style:normal;
-    font-size:36px;
-    /* Preferred icon size */
-    display:inline-block;
-    line-height:1;
-    text-transform:none;
-    letter-spacing:normal;
-    word-wrap:normal;
-    white-space:nowrap;
-    direction:ltr;
-    /* Support for all WebKit browsers. */
-    -webkit-font-smoothing:antialiased;
-    /* Support for Safari and Chrome. */
-    text-rendering:optimizeLegibility;
-    /* Support for Firefox. */
-    -moz-osx-font-smoothing:grayscale;
-    /* Support for IE. */
-    font-feature-settings:liga;
+    background-color: #5e35b1;
 }
 
-/* Send button - ends */
+#button-send:disabled
+{
+    background-color: #d1c4e9;
+    cursor: default;
+}
+
+#button-send .material-icons
+{
+    font-family: "Material Icons";
+    font-size: 20px;
+    line-height: 1;
+    margin-left: 2px; /* the arrow looks centred when nudged right */
+    font-feature-settings: "liga";
+    -webkit-font-smoothing: antialiased;
+}
+/* Message box - ends */
 
 /* Scroll bar style */
 ::-webkit-scrollbar-track
@@ -232,11 +269,19 @@ chat-body-container
     background-color:#d1c4e9;
 }
 
-.chat::after,.chat .location::after,.input textarea::before
+
+
+
+
+/* Fallback map: overlap tiles by a pixel so no hairline seams show */
+#map .leaflet-tile
 {
-    content:"";
-    clear:both;
-    display:table;
+    width: 257px !important;
+    height: 257px !important;
 }
 
-
+/* Beyond the edge of the world (zoomed far out), show water rather than grey */
+#map.leaflet-container
+{
+    background: #c6b9ff;
+}
