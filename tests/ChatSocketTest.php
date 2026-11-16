@@ -392,6 +392,20 @@ class ChatSocketTest extends TestCase
         $this->assertFalse($bob->waitFor('typing', 2)['isTyping']);
     }
 
+    public function testWorkerTypingReachesOnlyThatPerson()
+    {
+        $ann = $this->openPage('ann');
+        $bob = $this->openPage('bob');
+        $botId = (int) User::findByEmail(Chat::BOT_EMAIL)->id;
+
+        // As the chat worker does while MapChat writes ann a private reply
+        \App\ChatSocket\Signal::typing(Chat::BOT_EMAIL, $this->emails['ann'], true);
+
+        $typing = $ann->waitFor('typing');
+        $this->assertSame([$botId, true], [$typing['from'], $typing['isTyping']]);
+        $this->assertNull($bob->waitFor('typing', 0.5));
+    }
+
     public function testPersonStaysOnlineWhileAnyTabIsOpen()
     {
         $cat = $this->openPage('cat');

@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\ChatSocket\Signal;
+
 use PDO;
 use App\Config;
 use App\Mention;
@@ -233,20 +235,34 @@ class Bot extends \Core\Model
             return;
         }
 
-        $body = match ($job['kind']) {
-            'greet' => static::greeting($job),
-            'reply', 'mention' => static::publicReply($job),
-            'dm' => static::privateReply($job),
-        };
-
-        if ($body === null || trim($body) === '') {
-            return;
+        // In a private chat they're seen typing while the reply is written.
+        // The reply itself ends that; it's only ended here if none comes
+        $isPosted = false;
+        if ($isPrivate) {
+            Signal::typing($job['speaker'], $job['email'], true);
         }
 
-        $body = static::tidy($body);
-        if ($isPrivate) {
-            static::post($job, static::fitLength($body), $job['email']);
-            return;
+        try {
+            $body = match ($job['kind']) {
+                'greet' => static::greeting($job),
+                'reply', 'mention' => static::publicReply($job),
+                'dm' => static::privateReply($job),
+            };
+
+            if ($body === null || trim($body) === '') {
+                return;
+            }
+
+            $body = static::tidy($body);
+            if ($isPrivate) {
+                static::post($job, static::fitLength($body), $job['email']);
+                $isPosted = true;
+                return;
+            }
+        } finally {
+            if ($isPrivate && !$isPosted) {
+                Signal::typing($job['speaker'], $job['email'], false);
+            }
         }
 
         if (static::needsTag($job)) {
