@@ -174,12 +174,7 @@ function showConversation(conversation) {
     chatTabs.querySelectorAll('.chat-tab').forEach((tab) => tab.classList.remove('is-active'));
     const tab = getTab(activeConversation);
     tab.classList.add('is-active');
-    slideTabs(() => {
-        const unreadCount = tab.querySelector('.chat-tab__unread');
-        unreadCount.hidden = true;
-        unreadCount.textContent = '';
-        unreadCount.classList.remove('chat-tab__unread--mention');
-    });
+    clearUnreadCount(tab);
     tab.scrollIntoView({block: 'nearest', inline: 'nearest'});
 
     getChats().forEach((chat) => {
@@ -202,6 +197,15 @@ function showConversation(conversation) {
         loadConversation(activeConversation, tab.dataset.newestId);
         delete tab.dataset.newestId;
     }
+}
+
+function clearUnreadCount(tab) {
+    slideTabs(() => {
+        const unreadCount = tab.querySelector('.chat-tab__unread');
+        unreadCount.hidden = true;
+        unreadCount.textContent = '';
+        unreadCount.classList.remove('chat-tab__unread--mention');
+    });
 }
 
 function setUnreadCount(tab, count) {
@@ -403,20 +407,31 @@ function countUnread(tab, isMention) {
     });
 }
 
-// Put new messages in their tab and count the ones in other tabs
+// Put new messages in their tab and count the ones you haven't seen: in
+// other tabs, or in this one while the page is hidden
 function placeMessages(chats) {
     chats.forEach((chat) => {
         const tab = addTabFor(chat);
+        const isInOpenTab = getConversation(chat) === activeConversation;
 
-        if (getConversation(chat) !== activeConversation) {
+        if (!isInOpenTab) {
             chat.style.display = 'none';
-            if (tab) countUnread(tab, chat.classList.contains('chat--mentions-me'));
+        }
+        if (tab && (!isInOpenTab || document.hidden)) {
+            countUnread(tab, chat.classList.contains('chat--mentions-me'));
         }
     });
-    if (chats.some((chat) => getConversation(chat) === activeConversation)) {
+    if (!document.hidden && chats.some((chat) => getConversation(chat) === activeConversation)) {
         markConversationRead(activeConversation);
     }
 }
+
+// Back to the page: what came into the open tab meanwhile is seen now
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) return;
+    clearUnreadCount(getTab(activeConversation));
+    markConversationRead(activeConversation);
+});
 
 chatList.addEventListener('click', (event) => {
     const senderName = event.target.closest('.chat__name--can-message');
