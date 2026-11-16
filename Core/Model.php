@@ -6,22 +6,19 @@ use PDO;
 use App\Config;
 
 /**
- * Base model
+ * What every model shares: the database connection and query helpers
  */
-#[\AllowDynamicProperties]
 abstract class Model
 {
     /** The connection every model shares, made on first use */
-    private static $db = null;
+    private static ?PDO $db = null;
 
     /**
-     * Class constructor
+     * Fill in the model's properties
      *
-     * @param array $data  Initial property values (optional)
-     *
-     * @return void
+     * @param array<string, mixed> $data Property values by name
      */
-    public function __construct($data = [])
+    public function __construct(array $data = [])
     {
         foreach ($data as $key => $value) {
             $this->$key = $value;
@@ -29,11 +26,9 @@ abstract class Model
     }
 
     /**
-     * Get the PDO database connection
-     *
-     * @return PDO
+     * The database connection, made on first use
      */
-    protected static function getDB()
+    protected static function getDB(): PDO
     {
         if (self::$db === null) {
             $dsn = 'mysql:host=' . Config::get('DB_HOST', 'localhost')
@@ -49,8 +44,6 @@ abstract class Model
             }
 
             self::$db = new PDO($dsn, Config::get('DB_USER', 'root'), Config::get('DB_PASSWORD', ''), $options);
-
-            // Throw an Exception when an error occurs
             self::$db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         }
 
@@ -58,12 +51,30 @@ abstract class Model
     }
 
     /**
+     * An IN (...) list of named placeholders for some values, so the values
+     * are bound rather than written into the SQL. No values give (NULL),
+     * which matches nothing
+     *
+     * @param string $name The placeholders' name, numbered: email gives :email0, :email1
+     * @param array $values Strings or numbers
+     *
+     * @return array{string, array<string, mixed>} The list, e.g. "(:email0, :email1)", and the values by placeholder
+     */
+    protected static function inList(string $name, array $values): array
+    {
+        $params = [];
+        foreach (array_values($values) as $i => $value) {
+            $params[":$name$i"] = $value;
+        }
+
+        return ['(' . ($params ? implode(', ', array_keys($params)) : 'NULL') . ')', $params];
+    }
+
+    /**
      * Drop the connection, so the next query makes a new one. For the
      * long-running chat processes, whose connection the database can close
-     *
-     * @return void
      */
-    public static function disconnectDB()
+    public static function disconnectDB(): void
     {
         self::$db = null;
     }

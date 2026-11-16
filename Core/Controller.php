@@ -3,30 +3,22 @@
 namespace Core;
 
 use App\Auth;
+use App\Config;
 use App\Flash;
 
 /**
- * Base controller
+ * What every controller shares: the route's values, the origin check, the
+ * before and after filters, and replies
  */
-#[\AllowDynamicProperties]
 abstract class Controller
 {
     /**
-     * Parameters from the matched route
-     * @var array
-     */
-    protected $route_params = [];
-
-    /**
-     * Class constructor
+     * Store the matched route's values
      *
-     * @param array $route_params  Parameters from the route
-     *
-     * @return void
+     * @param array<string, string> $routeParams The route's variables, e.g. ['id' => '42']
      */
-    public function __construct($route_params)
+    public function __construct(protected array $routeParams)
     {
-        $this->route_params = $route_params;
     }
 
     /**
@@ -34,10 +26,8 @@ abstract class Controller
      * around it. The router calls this with the action its route names
      *
      * @param string $action Action method, e.g. indexAction
-     *
-     * @return void
      */
-    public function runAction($action)
+    public function runAction(string $action): void
     {
         if (!$this->isSameOrigin()) {
             http_response_code(403);
@@ -51,51 +41,43 @@ abstract class Controller
     }
 
     /**
-     * Before filter - called before an action method.
+     * Run before each action
      *
-     * @return void
+     * @return bool|null False stops the action
      */
-    protected function before()
+    protected function before(): ?bool
+    {
+        return null;
+    }
+
+    /**
+     * Run after each action
+     */
+    protected function after(): void
     {
     }
 
     /**
-     * After filter - called after an action method.
-     *
-     * @return void
+     * Whether the request may run: a GET or HEAD always, anything else only
+     * from a page on this site (CSRF)
      */
-    protected function after()
+    protected function isSameOrigin(): bool
     {
-    }
-
-    /**
-     * False for a post sent from another website (CSRF)
-     *
-     * @return boolean
-     */
-    protected function isSameOrigin()
-    {
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        if (in_array($_SERVER['REQUEST_METHOD'] ?? 'GET', ['GET', 'HEAD'], true)) {
             return true;
         }
 
-        $source = $_SERVER['HTTP_ORIGIN'] ?? $_SERVER['HTTP_REFERER'] ?? '';
-        if ($source === '' || $source === 'null') {
-            return $source === '';
-        }
+        $source = $_SERVER['HTTP_ORIGIN'] ?? $_SERVER['HTTP_REFERER'] ?? null;
 
-        return parse_url($source, PHP_URL_HOST) === parse_url('//' . ($_SERVER['HTTP_HOST'] ?? ''), PHP_URL_HOST);
+        return SameOrigin::isFromThisSite($source, $_SERVER['HTTP_HOST'] ?? null, Config::isHttpsRequest());
     }
 
     /**
      * Reply with JSON
      *
-     * @param mixed $data
      * @param int $status HTTP status
-     *
-     * @return void
      */
-    protected function json($data, $status = 200)
+    protected function json(mixed $data, int $status = 200): void
     {
         http_response_code($status);
         header('Content-Type: application/json');
@@ -103,39 +85,37 @@ abstract class Controller
     }
 
     /**
-     * Redirect to a different page
+     * Send the browser to another page of this site, and end the request
      *
-     * @param string $url  The relative URL
-     *
-     * @return void
+     * @param string $url A path on this site
      */
-    public function redirect($url)
+    public function redirect(string $url): never
     {
         header('Location: ' . $url, true, 303);
         exit;
     }
 
     /**
-     * Require the user to be logged in before giving access to the requested page.
-     * Remember the requested page for later, then redirect to the login page.
-     *
-     * @return void
+     * Send someone who isn't logged in to the login page, and back here
+     * after; a background request gets a 401 instead
      */
-    public function requireLogin()
+    public function requireLogin(): void
     {
-        if (! Auth::getUser()) {
-            // Background requests (chat polling, sending) can't follow a
-            // redirect to the login page; tell them to sign in again instead
-            if (($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'XMLHttpRequest') {
-                $this->json(['error' => 'Please log in again.'], 401);
-                exit;
-            }
-
-            Flash::addMessage('Please log in first', Flash::INFO);
-
-            Auth::rememberRequestedPage();
-
-            $this->redirect('/login');
+        if (Auth::getUser()) {
+            return;
         }
+
+        // Background requests (chat polling, sending) can't follow a
+        // redirect to the login page; tell them to sign in again instead
+        if (($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'XMLHttpRequest') {
+            $this->json(['error' => 'Please log in again.'], 401);
+            exit;
+        }
+
+        Flash::addMessage('Please log in first.', Flash::INFO);
+
+        Auth::rememberRequestedPage();
+
+        $this->redirect('/login');
     }
 }

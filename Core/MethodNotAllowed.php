@@ -8,18 +8,12 @@ namespace Core;
 class MethodNotAllowed extends \Exception
 {
     /**
-     * The methods the URL takes, for the Allow header
-     * @var array
+     * Say which methods the URL does take
+     *
+     * @param string[] $allowed The methods the URL takes, for the Allow header
      */
-    public $allowed;
-
-    /**
-     * @param array $allowed The methods the URL takes
-     */
-    public function __construct($allowed)
+    public function __construct(public readonly array $allowed)
     {
         parent::__construct('Method not allowed', 405);
-
-        $this->allowed = $allowed;
     }
 }

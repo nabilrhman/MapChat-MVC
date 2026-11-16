@@ -11,12 +11,10 @@ class Icon
     /**
      * An icon's <svg>, e.g. svg('map-pin', 'chat__place-icon')
      *
-     * @param string $name  The icon's id in the sprite
+     * @param string $name The icon's id in the sprite
      * @param string $class More classes for it
-     *
-     * @return string
      */
-    public static function svg($name, $class = '')
+    public static function svg(string $name, string $class = ''): string
     {
         $href = Asset::url('/icons.svg') . '#' . $name;
 

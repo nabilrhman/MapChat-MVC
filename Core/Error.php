@@ -5,21 +5,20 @@ namespace Core;
 use App\Config;
 
 /**
- * Error and exception handler
+ * Turns PHP errors into exceptions, and uncaught exceptions into an error
+ * page and a log line
  */
 class Error
 {
     /**
-     * Error handler. Convert all errors to Exceptions by throwing an ErrorException.
+     * Throw a PHP error as an ErrorException, so it stops the request like
+     * any other failure
      *
-     * @param int $level  Error level
-     * @param string $message  Error message
-     * @param string $file  Filename the error was raised in
-     * @param int $line  Line number in the file
+     * @param int $level The error's E_* level
      *
-     * @return void
+     * @return bool False for an error silenced with @, so PHP carries on
      */
-    public static function errorHandler($level, $message, $file, $line)
+    public static function errorHandler(int $level, string $message, string $file, int $line): bool
     {
         // Respect @ (PHP 8 masks the level instead of zeroing it)
         if (!(error_reporting() & $level)) {
@@ -30,13 +29,10 @@ class Error
     }
 
     /**
-     * Exception handler.
-     *
-     * @param \Throwable $exception  The exception
-     *
-     * @return void
+     * Answer an uncaught exception: 405 for a wrong method, else a 404 or
+     * 500 page, with the details shown (SHOW_ERRORS) or logged
      */
-    public static function exceptionHandler($exception)
+    public static function exceptionHandler(\Throwable $exception): void
     {
         // The caller's mistake, not an error to log
         if ($exception instanceof MethodNotAllowed) {
@@ -45,11 +41,7 @@ class Error
             return;
         }
 
-        // Code is 404 (not found) or 500 (general error)
-        $code = $exception->getCode();
-        if ($code != 404) {
-            $code = 500;
-        }
+        $code = $exception->getCode() === 404 ? 404 : 500;
         http_response_code($code);
 
         if (Config::flag('SHOW_ERRORS')) {
@@ -58,20 +50,21 @@ class Error
             echo "<p>Message: '" . htmlspecialchars($exception->getMessage()) . "'</p>";
             echo "<p>Stack trace:<pre>" . htmlspecialchars($exception->getTraceAsString()) . "</pre></p>";
             echo "<p>Thrown in '" . htmlspecialchars($exception->getFile()) . "' on line " . $exception->getLine() . "</p>";
-        } else {
-            $message = "Uncaught exception: '" . get_class($exception) . "'";
-            $message .= " with message '" . $exception->getMessage() . "'";
-            $message .= "\nStack trace: " . $exception->getTraceAsString();
-            $message .= "\nThrown in '" . $exception->getFile() . "' on line " . $exception->getLine();
+            return;
+        }
 
-            error_log($message);
+        $message = "Uncaught exception: '" . get_class($exception) . "'";
+        $message .= " with message '" . $exception->getMessage() . "'";
+        $message .= "\nStack trace: " . $exception->getTraceAsString();
+        $message .= "\nThrown in '" . $exception->getFile() . "' on line " . $exception->getLine();
 
-            // Plain text if the error page itself fails (e.g. database down)
-            try {
-                View::renderTemplate("$code.html");
-            } catch (\Throwable $e) {
-                echo $code === 404 ? 'Page not found' : 'Something went wrong. Please try again in a moment.';
-            }
+        error_log($message);
+
+        // Plain text if the error page itself fails (e.g. database down)
+        try {
+            View::renderTemplate("$code.html");
+        } catch (\Throwable $e) {
+            echo $code === 404 ? 'Page not found' : 'Something went wrong. Please try again in a moment.';
         }
     }
 }
