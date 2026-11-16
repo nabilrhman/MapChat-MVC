@@ -34,27 +34,81 @@ FPS = 60
 # A frame unchanged for longer than this is shown for only this long
 LONGEST_STILL = 1.0
 
-# The pointer: a rounded arrow, and a pointing hand over anything
-# clickable. It's put back where the last page left it
+# The hands are the desktop's own, read from the installed cursor theme
+# (Xcursor files) at the size made for ordinary screens, by the CSS cursor
+# they stand for. Yaru's, or Adwaita's without it. Not kept in the repo
+THEME_CURSORS = {'pointer': 'hand2', 'grab': 'grab', 'grabbing': 'grabbing'}
+THEMES = ['/usr/share/icons/Yaru/cursors', '/usr/share/icons/Adwaita/cursors']
+CURSOR_SIZE = 32
+
+
+def xcursor(path):
+    """An Xcursor file's image nearest CURSOR_SIZE, as a PNG data URL with
+    its size and hotspot"""
+    import zlib
+    with open(path, 'rb') as file:
+        data = file.read()
+    images = []
+    for i in range(struct.unpack('<I', data[12:16])[0]):
+        kind, nominal, pos = struct.unpack('<III', data[16 + i * 12:28 + i * 12])
+        if kind == 0xfffd0002:
+            images.append((abs(nominal - CURSOR_SIZE), pos))
+    pos = min(images)[1]
+    width, height, x_hot, y_hot = struct.unpack('<IIII', data[pos + 16:pos + 32])
+    pixels = struct.unpack(f'<{width * height}I', data[pos + 36:pos + 36 + width * height * 4])
+    # ARGB, alpha already applied, to plain RGBA rows
+    rows = b''
+    for y in range(height):
+        rows += b'\x00'
+        for argb in pixels[y * width:(y + 1) * width]:
+            alpha = argb >> 24
+            unmix = (lambda c: min(255, c * 255 // alpha)) if alpha else (lambda c: 0)
+            rows += bytes((unmix((argb >> 16) & 255), unmix((argb >> 8) & 255), unmix(argb & 255), alpha))
+    chunk = lambda tag, body: struct.pack('>I', len(body)) + tag + body + struct.pack('>I', zlib.crc32(tag + body) & 0xffffffff)
+    png = (b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', width, height, 8, 6, 0, 0, 0))
+           + chunk(b'IDAT', zlib.compress(rows)) + chunk(b'IEND', b''))
+    return {'url': 'data:image/png;base64,' + base64.b64encode(png).decode(), 'size': [width, height], 'tip': [x_hot, y_hot]}
+
+
+def theme_cursors():
+    """The desktop's own cursors, by CSS cursor"""
+    for theme in THEMES:
+        files = {css: os.path.join(theme, name) for css, name in THEME_CURSORS.items()}
+        if all(os.path.exists(path) for path in files.values()):
+            return {css: xcursor(path) for css, path in files.items()}
+    sys.exit('No cursor theme found: install the Yaru or Adwaita cursor theme')
+
+
+# The pointer: a rounded arrow in the hands' grey and white, and the desktop's
+# hands wherever the page asks for them: pointing over anything clickable,
+# open over the map, closed while dragging. It's put back where the last
+# page left it
 CURSOR_JS = """
 (() => {
-    const ARROW = '<svg width="26" height="30" viewBox="0 0 26 30"><path d="M5.6 4.4c-.9-.4-1.8.5-1.4 1.4l7.4 18.2c.4 1 1.8.9 2.1-.1l2.2-6.7c.1-.4.4-.7.8-.8l6.7-2.2c1-.3 1.1-1.7.1-2.1z" fill="#1b1530" stroke="#fff" stroke-width="2.2" stroke-linejoin="round"/></svg>';
-    const HAND = '<svg width="26" height="30" viewBox="0 0 26 30"><path d="M9.2 14.5V4.6a2 2 0 0 1 4 0v8.2-1.6a2 2 0 0 1 4 0v2.2-.9a2 2 0 0 1 4 0v6.8c0 5.3-3.4 9-8.4 9h-.8c-3.2 0-5.4-1.3-7.2-4.2l-3-5a2 2 0 0 1 3.2-2.4l3 3.2z" fill="#fff" stroke="#16131f" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/><path d="M13.2 13v4.8M17.2 13.5v4.3" stroke="#16131f" stroke-width="1.4" stroke-linecap="round"/></svg>';
+    // In the hand's colours: Yaru's grey gradient and thin white edge
+    const ARROW = '<svg width="26" height="30" viewBox="0 0 26 30"><defs><linearGradient id="cursor-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#474747"/><stop offset="1" stop-color="#2d2d2d"/></linearGradient></defs><path transform="rotate(15 5 4)" d="M5.6 4.4c-.9-.4-1.8.5-1.4 1.4l7.4 18.2c.4 1 1.8.9 2.1-.1l2.2-6.7c.1-.4.4-.7.8-.8l6.7-2.2c1-.3 1.1-1.7.1-2.1z" fill="url(#cursor-fill)" stroke="#fff" stroke-width="1.2" stroke-linejoin="round"/></svg>';
+    const THEMED = THEME_CURSORS_JSON;
     // Where each one's tip is in its box
-    const TIPS = {arrow: [5, 4], hand: [11.2, 2.6]};
+    const TIPS = {arrow: [5, 4]};
+    Object.entries(THEMED).forEach(([css, image]) => { TIPS[css] = image.tip; });
     const start = window.name.startsWith('cursor:') ? window.name.slice(7).split(',').map(Number) : [720, 450];
     function make() {
         const cursor = document.createElement('div');
         cursor.style.cssText = 'position:fixed;left:0;top:0;z-index:2147483647;pointer-events:none;will-change:transform';
         const inner = document.createElement('div');
-        inner.style.cssText = 'filter:drop-shadow(0 1.5px 2.5px rgba(20,0,60,.4));transition:transform .12s ease-out';
+        inner.style.cssText = 'transition:transform .12s ease-out';
         cursor.appendChild(inner);
         let shape = '';
         let at = start;
         const show = (name) => {
             if (name === shape) return;
             shape = name;
-            inner.innerHTML = name === 'hand' ? HAND : ARROW;
+            const image = THEMED[name];
+            inner.innerHTML = image
+                ? `<img src="${image.url}" width="${image.size[0]}" height="${image.size[1]}" alt="" style="display:block">`
+                : ARROW;
+            // The theme's cursors have their own shadow
+            inner.style.filter = image ? 'none' : 'drop-shadow(0 1px 1.6px rgba(0,0,0,.45))';
             inner.style.transformOrigin = TIPS[name].map((n) => n + 'px').join(' ');
             place(...at);
         };
@@ -67,7 +121,8 @@ CURSOR_JS = """
         show('arrow');
         document.documentElement.appendChild(cursor);
         document.addEventListener('mousemove', (event) => {
-            show(getComputedStyle(event.target).cursor === 'pointer' ? 'hand' : 'arrow');
+            const css = getComputedStyle(event.target).cursor;
+            show(THEMED[css] ? css : 'arrow');
             place(event.clientX, event.clientY);
         }, true);
         // A click presses the pointer in a little and sends a thin purple
@@ -85,6 +140,11 @@ CURSOR_JS = """
     if (document.documentElement) make(); else document.addEventListener('DOMContentLoaded', make);
 })();
 """
+
+
+def cursor_js():
+    """CURSOR_JS with the desktop's cursors filled in"""
+    return CURSOR_JS.replace('THEME_CURSORS_JSON', json.dumps(theme_cursors()))
 
 
 class Browser:
@@ -294,6 +354,17 @@ def tour(browser):
     def composer():
         return centre("document.getElementById('textarea-send')")
 
+    def open_chat(where, name):
+        """Click a person or tab, measuring again on arrival, as the list
+        moves when people come and go, until their private chat is open"""
+        for _ in range(3):
+            person.move_to(*where(name))
+            time.sleep(0.15)
+            person.click(*where(name))
+            if wait_for(f"document.querySelector('.chat-tab.is-active, .chat-tab[aria-selected=true]')?.textContent.includes({json.dumps(name)})", 2):
+                return
+        sys.exit(f"Couldn't open the private chat with {name}")
+
     def wait_for(js, seconds=40):
         for _ in range(int(seconds * 4)):
             if browser.run(js):
@@ -314,7 +385,7 @@ def tour(browser):
     browser.call('Emulation.setDeviceMetricsOverride', width=W, height=H, deviceScaleFactor=1, mobile=False)
     browser.call('Network.enable')
     browser.call('Page.enable')
-    browser.call('Page.addScriptToEvaluateOnNewDocument', source=CURSOR_JS)
+    browser.call('Page.addScriptToEvaluateOnNewDocument', source=cursor_js())
 
     # The login page
     browser.call('Page.navigate', url=f'{URL}/login')
@@ -342,7 +413,7 @@ def tour(browser):
         time.sleep(2.2)
 
     # A private chat with Maya
-    person.click(*online('Maya'))
+    open_chat(online, 'Maya')
     time.sleep(1)
     from_maya = messages_from('Maya')
     person.click(*composer())
@@ -352,7 +423,7 @@ def tour(browser):
     time.sleep(1.5)
 
     # Then Rafael; Maya's answer comes in meanwhile, as a count on her tab
-    person.click(*online('Rafael'))
+    open_chat(online, 'Rafael')
     time.sleep(1)
     from_rafael = messages_from('Rafael')
     person.click(*composer())
@@ -365,7 +436,7 @@ def tour(browser):
 
     # Back to Maya, to read her answer and write back
     wait_for_reply('Maya', from_maya, 20)
-    person.click(*tab('Maya'))
+    open_chat(tab, 'Maya')
     time.sleep(3)
     from_maya = messages_from('Maya')
     person.click(*composer())
@@ -378,13 +449,23 @@ def tour(browser):
     # Tabs can be dragged into another order, and closed
     person.drag(tab('Rafael'), tab('Maya'))
     time.sleep(1.2)
+    # Rafael's ×, measured again on arrival as the tabs settle after the drag
     person.move_to(*close_button('Rafael'))
     time.sleep(0.6)
     person.click(*close_button('Rafael'))
+    wait_for("![...document.querySelectorAll('.chat-tab:not(.is-leaving)')].some((t) => t.textContent.includes('Rafael'))", 3)
+    # Then away, down into the chat, so the pointer isn't left over Maya's
+    # × as her tab slides into the gap
+    x, y = person.at
+    person.move_to(x + 40, y + 160)
     time.sleep(1.5)
 
-    # The profile: hide your pin whenever you like
-    browser.call('Page.navigate', url=f'{URL}/profile/show')
+    # The profile, from the account menu: hide your pin whenever you like
+    person.click(*centre("document.getElementById('account-menu-button')"))
+    wait_for("document.getElementById('account-menu-button').getAttribute('aria-expanded') === 'true'", 3)
+    time.sleep(0.8)
+    person.click(*centre("document.querySelector('#account-menu-list a[href=\"/profile/show\"]')"))
+    wait_for("location.pathname === '/profile/show' && document.readyState === 'complete'", 10)
     time.sleep(1.8)
     toggle = centre("document.querySelector('.switch') || document.querySelector('input[type=checkbox]')")
     if toggle:
