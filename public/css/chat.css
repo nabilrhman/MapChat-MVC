@@ -610,9 +610,12 @@ body
     display: block;
 }
 
-/* Until the first reply */
+/* Until the first reply: the dots in the middle, in the sidebar and the
+   drawer alike */
 .people__loading
 {
+    display: flex;
+    justify-content: center;
     padding: 12px 16px;
 }
 
