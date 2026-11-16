@@ -111,6 +111,8 @@ CREATE TABLE mapchat_jobs (
   `kind`       VARCHAR(10)  NOT NULL,
   -- The person MapChat greets or answers
   `email`      VARCHAR(255) NOT NULL,
+  -- Who answers: MapChat, or a demo person someone @mentioned
+  `speaker`    VARCHAR(255) NOT NULL DEFAULT 'bot@mapchat.local',
   -- Their message; NULL for a greeting
   `chat_id`    INT          NULL DEFAULT NULL,
   -- One job per message, and one greeting per person a day (see Bot::arrived)

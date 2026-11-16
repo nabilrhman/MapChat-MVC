@@ -19,6 +19,9 @@ class Schema extends \Core\Model
      */
     const ADDED_COLUMNS = [
         ['userinfo', 'country', ['ALTER TABLE userinfo ADD COLUMN country CHAR(2) AFTER city']],
+        ['mapchat_jobs', 'speaker', [
+            'ALTER TABLE mapchat_jobs ADD COLUMN speaker VARCHAR(255) NOT NULL DEFAULT \'bot@mapchat.local\' AFTER email',
+        ]],
         ['users', 'nickname', [
             'ALTER TABLE users ADD COLUMN nickname VARCHAR(20) NULL DEFAULT NULL AFTER name',
             'ALTER TABLE users ADD UNIQUE KEY nickname (nickname)',
@@ -46,6 +49,7 @@ class Schema extends \Core\Model
             `id`         INT          NOT NULL AUTO_INCREMENT,
             `kind`       VARCHAR(10)  NOT NULL,
             `email`      VARCHAR(255) NOT NULL,
+            `speaker`    VARCHAR(255) NOT NULL DEFAULT \'bot@mapchat.local\',
             `chat_id`    INT          NULL DEFAULT NULL,
             `dedupe_key` VARCHAR(300) NOT NULL,
             `due_at`     TIMESTAMP    NOT NULL,

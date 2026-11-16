@@ -34,6 +34,12 @@ class DemoChat extends \Core\Model
      */
     const OPENING = ['app_map', 'app_bot'];
 
+    /**
+     * Leaves out the demo people's answers to someone who @mentioned them
+     * (Bot), which are written live, not from the day's script
+     */
+    const NOT_REPLIES = 'id NOT IN (SELECT posted_id FROM mapchat_jobs WHERE posted_id IS NOT NULL)';
+
     /** A demo person shows as online from this many minutes before they speak... */
     const ARRIVE_MINUTES = 5;
 
@@ -88,8 +94,7 @@ class DemoChat extends \Core\Model
         // The chat is in id order, so they're added again after the older messages.
         // What MapChat said to people (mapchat_jobs) stays where it was said
         $stmt = $db->prepare('SELECT id, body FROM chats WHERE email = :bot AND to_email IS NULL AND timestamp < :start
-                                AND id NOT IN (SELECT posted_id FROM mapchat_jobs WHERE posted_id IS NOT NULL)
-                              ORDER BY id');
+                                AND ' . static::NOT_REPLIES . ' ORDER BY id');
         $stmt->execute([':bot' => Chat::BOT_EMAIL, ':start' => $start]);
         $remove = $db->prepare('DELETE FROM chats WHERE id = :id');
         $add = $db->prepare('INSERT INTO chats (email, body, timestamp) VALUES (:email, :body, :time)');
@@ -119,7 +124,7 @@ class DemoChat extends \Core\Model
         // when aren't enough: a rewritten day can put the same person at the
         // same second with different words
         $planned = array_flip(array_map(fn ($line) => $line[1] . ' ' . $line[0] . ' ' . $line[2], $schedule));
-        $stmt = $db->prepare('SELECT id, email, timestamp, body FROM chats WHERE email LIKE :demo AND to_email IS NULL');
+        $stmt = $db->prepare('SELECT id, email, timestamp, body FROM chats WHERE email LIKE :demo AND to_email IS NULL AND ' . static::NOT_REPLIES);
         $stmt->execute([':demo' => '%' . static::DOMAIN]);
         $drop = $db->prepare('DELETE FROM chats WHERE id = :id');
         $rewritten = false;
@@ -130,7 +135,7 @@ class DemoChat extends \Core\Model
             }
         }
 
-        $stmt = $db->prepare('SELECT MAX(timestamp) FROM chats WHERE email LIKE :demo');
+        $stmt = $db->prepare('SELECT MAX(timestamp) FROM chats WHERE email LIKE :demo AND ' . static::NOT_REPLIES);
         $stmt->execute([':demo' => '%' . static::DOMAIN]);
         $last = $stmt->fetchColumn() ?: '';
 
@@ -138,7 +143,7 @@ class DemoChat extends \Core\Model
         // (a deploy changed the stories) can't have its earlier lines slotted
         // in, as the chat runs in id order; either way, start the day over
         if ($last > $now || $rewritten) {
-            $db->prepare('DELETE FROM chats WHERE email LIKE :demo AND to_email IS NULL')
+            $db->prepare('DELETE FROM chats WHERE email LIKE :demo AND to_email IS NULL AND ' . static::NOT_REPLIES)
                ->execute([':demo' => '%' . static::DOMAIN]);
             $last = '';
         }

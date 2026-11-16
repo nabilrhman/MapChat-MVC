@@ -100,6 +100,29 @@ class BotTest extends TestCase
     }
 
     /**
+     * Add a demo person, as demo.sql does
+     */
+    private function addDemoPerson(string $name, string $city): string
+    {
+        $email = strtolower(strtok($name, ' ')) . '@demo.mapchat.local';
+        $this->db->prepare("INSERT INTO users (name, email, password_hash, is_active) VALUES (?, ?, '!', TRUE)")
+            ->execute([$name, $email]);
+        $this->db->prepare("INSERT INTO userinfo (email, ip, lat, lng, city, country) VALUES (?, '0.0.0.0', 1, 2, ?, 'CA')")
+            ->execute([$email, $city]);
+
+        return $email;
+    }
+
+    /**
+     * Every answer posted since the test began, as [who, body]
+     */
+    private function answers(): array
+    {
+        return $this->db->query('SELECT email, body FROM chats WHERE id IN (SELECT posted_id FROM mapchat_jobs) ORDER BY id')
+            ->fetchAll(PDO::FETCH_NUM);
+    }
+
+    /**
      * MapChat's messages since the test began, as [to_email, body]
      */
     private function botSaid(): array
@@ -284,7 +307,7 @@ class BotTest extends TestCase
         $this->assertCount(3, TestBot::$asked);
         $chats = [];
         foreach (TestBot::$asked as [$situation, $chat]) {
-            $chats[str_contains($situation, 'open room') ? 'room' : (str_contains($chat, 'Ann:') ? 'ann' : 'cat')] = $chat;
+            $chats[str_contains($situation, "You're in the open room") ? 'room' : (str_contains($chat, 'Ann:') ? 'ann' : 'cat')] = $chat;
         }
 
         $this->assertStringContainsString('hello room', $chats['room']);
@@ -390,5 +413,45 @@ class BotTest extends TestCase
 
         $this->assertSame([[null, '@annie reply 1']], $this->botSaid());
         $this->assertStringContainsString('annie: @MapChat hi', TestBot::$asked[0][1]);
+    }
+
+    public function testMentionedDemoPersonAnswersInCharacter()
+    {
+        $maya = $this->addDemoPerson('Maya Thompson', 'Toronto');
+        $this->send(self::ANN, '@Maya how is Toronto today?');
+
+        $this->wait(Bot::FOLLOW_UP_SECONDS);
+
+        $this->assertSame([[$maya, 'reply 1']], $this->answers(), 'Maya answers, and MapChat stays out of it');
+        $this->assertStringContainsString('You are Maya Thompson', TestBot::$asked[0][0]);
+        $this->assertStringContainsString('Toronto', TestBot::$asked[0][0]);
+        $this->assertStringContainsString("demo characters, written by AI", TestBot::$asked[0][0]);
+    }
+
+    public function testGuestKeepsTalkingWithTheDemoPerson()
+    {
+        $maya = $this->addDemoPerson('Maya Thompson', 'Toronto');
+        $this->send(self::ANN, '@Maya hi!');
+        $this->wait(Bot::FOLLOW_UP_SECONDS);
+        $this->send(self::ANN, 'what do you do there?');
+
+        $this->wait(Bot::ROOM_COOLDOWN_SECONDS);
+
+        $this->assertSame([[$maya, 'reply 1'], [$maya, 'reply 2']], $this->answers());
+        $this->assertStringContainsString("Maya (you): reply 1\nAnn: what do you do there?", TestBot::$asked[1][1]);
+    }
+
+    public function testDemoPersonReadsTheirOwnLinesButNotTheOtherScript()
+    {
+        $maya = $this->addDemoPerson('Maya Thompson', 'Toronto');
+        $lukas = $this->addDemoPerson('Lukas Becker', 'Berlin');
+        $this->send($maya, 'anyone else up early?');
+        $this->send($lukas, 'my team lost again');
+        $this->send(self::ANN, '@Maya me!');
+
+        $this->wait(Bot::FOLLOW_UP_SECONDS);
+
+        $this->assertStringContainsString('Maya (you): anyone else up early?', TestBot::$asked[0][1]);
+        $this->assertStringNotContainsString('my team lost', TestBot::$asked[0][1]);
     }
 }
