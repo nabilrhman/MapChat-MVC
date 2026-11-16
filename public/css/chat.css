@@ -1765,9 +1765,8 @@ body
     background-color: color-mix(in srgb, var(--md-primary-container) 70%, #fff);
 }
 
-/* An @mention: purple text on a faint tint, a little heavier than the
-   words around it. The weight comes from a thin outline on the letters,
-   not a bolder font, so it looks exactly the same in the message box,
+/* An @mention: purple text on a faint tint, the same weight and size as
+   the words around it, so it looks exactly the same in the message box,
    where the text can't get any wider. A chip that wraps onto the next
    line keeps its padding on both lines */
 .mention
@@ -1777,7 +1776,6 @@ body
     background-color: color-mix(in srgb, var(--md-primary) var(--md-hover), transparent);
     color: var(--md-primary);
     font-weight: 400;
-    -webkit-text-stroke: 0.35px currentColor;
     box-decoration-break: clone;
     -webkit-box-decoration-break: clone;
 }
