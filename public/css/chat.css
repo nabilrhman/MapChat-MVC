@@ -1319,18 +1319,16 @@ body
     background-color: color-mix(in srgb, var(--md-primary-container) 70%, #fff);
 }
 
-/* An @mention in a message: purple text on a faint tint, a little heavier
-   than the words around it. A thin outline on the letters rather than a
-   bold weight, so it looks the same in the message box, where the text
-   can't get wider. A chip that wraps onto the next line keeps its padding
-   on both lines */
+/* An @mention in a message: purple text on a faint tint, in the medium
+   weight, a little heavier than the words around it. A chip that wraps
+   onto the next line keeps its padding on both lines */
 .mention
 {
     padding: 1px 3px;
     border-radius: 4px;
     background-color: color-mix(in srgb, var(--md-primary) var(--md-hover), transparent);
     color: var(--md-primary);
-    -webkit-text-stroke: 0.35px currentColor;
+    font-weight: 500;
     box-decoration-break: clone;
     -webkit-box-decoration-break: clone;
 }
@@ -1415,11 +1413,14 @@ body
     pointer-events: none;
 }
 
-/* The text can't move, so no padding here: a shadow in the chip's own
-   colour stands in for it */
+/* The text can't move, so no padding or heavier weight here: a shadow in
+   the chip's own colour stands in for the padding, and a thin outline on
+   the letters for the medium weight, without widening them */
 .chat-composer__chips .mention
 {
     padding: 0;
+    font-weight: inherit;
+    -webkit-text-stroke: 0.35px currentColor;
     box-shadow: 0 0 0 2px color-mix(in srgb, var(--md-primary) var(--md-hover), transparent);
 }
 
