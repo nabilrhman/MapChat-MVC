@@ -9,6 +9,7 @@ use App\Controllers\Google;
 use App\Controllers\Home;
 use App\Controllers\Login;
 use App\Controllers\Password;
+use App\Controllers\Privacy;
 use App\Controllers\Profile;
 use App\Controllers\Push;
 use App\Controllers\Signup;
@@ -46,6 +47,7 @@ $router = new Core\Router();
 // Pages
 $router->get('/', [Home::class, 'indexAction']);
 $router->get('/about', [About::class, 'indexAction']);
+$router->get('/privacy', [Privacy::class, 'indexAction']);
 $router->get('/app', [App::class, 'indexAction']);
 
 // Login and account

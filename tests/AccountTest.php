@@ -322,6 +322,7 @@ class AccountTest extends TestCase
         $this->assertRedirect('/login', $this->request('GET', '/'));
         $this->assertRedirect('/login', $this->request('GET', '/home/index'));
         $this->assertSame(200, $this->request('GET', '/about')['status']);
+        $this->assertSame(200, $this->request('GET', '/privacy')['status']);
         $this->assertSame(200, $this->request('GET', '/about/index')['status']);
         $this->assertSame(200, $this->request('GET', '/login/new')['status']);
         $this->assertSame(200, $this->request('GET', '/signup/new')['status']);

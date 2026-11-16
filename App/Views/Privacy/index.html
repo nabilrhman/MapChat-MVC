@@ -1,0 +1,74 @@
+{% extends "base_app.html" %}
+
+{% block title %}Privacy{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ asset('/css/about.css') }}"/>
+{% endblock %}
+
+{% block body %}
+
+{# What MapChat keeps and who else sees it. Kept to what the code does: change
+   it with any change to what's stored or sent elsewhere #}
+<div class="about-page">
+
+    <h1 class="title appear-down">Privacy</h1>
+    <div class="divider"></div>
+
+    <section class="about-intro appear-down">
+        <p class="lead">
+            MapChat is a portfolio project. It keeps only what the chat and the map need,
+            shows no ads, and has no analytics.
+        </p>
+    </section>
+
+    <div class="about-grid">
+        <section class="about-card appear-down">
+            <h2 class="title">{{ icon('user') }}Your account</h2>
+            <ul class="list">
+                <li>Your name, nickname and email, and your password, stored only as a hash.</li>
+                <li>Signing in with Google gives MapChat your name, your email and Google's id for your account, and nothing else.</li>
+                <li>A profile photo you upload is stored by Cloudinary.</li>
+                <li>A guest account is deleted with its messages 24 hours after it's made.</li>
+            </ul>
+        </section>
+
+        <section class="about-card appear-down">
+            <h2 class="title">{{ icon('map-point') }}Your location</h2>
+            <ul class="list">
+                <li>The IP address you log in from is stored with your account, and sent to a location service (ipapi.co, ipwho.is or GeoJS, and ipstack if they fail) to find your city.</li>
+                <li>Your place is kept rounded to about a kilometre. MapChat never asks for GPS.</li>
+                <li>Your time zone comes from your browser, to show your local time.</li>
+                <li>You can hide your pin and city from your profile.</li>
+            </ul>
+        </section>
+
+        <section class="about-card appear-down">
+            <h2 class="title">{{ icon('chat-round-dots') }}Your messages</h2>
+            <ul class="list">
+                <li>Messages in Everyone are seen by everyone signed in. Private messages are shown only to the two of you.</li>
+                <li>MapChat and some people on the map are AI. To write their replies, the chat they answer is sent to Groq, which doesn't train its AI on it.</li>
+                <li>Notifications you turn on keep your browser's push address, until you turn them off or log out.</li>
+            </ul>
+        </section>
+
+        <section class="about-card appear-down">
+            <h2 class="title">{{ icon('lock') }}Cookies and other services</h2>
+            <ul class="list">
+                <li>Cookies keep you signed in: one for the session, one if you choose Remember me, and one for a guest. Your browser also remembers a few choices, like which chats are open.</li>
+                <li>MapChat runs on Render with its database on TiDB Cloud. Emails go through Brevo.</li>
+                <li>Your browser loads the map from OpenFreeMap and OpenStreetMap, the font from Google Fonts, and code from unpkg and jsDelivr, so they see your IP address.</li>
+            </ul>
+        </section>
+
+        <section class="about-card note appear-down">
+            <h2 class="title">{{ icon('info-circle') }}Questions, or deleting your account</h2>
+            <ul class="list">
+                <li>Open an issue on <a href="https://github.com/nabilrhman/MapChat-MVC/issues">GitHub</a>. To have a registered account deleted, say which account is yours; it's deleted with its messages.</li>
+            </ul>
+        </section>
+    </div>
+
+</div>
+
+{% endblock %}
