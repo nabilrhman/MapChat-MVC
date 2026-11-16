@@ -3,75 +3,45 @@
 namespace App;
 
 /**
- * Flash notification messages: messages for one-time display using the session
- * for storage between requests.
+ * Messages shown once, as a toast on the next page: kept in the session,
+ * since most come just before a redirect
  */
 class Flash
 {
-    /**
-     * Success message type
-     * @var string
-     */
+    /** The kinds of message, each shown in its own colour */
     const SUCCESS = 'success';
-
-    /**
-     * Information message type
-     * @var string
-     */
     const INFO = 'info';
-
-    /**
-     * Warning message type
-     * @var string
-     */
     const WARNING = 'warning';
 
     /**
-     * Add a message
+     * Keep a message for the next page shown
      *
-     * @param string $message  The message content
-     * @param string $type  The optional message type, defaults to SUCCESS
-     *
-     * @return void
+     * @param string $message A full sentence, or more than one
+     * @param string $type SUCCESS, INFO or WARNING
      */
-    public static function addMessage($message, $type = 'success')
+    public static function addMessage(string $message, string $type = self::SUCCESS): void
     {
-        // Create array in the session if it doesn't already exist
-        if (! isset($_SESSION['flash_notifications'])) {
-            $_SESSION['flash_notifications'] = [];
-        }
-
-        // Append the message to the array
-        $_SESSION['flash_notifications'][] = [
-            'body' => $message,
-            'type' => $type
-        ];
+        $_SESSION['flash_notifications'][] = ['body' => $message, 'type' => $type];
     }
 
     /**
-     * Get all the messages
+     * Take the waiting messages, so they show only once
      *
-     * @return mixed  An array with all the messages or null if none set
+     * @return array<array{body: string, type: string}>
      */
-    public static function getMessages()
+    public static function getMessages(): array
     {
-        if (isset($_SESSION['flash_notifications'])) {
-            $messages = $_SESSION['flash_notifications'];
-            unset($_SESSION['flash_notifications']);
+        $messages = $_SESSION['flash_notifications'] ?? [];
+        unset($_SESSION['flash_notifications']);
 
-            return $messages;
-        }
+        return $messages;
     }
 
     /**
-     * Clears the messages
-     *
-     * @return void
+     * Drop the waiting messages
      */
-    public static function clear()
+    public static function clear(): void
     {
-        if (isset($_SESSION['flash_notifications'])) {
-            $_SESSION['flash_notifications'] = [];
-        }
+        unset($_SESSION['flash_notifications']);
     }
 }

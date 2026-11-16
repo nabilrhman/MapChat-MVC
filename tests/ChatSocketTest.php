@@ -52,9 +52,9 @@ class ChatSocketTest extends TestCase
         self::startServer();
 
         // Other tests' rolled-back transactions used up ids, and the socket
-        // waits out a gap in the ids once (Hub::GAP_SECONDS) before reading on
-        (new Chat(['email' => Chat::BOT_EMAIL, 'body' => 'warming up']))->send();
-        usleep((int) ((\App\ChatSocket\Hub::GAP_SECONDS + 0.5) * 1000000));
+        // waits out a gap in the ids once (NewMessageReader::GAP_SECONDS) before reading on
+        Chat::save(Chat::BOT_EMAIL, null, 'warming up');
+        usleep((int) ((\App\ChatSocket\NewMessageReader::GAP_SECONDS + 0.5) * 1000000));
         TestDb::get()->exec("DELETE FROM chats WHERE body = 'warming up'");
     }
 
@@ -64,6 +64,9 @@ class ChatSocketTest extends TestCase
         putenv('CHAT_SOCKET_PORT');
     }
 
+    /**
+     * Start the chat socket on the test port, and wait for it to listen
+     */
     private static function startServer(): void
     {
         $environment = getenv() + [
@@ -138,6 +141,9 @@ class ChatSocketTest extends TestCase
         usleep(200000);
     }
 
+    /**
+     * Open a socket as someone, with their session, from this site or the given origin
+     */
     private function connect(string $name, ?string $origin = null): SocketClient
     {
         $client = new SocketClient(self::$address, $this->sessions[$name] ?? null, $origin);
@@ -158,6 +164,9 @@ class ChatSocketTest extends TestCase
         return $client;
     }
 
+    /**
+     * Send a message over the socket and wait for its answer
+     */
     private function sendOver(SocketClient $client, string $body, ?string $to = null, ?string $clientId = null): array
     {
         $clientId ??= bin2hex(random_bytes(8));
@@ -188,6 +197,9 @@ class ChatSocketTest extends TestCase
         return $chats;
     }
 
+    /**
+     * The bodies of the messages the socket sends in the next few seconds
+     */
     private function bodiesReceived(SocketClient $client, float $seconds): array
     {
         return array_column(self::chatsIn($client->collect($seconds)), 1);
@@ -337,7 +349,7 @@ class ChatSocketTest extends TestCase
     {
         $old = Chat::sendFrom($this->users['ann'], 'old private', (int) $this->users['bob']->id)['id'];
         for ($i = 0; $i < Chat::HISTORY + 10; $i++) {
-            (new Chat(['email' => $this->emails['cat'], 'body' => "busy room $i"]))->send();
+            Chat::save($this->emails['cat'], null, "busy room $i");
         }
         $bob = $this->openPage('bob');
 

@@ -4,7 +4,7 @@
  * What the demo people (database/demo.sql) say in the room through the day;
  * see App/Models/DemoChat.php. Each story is one or more scenes, played in
  * order hours apart so a reader can follow it over the day. Each line is the
- * speaker (their email before @demo.mapchat.local) and what they say.
+ * speaker (their email before @demo.mapchat.local) and what they say
  */
 return [
     'camera' => [

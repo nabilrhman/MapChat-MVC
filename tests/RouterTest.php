@@ -11,39 +11,54 @@ namespace App\Controllers\Test {
         public static array $calls = [];
 
         /** What before() returns; false stops the action */
-        public static $beforeResult = null;
+        public static ?bool $beforeResult = null;
 
-        protected function before()
+        /**
+         * Note that it ran, and stop the action if told to
+         */
+        protected function before(): ?bool
         {
             static::$calls[] = ['before'];
 
             return static::$beforeResult;
         }
 
-        protected function after()
+        /**
+         * Note that it ran
+         */
+        protected function after(): void
         {
             static::$calls[] = ['after'];
         }
 
-        public function showAction()
+        /**
+         * Note that it ran
+         */
+        public function showAction(): void
         {
-            static::$calls[] = ['show', $this->route_params];
+            static::$calls[] = ['show', $this->routeParams];
         }
 
-        public function listAction()
+        /**
+         * Note that it ran
+         */
+        public function listAction(): void
         {
-            static::$calls[] = ['list', $this->route_params];
+            static::$calls[] = ['list', $this->routeParams];
         }
 
-        public function saveAction()
+        /**
+         * Note that it ran
+         */
+        public function saveAction(): void
         {
-            static::$calls[] = ['save', $this->route_params];
+            static::$calls[] = ['save', $this->routeParams];
         }
 
         /** Public, but no route names it */
-        public function secretAction()
+        public function secretAction(): void
         {
-            static::$calls[] = ['secret', $this->route_params];
+            static::$calls[] = ['secret', $this->routeParams];
         }
     }
 }
@@ -64,6 +79,9 @@ namespace Tests {
             Probe::$calls = [];
             Probe::$beforeResult = null;
             $_SERVER['REQUEST_METHOD'] = 'GET';
+            // Posts come from this site, as the origin check needs
+            $_SERVER['HTTP_HOST'] = 'mapchat.test';
+            $_SERVER['HTTP_ORIGIN'] = 'http://mapchat.test';
 
             $this->router = new Router();
             $this->router->get('/', [Probe::class, 'showAction']);
@@ -91,6 +109,9 @@ namespace Tests {
             return array_column($this->actionCalls(), 0);
         }
 
+        /**
+         * Dispatch a request that must fail with this code before any action runs
+         */
         private function assertDispatchFails(int $code, string $method, string $url): \Exception
         {
             try {
@@ -223,6 +244,11 @@ namespace Tests {
             $this->router->dispatch('GET', '/probe/list');
 
             $this->assertSame(['before', 'list', 'after'], array_column(Probe::$calls, 0));
+        }
+
+        protected function tearDown(): void
+        {
+            unset($_SERVER['HTTP_HOST'], $_SERVER['HTTP_ORIGIN']);
         }
 
         public function testBeforeFilterCanStopTheAction()

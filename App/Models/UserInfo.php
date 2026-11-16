@@ -3,7 +3,9 @@
 namespace App\Models;
 
 use PDO;
+use App\Avatar;
 use App\Config;
+use App\Mention;
 
 /**
  * Where each person is chatting from, and when they were last seen
@@ -13,95 +15,96 @@ class UserInfo extends \Core\Model
     /** Someone counts as online if the chat heard from them this many seconds ago */
     const ONLINE_SECONDS = 60;
 
+    /** markOnline writes at most this often per person, in seconds */
+    const MARK_ONLINE_SECONDS = 30;
+
+    /**
+     * Decimal places a pin's latitude and longitude keep: about a kilometre,
+     * so a pin shows the city, never an exact location
+     */
+    const PIN_DECIMALS = 2;
+
+    /**
+     * What others see of where someone is, as columns of people rows, only
+     * while they share their location. The longitude is for their daylight
+     * and local time
+     */
+    const SHARED_PLACE_COLUMNS = [
+        'city' => 'userinfo.city',
+        'country' => 'userinfo.country',
+        'lng' => 'ROUND(userinfo.lng, ' . self::PIN_DECIMALS . ')',
+        'timezone' => 'userinfo.timezone',
+    ];
+
     /**
      * Save a user's IP and look up where it is
-     *
-     * @param string $email
-     * @param string $ip
-     *
-     * @return void
      */
-    public static function locate($email, $ip)
+    public static function locate(string $email, string $ip): void
     {
-        $userInfo = new static(['email' => $email, 'ip' => $ip]);
-
-        $userInfo->saveIP();
-        $userInfo->findLocationFromIP();
-        $userInfo->saveLocation();
+        static::saveIP($email, $ip);
+        static::saveLocation($email, static::lookupIP($ip));
     }
 
     /**
-     * Saves the user IP address
-     *
-     * @return boolean  True if the IP was saved, false otherwise
+     * Save the IP a user was last seen at
      */
-    public function saveIP()
+    protected static function saveIP(string $email, string $ip): void
     {
         $stmt = static::getDB()->prepare('INSERT INTO userinfo (email, ip) VALUES (:email, :ip)
                                           ON DUPLICATE KEY UPDATE ip = VALUES(ip)');
-        $stmt->bindValue(':email', $this->email, PDO::PARAM_STR);
-        $stmt->bindValue(':ip', $this->ip, PDO::PARAM_STR);
-
-        return $stmt->execute();
+        $stmt->bindValue(':email', $email, PDO::PARAM_STR);
+        $stmt->bindValue(':ip', $ip, PDO::PARAM_STR);
+        $stmt->execute();
     }
 
     /**
-     * Saves the user's location
+     * Save where a user is, with the pin rounded to the city (PIN_DECIMALS)
      *
-     * @return boolean  True if the location was saved, false otherwise
+     * @param array{lat: ?float, lng: ?float, city: ?string, country: ?string} $location As lookupIP gives it
      */
-    public function saveLocation()
+    public static function saveLocation(string $email, array $location): void
     {
         $sql = 'UPDATE userinfo
                 SET lat = :lat, lng = :lng, city = :city, country = :country
                 WHERE email = :email';
 
         $stmt = static::getDB()->prepare($sql);
-        $stmt->bindValue(':email', $this->email, PDO::PARAM_STR);
-        $stmt->bindValue(':lat', $this->lat, PDO::PARAM_STR);
-        $stmt->bindValue(':lng', $this->long, PDO::PARAM_STR);
-        $stmt->bindValue(':city', $this->city, PDO::PARAM_STR);
-        $stmt->bindValue(':country', $this->country, PDO::PARAM_STR);
-
-        return $stmt->execute();
-    }
-
-    /**
-     * Look up where the user's IP address is
-     *
-     * @return void
-     */
-    public function findLocationFromIP()
-    {
-        $location = static::lookupIP($this->ip);
-
-        $this->lat = $location['lat'];
-        $this->long = $location['lng'];
-        $this->city = $location['city'];
-        $this->country = $location['country'];
-    }
-
-    /**
-     * True if the IP differs from the one saved last time
-     *
-     * @return boolean
-     */
-    public function hasIPUpdated()
-    {
-        $stmt = static::getDB()->prepare('SELECT ip FROM userinfo WHERE email = :email');
-        $stmt->bindValue(':email', $this->email, PDO::PARAM_STR);
+        $stmt->bindValue(':email', $email, PDO::PARAM_STR);
+        $stmt->bindValue(':lat', static::roundToCity($location['lat']), PDO::PARAM_STR);
+        $stmt->bindValue(':lng', static::roundToCity($location['lng']), PDO::PARAM_STR);
+        $stmt->bindValue(':city', $location['city'], PDO::PARAM_STR);
+        $stmt->bindValue(':country', $location['country'], PDO::PARAM_STR);
         $stmt->execute();
+    }
 
-        return $stmt->fetchColumn() != $this->ip;
+    /**
+     * A latitude or longitude to PIN_DECIMALS places
+     */
+    protected static function roundToCity(?float $degrees): ?float
+    {
+        return $degrees === null ? null : round($degrees, static::PIN_DECIMALS);
+    }
+
+    /**
+     * Whether a user's location should be looked up again: their IP changed
+     * since the last lookup, or they have no location or no country (the
+     * lookup failed, or they were located before countries were saved)
+     */
+    public static function needsLocating(string $email, string $ip): bool
+    {
+        $stmt = static::getDB()->prepare('SELECT ip, lat IS NULL OR country IS NULL AS is_missing FROM userinfo WHERE email = :email');
+        $stmt->bindValue(':email', $email, PDO::PARAM_STR);
+        $stmt->execute();
+        $saved = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return !$saved || $saved['ip'] !== $ip || (bool) $saved['is_missing'];
     }
 
     /**
      * The visitor's IP: Cloudflare's header, which visitors can't fake, else
      * the last X-Forwarded-For entry (the first is whatever the visitor sent)
-     *
-     * @return string
      */
-    public static function getRealIP()
+    public static function getRealIP(): string
     {
         if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
             return trim($_SERVER['HTTP_CF_CONNECTING_IP']);
@@ -116,19 +119,17 @@ class UserInfo extends \Core\Model
     }
 
     /**
-     * Look up the approximate location of an IP address.
+     * Look up the approximate location of an IP address
      *
      * Free services limit or block requests from hosting providers, so
      * several are tried in turn until one answers: ipstack (only when
      * IPSTACK_API_KEY is set), then ipapi.co, ipwho.is and GeoJS. Private and
      * local addresses (e.g. in Docker) use DEV_FAKE_IP when it is set, so the
-     * map still has a point locally.
+     * map still has a point locally
      *
-     * @param string $ip
-     *
-     * @return array ['lat' => ?float, 'lng' => ?float, 'city' => ?string, 'country' => ?string]
+     * @return array{lat: ?float, lng: ?float, city: ?string, country: ?string}
      */
-    public static function lookupIP($ip)
+    public static function lookupIP(string $ip): array
     {
         $empty = ['lat' => null, 'lng' => null, 'city' => null, 'country' => null];
 
@@ -142,8 +143,9 @@ class UserInfo extends \Core\Model
 
         $ip = urlencode($ip);
         $services = [];
-        if ($key = Config::get('IPSTACK_API_KEY')) {
-            $services['ipstack'] = 'http://api.ipstack.com/' . $ip . '?access_key=' . urlencode($key);
+        $ipstackKey = Config::get('IPSTACK_API_KEY');
+        if ($ipstackKey !== null) {
+            $services['ipstack'] = 'http://api.ipstack.com/' . $ip . '?access_key=' . urlencode($ipstackKey);
         }
         $services['ipapi.co'] = 'https://ipapi.co/' . $ip . '/json/';
         $services['ipwho.is'] = 'https://ipwho.is/' . $ip;
@@ -162,13 +164,11 @@ class UserInfo extends \Core\Model
 
     /**
      * Ask one IP location service. All of them answer with JSON that has
-     * latitude, longitude and (usually) city fields.
+     * latitude, longitude and (usually) city fields
      *
-     * @param string $url
-     *
-     * @return array|null The location, or null if the service didn't give one
+     * @return array{lat: float, lng: float, city: ?string, country: ?string}|null Null if the service didn't give one
      */
-    protected static function fetchLocation($url)
+    protected static function fetchLocation(string $url): ?array
     {
         $ch = curl_init($url);
         curl_setopt_array($ch, [
@@ -178,7 +178,6 @@ class UserInfo extends \Core\Model
         ]);
         $json = curl_exec($ch);
         $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
 
         $result = json_decode((string) $json, true);
         if ($status !== 200 || !is_array($result) || !isset($result['latitude'], $result['longitude'])) {
@@ -200,100 +199,94 @@ class UserInfo extends \Core\Model
     /**
      * The pins for the map: everyone online now (as in getRecentPeople),
      * except people who hide from it and the MapChat bot, whose Null Island
-     * isn't a real place to chat from
+     * isn't a real place to chat from. Rounded to the city, as rows saved
+     * before pins were rounded have more
      *
-     * @return array
+     * @return array[] Each with lat, lng, city, country, timezone, user_id, name, nickname, is_guest, avatar, is_demo, avatar_src and shown_name
      */
-    public static function getAllLocations()
+    public static function getAllLocations(): array
     {
-        $sql = 'SELECT userinfo.lat, userinfo.lng, userinfo.city, userinfo.country, userinfo.timezone,
+        [$demoOnline, $demoParams] = static::demoOnlineSql();
+
+        $sql = 'SELECT ROUND(userinfo.lat, ' . static::PIN_DECIMALS . ') AS lat,
+                       ROUND(userinfo.lng, ' . static::PIN_DECIMALS . ') AS lng,
+                       userinfo.city, userinfo.country, userinfo.timezone,
                        users.id AS user_id, users.name, users.nickname, users.is_guest, users.avatar,
-                       users.email LIKE \'%@demo.mapchat.local\' AS is_demo
+                       ' . DemoChat::isDemoSql() . ' AS is_demo
                 FROM userinfo
                 LEFT JOIN users
                 ON userinfo.email = users.email
                 WHERE userinfo.lat IS NOT NULL AND userinfo.lng IS NOT NULL
                   AND users.share_location = 1
                   AND users.email <> :bot_email
-                  AND (userinfo.online_at > NOW() - INTERVAL :online SECOND OR ' . static::demoOnlineSql() . ')';
+                  AND (userinfo.online_at > NOW() - INTERVAL :online SECOND OR ' . $demoOnline . ')';
 
         $stmt = static::getDB()->prepare($sql);
-        $stmt->bindValue(':bot_email', Chat::BOT_EMAIL, PDO::PARAM_STR);
-        $stmt->bindValue(':online', static::ONLINE_SECONDS, PDO::PARAM_INT);
-        $stmt->execute();
+        $stmt->execute([':bot_email' => Chat::BOT_EMAIL, ':online' => static::ONLINE_SECONDS] + $demoParams);
 
-        return \App\Mention::withShownNames(static::withAvatarSrc($stmt->fetchAll(PDO::FETCH_ASSOC), 'user_id'));
+        return Mention::withShownNames(static::withAvatarSrc($stmt->fetchAll(PDO::FETCH_ASSOC), 'user_id'));
     }
 
     /**
-     * Mark the user as online now. The chat asks for messages every second, so
-     * this only writes when the last mark is over 30 seconds old
-     *
-     * @param string $email
-     *
-     * @return void
+     * Mark the user as online now. A chat on the HTTP fallback asks for
+     * messages every few seconds, so this only writes when the last mark is
+     * older than MARK_ONLINE_SECONDS
      */
-    public static function markOnline($email)
+    public static function markOnline(string $email): void
     {
         $sql = 'UPDATE userinfo
                 SET online_at = NOW()
                 WHERE email = :email
-                  AND (online_at IS NULL OR online_at < NOW() - INTERVAL 30 SECOND)';
+                  AND (online_at IS NULL OR online_at < NOW() - INTERVAL :seconds SECOND)';
 
         $stmt = static::getDB()->prepare($sql);
         $stmt->bindValue(':email', $email, PDO::PARAM_STR);
+        $stmt->bindValue(':seconds', static::MARK_ONLINE_SECONDS, PDO::PARAM_INT);
         $stmt->execute();
     }
 
     /**
      * Where others see the user: their city and country code, if known
      *
-     * @param string $email
-     *
-     * @return array|false
+     * @return array{city: ?string, country: ?string}|null
      */
-    public static function getPlace($email)
+    public static function getPlace(string $email): ?array
     {
         $stmt = static::getDB()->prepare('SELECT city, country FROM userinfo WHERE email = :email');
         $stmt->bindValue(':email', $email, PDO::PARAM_STR);
         $stmt->execute();
 
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+        return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
     /**
-     * True if the user has no location or no country: the lookup failed last
-     * time, or they were located before countries were saved
-     *
-     * @return boolean
+     * Save the time zone the user's browser reports, e.g. "Asia/Dhaka", if
+     * it's a real one
      */
-    public function isMissingLocation()
+    public static function saveTimezone(string $email, mixed $timezone): void
     {
-        $stmt = static::getDB()->prepare(
-            'SELECT 1 FROM userinfo WHERE email = :email AND (lat IS NULL OR country IS NULL)'
-        );
-        $stmt->bindValue(':email', $this->email, PDO::PARAM_STR);
-        $stmt->execute();
+        if (!is_string($timezone) || !in_array($timezone, \DateTimeZone::listIdentifiers(), true)) {
+            return;
+        }
 
-        return $stmt->fetchColumn() !== false;
-    }
-
-    /**
-     * Save the time zone the user's browser reports, e.g. "Asia/Dhaka"
-     *
-     * @param string $email
-     * @param string $timezone
-     *
-     * @return void
-     */
-    public static function saveTimezone($email, $timezone)
-    {
-        $sql = 'UPDATE userinfo SET timezone = :timezone WHERE email = :email';
-
-        $stmt = static::getDB()->prepare($sql);
+        $stmt = static::getDB()->prepare('UPDATE userinfo SET timezone = :timezone WHERE email = :email');
         $stmt->bindValue(':timezone', $timezone, PDO::PARAM_STR);
         $stmt->bindValue(':email', $email, PDO::PARAM_STR);
         $stmt->execute();
+    }
+
+    /**
+     * The shared place columns (SHARED_PLACE_COLUMNS) for a query's SELECT,
+     * each empty while its person hides their location
+     */
+    public static function sharedPlaceSql(): string
+    {
+        $columns = [];
+        foreach (static::SHARED_PLACE_COLUMNS as $name => $value) {
+            $columns[] = "IF(users.share_location, $value, NULL) AS $name";
+        }
+
+        return implode(', ', $columns);
     }
 
     /**
@@ -302,89 +295,115 @@ class UserInfo extends \Core\Model
      * them buries everyone else. MapChat is always online while it can
      * chat back
      *
-     * @return array
+     * @return array[] People rows, with is_online and minutes_ago
      */
-    public static function getRecentPeople()
+    public static function getRecentPeople(): array
     {
-        $demo_online = static::demoOnlineSql();
-        $bot_online = static::botOnlineSql();
+        [$demoOnline, $demoParams] = static::demoOnlineSql();
+        $botOnline = static::botOnlineSql();
 
-        $sql = 'SELECT users.id, users.name, users.avatar, users.email LIKE \'%@demo.mapchat.local\' AS is_demo,
-                       users.nickname, users.is_guest, ' . static::isBotSql() . ' AS is_bot,
-                       IF(users.share_location, userinfo.city, NULL) AS city,
-                       IF(users.share_location, userinfo.country, NULL) AS country,
-                       IF(users.share_location, userinfo.lng, NULL) AS lng,
-                       IF(users.share_location, userinfo.timezone, NULL) AS timezone,
-                       (userinfo.online_at > NOW() - INTERVAL :online SECOND OR ' . $demo_online . ' OR ' . $bot_online . ') AS is_online,
+        $sql = 'SELECT ' . static::personColumnsSql() . ',
+                       (userinfo.online_at > NOW() - INTERVAL :online SECOND OR ' . $demoOnline . ' OR ' . $botOnline . ') AS is_online,
                        TIMESTAMPDIFF(MINUTE, userinfo.online_at, NOW()) AS minutes_ago
                 FROM userinfo
                 JOIN users
                 ON userinfo.email = users.email
                 WHERE (userinfo.online_at > NOW() - INTERVAL 1 DAY AND users.is_guest = 0)
                    OR (userinfo.online_at > NOW() - INTERVAL :guest_online SECOND AND users.is_guest = 1)
-                   OR ' . $demo_online . '
-                   OR ' . $bot_online . '
+                   OR ' . $demoOnline . '
+                   OR ' . $botOnline . '
                 ORDER BY userinfo.online_at DESC';
 
         $stmt = static::getDB()->prepare($sql);
-        $stmt->bindValue(':online', static::ONLINE_SECONDS, PDO::PARAM_INT);
-        $stmt->bindValue(':guest_online', static::ONLINE_SECONDS, PDO::PARAM_INT);
-        $stmt->execute();
+        $stmt->execute([':online' => static::ONLINE_SECONDS, ':guest_online' => static::ONLINE_SECONDS] + $demoParams);
 
-        return \App\Mention::withShownNames(static::withAvatarSrc($stmt->fetchAll(PDO::FETCH_ASSOC), 'id'));
+        return static::withNames(static::stripEmails($stmt->fetchAll(PDO::FETCH_ASSOC)));
     }
 
     /**
      * These people as getRecentPeople lists them, with their email, for the
      * chat socket to say who came or went. Online is the socket's to say
      *
-     * @param array $emails
-     *
-     * @return array
+     * @return array[] People rows, with email and minutes_ago
+     * @param string[] $emails
      */
-    public static function getPeople($emails)
+    public static function getPeople(array $emails): array
     {
         if (!$emails) {
             return [];
         }
 
-        $db = static::getDB();
-        $list = implode(', ', array_map([$db, 'quote'], $emails));
-
-        $sql = 'SELECT users.id, users.email, users.name, users.avatar, users.email LIKE \'%@demo.mapchat.local\' AS is_demo,
-                       users.nickname, users.is_guest, ' . static::isBotSql() . ' AS is_bot,
-                       IF(users.share_location, userinfo.city, NULL) AS city,
-                       IF(users.share_location, userinfo.country, NULL) AS country,
-                       IF(users.share_location, userinfo.lng, NULL) AS lng,
-                       IF(users.share_location, userinfo.timezone, NULL) AS timezone,
+        [$emailList, $emailParams] = static::inList('email', $emails);
+        $sql = 'SELECT ' . static::personColumnsSql() . ',
                        COALESCE(TIMESTAMPDIFF(MINUTE, userinfo.online_at, NOW()), 0) AS minutes_ago
                 FROM userinfo
                 JOIN users
                 ON userinfo.email = users.email
-                WHERE users.email IN (' . $list . ')';
+                WHERE users.email IN ' . $emailList;
 
-        return \App\Mention::withShownNames(static::withAvatarSrc($db->query($sql)->fetchAll(PDO::FETCH_ASSOC), 'id'));
+        $stmt = static::getDB()->prepare($sql);
+        $stmt->execute($emailParams);
+
+        return static::withNames($stmt->fetchAll(PDO::FETCH_ASSOC));
+    }
+
+    /**
+     * The columns of a people row: who they are, and where while they share it
+     */
+    protected static function personColumnsSql(): string
+    {
+        return 'users.id, users.email, users.name, users.avatar, ' . DemoChat::isDemoSql() . ' AS is_demo,
+                users.nickname, users.is_guest, users.email = ' . static::getDB()->quote(Chat::BOT_EMAIL) . ' AS is_bot, '
+                . static::sharedPlaceSql();
+    }
+
+    /**
+     * People rows without their email, which pages never get
+     *
+     * @param array[] $people
+     *
+     * @return array[]
+     */
+    protected static function stripEmails(array $people): array
+    {
+        return array_map(function ($person) {
+            unset($person['email']);
+            return $person;
+        }, $people);
+    }
+
+    /**
+     * People rows with avatar_src and shown_name, for the scripts
+     *
+     * @param array[] $people
+     *
+     * @return array[]
+     */
+    protected static function withNames(array $people): array
+    {
+        return Mention::withShownNames(static::withAvatarSrc($people, 'id'));
     }
 
     /**
      * Everyone the people list shows as online without the chat socket: open
-     * tabs that poll, the demo people in the room, and MapChat
+     * tabs on the HTTP fallback, the demo people in the room, and MapChat
      *
-     * @return array Their emails
+     * @return string[] Their emails
      */
-    public static function getOnlineEmails()
+    public static function getOnlineEmails(): array
     {
+        [$demoOnline, $demoParams] = static::demoOnlineSql();
+
         $sql = 'SELECT users.email
                 FROM userinfo
                 JOIN users
                 ON userinfo.email = users.email
                 WHERE userinfo.online_at > NOW() - INTERVAL :online SECOND
-                   OR ' . static::demoOnlineSql() . '
+                   OR ' . $demoOnline . '
                    OR ' . static::botOnlineSql();
 
         $stmt = static::getDB()->prepare($sql);
-        $stmt->bindValue(':online', static::ONLINE_SECONDS, PDO::PARAM_INT);
-        $stmt->execute();
+        $stmt->execute([':online' => static::ONLINE_SECONDS] + $demoParams);
 
         return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
@@ -393,30 +412,23 @@ class UserInfo extends \Core\Model
      * Mark people with a chat socket open as online now, so the map, the
      * people list and MapChat see them as polling tabs used to make them
      *
-     * @param array $emails
-     *
-     * @return void
+     * @param string[] $emails
      */
-    public static function markOnlineNow($emails)
+    public static function markOnlineNow(array $emails): void
     {
         if (!$emails) {
             return;
         }
 
-        $db = static::getDB();
-        $list = implode(', ', array_map([$db, 'quote'], $emails));
-        $db->exec("UPDATE userinfo SET online_at = NOW() WHERE email IN ($list)");
+        [$emailList, $emailParams] = static::inList('email', $emails);
+        static::getDB()->prepare("UPDATE userinfo SET online_at = NOW() WHERE email IN $emailList")->execute($emailParams);
     }
 
     /**
      * Mark someone whose last chat socket closed as gone, rather than online
      * for another minute. A tab still polling marks them online again
-     *
-     * @param string $email
-     *
-     * @return void
      */
-    public static function markGone($email)
+    public static function markGone(string $email): void
     {
         $sql = 'UPDATE userinfo
                 SET online_at = NOW() - INTERVAL :online SECOND
@@ -434,34 +446,21 @@ class UserInfo extends \Core\Model
      * script (DemoChat::presentNow), and those talking with someone who
      * called or messaged them (Bot::talkingDemoPeople)
      *
-     * @return string
+     * @return array{string, array<string, string>} The SQL and its placeholders' values
      */
-    protected static function demoOnlineSql()
+    protected static function demoOnlineSql(): array
     {
         $present = array_unique(array_merge(DemoChat::presentNow(), Bot::talkingDemoPeople()));
-        $emails = array_map([static::getDB(), 'quote'], $present);
+        [$emailList, $emailParams] = static::inList('demo_online', $present);
 
-        return $emails ? 'users.email IN (' . implode(', ', $emails) . ')' : 'FALSE';
-    }
-
-    /**
-     * SQL that's true for the MapChat account, which the list puts first
-     * whenever it's there
-     *
-     * @return string
-     */
-    protected static function isBotSql()
-    {
-        return 'users.email = ' . static::getDB()->quote(Chat::BOT_EMAIL);
+        return ["users.email IN $emailList", $emailParams];
     }
 
     /**
      * SQL that's true for the MapChat account while it can chat back, so
      * people see there's someone to talk to
-     *
-     * @return string
      */
-    protected static function botOnlineSql()
+    protected static function botOnlineSql(): string
     {
         return Bot::canReply() ? 'users.email = ' . static::getDB()->quote(Chat::BOT_EMAIL) : 'FALSE';
     }
@@ -469,15 +468,15 @@ class UserInfo extends \Core\Model
     /**
      * Add each person's avatar image address (see Avatar::src)
      *
-     * @param array $people Rows with a name, an avatar, is_demo and an id
-     * @param string $id_column Which column holds the user's id
+     * @param array[] $people Rows with a name, an avatar, is_demo and an id
+     * @param string $idColumn Which column holds the user's id
      *
-     * @return array
+     * @return array[]
      */
-    protected static function withAvatarSrc($people, $id_column)
+    protected static function withAvatarSrc(array $people, string $idColumn): array
     {
         foreach ($people as &$person) {
-            $person['avatar_src'] = \App\Avatar::src($person[$id_column], $person['name'], $person['avatar'], $person['is_demo']);
+            $person['avatar_src'] = Avatar::src((int) $person[$idColumn], $person['name'], $person['avatar'], (bool) $person['is_demo']);
         }
 
         return $people;

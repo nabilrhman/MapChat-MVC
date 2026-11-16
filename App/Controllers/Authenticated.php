@@ -3,17 +3,17 @@
 namespace App\Controllers;
 
 /**
- * Authenticated base controller
+ * A controller whose every action needs someone logged in
  */
 abstract class Authenticated extends \Core\Controller
 {
     /**
-     * Require the user to be authenticated before giving access to all methods in the controller
-     *
-     * @return void
+     * Send anyone not logged in to the login page first
      */
-    protected function before()
+    protected function before(): ?bool
     {
         $this->requireLogin();
+
+        return null;
     }
 }

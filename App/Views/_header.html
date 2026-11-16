@@ -1,10 +1,11 @@
-{# The link to the page being shown is marked, e.g. /profile/... for PROFILE #}
+{# The site's header: the logo, and links that fold into a menu on phones.
+   The link to the page being shown is marked, e.g. /profile/... for PROFILE #}
 {% macro link(href, label, section) %}
 {% set here = current_path starts with section %}
 <a href="{{ href }}" class="site-header__link{{ here ? ' is-current' }}"{{ here ? ' aria-current="page"' }}>{{ label }}</a>
 {% endmacro %}
-{% import _self as nav %}
-<div class="site-header">
+{% from _self import link %}
+<header class="site-header">
     <a href="/" class="site-header__logo hover-grow">MapChat</a>
 
     {# Phones fold the links into this menu #}
@@ -13,7 +14,7 @@
         {{ icon('hamburger-menu') }}
     </button>
 
-    <div class="site-header__nav" id="site-nav">
+    <nav class="site-header__nav" id="site-nav">
 
         {% if current_user %}
         {# Your avatar and name; opens Profile and Log out #}
@@ -44,10 +45,10 @@
             </div>
         </div>
         {% else %}
-        {{ nav.link('/login', 'LOG IN', '/login') }}
-        {{ nav.link('/signup/new', 'SIGN UP', '/signup') }}
+        {{ link('/login', 'LOG IN', '/login') }}
+        {{ link('/signup/new', 'SIGN UP', '/signup') }}
         {% endif %}
-        {{ nav.link('/about', 'ABOUT', '/about') }}
+        {{ link('/about', 'ABOUT', '/about') }}
 
-    </div>
-</div>
+    </nav>
+</header>

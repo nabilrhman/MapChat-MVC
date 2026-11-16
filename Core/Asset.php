@@ -13,10 +13,8 @@ class Asset
      * The path with a short hash of the file's contents, e.g. /css/ui.css?v=1a2b3c4d
      *
      * @param string $path The file's path under public/, starting with /
-     *
-     * @return string
      */
-    public static function url($path)
+    public static function url(string $path): string
     {
         static $versionedUrls = [];
 

@@ -72,7 +72,7 @@ class AccountTest extends TestCase
     /**
      * Send a request with the cookies set so far, like a browser that
      * doesn't follow redirects. A POST carries this site as its Origin unless
-     * told otherwise
+     * told otherwise; a header given as null isn't sent
      *
      * @return array ['status' => int, 'headers' => [lowercase name => value], 'body' => string]
      */
@@ -81,6 +81,7 @@ class AccountTest extends TestCase
         if ($method === 'POST') {
             $headers += ['Origin' => 'http://' . self::$host];
         }
+        $headers = array_filter($headers, fn ($value) => $value !== null);
         if ($form) {
             $headers['Content-Type'] = 'application/x-www-form-urlencoded';
         }
@@ -133,6 +134,9 @@ class AccountTest extends TestCase
         }
     }
 
+    /**
+     * Log in as the test's user, as the login form does
+     */
     private function logIn(): void
     {
         $response = $this->request('POST', '/login/create', ['email' => self::EMAIL, 'password' => self::PASSWORD]);
@@ -149,6 +153,9 @@ class AccountTest extends TestCase
         return $this->request('GET', '/profile/show')['status'] === 200;
     }
 
+    /**
+     * The test user's row as saved
+     */
     private function user(): array
     {
         $stmt = $this->db->prepare('SELECT name, email, password_hash FROM users WHERE email = ?');
@@ -157,12 +164,18 @@ class AccountTest extends TestCase
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
+    /**
+     * Check the request was refused for its method, with the methods the URL takes
+     */
     private function assertRefusedMethod(array $response, string $allow = 'POST'): void
     {
         $this->assertSame(405, $response['status']);
         $this->assertSame($allow, $response['headers']['allow'] ?? null);
     }
 
+    /**
+     * Check the request was sent on to this page
+     */
     private function assertRedirect(string $location, array $response): void
     {
         $this->assertSame(303, $response['status']);
@@ -294,6 +307,66 @@ class AccountTest extends TestCase
         $this->assertRefusedMethod($this->request('POST', '/login'), 'GET, HEAD');
         $this->assertRefusedMethod($this->request('POST', '/profile/show'), 'GET, HEAD');
         $this->assertRefusedMethod($this->request('DELETE', '/about'), 'GET, HEAD');
+    }
+
+    public function testAPostWithNeitherOriginNorRefererIsRefused()
+    {
+        $this->logIn();
+
+        $response = $this->request('POST', '/logout', [], ['Origin' => null]);
+
+        $this->assertSame(403, $response['status']);
+        $this->assertTrue($this->isSignedIn());
+    }
+
+    public function testAPostFromThisHostOnAnotherPortIsRefused()
+    {
+        $this->logIn();
+        [$host, $port] = explode(':', self::$host);
+
+        $response = $this->request('POST', '/logout', [], ['Origin' => "http://$host:" . ($port + 1)]);
+
+        $this->assertSame(403, $response['status']);
+        $this->assertTrue($this->isSignedIn());
+    }
+
+    public function testAPostWithOnlyAThisSiteRefererIsLetIn()
+    {
+        $this->logIn();
+
+        $response = $this->request('POST', '/logout', [], ['Origin' => null, 'Referer' => 'http://' . self::$host . '/app']);
+
+        $this->assertSame(303, $response['status']);
+        $this->assertFalse($this->isSignedIn());
+    }
+
+    public function testLoggingOutStopsPushOnThatBrowserOnly()
+    {
+        $thisBrowser = 'https://push.example.com/this-browser';
+        $otherBrowser = 'https://push.example.com/other-browser';
+        foreach ([$thisBrowser, $otherBrowser] as $endpoint) {
+            $this->db->prepare("INSERT INTO push_subscriptions (email, endpoint, endpoint_hash, p256dh, auth) VALUES (?, ?, ?, 'key', 'secret')")
+                ->execute([self::EMAIL, $endpoint, hash('sha256', $endpoint)]);
+        }
+        $this->logIn();
+
+        $this->assertRedirect('/login/show-logout-message', $this->request('POST', '/logout', ['push_endpoint' => $thisBrowser]));
+
+        $stmt = $this->db->prepare('SELECT endpoint FROM push_subscriptions WHERE email = ?');
+        $stmt->execute([self::EMAIL]);
+        $this->assertSame([$otherBrowser], $stmt->fetchAll(PDO::FETCH_COLUMN));
+    }
+
+    public function testAResetRequestWithEmailOffSaysSoWhateverTheEmail()
+    {
+        foreach ([self::EMAIL, 'nobody@test.local'] as $email) {
+            $response = $this->request('POST', '/password/request-reset', ['email' => $email]);
+            $this->assertRedirect('/password/forgot', $response);
+
+            $page = $this->request('GET', '/password/forgot')['body'];
+            $this->assertStringContainsString('passwords can&#039;t be reset here', $page, $email);
+            $this->assertStringNotContainsString('Check your email', $page, $email);
+        }
     }
 
     public function testUnknownUrlIs404()

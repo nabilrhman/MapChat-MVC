@@ -5,8 +5,8 @@ namespace App;
 use App\Models\User;
 
 /**
- * @mentions in the open room: "@" and someone's handle, shown as a chip.
- * Their whole name counts too
+ * @mentions in the open room: "@" and someone's shown name, shown as a
+ * chip. Their whole name counts too
  */
 class Mention
 {
@@ -15,14 +15,13 @@ class Mention
      * them: their nickname, or else their first name. Guests are always
      * "Guest" and their number; they can't have a nickname
      *
-     * @param string $name
-     * @param string|null $nickname
-     * @param bool $isGuest
-     *
-     * @return string
+     * @param string|null $name Null for nobody, like the recipient of a room message, which shows as ''
      */
-    public static function handle($name, $nickname = null, $isGuest = false)
+    public static function shownName(?string $name, ?string $nickname = null, ?bool $isGuest = false): string
     {
+        if ($name === null) {
+            return '';
+        }
         if ($isGuest) {
             return $name;
         }
@@ -31,29 +30,22 @@ class Mention
     }
 
     /**
-     * Whether the text mentions this person
-     *
-     * @param string $text
-     * @param string $name
-     * @param string|null $nickname
-     * @param bool $isGuest
-     *
-     * @return bool
+     * Whether the text mentions this person, by name or shown name
      */
-    public static function has($text, $name, $nickname = null, $isGuest = false)
+    public static function isMentionedIn(string $text, string $name, ?string $nickname = null, bool $isGuest = false): bool
     {
-        return preg_match(static::pattern([$name, static::handle($name, $nickname, $isGuest)]), $text) === 1;
+        return preg_match(static::pattern([$name, static::shownName($name, $nickname, $isGuest)]), $text) === 1;
     }
 
     /**
      * Every way people are mentioned in any of these messages, names and
-     * handles, so a page of them takes one look-up
+     * shown names, so a page of them takes one look-up
      *
-     * @param array $chats Each with a body
+     * @param array<array{body: string}> $chats
      *
-     * @return array
+     * @return string[]
      */
-    public static function namesIn($chats)
+    public static function namesIn(array $chats): array
     {
         $bodies = array_filter(array_column($chats, 'body'), fn ($body) => str_contains($body, '@'));
         if (!$bodies) {
@@ -63,7 +55,7 @@ class Mention
         $names = [];
         foreach (User::mentionedIn(implode("\n", $bodies)) as $person) {
             $names[] = $person['name'];
-            $names[] = static::handle($person['name'], $person['nickname'], $person['is_guest']);
+            $names[] = static::shownName($person['name'], $person['nickname'], (bool) $person['is_guest']);
         }
 
         return array_values(array_unique($names));
@@ -73,15 +65,9 @@ class Mention
      * The message as HTML, with each mention in a chip. The reader's own
      * mentions get a chip of their own colour
      *
-     * @param string $text
-     * @param array $names From namesIn()
-     * @param string $readerName
-     * @param string|null $readerNickname
-     * @param bool $readerIsGuest
-     *
-     * @return string
+     * @param string[] $names From namesIn()
      */
-    public static function mark($text, $names, $readerName, $readerNickname = null, $readerIsGuest = false)
+    public static function mark(string $text, array $names, string $readerName, ?string $readerNickname = null, bool $readerIsGuest = false): string
     {
         $html = htmlspecialchars($text, ENT_QUOTES, 'UTF-8');
         if (!$names) {
@@ -92,7 +78,7 @@ class Mention
         $escape = fn ($name) => htmlspecialchars($name, ENT_QUOTES, 'UTF-8');
         $readerNames = array_map(
             fn ($name) => mb_strtolower($escape($name)),
-            [$readerName, static::handle($readerName, $readerNickname, $readerIsGuest)]
+            [$readerName, static::shownName($readerName, $readerNickname, $readerIsGuest)]
         );
 
         return preg_replace_callback(
@@ -106,30 +92,27 @@ class Mention
     }
 
     /**
-     * Add each person's handle as shown_name, for the scripts
+     * Add each person's shown name as shown_name, for the scripts
      *
-     * @param array $people Rows with name, nickname and is_guest
+     * @param array<array{name: string, nickname: ?string, is_guest: mixed}> $people
      *
-     * @return array
+     * @return array[]
      */
-    public static function withShownNames($people)
+    public static function withShownNames(array $people): array
     {
         foreach ($people as &$person) {
-            $person['shown_name'] = static::handle($person['name'], $person['nickname'], $person['is_guest']);
+            $person['shown_name'] = static::shownName($person['name'], $person['nickname'], (bool) $person['is_guest']);
         }
 
         return $people;
     }
 
     /**
-     * "@" and any of the names, whole, in any case. Longer names go first,
-     * so "@Maya Thompson" isn't taken for "@Maya"
-     *
-     * @param array $names
-     *
-     * @return string
+     * A pattern for "@" and any of the names, whole, in any case. Longer
+     * names go first, so "@Maya Thompson" isn't taken for "@Maya"
+     * @param string[] $names
      */
-    protected static function pattern($names)
+    protected static function pattern(array $names): string
     {
         usort($names, fn ($a, $b) => mb_strlen($b) - mb_strlen($a));
         $alternatives = implode('|', array_map(fn ($name) => preg_quote($name, '/'), $names));

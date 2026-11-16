@@ -5,7 +5,7 @@
  * Listens on 127.0.0.1:CHAT_SOCKET_PORT (default 8090); Apache passes
  * wss://…/ws to it. docker/start.sh runs it and starts it again if it stops.
  * On SIGTERM or SIGINT it closes every page with "restarting" and exits; the
- * pages reconnect and pick up where they were.
+ * pages reconnect and pick up where they were
  */
 
 use Amp\Http\Server\DefaultErrorHandler;
@@ -30,6 +30,11 @@ require dirname(__DIR__) . '/vendor/autoload.php';
  * Warnings and worse to the container's log
  */
 $logger = new class extends Psr\Log\AbstractLogger {
+    /**
+     * Log a warning or worse; leave out the server's routine notes
+     *
+     * @param mixed $level A PSR-3 level, e.g. "warning"
+     */
     public function log($level, Stringable|string $message, array $context = []): void
     {
         if (in_array($level, ['debug', 'info', 'notice'], true)) {
@@ -75,11 +80,11 @@ EventLoop::onReadable($signals, function () use ($signals, $hub) {
         if ($datagram === 'm') {
             $hasNewMessages = true;
         } else {
-            $hub->hearWorkerTyping($datagram);
+            $hub->onWorkerTyping($datagram);
         }
     }
     if ($hasNewMessages) {
-        $hub->hearNewMessages();
+        $hub->onNewMessages();
     }
 });
 

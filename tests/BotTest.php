@@ -21,6 +21,9 @@ class TestBot extends Bot
     /** Seconds a private reply takes to "type"; null for the real time */
     public static ?float $typing = 0.0;
 
+    /**
+     * Start a test: the clock now, nothing asked, a writer that notes what it was shown
+     */
     public static function reset(): void
     {
         static::$later = 0;
@@ -32,22 +35,34 @@ class TestBot extends Bot
         };
     }
 
+    /**
+     * Have the writer give this reply
+     */
     public static function useReply(string $reply): void
     {
         static::$writer = fn () => $reply;
     }
 
+    /**
+     * Go back to the real writer
+     */
     public static function forget(): void
     {
         static::$writer = null;
     }
 
-    protected static function now()
+    /**
+     * The real time, moved on by $later
+     */
+    protected static function now(): int
     {
         return time() + static::$later;
     }
 
-    protected static function typingSeconds($body)
+    /**
+     * How long a reply takes to "type": $typing, or the real time
+     */
+    protected static function typingSeconds(string $body): float
     {
         return static::$typing ?? parent::typingSeconds($body);
     }
@@ -92,9 +107,8 @@ class BotTest extends TestCase
      */
     private function send(string $from, string $body, ?string $to = null): int
     {
-        (new Chat(['email' => $from, 'to_email' => $to, 'body' => $body]))->send();
-        $id = (int) Chat::lastId();
-        TestBot::heard($from, $id, $to, $body);
+        $id = Chat::save($from, $to, $body);
+        TestBot::onMessage($from, $id, $to, $body);
 
         return $id;
     }
@@ -145,7 +159,7 @@ class BotTest extends TestCase
 
     public function testQuietRoomGreetsANewVisitor()
     {
-        TestBot::arrived(self::ANN);
+        TestBot::onArrival(self::ANN);
 
         $this->wait(1);
         $this->assertSame([], $this->botSaid(), 'not before they have a chance to speak');
@@ -161,7 +175,7 @@ class BotTest extends TestCase
     {
         $this->send(self::BOB, 'anyone watching the match?');
         $this->send(self::CAT, 'me! 2-1 so far');
-        TestBot::arrived(self::ANN);
+        TestBot::onArrival(self::ANN);
 
         $this->wait(Bot::GREET_SECONDS + Bot::GRACE_SECONDS);
 
@@ -171,17 +185,17 @@ class BotTest extends TestCase
     public function testDuplicateJoinsGreetOnce()
     {
         // Two tabs, then a reload
-        TestBot::arrived(self::ANN);
-        TestBot::arrived(self::ANN);
+        TestBot::onArrival(self::ANN);
+        TestBot::onArrival(self::ANN);
         $this->wait(Bot::GREET_SECONDS);
-        TestBot::arrived(self::ANN);
+        TestBot::onArrival(self::ANN);
         $this->wait(Bot::GREET_SECONDS + Bot::ROOM_COOLDOWN_SECONDS);
 
         $this->assertCount(1, $this->botSaid());
 
         // The next day they're new again
         $this->wait(Bot::GREET_COOLDOWN_HOURS * 3600);
-        TestBot::arrived(self::ANN);
+        TestBot::onArrival(self::ANN);
         $this->wait(Bot::GREET_SECONDS);
 
         $this->assertCount(2, $this->botSaid());
@@ -189,7 +203,7 @@ class BotTest extends TestCase
 
     public function testVisitorWhoSpeaksFirstGetsAReplyNotAGreeting()
     {
-        TestBot::arrived(self::ANN);
+        TestBot::onArrival(self::ANN);
         $this->wait(5);
         $this->send(self::ANN, 'hello? is anyone here');
 
@@ -236,7 +250,7 @@ class BotTest extends TestCase
 
     public function testGreetedVisitorWhoAnswersGetsAFollowUp()
     {
-        TestBot::arrived(self::ANN);
+        TestBot::onArrival(self::ANN);
         $this->wait(Bot::GREET_SECONDS);
         $this->send(self::ANN, 'sunny!');
 
@@ -260,8 +274,8 @@ class BotTest extends TestCase
 
     public function testRepliesWaitForTheRoomCooldown()
     {
-        TestBot::arrived(self::ANN);
-        TestBot::arrived(self::BOB);
+        TestBot::onArrival(self::ANN);
+        TestBot::onArrival(self::BOB);
         $this->wait(Bot::GREET_SECONDS);
 
         $this->assertCount(1, $this->botSaid());
@@ -288,9 +302,9 @@ class BotTest extends TestCase
     public function testBotAndDemoMessagesNeverMakeJobs()
     {
         $this->send(Chat::BOT_EMAIL, 'Welcome to MapChat!');
-        Bot::heard('maya@demo.mapchat.local', 1, null, '@MapChat hi');
-        Bot::arrived('maya@demo.mapchat.local');
-        Bot::arrived(Chat::BOT_EMAIL);
+        Bot::onMessage('maya@demo.mapchat.local', 1, null, '@MapChat hi');
+        Bot::onArrival('maya@demo.mapchat.local');
+        Bot::onArrival(Chat::BOT_EMAIL);
 
         $this->assertSame(0, (int) $this->db->query('SELECT COUNT(*) FROM mapchat_jobs')->fetchColumn());
     }

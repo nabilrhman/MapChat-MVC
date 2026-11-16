@@ -3,54 +3,35 @@
 namespace App;
 
 /**
- * Unique random tokens
+ * A random token for a link or cookie. Only its hash is stored, so a copy
+ * of the database can't be used to log in
  */
 class Token
 {
-    /**
-     * The token value
-     * @var string
-     */
-    protected $token;
+    /** The token itself, 32 hex characters */
+    public readonly string $value;
 
     /**
-     * Class constructor. Create a new random token or assign an existing one if passed in.
+     * A new random token, or an existing one to hash
      *
-     * @param string $token_value (optional) A token value
-     *
-     * @return void
+     * @param string|null $value A token from a link or cookie; null for a new one
      */
-    public function __construct($token_value = null)
+    public function __construct(?string $value = null)
     {
-        if ($token_value) {
-            $this->token = $token_value;
-        } else {
-            $this->token = bin2hex(random_bytes(16));  // 16 bytes = 128 bits = 32 hex characters
-        }
+        // 16 bytes = 128 bits = 32 hex characters
+        $this->value = $value ?? bin2hex(random_bytes(16));
     }
 
     /**
-     * Get the token value
-     *
-     * @return string The value
+     * The token as stored: an HMAC with SECRET_KEY, 64 hex characters
      */
-    public function getValue()
-    {
-        return $this->token;
-    }
-
-    /**
-     * Get the hashed token value
-     *
-     * @return string The hashed value
-     */
-    public function getHash()
+    public function getHash(): string
     {
         $secret = Config::get('SECRET_KEY');
         if ($secret === null) {
             throw new \RuntimeException('SECRET_KEY is not set');
         }
 
-        return hash_hmac('sha256', $this->token, $secret);  // sha256 = 64 chars
+        return hash_hmac('sha256', $this->value, $secret);
     }
 }

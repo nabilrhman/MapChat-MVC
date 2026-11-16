@@ -5,16 +5,14 @@ namespace App\Controllers;
 use Core\View;
 
 /**
- * About page
+ * The About page
  */
 class About extends \Core\Controller
 {
     /**
-     * Show the index page
-     *
-     * @return void
+     * Show the About page
      */
-    public function indexAction()
+    public function indexAction(): void
     {
         View::renderTemplate('About/index.html');
     }

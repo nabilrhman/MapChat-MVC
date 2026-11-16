@@ -41,6 +41,9 @@ class NicknameTest extends TestCase
         return $user;
     }
 
+    /**
+     * Someone's nickname as saved
+     */
     private function nicknameOf(string $email): ?string
     {
         return User::findByEmail($email)->nickname;
@@ -72,8 +75,8 @@ class NicknameTest extends TestCase
     {
         $this->saveNickname('bob@test.local', 'Rocket');
 
-        $this->assertSame(['Nickname: Already taken'], $this->saveNickname('ann@test.local', 'rocket')->errors);
-        $this->assertSame(['Nickname: Already taken'], $this->saveNickname('ann@test.local', 'mapchat')->errors);
+        $this->assertSame(['nickname' => ['That nickname is taken.']], $this->saveNickname('ann@test.local', 'rocket')->errors);
+        $this->assertSame(['nickname' => ['That nickname is taken.']], $this->saveNickname('ann@test.local', 'mapchat')->errors);
         $this->assertSame([], $this->saveNickname('bob@test.local', 'Rocket')->errors ?? [], 'keeping your own');
     }
 }

@@ -15,32 +15,50 @@ class TestDemoChat extends DemoChat
     /** Stamp lines on the demo clock rather than the real one (see the catch-up test) */
     public static bool $isStampedOnDemoClock = false;
 
+    /**
+     * When a line said at this demo time was seen, on the real clock
+     */
     public static function seenAt(string $time): string
     {
         return static::realTime($time);
     }
 
+    /**
+     * A line as the room shows it, with its @mention
+     */
     public static function addressed(string $body): string
     {
         return static::withAddressee($body);
     }
 
+    /**
+     * Catch up at the fixed demo time, without the lock
+     */
     public static function catchUpNow(): void
     {
         static::catchUpLocked(TestDb::get());
     }
 
+    /**
+     * Midnight at the start of the demo day
+     */
     public static function todayStart(): int
     {
         return static::dayStart(static::today());
     }
 
-    protected static function now()
+    /**
+     * The fixed demo time
+     */
+    protected static function now(): int
     {
         return static::$demoNow;
     }
 
-    protected static function realTime($time)
+    /**
+     * The demo time itself while $isStampedOnDemoClock, else the real time
+     */
+    protected static function realTime(string $time): string
     {
         return static::$isStampedOnDemoClock ? $time : parent::realTime($time);
     }

@@ -1,5 +1,6 @@
 {% extends 'base_login.html' %}
-{% import '_form_fields.html' as form %}
+{% from '_form_fields.html' import text_field %}
+{% types {user?: '\\App\\Models\\User'} %}
 
 {% block title %}Sign up{% endblock %}
 
@@ -12,14 +13,14 @@
 
     <form action="/signup/create" method="post" id="formSignup" class="auth-card__form" novalidate>
 
-        {{ form.text_field({id: 'inputName', name: 'name', label: 'Name', errors_key: 'Name',
-                            value: user.name, autocomplete: 'name', autofocus: true}, user.errors) }}
+        {{ text_field({id: 'inputName', name: 'name', label: 'Name', required: true,
+                       value: user.name ?? '', autocomplete: 'name', autofocus: true}, user.errors.name ?? []) }}
 
-        {{ form.text_field({id: 'inputEmail', name: 'email', type: 'email', label: 'Email', errors_key: 'Email',
-                            value: user.email, autocomplete: 'email'}, user.errors) }}
+        {{ text_field({id: 'inputEmail', name: 'email', type: 'email', label: 'Email', required: true,
+                       value: user.email ?? '', autocomplete: 'email'}, user.errors.email ?? []) }}
 
-        {{ form.text_field({id: 'inputPassword', name: 'password', type: 'password', label: 'Password', errors_key: 'Password',
-                            autocomplete: 'new-password', hint: '6+ characters, a letter and a number'}, user.errors) }}
+        {{ text_field({id: 'inputPassword', name: 'password', type: 'password', label: 'Password', required: true, minlength: 6,
+                       autocomplete: 'new-password', hint: '6+ characters, a letter and a number'}, user.errors.password ?? []) }}
 
         <button type="submit" class="button button--primary button--block auth-card__button">Create account</button>
     </form>

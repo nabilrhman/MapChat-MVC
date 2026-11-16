@@ -40,9 +40,7 @@ class ChatTest extends TestCase
      */
     private function send(string $from, string $body, ?string $to = null): int
     {
-        (new Chat(['email' => $from, 'to_email' => $to, 'body' => $body]))->send();
-
-        return (int) $this->db->lastInsertId();
+        return Chat::save($from, $to, $body);
     }
 
     /**
@@ -141,6 +139,9 @@ class ChatTest extends TestCase
         return array_sum(array_map('intval', $rows));
     }
 
+    /**
+     * Save many messages at once, straight into the table
+     */
     private function sendMany(string $from, int $count, ?string $to = null): void
     {
         $values = implode(',', array_fill(0, $count, '(' . $this->db->quote($from) . ', '
@@ -287,6 +288,9 @@ class ChatTest extends TestCase
         $this->assertSame(2, Chat::countRecent(self::ANN, 60));
     }
 
+    /**
+     * Someone's id
+     */
     private function userId(string $email): int
     {
         $stmt = $this->db->prepare('SELECT id FROM users WHERE email = ?');
@@ -379,6 +383,9 @@ class ChatTest extends TestCase
         $this->assertNotContains('cat', $names, 'never seen');
     }
 
+    /**
+     * Someone's account
+     */
     private function user(string $email): \App\Models\User
     {
         return \App\Models\User::findByEmail($email);

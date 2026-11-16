@@ -49,6 +49,9 @@ class PushTest extends TestCase
         return PushSubscription::getAll();
     }
 
+    /**
+     * Whose subscriptions these are
+     */
     private function emailsOf(array $subscriptions): array
     {
         return array_column($subscriptions, 'email');

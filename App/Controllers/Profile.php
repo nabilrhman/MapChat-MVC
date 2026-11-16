@@ -4,55 +4,51 @@ namespace App\Controllers;
 
 use Core\View;
 use App\Auth;
+use App\Avatar;
 use App\Flash;
+use App\Models\User;
 use App\Models\UserInfo;
 
 /**
- * Profile controller
+ * The profile page: name, nickname, photo, email and password, and whether
+ * you're on the map
  */
 class Profile extends Authenticated
 {
-    /**
-     * The logged-in user
-     * @var \App\Models\User
-     */
-    protected $user;
+    /** The logged-in user, set before each action */
+    protected User $user;
 
     /**
-     * Before filter - called before each action method
-     *
-     * @return void
+     * Require a login, and keep who it is
      */
-    protected function before()
+    protected function before(): ?bool
     {
         parent::before();
 
         $this->user = Auth::getUser();
+
+        return null;
     }
 
     /**
      * Show the profile
-     *
-     * @return void
      */
-    public function showAction()
+    public function showAction(): void
     {
         View::renderTemplate('Profile/show.html', [
             'user' => $this->user,
             'place' => UserInfo::getPlace($this->user->email),
-            'default_avatar' => \App\Avatar::src($this->user->id, $this->user->name)
+            'default_avatar' => Avatar::src($this->user->id, $this->user->name)
         ]);
     }
 
     /**
-     * Update the profile
-     *
-     * @return void
+     * Save the profile form
      */
-    public function updateAction()
+    public function updateAction(): void
     {
-        $email = trim($_POST['email'] ?? '');
-        $password = $_POST['password'] ?? '';
+        $email = trim((string) ($_POST['email'] ?? ''));
+        $password = (string) ($_POST['password'] ?? '');
 
         if ($this->user->is_guest) {
             // A guest's email field starts empty; leaving it empty keeps the placeholder
@@ -65,44 +61,41 @@ class Profile extends Authenticated
             }
         } elseif ($email !== $this->user->email || $password !== '') {
             // Changing how you sign in needs your current password
-            if (!password_verify($_POST['current_password'] ?? '', $this->user->password_hash)) {
+            if (!password_verify((string) ($_POST['current_password'] ?? ''), $this->user->password_hash)) {
                 $this->refuse('Your current password is not right.');
             }
         }
 
         // Guests stay "Guest" and a number, so they don't get a nickname
-        $nickname = $this->user->is_guest ? '' : ($_POST['nickname'] ?? '');
+        $nickname = $this->user->is_guest ? '' : (string) ($_POST['nickname'] ?? '');
 
-        $data = ['name' => $_POST['name'] ?? '', 'nickname' => $nickname, 'email' => $email, 'password' => $password];
+        $data = ['name' => (string) ($_POST['name'] ?? ''), 'nickname' => $nickname, 'email' => $email, 'password' => $password];
 
         if ($this->user->updateProfile($data)) {
             Flash::clear();
-            Flash::addMessage('Changes saved');
+            Flash::addMessage('Changes saved.');
         } else {
-            Flash::addMessage(implode('. ', $this->user->errors), Flash::WARNING);
+            // The cards show their saved details, not the form, so the problems go in one message
+            Flash::addMessage(implode(' ', array_merge(...array_values($this->user->errors))), Flash::WARNING);
         }
 
         $this->redirect('/profile/show');
     }
 
     /**
-     * Update the avatar
-     *
-     * @return void
+     * Save the uploaded photo (for AJAX)
      */
-    public function updateAvatarAction()
+    public function updateAvatarAction(): void
     {
-        if (!$this->user->updateAvatar($_POST['avatar'] ?? '')) {
+        if (!$this->user->updateAvatar((string) ($_POST['avatar'] ?? ''))) {
             http_response_code(400);
         }
     }
 
     /**
-     * Go back to the default letter avatar (AJAX)
-     *
-     * @return void
+     * Go back to the drawn avatar (for AJAX)
      */
-    public function removeAvatarAction()
+    public function removeAvatarAction(): void
     {
         if (!$this->user->updateAvatar(null)) {
             http_response_code(400);
@@ -110,27 +103,24 @@ class Profile extends Authenticated
     }
 
     /**
-     * Show why a change wasn't saved, back on the profile page
-     *
-     * @param string $message
-     *
-     * @return void
+     * Turn showing the user on the map on or off (for AJAX)
      */
-    protected function refuse($message)
+    public function updateLocationSharingAction(): void
     {
-        Flash::addMessage($message, Flash::WARNING);
-        $this->redirect('/profile/show');
+        $isShared = !empty($_POST['share']);
+        $this->user->setLocationSharing($isShared);
+
+        $this->json(['share_location' => $isShared]);
     }
 
     /**
-     * Turn showing the user on the map on or off (AJAX)
+     * Show why a change wasn't saved, back on the profile page
      *
-     * @return void
+     * @param string $message A full sentence
      */
-    public function updateLocationSharingAction()
+    protected function refuse(string $message): never
     {
-        $this->user->setLocationSharing(!empty($_POST['share']));
-
-        $this->json(['share_location' => !empty($_POST['share'])]);
+        Flash::addMessage($message, Flash::WARNING);
+        $this->redirect('/profile/show');
     }
 }

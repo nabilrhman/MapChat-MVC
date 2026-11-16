@@ -7,8 +7,8 @@ use Amp\Http\Server\Request;
 use Amp\Http\Server\Response;
 use Amp\Websocket\Server\Rfc6455Acceptor;
 use Amp\Websocket\Server\WebsocketAcceptor;
-use App\Config;
 use App\Models\User;
+use Core\SameOrigin;
 
 /**
  * Lets a page's socket in only from this site, with a logged-in session.
@@ -24,27 +24,32 @@ class Handshake implements WebsocketAcceptor
     const MAX_TABS_PER_USER = 20;
     const MAX_TABS = 2000;
 
-    private Hub $hub;
-
-    public function __construct(Hub $hub)
+    /**
+     * Check pages against the Hub's open pages
+     */
+    public function __construct(private readonly Hub $hub)
     {
-        $this->hub = $hub;
     }
 
+    /**
+     * Let the page in, or refuse it with a status that says why
+     */
     public function handleHandshake(Request $request): Response
     {
         if ($request->getUri()->getPath() !== static::PATH) {
             return static::refusal(HttpStatus::NOT_FOUND);
         }
 
-        if (!static::isFromThisSite($request->getHeader('origin'), $request->getHeader('host'))) {
+        // Apache keeps the Host header for us, and the host's proxy says whether it was https
+        $isHttps = $request->getHeader('x-forwarded-proto') === 'https';
+        if (!SameOrigin::isFromThisSite($request->getHeader('origin'), $request->getHeader('host'), $isHttps)) {
             return static::refusal(HttpStatus::FORBIDDEN);
         }
 
         $sessionId = $request->getCookie(session_name())?->getValue() ?? '';
         $userId = Sessions::getUserId($sessionId);
         $user = $userId === null ? null : User::findByID($userId);
-        if (!$user) {
+        if (!$user || $user->isExpiredGuest()) {
             return static::refusal(HttpStatus::UNAUTHORIZED);
         }
 
@@ -61,38 +66,11 @@ class Handshake implements WebsocketAcceptor
     }
 
     /**
-     * Whether the page asking is this site's: its origin is APP_URL, or the
-     * address the request came to (Apache keeps the Host header for us)
+     * A plain-text refusal that closes the connection
      *
-     * @param string|null $origin
-     * @param string|null $host
-     *
-     * @return bool
+     * @param int $status An HTTP status
      */
-    public static function isFromThisSite($origin, $host)
-    {
-        if ($origin === null || $origin === '') {
-            return false;
-        }
-
-        $appUrl = Config::get('APP_URL');
-        if ($appUrl !== null && rtrim($appUrl, '/') === $origin) {
-            return true;
-        }
-
-        $originHost = parse_url($origin, PHP_URL_HOST);
-        $originPort = parse_url($origin, PHP_URL_PORT);
-        $originAddress = $originHost . ($originPort ? ":$originPort" : '');
-
-        return $originHost !== null && $host !== null && strcasecmp($originAddress, $host) === 0;
-    }
-
-    /**
-     * @param int $status
-     *
-     * @return Response
-     */
-    private static function refusal($status)
+    private static function refusal(int $status): Response
     {
         return new Response($status, ['content-type' => 'text/plain', 'connection' => 'close'], HttpStatus::getReason($status));
     }
