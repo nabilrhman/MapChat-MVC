@@ -58,7 +58,7 @@ function createPersonDetail(person) {
     if (person.country) {
         detail.append(createElement('span', `fi fi-${person.country.toLowerCase()}`));
     }
-    detail.append(createElement('span', 'person__city', person.city || ''));
+    detail.append(createElement('span', 'person__city', placeName(person.city, person.country)));
     return detail;
 }
 
