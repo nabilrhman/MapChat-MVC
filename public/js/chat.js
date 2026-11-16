@@ -177,6 +177,7 @@ function showConversation(conversation) {
         const unreadCount = tab.querySelector('.chat-tab__unread');
         unreadCount.hidden = true;
         unreadCount.textContent = '';
+        unreadCount.classList.remove('chat-tab__unread--mention');
     });
     tab.scrollIntoView({block: 'nearest', inline: 'nearest'});
 
@@ -390,10 +391,12 @@ function addDayDividers() {
         });
 }
 
-function countUnread(tab) {
+// A message that @mentions you turns the count purple until you look
+function countUnread(tab, isMention) {
     const unreadCount = tab.querySelector('.chat-tab__unread');
     slideTabs(() => {
         unreadCount.classList.toggle('is-entering', unreadCount.hidden);
+        if (isMention) unreadCount.classList.add('chat-tab__unread--mention');
         unreadCount.textContent = (parseInt(unreadCount.textContent, 10) || 0) + 1;
         unreadCount.hidden = false;
     });
@@ -406,7 +409,7 @@ function placeMessages(chats) {
 
         if (getConversation(chat) !== activeConversation) {
             chat.style.display = 'none';
-            if (tab) countUnread(tab);
+            if (tab) countUnread(tab, chat.classList.contains('chat--mentions-me'));
         }
     });
     if (chats.some((chat) => getConversation(chat) === activeConversation)) {
@@ -681,6 +684,10 @@ composerForm.addEventListener('submit', (event) => {
             updateSendButton();
         });
 });
+
+// @ suggests names in the open room. Set up before Enter sends, so
+// choosing a name with Enter doesn't send the message too
+setUpMentions(messageInput, () => activeConversation === EVERYONE, getPeopleToMention);
 
 // Enter sends, Shift+Enter starts a new line
 messageInput.addEventListener('keydown', (event) => {

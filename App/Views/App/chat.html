@@ -1,3 +1,5 @@
+{# Looked up once for the whole page of messages #}
+{% set mention_names = mentioned_names(chats) %}
 {% for chat in chats %}
 {# Which tab the message belongs in: "everyone", or the other person's id #}
 {% set mine = chat.user_id == current_user.id %}
@@ -11,8 +13,10 @@
    MapChat only while it can write back #}
 {% set can_message = conversation == 'everyone' and not mine
     and (chat.email != constant('App\\Models\\Chat::BOT_EMAIL') or mapchat_can_reply) %}
+{# @mentions are for the open room; in a private chat you're already talking to them #}
+{% set mentions_me = conversation == 'everyone' and not mine and mentions(chat.body, current_user.name) %}
 {# Messages from the poll ease in; the history and your own appear at once #}
-<div class="chat{% if not initial|default(false) and not mine %} is-entering{% endif %}"
+<div class="chat{% if mentions_me %} chat--mentions-me{% endif %}{% if not initial|default(false) and not mine %} is-entering{% endif %}"
      data-id="{{ chat.id }}" data-conversation="{{ conversation }}" data-partner="{{ partner }}">
     <div class="chat__avatar">
         <img class="chat__photo" src="{{ avatar_src(chat.user_id, chat.name, chat.avatar, chat.is_demo) }}" alt="Avatar">
@@ -36,7 +40,11 @@
                 {% endif %}
             </span>
         </span>
+        {% if conversation == 'everyone' %}
+        <p class="chat__body">{{ mark_mentions(chat.body, mention_names, current_user.name) }}</p>
+        {% else %}
         <p class="chat__body">{{ chat.body }}</p>
+        {% endif %}
         {# No row at all without a place (e.g. the MapChat bot, or a hidden location) #}
         {% if chat.city %}
         {# On hover the city slides to the country's flag and name #}

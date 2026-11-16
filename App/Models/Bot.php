@@ -4,6 +4,7 @@ namespace App\Models;
 
 use PDO;
 use App\Config;
+use App\Mention;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Contracts\HttpClient\Exception\ExceptionInterface;
 
@@ -32,8 +33,11 @@ class Bot extends \Core\Model
      */
     const GRACE_SECONDS = 45;
 
-    /** How soon MapChat answers someone it's already talking to */
+    /** How soon MapChat answers someone it's already talking to, or who @mentions it */
     const FOLLOW_UP_SECONDS = 3;
+
+    /** Its name, as people @mention it */
+    const NAME = 'MapChat';
 
     /** A conversation with MapChat ends when its last message is older than this */
     const CONVERSATION_MINUTES = 5;
@@ -104,10 +108,11 @@ class Bot extends \Core\Model
      * @param string $email The sender
      * @param int $chatId Their message
      * @param string|null $toEmail Who it's for; null for the open room
+     * @param string $body What they wrote
      *
      * @return void
      */
-    public static function heard($email, $chatId, $toEmail)
+    public static function heard($email, $chatId, $toEmail, $body)
     {
         // MapChat's own messages and the demo people's never start a job
         if (!static::isPerson($email)) {
@@ -128,7 +133,10 @@ class Bot extends \Core\Model
                                   WHERE kind = \'greet\' AND email = :email AND done_at IS NULL')
             ->execute([':now' => static::time(), ':email' => $email]);
 
-        if (static::isTalkingWith($email, $chatId)) {
+        // Asked by name: answer, however busy the room is
+        if (Mention::has($body, static::NAME)) {
+            static::schedule('mention', $email, $chatId, "mention:$chatId", static::FOLLOW_UP_SECONDS);
+        } elseif (static::isTalkingWith($email, $chatId)) {
             static::schedule('reply', $email, $chatId, "reply:$chatId", static::FOLLOW_UP_SECONDS);
         } elseif (static::isQuiet($email, $chatId)) {
             $grace = static::isAnyoneElseOnline($email) ? static::GRACE_SECONDS : static::FOLLOW_UP_SECONDS;
@@ -189,7 +197,7 @@ class Bot extends \Core\Model
 
         $body = match ($job['kind']) {
             'greet' => static::greeting($job),
-            'reply' => static::publicReply($job),
+            'reply', 'mention' => static::publicReply($job),
             'dm' => static::privateReply($job),
         };
 
@@ -261,7 +269,8 @@ class Bot extends \Core\Model
 
     /**
      * An answer in the open room, written only from what's in the open room,
-     * unless someone else answered first or the person has said more since
+     * unless the person has said more since, or nobody asked MapChat and
+     * someone else answered first
      *
      * @param array $job
      *
@@ -269,7 +278,8 @@ class Bot extends \Core\Model
      */
     protected static function publicReply($job)
     {
-        if (static::someoneAnswered($job['email'], $job['chat_id']) || static::hasNewerJob($job)) {
+        $wasAsked = $job['kind'] === 'mention';
+        if (static::hasNewerJob($job) || (!$wasAsked && static::someoneAnswered($job['email'], $job['chat_id']))) {
             return null;
         }
 
@@ -566,7 +576,7 @@ class Bot extends \Core\Model
     protected static function lastRoomPost()
     {
         return static::getDB()->query('SELECT email, posted_id, done_at FROM mapchat_jobs
-                                       WHERE kind IN (\'greet\', \'reply\') AND posted_id IS NOT NULL
+                                       WHERE kind IN (\'greet\', \'reply\', \'mention\') AND posted_id IS NOT NULL
                                        ORDER BY posted_id DESC LIMIT 1')->fetch(PDO::FETCH_ASSOC);
     }
 

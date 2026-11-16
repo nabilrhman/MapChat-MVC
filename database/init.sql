@@ -104,7 +104,7 @@ CREATE TABLE userinfo (
 -- What the MapChat account is about to say (see App/Models/Bot.php)
 CREATE TABLE mapchat_jobs (
   `id`         INT          NOT NULL AUTO_INCREMENT,
-  -- greet (a visitor to a quiet room), reply (in the open room) or dm
+  -- greet (a visitor to a quiet room), reply or mention (in the open room), or dm
   `kind`       VARCHAR(10)  NOT NULL,
   -- The person MapChat greets or answers
   `email`      VARCHAR(255) NOT NULL,

@@ -141,7 +141,7 @@ class App extends Authenticated
 
         $chat = new Chat(['email' => $user->email, 'to_email' => $toEmail, 'body' => $body]);
         if ($chat->send()) {
-            Bot::heard($user->email, (int) Chat::lastId(), $toEmail);
+            Bot::heard($user->email, (int) Chat::lastId(), $toEmail, $body);
         }
     }
 

@@ -173,6 +173,25 @@ class User extends \Core\Model
     }
 
     /**
+     * The names of people that "@" and their name appears for in the text
+     *
+     * @param string $text
+     *
+     * @return array
+     */
+    public static function namesMentionedIn($text)
+    {
+        // LOCATE, not LIKE, so a name with % or _ in it is taken as typed
+        $sql = 'SELECT DISTINCT name FROM users WHERE LOCATE(CONCAT(\'@\', name), :text) > 0';
+
+        $stmt = static::getDB()->prepare($sql);
+        $stmt->bindValue(':text', $text, PDO::PARAM_STR);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    }
+
+    /**
      * Find a user model by ID
      *
      * @param string $id The user ID

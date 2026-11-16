@@ -85,7 +85,7 @@ class BotTest extends TestCase
     {
         (new Chat(['email' => $from, 'to_email' => $to, 'body' => $body]))->send();
         $id = (int) Chat::lastId();
-        TestBot::heard($from, $id, $to);
+        TestBot::heard($from, $id, $to, $body);
 
         return $id;
     }
@@ -256,7 +256,7 @@ class BotTest extends TestCase
     public function testBotAndDemoMessagesNeverMakeJobs()
     {
         $this->send(Chat::BOT_EMAIL, 'Welcome to MapChat!');
-        Bot::heard('maya@demo.mapchat.local', 1, null);
+        Bot::heard('maya@demo.mapchat.local', 1, null, '@MapChat hi');
         Bot::arrived('maya@demo.mapchat.local');
         Bot::arrived(Chat::BOT_EMAIL);
 
@@ -329,5 +329,28 @@ class BotTest extends TestCase
         $this->wait(Bot::PRIVATE_SECONDS);
 
         $this->assertSame([[self::ANN, 'The map shows pins for each city.']], $this->botSaid());
+    }
+
+    public function testMentionIsAnsweredEvenWhilePeopleTalk()
+    {
+        $this->send(self::ANN, 'anyone watching the match?');
+        $this->send(self::BOB, 'me! 2-1 so far');
+        $this->send(self::CAT, '@mapchat where is Null Island?');
+        $this->send(self::BOB, 'cat, it is at 0,0');
+
+        $this->wait(Bot::FOLLOW_UP_SECONDS);
+
+        $this->assertSame([[null, 'reply 1']], $this->botSaid());
+        $this->assertStringEndsWith("Cat: @mapchat where is Null Island?", TestBot::$asked[0][1]);
+    }
+
+    public function testPrivateMessagesDontNeedOrUseMentions()
+    {
+        $this->send(self::ANN, '@MapChat hi', self::BOB);
+        $this->send(self::ANN, 'hi', Chat::BOT_EMAIL);
+
+        $this->wait(Bot::PRIVATE_SECONDS);
+
+        $this->assertSame([[self::ANN, 'reply 1']], $this->botSaid());
     }
 }

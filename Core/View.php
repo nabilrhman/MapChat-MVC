@@ -45,6 +45,10 @@ class View
             // Links to files in public/ that change when the file does (see Asset)
             $twig->addFunction(new \Twig\TwigFunction('asset', [Asset::class, 'url']));
             $twig->addFunction(new \Twig\TwigFunction('icon', [Icon::class, 'svg'], ['is_safe' => ['html']]));
+            // @mentions in the open room, as chips (see App\Mention)
+            $twig->addFunction(new \Twig\TwigFunction('mentioned_names', [\App\Mention::class, 'namesIn']));
+            $twig->addFunction(new \Twig\TwigFunction('mentions', [\App\Mention::class, 'has']));
+            $twig->addFunction(new \Twig\TwigFunction('mark_mentions', [\App\Mention::class, 'mark'], ['is_safe' => ['html']]));
             $twig->addGlobal('app_url', Config::appUrl());
             $twig->addGlobal('mapchat_can_reply', \App\Models\Bot::canReply());
             // For marking the current page in the header

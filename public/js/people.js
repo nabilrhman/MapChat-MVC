@@ -22,6 +22,13 @@ function getListRank(person) {
 
 const personByRow = new WeakMap();
 
+// Everyone in the list but you, online first, for @mentions
+let peopleToMention = [];
+
+function getPeopleToMention() {
+    return peopleToMention;
+}
+
 function getTimeAgo(minutes) {
     if (minutes < 60) return `${minutes} min ago`;
     return `${Math.floor(minutes / 60)} h ago`;
@@ -132,6 +139,7 @@ function showPeople(people, onPeopleOnline) {
     const recentPeople = people.filter((person) => !isOnline(person));
 
     onlinePeople.sort((a, b) => getListRank(a) - getListRank(b) || a.name.localeCompare(b.name));
+    peopleToMention = [...onlinePeople, ...recentPeople].filter((person) => Number(person.id) !== myUserId);
 
     // The rows are replaced, so a hovered row never gets its mouseleave
     document.querySelectorAll('.map-pin.is-highlighted').forEach((pin) => pin.classList.remove('is-highlighted'));
