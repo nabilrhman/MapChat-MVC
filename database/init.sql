@@ -128,6 +128,8 @@ CREATE TABLE mapchat_jobs (
   `done_at`    TIMESTAMP    NULL DEFAULT NULL,
   -- MapChat's message, if it posted one
   `posted_id`  INT          NULL DEFAULT NULL,
+  -- A private reply already written, held until it would have taken to type
+  `reply`      TEXT         NULL DEFAULT NULL,
   `created_at` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `dedupe_key` (`dedupe_key`),

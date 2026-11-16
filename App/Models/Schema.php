@@ -45,6 +45,7 @@ class Schema extends \Core\Model
             'ALTER TABLE chats ADD COLUMN client_id VARCHAR(36) NULL DEFAULT NULL AFTER read_at',
             'ALTER TABLE chats ADD UNIQUE KEY client_id (email, client_id)',
         ]],
+        ['mapchat_jobs', 'reply', ['ALTER TABLE mapchat_jobs ADD COLUMN reply TEXT NULL DEFAULT NULL AFTER posted_id']],
     ];
 
     /** Indexes added since the first release, as in init.sql, by table and name */
@@ -64,6 +65,7 @@ class Schema extends \Core\Model
             `due_at`     TIMESTAMP    NOT NULL,
             `done_at`    TIMESTAMP    NULL DEFAULT NULL,
             `posted_id`  INT          NULL DEFAULT NULL,
+            `reply`      TEXT         NULL DEFAULT NULL,
             `created_at` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (`id`),
             UNIQUE KEY `dedupe_key` (`dedupe_key`),

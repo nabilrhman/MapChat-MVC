@@ -18,10 +18,14 @@ class TestBot extends Bot
     /** [instructions, chat] for each reply written */
     public static array $asked = [];
 
+    /** Seconds a private reply takes to "type"; null for the real time */
+    public static ?float $typing = 0.0;
+
     public static function reset(): void
     {
         static::$later = 0;
         static::$asked = [];
+        static::$typing = 0.0;
         static::$writer = function ($situation, $chat) {
             static::$asked[] = [$situation, $chat];
             return 'reply ' . count(static::$asked);
@@ -41,6 +45,11 @@ class TestBot extends Bot
     protected static function now()
     {
         return time() + static::$later;
+    }
+
+    protected static function typingSeconds($body)
+    {
+        return static::$typing ?? parent::typingSeconds($body);
     }
 }
 
@@ -612,6 +621,28 @@ class BotTest extends TestCase
             $this->wait(Bot::COME_ONLINE_SECONDS + Bot::DEMO_ANSWER_SECONDS);
             $this->assertStringNotContainsString('done chatting', TestBot::$asked[4 + $i][0], $notClosing);
         }
+    }
+
+    public function testPrivateReplyTakesAboutAsLongAsTypingIt()
+    {
+        $tanvir = $this->addDemoPerson('Tanvir Hasan', 'Dhaka');
+        TestBot::$typing = null;
+        // 20 characters, 4 seconds to type
+        $reply = 'slow and steady wins';
+        TestBot::useReply($reply);
+
+        $this->send(self::ANN, 'how is the biryani?', $tanvir);
+        $this->wait(Bot::COME_ONLINE_SECONDS + Bot::DEMO_ANSWER_SECONDS);
+        $this->assertSame([], $this->answers(), 'written, but still being typed');
+
+        $typing = (int) ceil(mb_strlen(trim($reply)) / Bot::TYPING_CHARS_PER_SECOND);
+        $this->wait($typing - 1);
+        $this->assertSame([], $this->answers());
+
+        $this->wait(1);
+        $this->assertSame([[$tanvir, trim($reply)]], $this->answers(), 'posted once typed, and only once');
+        $this->wait(Bot::MOST_TYPING_SECONDS);
+        $this->assertCount(1, $this->answers());
     }
 
     public function testDemoPersonComesOnlineAMomentLaterAndStaysWhileTalking()

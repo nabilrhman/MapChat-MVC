@@ -59,6 +59,14 @@ class Bot extends \Core\Model
     /** How long a demo person takes to answer once they're online */
     const DEMO_ANSWER_SECONDS = 5;
 
+    /**
+     * A private reply shows "typing" about as long as a person would take
+     * to type it, writing included, within these bounds
+     */
+    const TYPING_CHARS_PER_SECOND = 5;
+    const FEWEST_TYPING_SECONDS = 2;
+    const MOST_TYPING_SECONDS = 10;
+
     /** At most this many people answer one message that @mentions several */
     const MOST_ASKED = 2;
 
@@ -203,6 +211,13 @@ class Bot extends \Core\Model
         }
 
         try {
+            // Replies still being "typed": the page lets "typing" lapse
+            // after a few seconds without a fresh word
+            $typing = $db->query('SELECT speaker, email FROM mapchat_jobs WHERE done_at IS NULL AND reply IS NOT NULL');
+            foreach ($typing->fetchAll(PDO::FETCH_ASSOC) as $job) {
+                Signal::typing($job['speaker'], $job['email'], true);
+            }
+
             $stmt = $db->prepare('SELECT * FROM mapchat_jobs WHERE done_at IS NULL AND due_at <= :now ORDER BY due_at, id');
             $stmt->execute([':now' => static::time()]);
 
@@ -239,12 +254,20 @@ class Bot extends \Core\Model
             return;
         }
 
-        // In a private chat they're seen typing while the reply is written.
-        // The reply itself ends that; it's only ended here if none comes
-        $isPosted = false;
+        // A private reply written earlier, now typed
+        if ($isPrivate && $job['reply'] !== null) {
+            static::post($job, $job['reply'], $job['email']);
+            return;
+        }
+
+        // In a private chat they're seen typing while the reply is written,
+        // and after, until it would have taken to type. The reply itself ends
+        // that; it's only ended here if none comes
+        $isAnswered = false;
         if ($isPrivate) {
             Signal::typing($job['speaker'], $job['email'], true);
         }
+        $startedAt = microtime(true);
 
         try {
             $body = match ($job['kind']) {
@@ -259,12 +282,20 @@ class Bot extends \Core\Model
 
             $body = static::tidy($body);
             if ($isPrivate) {
-                static::post($job, static::fitLength($body), $job['email']);
-                $isPosted = true;
+                $body = static::fitLength($body);
+                $typingLeft = (int) ceil(static::typingSeconds($body) - (microtime(true) - $startedAt));
+                if ($typingLeft > 0) {
+                    // Due again once typed; runDue keeps "typing" showing till then
+                    static::getDB()->prepare('UPDATE mapchat_jobs SET reply = :reply, due_at = :due, done_at = NULL WHERE id = :id')
+                        ->execute([':reply' => $body, ':due' => static::time($typingLeft), ':id' => $job['id']]);
+                } else {
+                    static::post($job, $body, $job['email']);
+                }
+                $isAnswered = true;
                 return;
             }
         } finally {
-            if ($isPrivate && !$isPosted) {
+            if ($isPrivate && !$isAnswered) {
                 Signal::typing($job['speaker'], $job['email'], false);
             }
         }
@@ -997,6 +1028,20 @@ class Bot extends \Core\Model
     protected static function fitLength($body)
     {
         return mb_strlen($body) > Chat::MAX_LENGTH ? rtrim(mb_substr($body, 0, Chat::MAX_LENGTH - 1)) . '…' : $body;
+    }
+
+    /**
+     * How long a person would take to type a message, within bounds
+     *
+     * @param string $body
+     *
+     * @return float Seconds
+     */
+    protected static function typingSeconds($body)
+    {
+        $seconds = mb_strlen($body) / static::TYPING_CHARS_PER_SECOND;
+
+        return min(static::MOST_TYPING_SECONDS, max(static::FEWEST_TYPING_SECONDS, $seconds));
     }
 
     /**
