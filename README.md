@@ -43,9 +43,9 @@ so it stays awake.
 
 https://github.com/user-attachments/assets/06384a18-cd12-4e27-8cf0-530ab2463569
 
-<sub>A tour at 2880×1800, 60fps: pins on the map, an @mention in Everyone, private chats with two AI characters answering for real, typing included, and tabs dragged and closed.</sub>
+<sub>A quick tour of MapChat.</sub>
 
-| The chat room, with Maya's pin and local time on the map |
+| The chat room |
 |---|
 | ![The chat room with the map of who is chatting from where](docs/images/mapchat-app.png) |
 
