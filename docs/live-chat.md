@@ -17,28 +17,36 @@ read marks, typing, and who's online. Nothing polls while it's connected.
 - **Sending.** A page sends each message with an id it made, and the server
   answers once the message is in the database. If the answer is lost, the page
   sends it again with the same id after reconnecting, and gets back the first
-  message instead of a second copy (a unique key on `chats.client_id`).
+  message instead of a second copy (a unique key on `chats` over the sender's
+  `email` and `client_id`).
 - **Reconnecting.** A page says which message it has last whenever it
   connects, and is caught up from MySQL from there, a page of 100 at a time,
   before new messages go straight to it. So a dropped network, a restart or a
   deploy loses nothing, and each message shows once and in order. A page that
   can't keep up is cut and catches up the same way.
 - **Falling back.** If the socket can't connect twice in a row, the page goes
-  back to asking every second over HTTP, and keeps trying the socket; once it
-  connects, polling stops. Both ways resume from the same last message.
+  back to asking every second over HTTP, or every 8 seconds in a hidden tab,
+  and keeps trying the socket. Once it connects, polling stops. Both ways resume from the same last message.
 - **Who's online.** Someone is online while any of their tabs has a socket
   open, and for 10 seconds after their last one closes, so a reload or a brief
   drop doesn't show them leaving. The socket pings each page every 10 seconds
   and drops one that misses three.
 - **Typing.** "Typing..." goes only to the other person in a private chat,
-  never the text, at most every 2 seconds, and stops after 6 without a key, on
-  sending, on switching chats, or when the tab closes. MapChat and the AI
-  characters show it for about as long as their reply would take to type.
-- **Who's let in.** Only pages from the site itself (checked by Origin), with
-  a logged-in session cookie, as the HTTP chat. Every action is the session's
-  user's, checked again by the server, and logging out (or a guest account
-  expiring) closes the socket within 15 seconds. Messages over 16 KB, anything
-  but JSON text, and floods are refused.
+  never the text, at most every 2 seconds. It stops 3 seconds after the last
+  key, on sending, on switching chats, or when the tab closes. If that stop is
+  lost, the server ends it after 6 seconds, and the other page hides it after
+  7. MapChat and the AI characters show it for about as long as their reply
+  would take to type.
+- **Who's let in.** Only pages from the site itself, with a logged-in
+  session cookie, as the HTTP chat. The same check guards forms and the
+  page's requests: the Origin must be `APP_URL`'s or the address the request
+  came to. Every action is the session's user's, checked again by the server.
+  Logging out, or a guest account running out after 24 hours, closes the
+  socket within about 15 seconds.
+- **Limits.** A person can have 20 chat pages open at once, and the socket
+  takes 2000 in all. A message is up to 500 characters, and a person can send
+  30 a minute, or 10 as a guest, over the socket or HTTP alike. Frames over
+  16 KB, anything but JSON text, and floods are refused.
 
 ## In the container
 
@@ -49,7 +57,8 @@ it stops. On SIGTERM, a deploy or a restart, the socket closes every page's
 socket with "restarting" and the pages reconnect to the new container within
 a few seconds, at random, so they don't all arrive at once. The chat worker
 does what each poll used to set off: MapChat's due replies every second, and
-the demo people's due lines every minute.
+the demo people's due lines every minute. It also sends Web Push for new
+messages, and deletes guest accounts that have run out.
 
 The AI's replies wait their turn as jobs in `mapchat_jobs`, which the chat
 worker runs as they come due, each checked against the room again just before
