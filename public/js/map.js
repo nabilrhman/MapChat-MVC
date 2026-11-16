@@ -498,10 +498,13 @@ function themeTile(imageData) {
     return imageData;
 }
 
-// Fetching, decoding and recolouring a tile takes about 2 ms; a zoom brings
-// a few dozen at once, and on the page's own thread they made the map hitch.
-// A worker does it instead and sends back the finished image. It runs this
-// file's own themeTile and hexToRgb, from their source, so there's one copy
+// Decoding and recolouring a tile takes about 2 ms; a zoom brings a few
+// dozen at once, and on the page's own thread they made the map hitch. The
+// page still loads each tile as an image, so OpenStreetMap gets the request
+// it expects (its servers refuse ones without the site's address); the
+// browser decodes it off the page's thread, and a worker recolours it and
+// sends it back. It runs this file's own themeTile and hexToRgb, from their
+// source, so there's one copy
 function createTileWorker() {
     if (!window.Worker || !window.OffscreenCanvas || !window.createImageBitmap) return null;
 
@@ -509,13 +512,12 @@ function createTileWorker() {
         const THEME = ${JSON.stringify({water: THEME.water, waterText: THEME.waterText})};
         ${hexToRgb}
         ${themeTile}
-        self.onmessage = async ({data: {id, url}}) => {
+        self.onmessage = ({data: {id, tile}}) => {
             try {
-                const response = await fetch(url);
-                const tile = await createImageBitmap(await response.blob());
                 const canvas = new OffscreenCanvas(256, 256);
                 const context = canvas.getContext('2d', {willReadFrequently: true});
                 context.drawImage(tile, 0, 0);
+                tile.close();
                 context.putImageData(themeTile(context.getImageData(0, 0, 256, 256)), 0, 0);
                 const image = canvas.transferToImageBitmap();
                 self.postMessage({id, image}, [image]);
@@ -549,25 +551,27 @@ function createThemedTileLayer() {
             const canvas = document.createElement('canvas');
             canvas.width = 256;
             canvas.height = 256;
-            const url = `https://tile.openstreetmap.org/${coords.z}/${coords.x}/${coords.y}.png`;
-
-            if (worker) {
-                const id = nextTileId++;
-                waitingTiles.set(id, {canvas, done});
-                worker.postMessage({id, url});
-                return canvas;
-            }
-
             const tile = new Image();
             tile.crossOrigin = 'anonymous';
             tile.onload = () => {
+                if (worker) {
+                    const id = nextTileId++;
+                    waitingTiles.set(id, {canvas, done});
+                    createImageBitmap(tile)
+                        .then((bitmap) => worker.postMessage({id, tile: bitmap}, [bitmap]))
+                        .catch((error) => {
+                            waitingTiles.delete(id);
+                            done(error, canvas);
+                        });
+                    return;
+                }
                 const context = canvas.getContext('2d', {willReadFrequently: true});
                 context.drawImage(tile, 0, 0);
                 context.putImageData(themeTile(context.getImageData(0, 0, 256, 256)), 0, 0);
                 done(null, canvas);
             };
             tile.onerror = (error) => done(error, canvas);
-            tile.src = url;
+            tile.src = `https://tile.openstreetmap.org/${coords.z}/${coords.x}/${coords.y}.png`;
 
             return canvas;
         },
