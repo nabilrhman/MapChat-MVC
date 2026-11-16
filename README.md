@@ -18,7 +18,6 @@ I wrote from scratch in PHP.
 **[Open MapChat](https://mapchat.swiftsolve.net)** &nbsp;·&nbsp;
 **[AI chat](#ai-chat)** &nbsp;·&nbsp;
 **[Run it locally](#run-it-locally)** &nbsp;·&nbsp;
-**[Deploy for free](#deploy-for-free)** &nbsp;·&nbsp;
 **[Project layout](#project-layout)**
 
 </div>
