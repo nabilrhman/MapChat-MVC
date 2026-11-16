@@ -247,8 +247,7 @@ function showConversation(conversation) {
     const name = tab.querySelector('.chat-tab__name').textContent;
     const isPrivate = activeConversation !== EVERYONE;
 
-    document.getElementById('private-note').hidden = !isPrivate;
-    document.getElementById('private-note-text').textContent = `Private chat with ${name}`;
+    showChatHeader();
     messageInput.placeholder = isPrivate ? `Message ${name}` : 'Type your message';
     addDayDividers();
     scrollToNewest('instant');
@@ -327,10 +326,64 @@ function openPrivateChat(userId, name) {
     messageInput.focus();
 }
 
+// The open chat's header. The room: what it is. A private chat: their photo
+// and name, then their flag, city and time there if they're here, or when
+// they were last seen. Their tab's dot says they're online
+const ROOM_STATUS = 'Chat with people worldwide';
+
+function showChatHeader() {
+    const isPrivate = activeConversation !== EVERYONE;
+    const photo = document.getElementById('chat-header-photo');
+    const status = document.getElementById('chat-header-status');
+
+    document.getElementById('chat-header-room-icon').hidden = isPrivate;
+    photo.hidden = !isPrivate;
+    document.getElementById('chat-header-tag').hidden = isPrivate;
+    document.getElementById('chat-header-private-tag').hidden = !isPrivate;
+
+    if (!isPrivate) {
+        document.getElementById('chat-header-name').textContent = 'Everyone';
+        status.replaceChildren(ROOM_STATUS);
+        return;
+    }
+
+    const person = peopleById.get(activeConversation);
+    photo.src = getPhotoSrc(activeConversation);
+    document.getElementById('chat-header-name').textContent = getTab(activeConversation).querySelector('.chat-tab__name').textContent;
+
+    if (!onlineUserIds.has(Number(activeConversation))) {
+        status.replaceChildren(person ? `Seen ${getTimeAgo(person)}` : 'Away');
+        return;
+    }
+    status.replaceChildren();
+    if (!person) return;
+    status.append(createPlace(person.city, person.country));
+    // Hidden with their place when they don't share their location
+    if (person.lng !== null && person.lng !== undefined) status.append(createLocalTime(person));
+}
+
+// Their time now, with a sun or moon, as their pin and messages show it
+function createLocalTime(person) {
+    const localTime = getSenderTime(new Date(), person.timezone, parseFloat(person.lng));
+    const isDaytime = localTime.hour >= 6 && localTime.hour < 18;
+    const time = createElement('span', 'chat-header__time');
+    time.append(
+        createIcon(isDaytime ? 'sun' : 'moon', `chat-header__daylight chat-header__daylight--${isDaytime ? 'day' : 'night'}`),
+        localTime.text,
+    );
+    return time;
+}
+
+// Keeps the time in the header current
+setInterval(() => {
+    if (activeConversation !== EVERYONE) showChatHeader();
+}, 60000);
+
 // A green dot on the tab of each private chat partner who's online;
 // it fades only when that changes
 function updateOnlineDots(userIds) {
     onlineUserIds = userIds;
+    showChatHeader();
     chatTabs.querySelectorAll('.chat-tab__online').forEach((dot) => {
         const isPartnerOnline = onlineUserIds.has(Number(dot.closest('.chat-tab').dataset.conversation));
         if (isPartnerOnline === !dot.hidden) return;
@@ -632,6 +685,7 @@ function placeMessages(chats) {
         }
         if (tab && (!isInOpenTab || document.hidden)) {
             countUnread(tab, chat.classList.contains('chat--mentions-me'));
+            notifyOf(chat, showConversation);
         }
     });
     if (!document.hidden && chats.some((chat) => getConversation(chat) === activeConversation)) {
@@ -1162,6 +1216,7 @@ JSON.parse(chatPanel.dataset.conversations || '[]').forEach((partner) => {
 });
 showConversation(EVERYONE);
 shouldAnimateNewTabs = true;
+setUpNotifications();
 
 keepPeopleUpdated(updateOnlineDots, openPrivateChat);
 connectChat({

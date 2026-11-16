@@ -49,11 +49,31 @@
         {{ icon('alt-arrow-down', 'chat-fold__icon') }}
     </button>
 
-    <div class="private-note" id="private-note" hidden>
-        <span class="private-note__label">
-            {{ icon('lock', 'private-note__icon') }}<span class="private-note__text" id="private-note-text"></span>
+    {# What's open: the room, or who you're talking to privately, where they
+       are and their time there (chat.js) #}
+    <div class="chat-header" id="chat-header">
+        <span class="chat-header__room-icon" id="chat-header-room-icon">{{ icon('hashtag-chat') }}</span>
+        <img class="chat-header__photo" id="chat-header-photo" alt="" hidden>
+        <span class="chat-header__who">
+            <span class="chat-header__name" id="chat-header-name">Everyone</span>
+            <span class="chat-header__status" id="chat-header-status">Chat with people worldwide</span>
         </span>
+        <span class="chat-header__tag" id="chat-header-tag">{{ icon('global', 'chat-header__tag-icon') }}Public</span>
+        <span class="chat-header__tag" id="chat-header-private-tag" hidden>{{ icon('lock', 'chat-header__tag-icon') }}Private</span>
+    </div>
 
+    {# Until you answer it: offers notifications for private messages and mentions (notifications.js) #}
+    <div class="notify-prompt" id="notify-prompt">
+        <div class="notify-prompt__clip">
+            <div class="notify-prompt__content">
+                {{ icon('bell-bing', 'notify-prompt__icon') }}
+                <span class="notify-prompt__text" id="notify-prompt-text"><span class="notify-prompt__text-inner">Get notified of messages and mentions</span></span>
+                <button class="notify-prompt__button" id="notify-prompt-on" type="button">Turn on</button>
+                <button class="notify-prompt__close" id="notify-prompt-dismiss" type="button" aria-label="Not now" title="Not now">
+                    {{ icon('close', 'notify-prompt__close-icon') }}
+                </button>
+            </div>
+        </div>
     </div>
 
     <div class="chat-list-wrap">
@@ -117,6 +137,7 @@
 <script src="{{ asset('/js/people.js') }}"></script>
 <script src="{{ asset('/js/mentions.js') }}"></script>
 <script src="{{ asset('/js/messages.js') }}"></script>
+<script src="{{ asset('/js/notifications.js') }}"></script>
 <script src="{{ asset('/js/chat.js') }}"></script>
 <script src="{{ asset('/js/map.js') }}"></script>
 {% endblock %}

@@ -4,6 +4,7 @@
 {
     --ease-out: cubic-bezier(0.22, 1, 0.36, 1); /* fast start, soft stop */
     --ease-in: cubic-bezier(0.64, 0, 0.78, 0); /* for things leaving */
+    --ease-emphasized: cubic-bezier(0.2, 0, 0, 1); /* Material's, for things sliding open */
     --dur-fast: 150ms; /* hovers and small changes */
     --dur: 250ms; /* things appearing */
     --dur-slow: 350ms; /* panels and page content */
