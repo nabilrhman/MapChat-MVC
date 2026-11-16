@@ -43,6 +43,7 @@
                 <li>Chat with everyone who is signed in, in one shared room.</li>
                 <li>Click someone's name to chat privately, and see when they're typing to you.</li>
                 <li>Type @ to mention someone. Mentions of you are highlighted.</li>
+                <li>Get notified of private messages and mentions, even with MapChat closed. Turn it on in the chat or on your profile.</li>
             </ul>
         </section>
 
@@ -88,6 +89,7 @@
             <ul class="about-list">
                 <li>A WebSocket for each open chat, on amphp, so messages, who's online and who's typing arrive at once.</li>
                 <li>If it can't connect, the chat checks every second instead.</li>
+                <li>Notifications by Web Push, sent from the server and shown by a service worker, so they arrive with the page closed.</li>
             </ul>
         </section>
 
@@ -112,6 +114,7 @@
             <ul class="about-list">
                 <li>Your location comes from your IP address, so the map only knows roughly which city you are in. It never uses GPS, and you can hide your pin and city from your profile.</li>
                 <li>Anything you write in Everyone is visible to everyone signed in. Private chats are only shown to the two of you.</li>
+                <li>Notifications are set per browser. Logging out stops them on that browser.</li>
                 <li>MapChat and some people on the map are AI. Groq writes their replies from the chat, and doesn't train its AI on it.</li>
                 <li>This is a portfolio project, so please don't share anything private here.</li>
             </ul>
