@@ -1,3 +1,10 @@
+{# Every page in the app: the header, the page's content, the footer. The
+   partials use only Twig's globals (current_user, current_path, app_url),
+   so they're given nothing -#}
+{% types {
+    current_user: '?App\\Models\\User',
+    push_public_key: 'string',
+} -%}
 <!DOCTYPE html>
 <html data-icons="{{ asset('/icons.svg') }}">
 <head>
@@ -6,13 +13,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}{% endblock %} · MapChat</title>
-    {% include '_meta.html' %}
+    {{ include('_meta.html', with_context = false) }}
     {# For Web Push (notifications.js); empty while it isn't set up #}
     <meta name="push-public-key" content="{{ push_public_key }}">
 
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
 
-    {% include '_beer.html' %}
+    {{ include('_beer.html', with_context = false) }}
     <link rel="stylesheet" href="{{ asset('/css/base.css') }}" />
     <link rel="stylesheet" href="{{ asset('/css/animations.css') }}" />
 
@@ -28,7 +35,7 @@
 
 <body>
 
-{% include '_header.html' %}
+{{ include('_header.html', with_context = false) }}
 
 {% block content %}
 <main class="site-main">
@@ -36,7 +43,7 @@
 </main>
 {% endblock %}
 
-{% include '_footer.html' %}
+{{ include('_footer.html', with_context = false) }}
 
 <script src="https://unpkg.com/axios@1.21.0/dist/axios.min.js"></script>
 <script src="{{ asset('/js/dom.js') }}"></script>
@@ -46,7 +53,7 @@
 <script src="{{ asset('/js/loadingBar.js') }}"></script>
 <script src="{{ asset('/js/header.js') }}"></script>
 <script src="{{ asset('/js/tooltip.js') }}"></script>
-{% include '_flash.html' %}
+{{ include('_flash.html', with_context = false) }}
 
 {% block footer %}{% endblock %}
 </body>

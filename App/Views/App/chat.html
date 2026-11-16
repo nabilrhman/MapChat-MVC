@@ -1,6 +1,13 @@
+{# Messages, as the page and the chat socket draw them -#}
+{% types {
+    chats: 'array',
+    current_user: 'App\\Models\\User',
+    initial?: 'bool',
+    mention_names?: 'array',
+} -%}
 {# Looked up once for the whole page of messages; the chat socket looks
    them up once for everyone it sends the same messages to #}
-{% set mention_names = mention_names is defined ? mention_names : mentioned_names(chats) %}
+{% set mention_names = mention_names ?? mentioned_names(chats) %}
 {% for chat in chats %}
 {# Which tab the message belongs in: "everyone", or the other person's id #}
 {% set mine = chat.user_id == current_user.id %}
@@ -19,7 +26,7 @@
 {# Nickname, or first name (see App\Mention::handle) #}
 {% set sender_name = shown_name(chat.name, chat.nickname, chat.is_guest) %}
 {# Messages from the poll ease in; the history and your own appear at once #}
-<div class="chat{% if mentions_me %} chat--mentions-me{% endif %}{% if not initial|default(false) and not mine %} is-entering{% endif %}"
+<div class="chat{% if mentions_me %} chat--mentions-me{% endif %}{% if not (initial ?? false) and not mine %} is-entering{% endif %}"
      data-id="{{ chat.id }}" data-sender-id="{{ chat.user_id }}" data-conversation="{{ conversation }}" data-partner="{{ partner }}">
     <div class="chat__avatar">
         <img class="chat__photo" src="{{ avatar_src(chat.user_id, chat.name, chat.avatar, chat.is_demo) }}" alt=""

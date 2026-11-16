@@ -1,4 +1,12 @@
 {% extends 'base_app.html' %}
+{# The chat page (App::indexAction): the map, the chat panel and the people
+   list. Its messages come in the chats block #}
+{% types {
+    current_user: 'App\\Models\\User',
+    last_chat_id: 'int',
+    conversations?: 'array',
+    build_id?: 'string',
+} -%}
 
 {% block title %}Chat{% endblock %}
 
@@ -34,8 +42,8 @@
      data-my-id="{{ current_user.id|e('html_attr') }}"
      data-last-chat-id="{{ last_chat_id|e('html_attr') }}"
      data-page-size="{{ constant('App\\Models\\Chat::HISTORY') }}"
-     data-conversations="{{ conversations|default([])|json_encode|e('html_attr') }}"
-     data-build="{{ build_id|default('')|e('html_attr') }}">
+     data-conversations="{{ (conversations ?? [])|json_encode|e('html_attr') }}"
+     data-build="{{ (build_id ?? '')|e('html_attr') }}">
 
     {# Each tab: a button that opens its chat, and on a private chat one that
        closes it (chat.js) #}
