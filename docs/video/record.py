@@ -4,8 +4,8 @@ app running locally (docker compose up).
     MAPCHAT_SESSION=<PHPSESSID of a signed-in guest> MAPCHAT_GUEST_EMAIL=<their email> python3 docs/video/record.py
 
 It drives headless Chrome over the DevTools protocol: the login page, pins
-pointed out from the online list and a message's city, then a private chat
-with Maya, one with Rafael while Maya's answer comes in, back to Maya, then
+pointed out from the online list and a message's city, an @mention in
+Everyone that Lukas answers, then a private chat with Maya, one with Rafael while Maya's answer comes in, back to Maya, then
 a tab dragged into another place and closed.
 The pointer moves and types like a person: curved, unevenly paced, a little
 past the target and back. Headless Chrome draws no pointer, so the page gets
@@ -29,6 +29,13 @@ URL = os.environ.get('MAPCHAT_URL', 'http://localhost:8080').rstrip('/')
 SESSION = os.environ.get('MAPCHAT_SESSION') or sys.exit('Set MAPCHAT_SESSION to the PHPSESSID cookie of a signed-in guest')
 OUT = os.path.join(ROOT, 'docs/images/mapchat-tour.mp4')
 W, H = 1440, 900
+# Pixels per CSS pixel; 2 is a Retina screen, and the video is W×H times this
+SCALE = float(os.environ.get('MAPCHAT_SCALE', 2))
+# Chrome draws on the GPU (through ANGLE and EGL), as software drawing
+# can't keep up at SCALE 2; MAPCHAT_GPU=0 turns it off
+GPU = os.environ.get('MAPCHAT_GPU', '1') != '0'
+CHROME_FLAGS = (['--enable-gpu', '--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl-egl'] if GPU else []) \
+    + os.environ.get('MAPCHAT_CHROME_FLAGS', '').split()
 PORT = 9334
 FPS = 60
 # A frame unchanged for longer than this is shown for only this long
@@ -39,6 +46,8 @@ LONGEST_STILL = 1.0
 # they stand for. Yaru's, or Adwaita's without it. Not kept in the repo
 THEME_CURSORS = {'pointer': 'hand2', 'grab': 'grab', 'grabbing': 'grabbing'}
 THEMES = ['/usr/share/icons/Yaru/cursors', '/usr/share/icons/Adwaita/cursors']
+# The cursors' size on the page, in CSS pixels; the theme's image for
+# CURSOR_SIZE × SCALE is drawn at it, so they stay sharp
 CURSOR_SIZE = 24
 
 
@@ -52,7 +61,7 @@ def xcursor(path):
     for i in range(struct.unpack('<I', data[12:16])[0]):
         kind, nominal, pos = struct.unpack('<III', data[16 + i * 12:28 + i * 12])
         if kind == 0xfffd0002:
-            images.append((abs(nominal - CURSOR_SIZE), pos))
+            images.append((abs(nominal - CURSOR_SIZE * SCALE), pos))
     pos = min(images)[1]
     width, height, x_hot, y_hot = struct.unpack('<IIII', data[pos + 16:pos + 32])
     pixels = struct.unpack(f'<{width * height}I', data[pos + 36:pos + 36 + width * height * 4])
@@ -67,7 +76,8 @@ def xcursor(path):
     chunk = lambda tag, body: struct.pack('>I', len(body)) + tag + body + struct.pack('>I', zlib.crc32(tag + body) & 0xffffffff)
     png = (b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', width, height, 8, 6, 0, 0, 0))
            + chunk(b'IDAT', zlib.compress(rows)) + chunk(b'IEND', b''))
-    return {'url': 'data:image/png;base64,' + base64.b64encode(png).decode(), 'size': [width, height], 'tip': [x_hot, y_hot]}
+    return {'url': 'data:image/png;base64,' + base64.b64encode(png).decode(),
+            'size': [width / SCALE, height / SCALE], 'tip': [x_hot / SCALE, y_hot / SCALE]}
 
 
 def theme_cursors():
@@ -156,7 +166,7 @@ class Browser:
         self.frames = []
         self.profile = tempfile.mkdtemp(prefix='mapchat-record-')
         self.chrome = subprocess.Popen(['google-chrome', '--headless=new', f'--remote-debugging-port={PORT}', f'--user-data-dir={self.profile}',
-                                        f'--window-size={W},{H}', '--hide-scrollbars', '--force-device-scale-factor=1', 'about:blank'],
+                                        f'--window-size={W},{H}', '--hide-scrollbars', f'--force-device-scale-factor={SCALE}', *CHROME_FLAGS, 'about:blank'],
                                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         for _ in range(50):
             try:
@@ -387,15 +397,16 @@ def tour(browser):
     def close_button(name):
         return centre(f"[...document.querySelectorAll('.chat-tab')].find((t) => t.textContent.includes({json.dumps(name)}))?.querySelector('.chat-tab__close')")
 
-    browser.call('Emulation.setDeviceMetricsOverride', width=W, height=H, deviceScaleFactor=1, mobile=False)
+    browser.call('Emulation.setDeviceMetricsOverride', width=W, height=H, deviceScaleFactor=SCALE, mobile=False)
     browser.call('Network.enable')
     browser.call('Page.enable')
     browser.call('Page.addScriptToEvaluateOnNewDocument', source=cursor_js())
+    print('Drawing with', browser.run("(() => { const gl = document.createElement('canvas').getContext('webgl'); const i = gl && gl.getExtension('WEBGL_debug_renderer_info'); return gl ? (i ? gl.getParameter(i.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER)) : 'no WebGL'; })()"))
 
     # The login page
     browser.call('Page.navigate', url=f'{URL}/login')
     time.sleep(2.5)
-    browser.call('Page.startScreencast', format='jpeg', quality=90, everyNthFrame=1)
+    browser.call('Page.startScreencast', format='jpeg', quality=92, maxWidth=int(W * SCALE), maxHeight=int(H * SCALE), everyNthFrame=1)
     time.sleep(1.2)
     person.move_to(*centre("document.querySelector('#guestForm button')"))
     time.sleep(1)
@@ -419,6 +430,30 @@ def tour(browser):
         time.sleep(1.2)
         map_ready()
         time.sleep(1)
+
+    # In Everyone: @ brings up who's online, and Lukas answers in the room,
+    # tagging the guest back
+    from_lukas = messages_from('Lukas')
+    person.click(*composer())
+    time.sleep(0.3)
+    person.type('@Luk')
+    time.sleep(0.8)
+    # Lukas picked from the @ list with the pointer, so its hover shows
+    lukas = "[...document.querySelectorAll('.mention-picker__option')].find((o) => o.textContent.includes('Lukas'))"
+    if wait_for(f"!!{lukas}", 3):
+        person.move_to(*centre(lukas))
+        time.sleep(0.7)
+        person.click(*centre(lukas))
+    else:
+        person.enter()
+    time.sleep(0.4)
+    # Typing goes on after the mention, wherever the click left the caret
+    browser.run("(() => { const t = document.getElementById('textarea-send'); t.focus(); t.setSelectionRange(t.value.length, t.value.length); })()")
+    person.type("how's berlin this morning? ☕")
+    time.sleep(0.5)
+    person.enter()
+    wait_for_reply('Lukas', from_lukas, 45)
+    time.sleep(3)
 
     # A private chat with Maya
     open_chat(online, 'Maya')
@@ -484,6 +519,14 @@ def tour(browser):
     time.sleep(0.3)
 
 
+def encoder():
+    """NVIDIA's hardware encoder when ffmpeg has it and the GPU's in use, x264 otherwise"""
+    found = subprocess.run(['ffmpeg', '-hide_banner', '-encoders'], capture_output=True, text=True).stdout
+    if GPU and 'h264_nvenc' in found:
+        return ['-c:v', 'h264_nvenc', '-preset', 'p7', '-tune', 'hq', '-rc', 'vbr', '-cq', '27', '-b:v', '0']
+    return ['-c:v', 'libx264', '-preset', 'slow', '-crf', '26']
+
+
 def encode(frames, workdir):
     """Each frame for as long as it was on screen, then 60fps for the video"""
     listing = os.path.join(workdir, 'frames.txt')
@@ -492,18 +535,21 @@ def encode(frames, workdir):
             file.write(f"file '{name}'\nduration {min(next_at - at, LONGEST_STILL):.4f}\n")
         file.write(f"file '{frames[-1][1]}'\n")
     subprocess.run(['ffmpeg', '-hide_banner', '-loglevel', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', listing,
-                    '-vf', f'fps={FPS},scale=1280:-2:flags=lanczos,format=yuv420p', '-c:v', 'libx264', '-preset', 'slow', '-crf', '24',
+                    '-vf', f'fps={FPS},format=yuv420p', *encoder(),
                     '-movflags', '+faststart', OUT], check=True)
 
 
 def clear_earlier_tour():
-    """The guest's private chats with Maya and Rafael, so the tour starts
-    with none. MAPCHAT_GUEST_EMAIL says whose; without it they're kept"""
+    """The guest's private chats with Maya and Rafael, and what they said in
+    the room, so the tour starts afresh. MAPCHAT_GUEST_EMAIL says whose; without it they're kept"""
     guest = os.environ.get('MAPCHAT_GUEST_EMAIL', '').replace("'", '')
     if not guest:
         return
     for character in ('maya', 'rafael'):
         sql(f"DELETE FROM chats WHERE (email = '{guest}' AND to_email = '{character}@demo.mapchat.local') OR (email = '{character}@demo.mapchat.local' AND to_email = '{guest}')")
+    # And what they said in the room, with the answers to it
+    sql(f"DELETE FROM chats WHERE id IN (SELECT posted_id FROM mapchat_jobs WHERE email = '{guest}' AND posted_id IS NOT NULL)")
+    sql(f"DELETE FROM chats WHERE email = '{guest}' AND to_email IS NULL")
 
 
 def main():
