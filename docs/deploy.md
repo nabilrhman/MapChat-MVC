@@ -31,7 +31,8 @@ MySQL-compatible service.
      people with MapChat closed. Make the pair once on your computer and keep
      it, since a new pair drops everyone's subscriptions:
      `docker compose run --rm app php -r 'require "vendor/autoload.php"; print_r(Minishlink\WebPush\VAPID::createVapidKeys());'`
-     Without them, notifications still come while MapChat is open in a tab.
+     Without them, notifications still come while MapChat is open in a tab. More in
+     [notifications.md](notifications.md).
 
    Only the database settings are required.
 4. Photo uploads go from the browser to Cloudinary, and need both
