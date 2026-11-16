@@ -143,6 +143,26 @@ CREATE TABLE mapchat_jobs (
   ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4;
 
+-- Browsers that get Web Push notifications, one row each (see App/Push.php)
+CREATE TABLE push_subscriptions (
+  `id`              INT          NOT NULL AUTO_INCREMENT,
+  `email`           VARCHAR(255) NOT NULL,
+  -- The browser's push service address; hashed for the unique key, as it can be long
+  `endpoint`        TEXT         NOT NULL,
+  `endpoint_hash`   CHAR(64)     NOT NULL,
+  `p256dh`          VARCHAR(255) NOT NULL,
+  `auth`            VARCHAR(255) NOT NULL,
+  `created_at`      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `endpoint_hash` (`endpoint_hash`),
+  KEY `fk_p_email` (`email`),
+  CONSTRAINT `fk_p_email` FOREIGN KEY (`email`) REFERENCES users (`email`)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
+)
+  ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4;
+
 -- A built-in account that posts the welcome messages and chats back. It has
 -- no usable password (the hash below matches nothing) and cannot log in.
 INSERT INTO users (name, email, password_hash, is_active, avatar)

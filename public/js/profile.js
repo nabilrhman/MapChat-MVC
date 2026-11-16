@@ -38,6 +38,10 @@ shareLocationSwitch.addEventListener('change', () => {
 const notificationsSwitch = document.getElementById('notifications');
 const notificationsHint = document.getElementById('notifications-hint');
 
+// With Web Push set up, they come with MapChat closed too
+if (isPushSupported()) notificationsHint.textContent = 'On this browser, even when MapChat is closed';
+keepPushUpToDate();
+
 // Blocked or unsupported: only the browser's site settings can change that
 function showNotificationsState() {
     const isBlocked = !isNotifySupported() || Notification.permission === 'denied';

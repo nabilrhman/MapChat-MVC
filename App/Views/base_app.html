@@ -7,6 +7,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}{% endblock %} · MapChat</title>
     {% include '_meta.html' %}
+    {# For Web Push (notifications.js); empty while it isn't set up #}
+    <meta name="push-public-key" content="{{ push_public_key }}">
 
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
 

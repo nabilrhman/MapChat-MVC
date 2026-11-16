@@ -56,6 +56,8 @@ class View
             $twig->addGlobal('current_path', parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH));
             $twig->addGlobal('cloudinary_cloud_name', Config::cloudinaryCloudName());
             $twig->addGlobal('cloudinary_upload_preset', Config::cloudinaryUploadPreset());
+            // Empty while Web Push isn't set up, so pages don't offer it (see App\Push)
+            $twig->addGlobal('push_public_key', \App\Push::isEnabled() ? \App\Push::publicKey() : '');
         }
 
         return $twig->render($template, $args);
