@@ -95,6 +95,23 @@ The Twig views write HTML5 that says what each part is:
 - ARIA only where HTML has no element for it (`aria-live` for a status,
   `aria-expanded` on a menu button), never to repeat what an element says.
 
+### Modern Twig
+
+Twig 3 shows what the controller worked out; deciding happens in PHP.
+
+- A template opens with `{% types %}` naming the variables it expects and
+  their types, so its inputs read at a glance.
+- Output is escaped: `|raw` only on markup the server built (an icon, JSON
+  made safe with the `JSON_HEX_*` flags), with a comment saying why.
+- A partial is `{{ include('_part.html', {label: …}, with_context = false) }}`,
+  so it sees only what it's given; markup repeated with different values is a
+  `{% macro %}`, imported with `{% from … import … %}`.
+- `??` and `?:` for fallbacks; `|filter`, `|map` and `|reduce` with arrow
+  functions over a `for` with an `if` inside.
+- Data a script reads goes in `data-*` attributes (`data-user-id="{{ id }}"`,
+  `|json_encode|e('html_attr')` for a list), not in a `<script>` that sets a
+  variable.
+
 ### Modern CSS
 
 Custom properties for any value used twice; `gap`, `inset`, logical
