@@ -1,13 +1,15 @@
 {
   "name": "mapchat-browser-checks",
   "private": true,
-  "description": "Checks MapChat in a real browser: accessibility with axe, against the app running locally",
+  "description": "Checks MapChat in a real browser (accessibility with axe) and records the README tour, against the app running locally",
   "type": "module",
   "scripts": {
-    "a11y": "playwright test --config tests/browser/playwright.config.ts"
+    "a11y": "playwright test --config tests/browser/playwright.config.ts",
+    "tour": "node docs/video/record.ts"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",
-    "@playwright/test": "1.65.1"
+    "@playwright/test": "1.65.1",
+    "playwright": "1.65.1"
   }
 }

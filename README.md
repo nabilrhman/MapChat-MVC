@@ -290,7 +290,7 @@ database/        init.sql (schema and welcome messages), demo.sql (optional
 tests/           PHPUnit tests; tests/browser/ the Playwright checks (npm run a11y)
 docs/images/     The video, screenshots and diagram in this README
 docs/diagrams/   Draws the diagram: node docs/diagrams/draw.ts
-docs/video/      Records the tour at the top: python3 docs/video/record.py
+docs/video/      Records the tour at the top with Playwright: npm run tour
 docs/live-chat.md How the live chat works
 docs/deploy.md   How to deploy it for free
 docs/load-test.* The load test and its report, with raw results in docs/load-test-results/
