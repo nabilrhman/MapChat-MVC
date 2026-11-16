@@ -5,7 +5,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import {expect, test, type Page} from '@playwright/test';
 
-const PUBLIC_PAGES = ['/login', '/signup/new', '/password/forgot'];
+const PUBLIC_PAGES = ['/login', '/signup/new', '/password/forgot', '/privacy'];
 const SIGNED_IN_PAGES = ['/app', '/profile/show', '/about'];
 
 // The chat page fills in over its socket and draws the map; the others are ready on load

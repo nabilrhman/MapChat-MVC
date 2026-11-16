@@ -5,9 +5,11 @@ use App\Controllers\About;
 use App\Controllers\Account;
 use App\Controllers\App;
 use App\Controllers\Avatar;
+use App\Controllers\Google;
 use App\Controllers\Home;
 use App\Controllers\Login;
 use App\Controllers\Password;
+use App\Controllers\Privacy;
 use App\Controllers\Profile;
 use App\Controllers\Push;
 use App\Controllers\Signup;
@@ -45,6 +47,7 @@ $router = new Core\Router();
 // Pages
 $router->get('/', [Home::class, 'indexAction']);
 $router->get('/about', [About::class, 'indexAction']);
+$router->get('/privacy', [Privacy::class, 'indexAction']);
 $router->get('/app', [App::class, 'indexAction']);
 
 // Login and account
@@ -54,6 +57,9 @@ $router->post('/login/create', [Login::class, 'createAction']);
 $router->post('/login/guest', [Login::class, 'guestAction']);
 $router->post('/logout', [Login::class, 'destroyAction']);
 $router->get('/login/show-logout-message', [Login::class, 'showLogoutMessageAction']);
+// Signing in with Google, which makes the account the first time
+$router->get('/login/google', [Google::class, 'startAction']);
+$router->get('/login/google/callback', [Google::class, 'callbackAction']);
 $router->get('/account/validate-email', [Account::class, 'validateEmailAction']);
 
 // Signup; activation is a GET, as people open it from an email

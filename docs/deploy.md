@@ -34,6 +34,11 @@ MySQL-compatible service.
      Without them, notifications still come while MapChat is open in a tab. More in
      [notifications.md](notifications.md).
 
+   - `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` for Continue with Google.
+     Make an OAuth client (Web application) at
+     console.cloud.google.com/apis/credentials, with
+     `https://your-site/login/google/callback` as its redirect URI.
+
    Only the database settings are required.
 4. Photo uploads go from the browser to Cloudinary, and need both
    `CLOUDINARY_CLOUD_NAME` and `CLOUDINARY_UPLOAD_PRESET` (an unsigned upload

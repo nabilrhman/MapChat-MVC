@@ -61,8 +61,9 @@ class Profile extends Authenticated
                 }
                 $email = $this->user->email;
             }
-        } elseif ($email !== $this->user->email || $password !== '') {
-            // Changing how you sign in needs your current password
+        } elseif ($this->user->hasPassword() && ($email !== $this->user->email || $password !== '')) {
+            // Changing how you sign in needs your current password. An
+            // account made with Google has none to give, and Google vouched for it
             if (!password_verify((string) ($_POST['current_password'] ?? ''), $this->user->password_hash)) {
                 $this->refuse('Your current password is not right.');
             }

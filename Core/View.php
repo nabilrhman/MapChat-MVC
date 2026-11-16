@@ -6,6 +6,7 @@ use App\Auth;
 use App\Avatar;
 use App\Config;
 use App\Flash;
+use App\Google;
 use App\Mention;
 use App\Models\Bot;
 use App\Push;
@@ -73,6 +74,8 @@ class View
         $twig->addGlobal('cloudinary_cloud_name', Config::cloudinaryCloudName());
         $twig->addGlobal('cloudinary_upload_preset', Config::cloudinaryUploadPreset());
         // Empty while Web Push isn't set up, so pages don't offer it (see App\Push)
+        // The login page offers Google only when the site has a client for it
+        $twig->addGlobal('is_google_sign_in_on', Google::isEnabled());
         $twig->addGlobal('push_public_key', Push::isEnabled() ? Push::publicKey() : '');
 
         return $twig;

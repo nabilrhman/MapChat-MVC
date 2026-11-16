@@ -79,6 +79,8 @@ https://github.com/user-attachments/assets/06384a18-cd12-4e27-8cf0-530ab2463569
 - Try it as a guest without signing up. A guest account lasts 24 hours
   unless kept, then it's logged out and deleted.
 - Accounts with email activation, password reset, nicknames and avatars.
+- Continue with Google on the login page, which makes the account the first
+  time, or links it to the account with the same email.
 - Works on phones, where the map folds away to give the chat the room.
 
 ## AI chat
@@ -150,6 +152,10 @@ on what's sent to its API. The code is in `App/Models/Bot.php`.
   then ipstack when `IPSTACK_API_KEY` is set. The place is stored and shown
   rounded to two decimal places, about a kilometre.
 - **Email:** Symfony Mailer, sending through any SMTP provider or Brevo's API.
+- **Signing in with Google:** OpenID Connect, by hand in `App/Google.php`,
+  with a state, a nonce and PKCE. The ID token comes straight from Google's
+  token endpoint, so its claims are checked but not its signature, as the
+  standard allows.
 - **Sessions:** stored in MySQL rather than files, so restarting or waking up
   the container doesn't log anyone out.
 - **Avatars:** uploaded from the browser straight to the site's own
@@ -247,6 +253,7 @@ explanations. The main ones:
 | `DEMO_SPEED` | Optional, for watching the demo chat locally: `60` plays the whole day in 24 minutes. Leave empty on a real site |
 | `GROQ_API_KEY` | Optional. Lets MapChat and the demo people chat back, through Groq's free plan (console.groq.com). Without it, MapChat only greets |
 | `MAPCHAT_MODEL` | Optional. The Groq model they write with. Default `openai/gpt-oss-120b` |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Optional. An OAuth client (Web application) from console.cloud.google.com/apis/credentials, with `APP_URL/login/google/callback` as its redirect URI. With both, the login page offers Continue with Google |
 | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_UPLOAD_PRESET` | The Cloudinary account and unsigned upload preset photo uploads go to. Both are needed for uploads, with no default: with either empty, uploads are off and the profile says so. Removing a photo still works |
 | `CHAT_SOCKET_HOST` | Optional. The address the chat socket listens on inside the container, behind Apache's `/ws`. Default `127.0.0.1` |
 | `CHAT_SOCKET_PORT` | Optional. The port the chat socket listens on. Default `8090` |
@@ -271,7 +278,8 @@ App/Models/      Database access for users, chats, locations, push subscriptions
                  and remembered logins; Bot: when MapChat and the demo people
                  answer, and what they read; DemoChat: the demo people's day;
                  Schema: bringing an older database up to date
-App/*.php        Config (settings), Auth (who's logged in), Mail, Token, Flash
+App/*.php        Config (settings), Auth (who's logged in), Google (signing in
+                 with Google), Mail, Token, Flash
                  (one-time messages), Avatar (drawn faces), Mention (@mentions,
                  and how each person's name is shown), Push (Web Push: whose
                  browsers each new message goes to, and sending it)

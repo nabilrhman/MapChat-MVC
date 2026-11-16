@@ -99,7 +99,7 @@
                 <dt class="term">Email</dt>
                 <dd class="value">{{ user.is_guest ? 'Not set' : user.email }}</dd>
                 <dt class="term">Password</dt>
-                <dd class="value">{{ user.is_guest ? 'Not set' : '••••••••' }}</dd>
+                <dd class="value">{{ user.is_guest or not user.hasPassword() ? 'Not set' : '••••••••' }}</dd>
             </dl>
 
             {# A guest's placeholder email isn't shown; they type their own to keep the account #}
@@ -110,6 +110,10 @@
                 {% if user.is_guest %}
                 {{ text_field({id: 'inputPassword', name: 'password', type: 'password', label: 'Password', autocomplete: 'new-password',
                                minlength: 6, hint: '6+ characters, a letter and a number, to keep your account'}) }}
+                {% elseif not user.hasPassword() %}
+                {# Made by signing in with Google, so there's no current password to ask for #}
+                {{ text_field({id: 'inputPassword', name: 'password', type: 'password', label: 'Password', autocomplete: 'new-password',
+                               minlength: 6, hint: 'Set one to log in with your email too.'}) }}
                 {% else %}
                 {{ text_field({id: 'inputPassword', name: 'password', type: 'password', label: 'New password', autocomplete: 'new-password',
                                minlength: 6, hint: 'Leave blank to keep your current password.'}) }}
