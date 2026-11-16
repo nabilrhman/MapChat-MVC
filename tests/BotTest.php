@@ -498,4 +498,15 @@ class BotTest extends TestCase
         $quiet = Bot::CONVERSATION_MINUTES * 60;
         $this->assertEqualsWithDelta((-797 + $quiet) - (-1000) + 100, Bot::storyPausedSeconds(time() - 86400), 2);
     }
+
+    public function testAShortNoClosesTheChatWithoutAnotherQuestion()
+    {
+        $this->send(self::ANN, 'what is this place?', Chat::BOT_EMAIL);
+        $this->wait(Bot::PRIVATE_SECONDS);
+        $this->send(self::ANN, 'Nothing.', Chat::BOT_EMAIL);
+        $this->wait(Bot::PRIVATE_SECONDS);
+
+        $this->assertStringNotContainsString('done chatting', TestBot::$asked[0][0]);
+        $this->assertStringContainsString('done chatting for now', TestBot::$asked[1][0]);
+    }
 }
