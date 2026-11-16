@@ -771,6 +771,7 @@ mapToggle.addEventListener('click', () => {
    this tab that arrive meanwhile, and takes you back down */
 
 const jumpButton = document.getElementById('jump-latest');
+const jumpLabel = document.getElementById('jump-latest-text');
 
 
 function getJumpLabelText() {
