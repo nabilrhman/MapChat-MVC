@@ -170,4 +170,58 @@ class GoogleSignInTest extends TestCase
         $this->assertFalse($linked->hasPassword());
         $this->assertNull(User::authenticate('ann@gmail.test', 'secret123'));
     }
+
+    const PHOTO = 'https://lh3.googleusercontent.com/a/ACg8ocK-photo=s96-c';
+    const SHARP_PHOTO = 'https://lh3.googleusercontent.com/a/ACg8ocK-photo=s256-c';
+
+    /**
+     * The photo the account shows now, as the database has it
+     */
+    private function avatarOf(User $user): ?string
+    {
+        return User::findByID($user->id)->avatar;
+    }
+
+    public function testTheIdTokensPhotoIsKeptOnlyFromGooglesOwnImageHosts()
+    {
+        $this->assertSame(self::SHARP_PHOTO, $this->accountFrom($this->idToken(['picture' => self::PHOTO]))->picture);
+
+        $notGooglePhotos = ['http://lh3.googleusercontent.com/a/x', 'https://evil.example/lh3.googleusercontent.com.png',
+                            'https://lh3.googleusercontent.com.evil.example/a', 'javascript:alert(1)'];
+        foreach ($notGooglePhotos as $picture) {
+            $this->assertNull($this->accountFrom($this->idToken(['picture' => $picture]))->picture, $picture);
+        }
+        $this->assertNull($this->accountFrom($this->idToken())->picture);
+    }
+
+    public function testSomeoneWithNoPhotoGetsTheirGooglePhotoAndItsNewerVersions()
+    {
+        $user = User::signInWithGoogle(new GoogleAccount('google-photo', 'pic@gmail.test', 'Pic', self::SHARP_PHOTO));
+        $this->assertSame(self::SHARP_PHOTO, $this->avatarOf($user));
+
+        $newer = 'https://lh3.googleusercontent.com/a/ACg8ocK-newer=s256-c';
+        User::signInWithGoogle(new GoogleAccount('google-photo', 'pic@gmail.test', 'Pic', $newer));
+        $this->assertSame($newer, $this->avatarOf($user));
+    }
+
+    public function testAnUploadedPhotoStaysOverTheGoogleOne()
+    {
+        $user = $this->passwordAccount('own@gmail.test', isEmailProven: true);
+        $uploaded = 'https://res.cloudinary.com/mapchat/image/upload/own.jpg';
+        $this->db->prepare('UPDATE users SET avatar = ? WHERE id = ?')->execute([$uploaded, $user->id]);
+
+        User::signInWithGoogle(new GoogleAccount('google-own', 'own@gmail.test', 'Own', self::SHARP_PHOTO));
+
+        $this->assertSame($uploaded, $this->avatarOf($user));
+    }
+
+    public function testARemovedPhotoStaysRemovedAfterSigningInWithGoogleAgain()
+    {
+        $user = User::signInWithGoogle(new GoogleAccount('google-gone', 'gone@gmail.test', 'Gone', self::SHARP_PHOTO));
+        $this->assertTrue($user->updateAvatar(null));
+
+        User::signInWithGoogle(new GoogleAccount('google-gone', 'gone@gmail.test', 'Gone', self::SHARP_PHOTO));
+
+        $this->assertNull($this->avatarOf($user));
+    }
 }

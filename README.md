@@ -80,7 +80,8 @@ https://github.com/user-attachments/assets/06384a18-cd12-4e27-8cf0-530ab2463569
   unless kept, then it's logged out and deleted.
 - Accounts with email activation, password reset, nicknames and avatars.
 - Continue with Google on the login page, which makes the account the first
-  time, or links it to the account with the same email.
+  time, or links it to the account with the same email. Someone with no photo
+  of their own gets their Google photo.
 - Works on phones, where the map folds away to give the chat the room.
 
 ## AI chat

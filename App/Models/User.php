@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use PDO;
+use App\Google;
 use App\GoogleAccount;
 use App\Token;
 use App\Mail;
@@ -41,6 +42,8 @@ class User extends \Core\Model
     public bool $share_location = true;
     /** Google's id for the account it signs in with, or null for none */
     public ?string $google_id = null;
+    /** Removed their photo, so Google's isn't put back at sign-in */
+    public bool $google_photo_declined = false;
     /** UTC, Y-m-d H:i:s */
     public ?string $created_at = null;
 
@@ -265,17 +268,32 @@ class User extends \Core\Model
     public static function signInWithGoogle(GoogleAccount $google): static
     {
         $user = static::findByGoogleId($google->id);
-        if ($user) {
-            return $user;
+        if (!$user) {
+            $user = static::findByEmail($google->email);
+            $user?->linkGoogle($google);
+        }
+        $user ??= static::createFromGoogle($google);
+
+        $user->takeGooglePhoto($google->picture);
+        return $user;
+    }
+
+    /**
+     * Show their Google photo, or its newer version, unless they uploaded
+     * their own or removed their photo
+     */
+    protected function takeGooglePhoto(?string $picture): void
+    {
+        $hasOwnPhoto = $this->avatar !== null && !Google::isPhoto($this->avatar);
+        if ($picture === null || $picture === $this->avatar || $hasOwnPhoto || $this->google_photo_declined) {
+            return;
         }
 
-        $user = static::findByEmail($google->email);
-        if ($user) {
-            $user->linkGoogle($google);
-            return $user;
-        }
-
-        return static::createFromGoogle($google);
+        $stmt = static::getDB()->prepare('UPDATE users SET avatar = :avatar WHERE id = :id');
+        $stmt->bindValue(':avatar', $picture, PDO::PARAM_STR);
+        $stmt->bindValue(':id', $this->id, PDO::PARAM_INT);
+        $stmt->execute();
+        $this->avatar = $picture;
     }
 
     /**
@@ -604,7 +622,7 @@ class User extends \Core\Model
 
     /**
      * Set the user's photo, or null for the letter avatar. Only our own
-     * Cloudinary uploads are accepted
+     * Cloudinary uploads are accepted; Google's photo comes at sign-in
      *
      * @return bool Whether it was saved
      */
@@ -616,8 +634,14 @@ class User extends \Core\Model
             return false;
         }
 
-        $stmt = static::getDB()->prepare('UPDATE users SET avatar = :avatar WHERE id = :id');
-        $stmt->bindValue(':avatar', $avatar, PDO::PARAM_STR);
+        // Removing a photo means the letters, even after signing in with Google again
+        $sql = $avatar === null
+            ? 'UPDATE users SET avatar = NULL, google_photo_declined = TRUE WHERE id = :id'
+            : 'UPDATE users SET avatar = :avatar WHERE id = :id';
+        $stmt = static::getDB()->prepare($sql);
+        if ($avatar !== null) {
+            $stmt->bindValue(':avatar', $avatar, PDO::PARAM_STR);
+        }
         $stmt->bindValue(':id', $this->id, PDO::PARAM_INT);
 
         return $stmt->execute();
