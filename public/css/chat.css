@@ -1485,11 +1485,6 @@ body
     object-fit: cover;
 }
 
-.mention-picker__name
-{
-    font-weight: 600;
-}
-
 /* Characters left, shown only when close to the limit */
 .chat-composer__count
 {
