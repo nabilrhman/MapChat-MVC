@@ -41,4 +41,19 @@ class MentionTest extends TestCase
 
         $this->assertSame('hi <span class="mention mention--me">@Tom &amp; Jerry</span>', $html);
     }
+
+    public function testFirstNamesCountExceptForGuests()
+    {
+        $this->assertTrue(Mention::has('hi @maya!', 'Maya Thompson'));
+        $this->assertTrue(Mention::has('hi @Maya Thompson', 'Maya Thompson'));
+        $this->assertFalse(Mention::has('hi @Guest', 'Guest 2189', true));
+        $this->assertTrue(Mention::has('hi @guest 2189', 'Guest 2189', true));
+    }
+
+    public function testMarksTheReadersFirstNameAsTheirs()
+    {
+        $html = Mention::mark('@Maya and @Ann', ['Maya Thompson', 'Maya', 'Ann Lee', 'Ann'], 'Ann Lee');
+
+        $this->assertSame('<span class="mention">@Maya</span> and <span class="mention mention--me">@Ann</span>', $html);
+    }
 }

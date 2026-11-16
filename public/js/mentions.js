@@ -7,7 +7,8 @@ const MENTION_LIMIT = 6;
 // An @ at the start or after a space, then what's typed of the name so far
 const MENTION_BEING_TYPED = /(?:^|\s)@([^\s@][^@\n]{0,30}|)$/u;
 
-// A name matches when it, or one of its words, starts with what's typed
+// A name matches when it, or any of its words, starts with what's typed,
+// so a surname finds them too
 function matchesTyped(name, typed) {
     const lowerName = name.toLowerCase();
     return lowerName.startsWith(typed) || lowerName.split(/\s+/).some((word) => word.startsWith(typed));
@@ -50,7 +51,7 @@ function setUpMentions(input, canMention, getPeople) {
         const photo = createElement('img', 'mention-picker__photo');
         photo.alt = '';
         photo.src = person.avatar_src;
-        option.append(photo, createElement('span', 'mention-picker__name', person.name));
+        option.append(photo, createElement('span', 'mention-picker__name', getShownName(person)));
 
         // mousedown, not click, so the box keeps focus
         option.addEventListener('mousedown', (event) => {
@@ -88,11 +89,11 @@ function setUpMentions(input, canMention, getPeople) {
         }
     }
 
-    // Swap the @ and what's typed for the whole name and a space
+    // Swap the @ and what's typed for their first name and a space
     function choose(person) {
         const before = input.value.slice(0, atIndex);
         const after = input.value.slice(input.selectionStart);
-        const mention = `@${person.name} `;
+        const mention = `@${getShownName(person)} `;
 
         input.value = before + mention + after;
         input.selectionStart = input.selectionEnd = before.length + mention.length;

@@ -648,7 +648,7 @@ class Bot extends \Core\Model
     }
 
     /**
-     * Name and, if they share it, city
+     * Name, whether they're a guest, and, if they share it, city
      *
      * @param string $email
      *
@@ -656,7 +656,7 @@ class Bot extends \Core\Model
      */
     protected static function person($email)
     {
-        $stmt = static::getDB()->prepare('SELECT users.name, IF(users.share_location, userinfo.city, NULL) AS city
+        $stmt = static::getDB()->prepare('SELECT users.name, users.is_guest, IF(users.share_location, userinfo.city, NULL) AS city
                                           FROM users LEFT JOIN userinfo ON users.email = userinfo.email
                                           WHERE users.email = :email');
         $stmt->execute([':email' => $email]);
@@ -691,13 +691,13 @@ class Bot extends \Core\Model
      */
     protected static function tag($email, $body)
     {
-        $name = static::person($email)['name'] ?? null;
+        $person = static::person($email);
 
-        if ($name === null || Mention::has($body, $name)) {
+        if (!$person || Mention::has($body, $person['name'], $person['is_guest'])) {
             return $body;
         }
 
-        return "@$name $body";
+        return '@' . Mention::handle($person['name'], $person['is_guest']) . ' ' . $body;
     }
 
     /**

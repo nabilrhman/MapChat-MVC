@@ -173,22 +173,26 @@ class User extends \Core\Model
     }
 
     /**
-     * The names of people that "@" and their name appears for in the text
+     * The people "@" and their name or first name appears for in the text.
+     * A guest's first name is just "Guest", so only their whole name counts
      *
      * @param string $text
      *
-     * @return array
+     * @return array Each with name and is_guest
      */
-    public static function namesMentionedIn($text)
+    public static function mentionedIn($text)
     {
         // LOCATE, not LIKE, so a name with % or _ in it is taken as typed
-        $sql = 'SELECT DISTINCT name FROM users WHERE LOCATE(CONCAT(\'@\', name), :text) > 0';
+        $sql = 'SELECT DISTINCT name, is_guest FROM users
+                WHERE LOCATE(CONCAT(\'@\', name), :text) > 0
+                   OR (NOT is_guest AND LOCATE(CONCAT(\'@\', SUBSTRING_INDEX(name, \' \', 1)), :text2) > 0)';
 
         $stmt = static::getDB()->prepare($sql);
         $stmt->bindValue(':text', $text, PDO::PARAM_STR);
+        $stmt->bindValue(':text2', $text, PDO::PARAM_STR);
         $stmt->execute();
 
-        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     /**

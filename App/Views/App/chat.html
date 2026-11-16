@@ -14,7 +14,7 @@
 {% set can_message = conversation == 'everyone' and not mine
     and (chat.email != constant('App\\Models\\Chat::BOT_EMAIL') or mapchat_can_reply) %}
 {# @mentions are for the open room; in a private chat you're already talking to them #}
-{% set mentions_me = conversation == 'everyone' and not mine and mentions(chat.body, current_user.name) %}
+{% set mentions_me = conversation == 'everyone' and not mine and mentions(chat.body, current_user.name, current_user.is_guest) %}
 {# First names keep the messages light. Guests are all "Guest" and a
    number, so they keep the number #}
 {% set shown_name = chat.is_guest ? chat.name : chat.name|split(' ')|first %}
@@ -44,7 +44,7 @@
             </span>
         </span>
         {% if conversation == 'everyone' %}
-        <p class="chat__body">{{ mark_mentions(chat.body, mention_names, current_user.name) }}</p>
+        <p class="chat__body">{{ mark_mentions(chat.body, mention_names, current_user.name, current_user.is_guest) }}</p>
         {% else %}
         <p class="chat__body">{{ chat.body }}</p>
         {% endif %}

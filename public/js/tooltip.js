@@ -114,6 +114,9 @@
     });
 
     document.addEventListener('mousedown', hide);
+    // Typing means the mouse is resting, not pointing; something opening
+    // under it (the @ list) mustn't have a tooltip showing through
+    document.addEventListener('keydown', hide);
     document.addEventListener('scroll', hide, true);
     window.addEventListener('blur', hide);
 })();

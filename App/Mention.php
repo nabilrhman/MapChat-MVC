@@ -5,26 +5,42 @@ namespace App;
 use App\Models\User;
 
 /**
- * @mentions in the open room: "@" and someone's name, shown as a chip
+ * @mentions in the open room: "@" and someone's first name, shown as a chip.
+ * Their whole name counts too. Guests are all "Guest" and a number, so
+ * theirs is the whole name
  */
 class Mention
 {
     /**
-     * Whether the text mentions this name
+     * What to type after the @ for this person
      *
-     * @param string $text
      * @param string $name
+     * @param bool $isGuest
      *
-     * @return bool
+     * @return string
      */
-    public static function has($text, $name)
+    public static function handle($name, $isGuest = false)
     {
-        return preg_match(static::pattern([$name]), $text) === 1;
+        return $isGuest ? $name : explode(' ', $name)[0];
     }
 
     /**
-     * The names of people mentioned in any of these messages, so a page of
-     * them takes one look-up
+     * Whether the text mentions this person
+     *
+     * @param string $text
+     * @param string $name
+     * @param bool $isGuest
+     *
+     * @return bool
+     */
+    public static function has($text, $name, $isGuest = false)
+    {
+        return preg_match(static::pattern([$name, static::handle($name, $isGuest)]), $text) === 1;
+    }
+
+    /**
+     * Every way people are mentioned in any of these messages, names and
+     * first names, so a page of them takes one look-up
      *
      * @param array $chats Each with a body
      *
@@ -33,21 +49,31 @@ class Mention
     public static function namesIn($chats)
     {
         $bodies = array_filter(array_column($chats, 'body'), fn ($body) => str_contains($body, '@'));
+        if (!$bodies) {
+            return [];
+        }
 
-        return $bodies ? User::namesMentionedIn(implode("\n", $bodies)) : [];
+        $names = [];
+        foreach (User::mentionedIn(implode("\n", $bodies)) as $person) {
+            $names[] = $person['name'];
+            $names[] = static::handle($person['name'], $person['is_guest']);
+        }
+
+        return array_values(array_unique($names));
     }
 
     /**
-     * The message as HTML, with each mention of these names in a chip. The
-     * reader's own name gets a chip of its own colour
+     * The message as HTML, with each mention in a chip. The reader's own
+     * mentions get a chip of their own colour
      *
      * @param string $text
-     * @param array $names
+     * @param array $names From namesIn()
      * @param string $readerName
+     * @param bool $readerIsGuest
      *
      * @return string
      */
-    public static function mark($text, $names, $readerName)
+    public static function mark($text, $names, $readerName, $readerIsGuest = false)
     {
         $html = htmlspecialchars($text, ENT_QUOTES, 'UTF-8');
         if (!$names) {
@@ -55,13 +81,17 @@ class Mention
         }
 
         // The text is escaped by now, so look for the names escaped the same way
-        $escapedNames = array_map(fn ($name) => htmlspecialchars($name, ENT_QUOTES, 'UTF-8'), $names);
-        $escapedReader = mb_strtolower(htmlspecialchars($readerName, ENT_QUOTES, 'UTF-8'));
+        $escape = fn ($name) => mb_strtolower(htmlspecialchars($name, ENT_QUOTES, 'UTF-8'));
+        $readerNames = [$escape($readerName), $escape(static::handle($readerName, $readerIsGuest))];
 
-        return preg_replace_callback(static::pattern($escapedNames), function ($match) use ($escapedReader) {
-            $class = mb_strtolower($match[1]) === $escapedReader ? 'mention mention--me' : 'mention';
-            return '<span class="' . $class . '">' . $match[0] . '</span>';
-        }, $html);
+        return preg_replace_callback(
+            static::pattern(array_map(fn ($name) => htmlspecialchars($name, ENT_QUOTES, 'UTF-8'), $names)),
+            function ($match) use ($readerNames) {
+                $class = in_array(mb_strtolower($match[1]), $readerNames, true) ? 'mention mention--me' : 'mention';
+                return '<span class="' . $class . '">' . $match[0] . '</span>';
+            },
+            $html
+        );
     }
 
     /**
