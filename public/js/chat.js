@@ -784,7 +784,7 @@ messageInput.addEventListener('input', () => {
 /* Typing: in a private chat, the other person sees "Typing..." while you
    write to them. Only that you are, never what */
 
-const typingNote = document.getElementById('private-note-typing');
+const typingRow = document.getElementById('typing-row');
 
 // Who you're telling, when you last told them, and the timer that stops it
 let typingTo = null;
@@ -817,8 +817,26 @@ function stopTyping() {
 // The people typing to you, with when it stops showing unless they type on
 const partnerTypingUntil = {};
 
+// Their face as the list or their messages show it
+function getPhotoSrc(userId) {
+    const person = peopleById.get(String(userId));
+    if (person) return person.avatar_src;
+    return chatList.querySelector(`.chat[data-sender-id="${CSS.escape(String(userId))}"] .chat__photo`)?.src ?? '';
+}
+
 function showPartnerTyping() {
-    typingNote.hidden = (partnerTypingUntil[activeConversation] ?? 0) < Date.now();
+    const isTyping = (partnerTypingUntil[activeConversation] ?? 0) >= Date.now();
+    if (isTyping === !typingRow.hidden) return;
+
+    // Room for the row comes off the list; keep the newest message in view
+    const wasAtBottom = getDistanceFromBottom() < AT_BOTTOM_DISTANCE;
+    if (isTyping) {
+        const name = getTab(activeConversation).querySelector('.chat-tab__name').textContent;
+        document.getElementById('typing-row-photo').src = getPhotoSrc(activeConversation);
+        document.getElementById('typing-row-label').textContent = `${name} is typing`;
+    }
+    typingRow.hidden = !isTyping;
+    if (wasAtBottom) scrollToNewest('instant');
 }
 
 function onPartnerTyping(from, isTyping) {

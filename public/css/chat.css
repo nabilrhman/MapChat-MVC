@@ -160,6 +160,48 @@ body
 
 /* "Latest" / "3 new messages": a pill at the bottom centre of the messages
    while you read further up */
+/* Under the last message, above the box: the other person in a private
+   chat is writing to you. Their face and the three dots, as chat apps show */
+.typing-row
+{
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 16px;
+    background-color: #fafafa;
+    animation: fade-in-up var(--dur) var(--ease-out);
+}
+
+.typing-row[hidden]
+{
+    display: none;
+}
+
+.typing-row__photo
+{
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+}
+
+.typing-row__dots
+{
+    color: var(--md-primary);
+    animation: none; /* shows at once; the row eases in */
+}
+
+/* For screen readers only */
+.typing-row__label
+{
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
 .jump-latest
 {
     position: absolute;
@@ -434,22 +476,6 @@ body
 .private-note__icon
 {
     font-size: 14px;
-}
-
-.private-note__typing
-{
-    flex-shrink: 0;
-    margin-left: 8px;
-    color: #7e57c2;
-    font-size: 12px;
-    font-style: italic;
-    line-height: 16px;
-    animation: fade-in 0.2s ease-out;
-}
-
-.private-note__typing[hidden]
-{
-    display: none;
 }
 
 /* The side panels slide in from their own edge */
@@ -1416,6 +1442,14 @@ body
     color: transparent;
     caret-color: #000;
     scrollbar-gutter: stable;
+}
+
+/* Its own colour: Firefox draws the hint in the box's text colour, which is
+   transparent here, so the hint vanished there */
+.chat-composer__textarea--over-chips::placeholder
+{
+    color: var(--md-outline);
+    opacity: 1;
 }
 
 .chat-composer__chips
