@@ -28,7 +28,7 @@
     <div class="chat__content">
         {% if can_message %}
         <h3 class="chat__name chat__name--can-message" data-user-id="{{ chat.user_id }}" data-user-name="{{ chat.name }}"
-            title="Chat privately with {{ chat.name }}">{{ shown_name }}</h3>
+            title="Chat privately with {{ shown_name }}">{{ shown_name }}</h3>
         {% else %}
         <h3 class="chat__name">{{ shown_name }}</h3>
         {% endif %}
