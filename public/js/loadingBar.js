@@ -16,7 +16,7 @@ function setUpLoadingBar() {
 
     // Pages with the header run it along the header's yellow line instead
     const bar = createElement('div', 'loading-bar');
-    bar.classList.toggle('loading-bar--header', document.querySelector('.site-header') !== null);
+    bar.classList.toggle('under-header', document.getElementById('site-header') !== null);
     document.body.append(bar);
 
     function startBar() {

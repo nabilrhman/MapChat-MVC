@@ -2,44 +2,44 @@
    The link to the page being shown is marked, e.g. /profile/... for PROFILE #}
 {% macro link(href, label, section) %}
 {% set here = current_path starts with section %}
-<a href="{{ href }}" class="site-header__link{{ here ? ' is-current' }}"{{ here ? ' aria-current="page"' }}>{{ label }}</a>
+<a href="{{ href }}" class="link{{ here ? ' is-current' }}"{{ here ? ' aria-current="page"' }}>{{ label }}</a>
 {% endmacro %}
 {% from _self import link %}
-<header class="site-header">
-    <a href="/" class="site-header__logo hover-grow">MapChat</a>
+<header class="site-header" id="site-header">
+    <a href="/" class="logo hover-grow">MapChat</a>
 
     {# Phones fold the links into this menu #}
-    <button type="button" class="site-header__menu-button" id="menu-button"
+    <button type="button" class="menu-button" id="menu-button"
             aria-controls="site-nav" aria-expanded="false" aria-label="Menu">
         {{ icon('hamburger-menu') }}
     </button>
 
-    <nav class="site-header__nav" id="site-nav">
+    <nav class="nav" id="site-nav">
 
         {% if current_user %}
         {# Your avatar and name; opens Profile and Log out #}
         {% set on_profile = current_path starts with '/profile' %}
         <div class="account-menu" id="account-menu">
-            <button type="button" class="account-menu__button{{ on_profile ? ' is-current' }}" id="account-menu-button"
+            <button type="button" class="toggle{{ on_profile ? ' is-current' }}" id="account-menu-button"
                     aria-controls="account-menu-list" aria-expanded="false" aria-haspopup="true">
-                <img class="account-menu__avatar" src="{{ avatar_src(current_user.id, current_user.name, current_user.avatar) }}" alt="">
-                <span class="account-menu__name">{{ shown_name(current_user.name, current_user.nickname, current_user.is_guest) }}</span>
-                {{ icon('alt-arrow-down', 'account-menu__chevron') }}
+                <img class="avatar" src="{{ avatar_src(current_user.id, current_user.name, current_user.avatar) }}" alt="">
+                <span class="name">{{ shown_name(current_user.name, current_user.nickname, current_user.is_guest) }}</span>
+                {{ icon('alt-arrow-down', 'chevron') }}
             </button>
-            <div class="account-menu__list" id="account-menu-list">
-                <div class="account-menu__who">
-                    <img class="account-menu__avatar account-menu__avatar--large" src="{{ avatar_src(current_user.id, current_user.name, current_user.avatar) }}" alt="">
+            <div class="list" id="account-menu-list">
+                <div class="who">
+                    <img class="avatar large" src="{{ avatar_src(current_user.id, current_user.name, current_user.avatar) }}" alt="">
                     <span>
-                        <span class="account-menu__who-name">{{ current_user.name }}</span>
-                        <span class="account-menu__who-detail">{{ current_user.is_guest ? 'Guest account' : current_user.email }}</span>
+                        <span class="who-name">{{ current_user.name }}</span>
+                        <span class="who-detail">{{ current_user.is_guest ? 'Guest account' : current_user.email }}</span>
                     </span>
                 </div>
-                <a href="/profile/show" class="account-menu__item{{ on_profile ? ' is-current' }}"{{ on_profile ? ' aria-current="page"' }}>
-                    {{ icon('user', 'account-menu__icon') }}Profile
+                <a href="/profile/show" class="item{{ on_profile ? ' is-current' }}"{{ on_profile ? ' aria-current="page"' }}>
+                    {{ icon('user') }}Profile
                 </a>
                 <form method="post" action="/logout">
-                    <button type="submit" class="account-menu__item account-menu__item--button">
-                        {{ icon('exit', 'account-menu__icon') }}Log out
+                    <button type="submit" class="item log-out">
+                        {{ icon('exit') }}Log out
                     </button>
                 </form>
             </div>
