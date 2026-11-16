@@ -52,7 +52,7 @@
                         {{ icon('camera') }}Change photo
                     </label>
                     {% endif %}
-                    <button type="button" class="button quiet small danger" id="remove-photo"
+                    <button type="button" class="link-button danger" id="remove-photo"
                             {% if user.avatar is empty %}hidden{% endif %}>Remove</button>
                     {% if are_photo_uploads_on %}
                     <p class="field-hint">JPG, PNG or GIF</p>
