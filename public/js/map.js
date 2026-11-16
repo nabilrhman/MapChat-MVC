@@ -315,6 +315,27 @@ function refreshPinsSoon() {
 const PIN_HEIGHT = 27;
 const PIN_LABEL_OFFSET = 26;
 const HIGHLIGHTED_PIN_LABEL_OFFSET = PIN_LABEL_OFFSET + Math.round(PIN_HEIGHT * 0.35);
+const PIN_HALF_WIDTH = 10;
+
+// Where a MapLibre label sits, by the side of the pin it opens on. Above by
+// default, but near the map's top edge MapLibre moves it below, and near a
+// side beside the pin: one offset for all would leave it floating away
+function vectorLabelOffsetsOf(offsetAbove) {
+    const above = [0, -offsetAbove];
+    const belowTip = [0, 0];
+    const besideHeadHeight = -Math.round(offsetAbove / 2);
+    return {
+        'center': above,
+        'bottom': above,
+        'bottom-left': above,
+        'bottom-right': above,
+        'top': belowTip,
+        'top-left': belowTip,
+        'top-right': belowTip,
+        'left': [PIN_HALF_WIDTH, besideHeadHeight],
+        'right': [-PIN_HALF_WIDTH, besideHeadHeight],
+    };
+}
 
 // Each pin's label, by user id: a pin highlighted from the people list or a
 // message's city shows its label too
@@ -359,7 +380,7 @@ function addVectorPin(map, location, shouldAnimate) {
     const lngLat = lngLatOf(location);
     const label = createPinLabel(location);
     const popupTime = label.querySelector('.pin-label__time');
-    const popup = new maplibregl.Popup({closeButton: false, offset: PIN_LABEL_OFFSET})
+    const popup = new maplibregl.Popup({closeButton: false, offset: vectorLabelOffsetsOf(PIN_LABEL_OFFSET)})
         .setDOMContent(label);
     const marker = new maplibregl.Marker({element: createPinElement(location.user_id), anchor: 'bottom'})
         .setLngLat(lngLat)
@@ -368,7 +389,7 @@ function addVectorPin(map, location, shouldAnimate) {
     function showLabel(offset = PIN_LABEL_OFFSET) {
         if (openPinPopup !== popup) openPinPopup?.remove();
         openPinPopup = popup;
-        popup.setOffset(offset);
+        popup.setOffset(vectorLabelOffsetsOf(offset));
         // Made when the pin was; the time is now's
         showPinTime(popupTime);
         popup.setLngLat(lngLat).addTo(map);
@@ -824,12 +845,17 @@ function initializeMap() {
     initializeVectorMap().catch(initializeFallback);
 }
 
+// Wider screens always show the map; phones only once the map button opens it.
+// The map stays laid out under the chat while closed, so isShown can't tell
+function isMapOpen() {
+    return !window.matchMedia(PHONE_SCREEN).matches || document.body.classList.contains('is-map-open');
+}
+
 // Phones with the map closed don't load it until the map button opens it,
 // so the chat gets the connection to itself. Once started, it stays
 function initializeMapWhenOpen() {
     const phoneScreen = window.matchMedia(PHONE_SCREEN);
     const mapToggle = document.getElementById('map-toggle');
-    const isMapOpen = () => !phoneScreen.matches || document.body.classList.contains('is-map-open');
 
     function startIfOpen() {
         if (!isMapOpen()) return;
