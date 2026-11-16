@@ -39,7 +39,7 @@ LONGEST_STILL = 1.0
 # they stand for. Yaru's, or Adwaita's without it. Not kept in the repo
 THEME_CURSORS = {'pointer': 'hand2', 'grab': 'grab', 'grabbing': 'grabbing'}
 THEMES = ['/usr/share/icons/Yaru/cursors', '/usr/share/icons/Adwaita/cursors']
-CURSOR_SIZE = 32
+CURSOR_SIZE = 24
 
 
 def xcursor(path):
@@ -86,10 +86,10 @@ def theme_cursors():
 CURSOR_JS = """
 (() => {
     // In the hand's colours: Yaru's grey gradient and thin white edge
-    const ARROW = '<svg width="26" height="30" viewBox="0 0 26 30"><defs><linearGradient id="cursor-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#474747"/><stop offset="1" stop-color="#2d2d2d"/></linearGradient></defs><path transform="rotate(15 5 4)" d="M5.6 4.4c-.9-.4-1.8.5-1.4 1.4l7.4 18.2c.4 1 1.8.9 2.1-.1l2.2-6.7c.1-.4.4-.7.8-.8l6.7-2.2c1-.3 1.1-1.7.1-2.1z" fill="url(#cursor-fill)" stroke="#fff" stroke-width="1.2" stroke-linejoin="round"/></svg>';
+    const ARROW = '<svg width="20" height="23" viewBox="0 0 26 30"><defs><linearGradient id="cursor-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#474747"/><stop offset="1" stop-color="#2d2d2d"/></linearGradient></defs><path transform="rotate(15 5 4)" d="M5.6 4.4c-.9-.4-1.8.5-1.4 1.4l7.4 18.2c.4 1 1.8.9 2.1-.1l2.2-6.7c.1-.4.4-.7.8-.8l6.7-2.2c1-.3 1.1-1.7.1-2.1z" fill="url(#cursor-fill)" stroke="#fff" stroke-width="1.2" stroke-linejoin="round"/></svg>';
     const THEMED = THEME_CURSORS_JSON;
     // Where each one's tip is in its box
-    const TIPS = {arrow: [5, 4]};
+    const TIPS = {arrow: [3.85, 3.07]};
     Object.entries(THEMED).forEach(([css, image]) => { TIPS[css] = image.tip; });
     const start = window.name.startsWith('cursor:') ? window.name.slice(7).split(',').map(Number) : [720, 450];
     function make() {
@@ -354,6 +354,11 @@ def tour(browser):
     def composer():
         return centre("document.getElementById('textarea-send')")
 
+    def map_ready():
+        """Wait until the map has drawn all its tiles; a blank map isn't a tour"""
+        if not wait_for("typeof vectorMap !== 'undefined' && vectorMap && vectorMap.loaded() && vectorMap.areTilesLoaded()", 30):
+            sys.exit("The map's tiles didn't load (OpenFreeMap may be slow); try again")
+
     def open_chat(where, name):
         """Click a person or tab, measuring again on arrival, as the list
         moves when people come and go, until their private chat is open"""
@@ -398,7 +403,8 @@ def tour(browser):
     # Signed in: the room, the map and who's online
     browser.call('Network.setCookie', name='PHPSESSID', value=SESSION, url=URL)
     browser.call('Page.navigate', url=f'{URL}/app')
-    time.sleep(5)
+    map_ready()
+    time.sleep(1.5)
 
     # Hovering someone online points out their pin, with their local time
     person.move_to(*online('Maya'))
@@ -410,7 +416,9 @@ def tour(browser):
         person.move_to(*city)
         time.sleep(1.3)
         person.click(*city)
-        time.sleep(2.2)
+        time.sleep(1.2)
+        map_ready()
+        time.sleep(1)
 
     # A private chat with Maya
     open_chat(online, 'Maya')
