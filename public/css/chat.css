@@ -1336,11 +1336,11 @@ body
     -webkit-box-decoration-break: clone;
 }
 
-/* Your own name stands out a little more, without shouting */
+/* Your own name stands out with a stronger tint; the text keeps the same
+   colour, so it's no heavier than the others */
 .mention--me
 {
     background-color: var(--md-primary-container);
-    color: var(--md-on-primary-container);
 }
 
 /* Chat - ends */
