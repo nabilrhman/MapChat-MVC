@@ -612,12 +612,19 @@ body
     white-space: nowrap;
 }
 
+/* Fades while the place beside it slides to a longer country name */
 .chat-header__time
 {
     display: inline-flex;
     flex: none;
     align-items: center;
     gap: var(--icon-gap);
+    transition: opacity var(--dur-fast) var(--ease-out);
+}
+
+.place:hover + .chat-header__time
+{
+    opacity: 0;
 }
 
 .chat-header__daylight--day
@@ -1019,6 +1026,27 @@ body
 .place .fi
 {
     flex: none;
+}
+
+/* Slides up to the country. As wide as the city: a longer country runs on
+   past it while shown, so no gap waits beside a short city */
+.place .swap__track
+{
+    position: relative;
+    align-items: flex-start;
+}
+
+.place .swap__line + .swap__line
+{
+    position: absolute;
+    top: 100%;
+    left: 0;
+    white-space: nowrap;
+}
+
+.place .swap__line + .swap__line .place__name
+{
+    overflow: visible;
 }
 
 .place__name
