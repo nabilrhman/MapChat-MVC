@@ -24,6 +24,9 @@ class Google
     /** The longest the token request may take, in seconds */
     const TIMEOUT = 10;
 
+    /** The longest photo address kept, as for an uploaded one */
+    const MAX_PHOTO_LENGTH = 2083;
+
     /**
      * Whether this site has a Google client to sign in with
      */
@@ -135,7 +138,35 @@ class Google
             return null;
         }
 
-        return new GoogleAccount($id, $email, trim((string) ($claims['name'] ?? '')));
+        return new GoogleAccount($id, $email, trim((string) ($claims['name'] ?? '')), static::photoOf($claims['picture'] ?? null));
+    }
+
+    /**
+     * A Google photo's address, at a size that stays sharp on a profile, if
+     * it's one of Google's own image hosts; anything else is dropped
+     */
+    public static function photoOf(mixed $picture): ?string
+    {
+        if (!is_string($picture) || strlen($picture) > static::MAX_PHOTO_LENGTH) {
+            return null;
+        }
+        $host = parse_url($picture, PHP_URL_HOST);
+        $isGooglePhoto = parse_url($picture, PHP_URL_SCHEME) === 'https'
+            && is_string($host) && preg_match('/^lh\d+\.googleusercontent\.com$/', $host) === 1;
+        if (!$isGooglePhoto) {
+            return null;
+        }
+
+        // Google sends a 96px square (=s96-c); ask for one sharp at twice a profile's size
+        return preg_replace('/=s\d+-c$/', '=s256-c', $picture);
+    }
+
+    /**
+     * Whether an avatar address is a Google photo rather than an upload
+     */
+    public static function isPhoto(?string $avatar): bool
+    {
+        return $avatar !== null && static::photoOf($avatar) !== null;
     }
 
     /**

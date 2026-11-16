@@ -27,7 +27,8 @@
             <h2 class="title">{{ icon('user') }}Your account</h2>
             <ul class="list">
                 <li>Your name, nickname and email, and your password, stored only as a hash.</li>
-                <li>Signing in with Google gives MapChat your name, your email and Google's id for your account, and nothing else.</li>
+                <li>Signing in with Google gives MapChat your name, your email, your Google photo and Google's id for your account, and nothing else.</li>
+                <li>If you haven't uploaded a photo, your Google photo is shown, loaded from Google. Removing your photo on your profile stops that.</li>
                 <li>A profile photo you upload is stored by Cloudinary.</li>
                 <li>A guest account is deleted with its messages 24 hours after it's made.</li>
             </ul>
@@ -57,7 +58,7 @@
             <ul class="list">
                 <li>Cookies keep you signed in: one for the session, one if you choose Remember me, and one for a guest. Your browser also remembers a few choices, like which chats are open.</li>
                 <li>MapChat runs on Render with its database on TiDB Cloud. Emails go through Brevo.</li>
-                <li>Your browser loads the map from OpenFreeMap and OpenStreetMap, the font from Google Fonts, and code from unpkg and jsDelivr, so they see your IP address.</li>
+                <li>Your browser loads the map from OpenFreeMap and OpenStreetMap, the font from Google Fonts, Google photos from Google, and code from unpkg and jsDelivr, so they see your IP address.</li>
             </ul>
         </section>
 

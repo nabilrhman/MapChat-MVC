@@ -27,6 +27,8 @@ CREATE TABLE users (
   -- Google's id for the account that signs in with Google; the password is
   -- empty for an account made that way until it sets one
   `google_id`                 VARCHAR(255) NULL DEFAULT NULL,
+  -- Removed their photo, so signing in with Google doesn't bring its photo back
+  `google_photo_declined`     BOOLEAN      NOT NULL DEFAULT FALSE,
   `created_at`                TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `email` (`email`),

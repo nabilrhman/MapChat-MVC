@@ -50,6 +50,9 @@ class Schema extends \Core\Model
             'ALTER TABLE users ADD COLUMN google_id VARCHAR(255) NULL DEFAULT NULL AFTER share_location',
             'ALTER TABLE users ADD UNIQUE KEY google_id (google_id)',
         ]],
+        ['users', 'google_photo_declined', [
+            'ALTER TABLE users ADD COLUMN google_photo_declined BOOLEAN NOT NULL DEFAULT FALSE AFTER google_id',
+        ]],
     ];
 
     /** Indexes added since the first release, as in init.sql, by table and name */
