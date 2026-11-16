@@ -37,7 +37,7 @@ function placeName(city, country) {
 function createPlace(city, country) {
     const place = createElement('span', 'place');
     if (country) place.append(createElement('span', `fi fi-${country.toLowerCase()}`));
-    place.append(createElement('span', 'place__name', placeName(city, country)));
+    place.append(createElement('span', 'name', placeName(city, country)));
     return place;
 }
 
@@ -60,7 +60,7 @@ function countTo(element, target) {
     if (element.dataset.count === undefined) {
         element.dataset.count = target;
         element.classList.add('count-roll');
-        element.replaceChildren(createElement('span', 'count-roll__number', String(target)));
+        element.replaceChildren(createCountNumber(target));
         return;
     }
     let current = Number(element.dataset.count);
@@ -85,19 +85,26 @@ function rollTo(element, number, distanceLeft) {
     // Far off, numbers pass every frame or two, so each rolls quicker
     element.classList.toggle('is-far-off', distanceLeft > 3);
 
-    element.querySelectorAll('.count-roll__number.is-leaving').forEach((leavingNumber) => leavingNumber.remove());
+    element.querySelectorAll('[data-part="count-number"].is-leaving').forEach((leavingNumber) => leavingNumber.remove());
     const oldNumber = element.lastElementChild;
     if (oldNumber) {
         oldNumber.classList.add('is-leaving');
         onAnimationEnd(oldNumber, () => oldNumber.remove());
     }
-    element.append(createElement('span', 'count-roll__number', String(number)));
+    element.append(createCountNumber(number));
+}
+
+function createCountNumber(number) {
+    const numberElement = createElement('span', 'number', String(number));
+    numberElement.dataset.part = 'count-number';
+    return numberElement;
 }
 
 // An icon from the sprite, as Core\Icon draws one in Twig
 function createIcon(name, className = '') {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.setAttribute('class', `icon icon--${name} ${className}`.trim());
+    svg.setAttribute('class', `icon ${className}`.trim());
+    svg.dataset.icon = name;
     svg.setAttribute('aria-hidden', 'true');
     const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
     use.setAttribute('href', `${document.documentElement.dataset.icons}#${name}`);
@@ -107,8 +114,7 @@ function createIcon(name, className = '') {
 
 // Shows another icon from the sprite in an icon's place
 function setIcon(svg, name) {
-    svg.classList.remove(...[...svg.classList].filter((className) => className.startsWith('icon--')));
-    svg.classList.add(`icon--${name}`);
+    svg.dataset.icon = name;
     const use = svg.querySelector('use');
     use.setAttribute('href', use.getAttribute('href').replace(/#.*$/, `#${name}`));
 }

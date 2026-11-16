@@ -6,23 +6,23 @@
 {% types {field: 'array', problems: 'string[]'} %}
 {% set type = field.type ?? 'text' %}
 <div class="beer form-field"{% if field.box_id is defined %} id="{{ field.box_id }}"{% endif %}{% if field.hidden ?? false %} hidden{% endif %}>
-    <div class="field label border{{ problems ? ' invalid' }}">
+    <div class="field label border{{ problems ? ' invalid' }}" data-part="field">
         <input type="{{ type }}" id="{{ field.id }}" name="{{ field.name }}" value="{{ field.value ?? '' }}"
                placeholder=" " autocomplete="{{ field.autocomplete }}"
-               {%- if type == 'password' %} class="password-input"{% endif %}
+               {%- if type == 'password' %} class="password"{% endif %}
                {%- if field.required ?? false %} required{% endif %}
                {%- if field.minlength is defined %} minlength="{{ field.minlength }}"{% endif %}
                {%- if field.autofocus ?? false %} autofocus{% endif %}
                {%- if problems %} aria-invalid="true" aria-describedby="{{ field.id }}-error"{% endif %}>
         <label for="{{ field.id }}">{{ field.label }}</label>
         {% if type == 'password' %}
-        <button type="button" class="password-toggle" aria-label="Show password">{{ icon('eye') }}</button>
+        <button type="button" class="password-toggle" data-part="password-toggle" aria-label="Show password">{{ icon('eye') }}</button>
         {% endif %}
         {% if field.hint is defined %}
-        <output class="form-field__hint">{{ field.hint }}</output>
+        <output>{{ field.hint }}</output>
         {% endif %}
         {# Full sentences, each with its full stop #}
-        <output class="invalid" id="{{ field.id }}-error">{{ problems|join(' ') }}</output>
+        <output class="invalid" data-part="field-error" id="{{ field.id }}-error">{{ problems|join(' ') }}</output>
     </div>
 </div>
 {% endmacro %}

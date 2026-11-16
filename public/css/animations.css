@@ -122,36 +122,39 @@
     vertical-align: top;
 }
 
-.count-roll__number
+@scope (.count-roll)
 {
-    grid-area: 1 / 1;
-    animation: var(--dur-fast) var(--ease-out) both;
-}
+    .number
+    {
+        grid-area: 1 / 1;
+        animation: var(--dur-fast) var(--ease-out) both;
+    }
 
-/* Far off, numbers pass every frame or two, so each rolls quicker */
-.count-roll.is-far-off .count-roll__number
-{
-    animation-duration: var(--dur-count-far);
-}
+    /* Far off, numbers pass every frame or two, so each rolls quicker */
+    :scope.is-far-off .number
+    {
+        animation-duration: var(--dur-count-far);
+    }
 
-.count-roll.is-rolling-up .count-roll__number
-{
-    animation-name: roll-in-up;
-}
+    :scope.is-rolling-up .number
+    {
+        animation-name: roll-in-up;
+    }
 
-.count-roll.is-rolling-up .count-roll__number.is-leaving
-{
-    animation-name: roll-out-up;
-}
+    :scope.is-rolling-up .number.is-leaving
+    {
+        animation-name: roll-out-up;
+    }
 
-.count-roll.is-rolling-down .count-roll__number
-{
-    animation-name: roll-in-down;
-}
+    :scope.is-rolling-down .number
+    {
+        animation-name: roll-in-down;
+    }
 
-.count-roll.is-rolling-down .count-roll__number.is-leaving
-{
-    animation-name: roll-out-down;
+    :scope.is-rolling-down .number.is-leaving
+    {
+        animation-name: roll-out-down;
+    }
 }
 
 @keyframes roll-in-up
@@ -178,7 +181,7 @@
    loading bar keep moving, as they're the only sign something is happening */
 @media (prefers-reduced-motion: reduce)
 {
-    *:not(.loading-dots__dot):not(.loading-bar),
+    *:not(.loading-dots .dot):not(.loading-bar),
     *::before,
     *::after
     {
