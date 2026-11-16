@@ -9,6 +9,7 @@ use App\Controllers\Home;
 use App\Controllers\Login;
 use App\Controllers\Password;
 use App\Controllers\Profile;
+use App\Controllers\Push;
 use App\Controllers\Signup;
 /**
  * Front controller
@@ -94,6 +95,10 @@ $router->post('/app/send', [App::class, 'sendAction']);
 $router->post('/app/mark-read', [App::class, 'markReadAction']);
 $router->post('/app/get-people', [App::class, 'getPeopleAction']);
 $router->post('/app/get-locations', [App::class, 'getLocationsAction']);
+
+// Web Push for this browser (public/js/notifications.js)
+$router->post('/push/subscribe', [Push::class, 'subscribeAction']);
+$router->post('/push/unsubscribe', [Push::class, 'unsubscribeAction']);
 
 // Older URLs, from links and callers made before each route was listed here
 $router->get('/home/index', [Home::class, 'indexAction']);

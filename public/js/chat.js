@@ -1217,6 +1217,26 @@ JSON.parse(chatPanel.dataset.conversations || '[]').forEach((partner) => {
 showConversation(EVERYONE);
 shouldAnimateNewTabs = true;
 setUpNotifications();
+keepPushUpToDate();
+
+// A notification's chat: from a click that opened this page (public/sw.js
+// adds ?chat=), or one in a page already open
+function openNotifiedChat(conversation, name) {
+    if (!conversation || conversation === EVERYONE) {
+        showConversation(EVERYONE);
+    } else {
+        openPrivateChat(conversation, name || '');
+    }
+}
+
+const notifiedChat = new URLSearchParams(location.search);
+if (notifiedChat.has('chat')) {
+    openNotifiedChat(notifiedChat.get('chat'), notifiedChat.get('name'));
+    history.replaceState(null, '', location.pathname);
+}
+navigator.serviceWorker?.addEventListener('message', (event) => {
+    if (event.data?.openChat) openNotifiedChat(event.data.openChat, event.data.name);
+});
 
 keepPeopleUpdated(updateOnlineDots, openPrivateChat);
 connectChat({

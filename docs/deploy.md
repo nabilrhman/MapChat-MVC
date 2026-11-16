@@ -17,6 +17,11 @@ MySQL-compatible service.
      blocks SMTP, so use `brevo+api://API_KEY@default`.
    - `CLOUDINARY_CLOUD_NAME` and `CLOUDINARY_UPLOAD_PRESET` for avatar uploads.
    - `GROQ_API_KEY` for MapChat and the AI characters to chat back.
+   - `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` for notifications that reach
+     people with MapChat closed. Make the pair once on your computer and keep
+     it, since a new pair drops everyone's subscriptions:
+     `docker compose run --rm app php -r 'require "vendor/autoload.php"; print_r(Minishlink\WebPush\VAPID::createVapidKeys());'`
+     Without them, notifications still come while MapChat is open in a tab.
 
 Free Render services sleep after 15 minutes without visitors; the `Keep awake`
 workflow visits every 10 minutes, well within Render's 750 free hours a month.

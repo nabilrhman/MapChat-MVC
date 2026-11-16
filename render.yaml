@@ -41,3 +41,8 @@ services:
       # Lets MapChat and the demo people chat back (free key at console.groq.com)
       - key: GROQ_API_KEY
         sync: false
+      # Web Push for notifications with MapChat closed; make the pair once (docs/deploy.md)
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false

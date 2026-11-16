@@ -11,10 +11,11 @@ RUN composer install --no-interaction --prefer-dist --no-scripts
 FROM php:8.4-fpm AS base
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends apache2 \
+    && apt-get install -y --no-install-recommends apache2 libgmp-dev \
     && rm -rf /var/lib/apt/lists/* \
-    # pcntl lets the chat socket and worker stop cleanly on SIGTERM
-    && docker-php-ext-install pdo_mysql pcntl \
+    # pcntl lets the chat socket and worker stop cleanly on SIGTERM; gmp makes
+    # Web Push's encryption fast (App\Push)
+    && docker-php-ext-install pdo_mysql pcntl gmp \
     # Debian's Apache already uses the event MPM; proxy_wstunnel passes /ws to the chat socket
     && a2enmod proxy_fcgi proxy_wstunnel rewrite remoteip headers \
     && a2dissite 000-default \
