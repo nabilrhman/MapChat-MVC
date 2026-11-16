@@ -2,6 +2,8 @@
 
 namespace App\ChatSocket;
 
+use App\Models\User;
+use Core\DatabaseSessionHandler;
 use PDO;
 
 /**
@@ -17,12 +19,8 @@ class Sessions extends \Core\Model
     /**
      * The id of the user logged in on a session, or null. Read with PHP's own
      * session code and the site's handler, so it reads exactly as a page does
-     *
-     * @param string $sessionId
-     *
-     * @return int|null
      */
-    public static function getUserId($sessionId)
+    public static function getUserId(string $sessionId): ?int
     {
         if (!preg_match(static::ID_PATTERN, $sessionId)) {
             return null;
@@ -30,7 +28,7 @@ class Sessions extends \Core\Model
 
         static $hasHandler = false;
         if (!$hasHandler) {
-            session_set_save_handler(new \Core\DatabaseSessionHandler(), false);
+            session_set_save_handler(new DatabaseSessionHandler(), false);
             $hasHandler = true;
         }
 
@@ -50,48 +48,32 @@ class Sessions extends \Core\Model
     }
 
     /**
-     * Which of these sessions still exist, for users who still exist. Logging
-     * out deletes the session, and a guest's account is deleted after a day
+     * Which of these sessions still exist, for users who still exist and
+     * whose guest day isn't up. Logging out deletes the session, and a
+     * guest's account stops working after a day
      *
-     * @param array $userIdsBySession Session id => user id
+     * @param array<string, int> $userIdsBySession Session id => user id
      *
-     * @return array The session ids still good
+     * @return string[] The session ids still good
      */
-    public static function getStillLoggedIn($userIdsBySession)
+    public static function getStillLoggedIn(array $userIdsBySession): array
     {
         if (!$userIdsBySession) {
             return [];
         }
 
         $db = static::getDB();
-        $sessionList = implode(', ', array_map([$db, 'quote'], array_keys($userIdsBySession)));
-        $userList = implode(', ', array_map('intval', array_unique($userIdsBySession)));
 
-        $sessions = $db->query("SELECT id FROM sessions WHERE id IN ($sessionList)")->fetchAll(PDO::FETCH_COLUMN);
-        $users = array_flip($db->query("SELECT id FROM users WHERE id IN ($userList)")->fetchAll(PDO::FETCH_COLUMN));
+        [$sessionList, $sessionParams] = static::inList('session', array_keys($userIdsBySession));
+        $stmt = $db->prepare("SELECT id FROM sessions WHERE id IN $sessionList");
+        $stmt->execute($sessionParams);
+        $sessions = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+        [$userList, $userParams] = static::inList('user', array_unique($userIdsBySession));
+        $stmt = $db->prepare("SELECT id FROM users WHERE id IN $userList AND NOT (" . User::expiredGuestSql() . ')');
+        $stmt->execute($userParams);
+        $users = array_flip(array_map(intval(...), $stmt->fetchAll(PDO::FETCH_COLUMN)));
 
         return array_values(array_filter($sessions, fn ($id) => isset($users[$userIdsBySession[$id]])));
-    }
-
-    /**
-     * Mark sessions with an open socket as used, as each poll did, so they
-     * don't expire while the page stays open. At most once an hour
-     *
-     * @param array $sessionIds
-     *
-     * @return void
-     */
-    public static function touch($sessionIds)
-    {
-        if (!$sessionIds) {
-            return;
-        }
-
-        $db = static::getDB();
-        $list = implode(', ', array_map([$db, 'quote'], $sessionIds));
-        $stmt = $db->prepare("UPDATE sessions SET updated_at = :now WHERE id IN ($list) AND updated_at < :now2 - 3600");
-        $stmt->bindValue(':now', time(), PDO::PARAM_INT);
-        $stmt->bindValue(':now2', time(), PDO::PARAM_INT);
-        $stmt->execute();
     }
 }

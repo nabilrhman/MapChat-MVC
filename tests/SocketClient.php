@@ -77,11 +77,17 @@ class SocketClient
         return $welcome;
     }
 
+    /**
+     * Send a message as JSON
+     */
     public function send(array $message): void
     {
         $this->sendText(json_encode($message));
     }
 
+    /**
+     * Send a text frame, masked as a browser sends it
+     */
     public function sendText(string $text, int $opcode = 0x1): void
     {
         $length = strlen($text);
@@ -149,6 +155,9 @@ class SocketClient
         return $this->closeCode;
     }
 
+    /**
+     * Close the connection
+     */
     public function close(): void
     {
         if (is_resource($this->stream)) {

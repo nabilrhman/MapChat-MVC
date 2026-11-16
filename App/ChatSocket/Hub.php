@@ -11,6 +11,7 @@ use App\Mention;
 use App\Models\Chat;
 use App\Models\User;
 use App\Models\UserInfo;
+use Core\DatabaseSessionHandler;
 use Core\View;
 use Revolt\EventLoop;
 use function Amp\async;
@@ -18,18 +19,19 @@ use function Amp\delay;
 
 /**
  * The chat over WebSockets, one per open chat page. Messages are read from
- * the database in id order, by one reader for everyone, and each goes to
- * the pages allowed to see it. A page that (re)connects says which message
- * it has last; it's caught up from the database from there, then joins the
- * live stream, so it gets every message once and in order.
+ * the database in id order, by one reader for everyone (NewMessageReader),
+ * and each goes to the pages allowed to see it. A page that (re)connects
+ * says which message it has last; it's caught up from the database from
+ * there, then joins the live stream, so it gets every message once and in
+ * order
  *
  * Messages a page sends are saved with the same rules as the HTTP chat
  * (Chat::sendFrom), and come back to it through the stream like everyone
- * else's. Presence (who's online) and typing go out as they change.
+ * else's. Presence (who's online) and typing go out as they change
  *
  * Everything here runs in one process and one event loop. Database calls
  * block it for their few milliseconds; nothing else waits between reading
- * the state and changing it, so no two handlers interleave.
+ * the state and changing it, so no two handlers interleave
  */
 class Hub implements WebsocketClientHandler
 {
@@ -38,16 +40,6 @@ class Hub implements WebsocketClientHandler
 
     /** Most messages read in one go */
     const TAIL_BATCH = 500;
-
-    /**
-     * A missing id (a send that took it hasn't committed yet, or a failed or
-     * rolled-back insert that never will) is waited for this long before
-     * reading on without it. A send commits in milliseconds
-     */
-    const GAP_SECONDS = 2;
-
-    /** A catching-up page waits while more than this is queued for it */
-    const CATCH_UP_QUEUE_BYTES = 262144;
 
     /** How often to look for presence changes not seen as they happen (demo people, polling tabs) */
     const PRESENCE_SECONDS = 5;
@@ -58,14 +50,8 @@ class Hub implements WebsocketClientHandler
     /** How often to check that each page's session is still logged in */
     const SESSION_CHECK_SECONDS = 15;
 
-    /** How often to keep open pages' sessions from expiring (Sessions::touch) */
+    /** How often to keep open pages' sessions from expiring (DatabaseSessionHandler::touch) */
     const SESSION_TOUCH_SECONDS = 600;
-
-    /** How long "typing" holds without a fresh word from the page */
-    const TYPING_SECONDS = 6;
-
-    /** "Typing" is passed on at most this often per page */
-    const TYPING_FORWARD_SECONDS = 1;
 
     /** @var Tab[] By connection id */
     private array $tabs = [];
@@ -73,11 +59,8 @@ class Hub implements WebsocketClientHandler
     /** @var Tab[][] By email, then connection id */
     private array $tabsByEmail = [];
 
-    /** The newest id read and sent on; every live page has everything up to here */
-    private int $tailId = 0;
-
-    /** When the reader first stopped at a missing id, or null */
-    private ?float $gapSince = null;
+    /** Reads new messages; every live page has everything up to its last read id */
+    private NewMessageReader $newMessages;
 
     private bool $isTailQueued = false;
 
@@ -90,10 +73,13 @@ class Hub implements WebsocketClientHandler
     private bool $isPresenceQueued = false;
 
     /** How long a closed last page keeps its person online, for a reload or a network blip */
-    private float $graceSeconds;
+    private readonly float $graceSeconds;
 
-    private float $sessionCheckSeconds;
+    private readonly float $sessionCheckSeconds;
 
+    /**
+     * Read the settings the tests shorten
+     */
     public function __construct()
     {
         $this->graceSeconds = (float) Config::get('CHAT_PRESENCE_GRACE_SECONDS', 10);
@@ -103,12 +89,10 @@ class Hub implements WebsocketClientHandler
     /**
      * Start reading messages and keeping presence. The reader starts at the
      * newest message: pages that connect say where they are themselves
-     *
-     * @return void
      */
-    public function start()
+    public function start(): void
     {
-        $this->tailId = Chat::getNewestId();
+        $this->newMessages = new NewMessageReader(Chat::getNewestId());
         foreach (UserInfo::getPeople(UserInfo::getOnlineEmails()) as $person) {
             $this->announced[$person['email']] = $person;
         }
@@ -118,26 +102,30 @@ class Hub implements WebsocketClientHandler
         EventLoop::repeat(static::PRESENCE_SECONDS, fn () => $this->safely($this->updatePresence(...)));
         EventLoop::repeat(static::MARK_ONLINE_SECONDS, fn () => $this->safely(fn () => UserInfo::markOnlineNow(array_keys($this->tabsByEmail))));
         EventLoop::repeat($this->sessionCheckSeconds, fn () => $this->safely($this->closeLoggedOutTabs(...)));
-        EventLoop::repeat(static::SESSION_TOUCH_SECONDS, fn () => $this->safely(fn () => Sessions::touch($this->getSessionIds())));
+        EventLoop::repeat(static::SESSION_TOUCH_SECONDS, fn () => $this->safely(fn () => DatabaseSessionHandler::touch($this->getSessionIds())));
     }
 
     /**
      * Close every page with "restarting" (1012); they reconnect to the next process
-     *
-     * @return void
      */
-    public function closeAll()
+    public function closeAll(): void
     {
         foreach ($this->tabs as $tab) {
             $tab->close(1012, 'Restarting');
         }
     }
 
+    /**
+     * How many pages are open, for the Handshake's limit
+     */
     public function countTabs(): int
     {
         return count($this->tabs);
     }
 
+    /**
+     * How many pages one person has open, for the Handshake's limit
+     */
     public function countTabsOf(string $email): int
     {
         return count($this->tabsByEmail[$email] ?? []);
@@ -145,10 +133,8 @@ class Hub implements WebsocketClientHandler
 
     /**
      * A message was saved (Signal): read it now rather than on the next round
-     *
-     * @return void
      */
-    public function hearNewMessages()
+    public function onNewMessages(): void
     {
         if ($this->isTailQueued) {
             return;
@@ -165,11 +151,9 @@ class Hub implements WebsocketClientHandler
      * demo person, or stopped without one (Signal::typing): pass it to that
      * person's pages, as a page's own typing would be
      *
-     * @param string $datagram
-     *
-     * @return void
+     * @param string $datagram As Signal::typing sends it
      */
-    public function hearWorkerTyping($datagram)
+    public function onWorkerTyping(string $datagram): void
     {
         $typing = json_decode($datagram, true)['typing'] ?? null;
         if (!is_string($typing['from'] ?? null) || !is_string($typing['to'] ?? null) || !is_bool($typing['isTyping'] ?? null)) {
@@ -186,7 +170,7 @@ class Hub implements WebsocketClientHandler
             }
             foreach ($this->tabsByEmail[$typing['to']] ?? [] as $tab) {
                 if ($tab->hasSaidHello) {
-                    $tab->send(['type' => 'typing', 'from' => (int) $speaker->id, 'isTyping' => $typing['isTyping']]);
+                    $tab->send(['type' => 'typing', 'from' => $speaker->id, 'isTyping' => $typing['isTyping']]);
                 }
             }
         });
@@ -211,11 +195,9 @@ class Hub implements WebsocketClientHandler
     }
 
     /**
-     * @param Tab $tab
-     *
-     * @return void
+     * Take a page in. Its person's first page shows them online
      */
-    private function addTab($tab)
+    private function addTab(Tab $tab): void
     {
         $email = $tab->user->email;
         $isFirstTab = empty($this->tabsByEmail[$email]);
@@ -233,12 +215,8 @@ class Hub implements WebsocketClientHandler
     /**
      * The page closed: stop its typing, and if it was its person's last one,
      * keep them online a few seconds in case it's a reload or a blip
-     *
-     * @param Tab $tab
-     *
-     * @return void
      */
-    private function removeTab($tab)
+    private function removeTab(Tab $tab): void
     {
         $email = $tab->user->email;
         $this->stopTyping($tab);
@@ -269,12 +247,9 @@ class Hub implements WebsocketClientHandler
      * Act on one message from a page. Anything malformed closes it: the
      * page's own script never sends that
      *
-     * @param Tab $tab
-     * @param string $text
-     *
-     * @return void
+     * @param string $text The message as the page sent it, JSON
      */
-    private function receive($tab, $text)
+    private function receive(Tab $tab, string $text): void
     {
         $message = json_decode($text, true);
         $type = is_array($message) ? ($message['type'] ?? null) : null;
@@ -310,25 +285,20 @@ class Hub implements WebsocketClientHandler
      * The page says which message it has last. Send who's here, then catch
      * it up from there in the background
      *
-     * @param Tab $tab
      * @param array $message ['after' => int, 'timezone' => string]
      *
-     * @return bool
+     * @return bool Whether the message was well formed
      */
-    private function sayHello($tab, $message)
+    private function sayHello(Tab $tab, array $message): bool
     {
         if ($tab->hasSaidHello || !is_int($message['after'] ?? null) || $message['after'] < 0) {
             return false;
         }
 
-        // The page sends its time zone along, so others can see your local time
-        $timezone = $message['timezone'] ?? '';
-        if (is_string($timezone) && in_array($timezone, \DateTimeZone::listIdentifiers(), true)) {
-            UserInfo::saveTimezone($tab->user->email, $timezone);
-        }
+        // So others can see your local time
+        UserInfo::saveTimezone($tab->user->email, $message['timezone'] ?? null);
 
-        $tab->hasSaidHello = true;
-        $tab->cursor = $message['after'];
+        $tab->sayHello($message['after']);
 
         if ($this->isPresenceQueued) {
             $this->updatePresence();
@@ -345,16 +315,12 @@ class Hub implements WebsocketClientHandler
      * time, up to where the reader has got to; then it's live. Read up to the
      * reader's point, not beyond, so the live stream carries on exactly
      * where catching up stopped
-     *
-     * @param Tab $tab
-     *
-     * @return void
      */
-    private function catchUp($tab)
+    private function catchUp(Tab $tab): void
     {
-        while (!$tab->client->isClosed()) {
+        while (!$tab->isClosed()) {
             try {
-                $chats = Chat::getAfter($tab->user->email, $tab->cursor, $this->tailId);
+                $chats = Chat::getAfter($tab->user->email, $tab->cursor, $this->newMessages->getLastReadId());
             } catch (\PDOException $e) {
                 $this->forgetDatabase($e);
                 $tab->close(1011, 'Try again');
@@ -363,20 +329,18 @@ class Hub implements WebsocketClientHandler
 
             if ($chats) {
                 $tab->send(['type' => 'chats', 'html' => $this->render($chats, $tab->user, Mention::namesIn($chats))]);
-                $tab->cursor = (int) end($chats)['id'];
+                $tab->moveCursorTo((int) end($chats)['id']);
             }
 
             if (count($chats) < Chat::HISTORY) {
-                $tab->cursor = max($tab->cursor, $this->tailId);
-                $tab->isLive = true;
-                $tab->send(['type' => 'live']);
+                $tab->goLive($this->newMessages->getLastReadId());
                 return;
             }
 
             // Let others have a turn, and the page read what it has
             do {
                 delay(0.01);
-            } while ($tab->queuedBytes > static::CATCH_UP_QUEUE_BYTES && !$tab->client->isClosed());
+            } while ($tab->isBacklogged() && !$tab->isClosed());
         }
     }
 
@@ -385,12 +349,11 @@ class Hub implements WebsocketClientHandler
      * why not), and send it out at once. Its client id makes a repeat of the
      * same send answer with the first one's message
      *
-     * @param Tab $tab
      * @param array $message ['clientId' => string, 'body' => string, 'to' => int|null]
      *
-     * @return bool
+     * @return bool Whether the message was well formed
      */
-    private function sendMessage($tab, $message)
+    private function sendMessage(Tab $tab, array $message): bool
     {
         $clientId = $message['clientId'] ?? null;
         $body = $message['body'] ?? null;
@@ -425,12 +388,11 @@ class Hub implements WebsocketClientHandler
      * Mark a private chat read up to an id, and tell the person's other
      * pages, so their unread counts go too
      *
-     * @param Tab $tab
      * @param array $message ['from' => the other person's id, 'upTo' => int]
      *
-     * @return bool
+     * @return bool Whether the message was well formed
      */
-    private function markRead($tab, $message)
+    private function markRead(Tab $tab, array $message): bool
     {
         $from = $message['from'] ?? null;
         $upTo = $message['upTo'] ?? null;
@@ -452,12 +414,11 @@ class Hub implements WebsocketClientHandler
     /**
      * The page of a tab's messages before an id, when the reader scrolls up
      *
-     * @param Tab $tab
      * @param array $message ['requestId' => int, 'before' => int, 'conversation' => "everyone" or an id]
      *
-     * @return bool
+     * @return bool Whether the message was well formed
      */
-    private function sendOlder($tab, $message)
+    private function sendOlder(Tab $tab, array $message): bool
     {
         $requestId = $message['requestId'] ?? null;
         $before = $message['before'] ?? null;
@@ -467,7 +428,7 @@ class Hub implements WebsocketClientHandler
         }
 
         $chats = Chat::getOlder($tab->user->email, $conversation, $before);
-        $html = $chats ? $this->render($chats, $tab->user, Mention::namesIn($chats), true) : '';
+        $html = $chats ? $this->render($chats, $tab->user, Mention::namesIn($chats), isHistory: true) : '';
         $tab->send(['type' => 'older', 'requestId' => $requestId, 'html' => $html, 'count' => count($chats)]);
 
         return true;
@@ -477,12 +438,11 @@ class Hub implements WebsocketClientHandler
      * Tell the person the page is typing to, and nobody else, that it is or
      * has stopped. Only who, never what: the draft stays in the page
      *
-     * @param Tab $tab
      * @param array $message ['to' => int, 'isTyping' => bool]
      *
-     * @return bool
+     * @return bool Whether the message was well formed
      */
-    private function passOnTyping($tab, $message)
+    private function passOnTyping(Tab $tab, array $message): bool
     {
         $to = $message['to'] ?? null;
         $isTyping = $message['isTyping'] ?? null;
@@ -490,7 +450,7 @@ class Hub implements WebsocketClientHandler
             return false;
         }
 
-        if (!$isTyping || $to === (int) $tab->user->id) {
+        if (!$isTyping || $to === $tab->user->id) {
             $this->stopTyping($tab);
             return true;
         }
@@ -500,25 +460,19 @@ class Hub implements WebsocketClientHandler
             $this->stopTyping($tab);
         }
 
-        $now = microtime(true);
-        $tab->typingUntil = $now + static::TYPING_SECONDS;
-        if ($tab->typingTo === $to && $now - $tab->typingForwardedAt < static::TYPING_FORWARD_SECONDS) {
-            return true;
+        if ($tab->noteTyping($to)) {
+            $this->sendToUser($to, ['type' => 'typing', 'from' => $tab->user->id, 'isTyping' => true]);
         }
-
-        $tab->typingTo = $to;
-        $tab->typingForwardedAt = $now;
-        $this->sendToUser($to, ['type' => 'typing', 'from' => (int) $tab->user->id, 'isTyping' => true]);
 
         return true;
     }
 
     /**
-     * @param Tab $tab
+     * Answer the page's ping, which it uses to tell a dead connection
      *
-     * @return bool
+     * @return bool Always true: a ping is always well formed
      */
-    private function answerPing($tab)
+    private function answerPing(Tab $tab): bool
     {
         $tab->send(['type' => 'pong']);
 
@@ -526,45 +480,37 @@ class Hub implements WebsocketClientHandler
     }
 
     /**
-     * @param Tab $tab
-     *
-     * @return void
+     * Tell whoever the page was typing to that it stopped
      */
-    private function stopTyping($tab)
+    private function stopTyping(Tab $tab): void
     {
-        if ($tab->typingTo === null) {
-            return;
+        $wasTypingTo = $tab->stopTyping();
+        if ($wasTypingTo !== null) {
+            $this->sendToUser($wasTypingTo, ['type' => 'typing', 'from' => $tab->user->id, 'isTyping' => false]);
         }
-
-        $this->sendToUser($tab->typingTo, ['type' => 'typing', 'from' => (int) $tab->user->id, 'isTyping' => false]);
-        $tab->typingTo = null;
     }
 
     /**
      * Stop "typing" for pages that went quiet without saying so
-     *
-     * @return void
      */
-    private function expireTyping()
+    private function expireTyping(): void
     {
-        $now = microtime(true);
         foreach ($this->tabs as $tab) {
-            if ($tab->typingTo !== null && $tab->typingUntil < $now) {
+            if ($tab->hasTypingLapsed()) {
                 $this->stopTyping($tab);
             }
         }
     }
 
     /**
-     * @param int $userId
-     * @param array $message
+     * Send a message to every page of one person that said hello
      *
-     * @return void
+     * @param array<string, mixed> $message
      */
-    private function sendToUser($userId, $message)
+    private function sendToUser(int $userId, array $message): void
     {
         foreach ($this->tabs as $tab) {
-            if ((int) $tab->user->id === $userId && $tab->hasSaidHello) {
+            if ($tab->user->id === $userId && $tab->hasSaidHello) {
                 $tab->send($message);
             }
         }
@@ -573,45 +519,22 @@ class Hub implements WebsocketClientHandler
     /**
      * Read the messages saved since the last read, in id order, and send
      * each to the live pages that may see it: the open room's to everyone,
-     * a private one to its sender's and recipient's pages only. Stops at a
-     * missing id for a few seconds (GAP_SECONDS), so a send that took an
-     * earlier id but commits later isn't skipped
-     *
-     * @return void
+     * a private one to its sender's and recipient's pages only
      */
-    private function readNewMessages()
+    private function readNewMessages(): void
     {
-        $ids = Chat::getIdsAfter($this->tailId, static::TAIL_BATCH);
-        $readIds = [];
-        $lastId = $this->tailId;
-
-        foreach ($ids as $id) {
-            if ($id !== $lastId + 1) {
-                $this->gapSince ??= microtime(true);
-                if (microtime(true) - $this->gapSince < static::GAP_SECONDS) {
-                    break;
-                }
-            }
-            $this->gapSince = null;
-            $readIds[] = $id;
-            $lastId = $id;
+        $readIds = $this->newMessages->readNewIds(static::TAIL_BATCH);
+        if ($readIds) {
+            $this->sendToLivePages(Chat::getByIds($readIds));
         }
-
-        if (!$readIds) {
-            return;
-        }
-
-        $chats = Chat::getByIds($readIds);
-        $this->tailId = $lastId;
-        $this->sendToLivePages($chats);
     }
 
     /**
-     * @param array $chats Oldest first
+     * Send newly read messages to the live pages that may see each one
      *
-     * @return void
+     * @param array[] $chats Oldest first
      */
-    private function sendToLivePages($chats)
+    private function sendToLivePages(array $chats): void
     {
         $chatsByTab = [];
         foreach ($chats as $chat) {
@@ -629,7 +552,7 @@ class Hub implements WebsocketClientHandler
         // Every live page now has everything up to here, whether or not any of it was for them
         foreach ($this->tabs as $tab) {
             if ($tab->isLive) {
-                $tab->cursor = max($tab->cursor, $this->tailId);
+                $tab->moveCursorTo($this->newMessages->getLastReadId());
             }
         }
 
@@ -647,14 +570,11 @@ class Hub implements WebsocketClientHandler
     /**
      * The messages as the page shows them, for this reader
      *
-     * @param array $chats
-     * @param \App\Models\User $reader
-     * @param array $mentionNames Mention::namesIn of these messages, or more
+     * @param string[] $mentionNames Mention::namesIn of these messages, or more
      * @param bool $isHistory Older messages appear at once, without the new-message ease-in
-     *
-     * @return string
+     * @param array[] $chats Message rows
      */
-    private function render($chats, $reader, $mentionNames, $isHistory = false)
+    private function render(array $chats, User $reader, array $mentionNames, bool $isHistory = false): string
     {
         return View::getTemplate('App/chat.html', [
             'chats' => $chats,
@@ -667,10 +587,8 @@ class Hub implements WebsocketClientHandler
     /**
      * Look for presence changes on the next turn of the loop, once however
      * many pages open meanwhile
-     *
-     * @return void
      */
-    private function queuePresenceUpdate()
+    private function queuePresenceUpdate(): void
     {
         if ($this->isPresenceQueued) {
             return;
@@ -684,10 +602,8 @@ class Hub implements WebsocketClientHandler
      * open (or closed less than the grace period ago), or online as the
      * people list counts it (UserInfo::getOnlineEmails): a page on the HTTP
      * fallback, a demo person in the room, or MapChat
-     *
-     * @return void
      */
-    private function updatePresence()
+    private function updatePresence(): void
     {
         $this->isPresenceQueued = false;
 
@@ -707,14 +623,14 @@ class Hub implements WebsocketClientHandler
         foreach ($arrived as $email) {
             if (isset($people[$email])) {
                 $this->announced[$email] = $people[$email];
-                $this->sendToAll(['type' => 'presence', 'person' => static::shown($people[$email], true)]);
+                $this->sendToAll(['type' => 'presence', 'person' => static::personForPages($people[$email], true)]);
             }
         }
         foreach ($left as $email) {
             // A deleted guest has no row any more; the page drops them by id
             $person = $people[$email] ?? $this->announced[$email] + ['is_deleted' => 1];
             unset($this->announced[$email]);
-            $this->sendToAll(['type' => 'presence', 'person' => static::shown($person, false)]);
+            $this->sendToAll(['type' => 'presence', 'person' => static::personForPages($person, false)]);
         }
     }
 
@@ -722,9 +638,9 @@ class Hub implements WebsocketClientHandler
      * The people list as /app/get-people gives it, with online as this
      * process has announced it, so the changes it sends later line up
      *
-     * @return array
+     * @return array[] People rows, as personForPages gives them
      */
-    private function getPeopleList()
+    private function getPeopleList(): array
     {
         $onlineIds = array_flip(array_column($this->announced, 'id'));
         $people = [];
@@ -732,13 +648,13 @@ class Hub implements WebsocketClientHandler
         foreach (UserInfo::getRecentPeople() as $person) {
             $isOnline = isset($onlineIds[$person['id']]);
             unset($onlineIds[$person['id']]);
-            $people[] = static::shown($person, $isOnline);
+            $people[] = static::personForPages($person, $isOnline);
         }
 
         // Online here but not in that list (it counts online by the database's clock)
         foreach ($this->announced as $person) {
             if (isset($onlineIds[$person['id']])) {
-                $people[] = static::shown($person, true);
+                $people[] = static::personForPages($person, true);
             }
         }
 
@@ -746,14 +662,13 @@ class Hub implements WebsocketClientHandler
     }
 
     /**
-     * A people row as pages get it: never the email
+     * A people row as pages get it: with is_online, and never the email
      *
-     * @param array $person
-     * @param bool $isOnline
+     * @param array<string, mixed> $person
      *
-     * @return array
+     * @return array<string, mixed>
      */
-    private static function shown($person, $isOnline)
+    private static function personForPages(array $person, bool $isOnline): array
     {
         unset($person['email']);
         $person['is_online'] = $isOnline ? 1 : 0;
@@ -762,11 +677,11 @@ class Hub implements WebsocketClientHandler
     }
 
     /**
-     * @param array $message
+     * Send a message to every page that said hello
      *
-     * @return void
+     * @param array<string, mixed> $message
      */
-    private function sendToAll($message)
+    private function sendToAll(array $message): void
     {
         foreach ($this->tabs as $tab) {
             if ($tab->hasSaidHello) {
@@ -777,15 +692,13 @@ class Hub implements WebsocketClientHandler
 
     /**
      * Close the pages whose session ended: logged out, expired, or their
-     * guest account deleted. They're sent to the login page
-     *
-     * @return void
+     * guest account's day is up. They're sent to the login page
      */
-    private function closeLoggedOutTabs()
+    private function closeLoggedOutTabs(): void
     {
         $userIdsBySession = [];
         foreach ($this->tabs as $tab) {
-            $userIdsBySession[$tab->sessionId] = (int) $tab->user->id;
+            $userIdsBySession[$tab->sessionId] = $tab->user->id;
         }
 
         $stillLoggedIn = array_flip(Sessions::getStillLoggedIn($userIdsBySession));
@@ -797,9 +710,11 @@ class Hub implements WebsocketClientHandler
     }
 
     /**
-     * @return array
+     * The open pages' login sessions, each once
+     *
+     * @return string[]
      */
-    private function getSessionIds()
+    private function getSessionIds(): array
     {
         return array_values(array_unique(array_map(fn ($tab) => $tab->sessionId, $this->tabs)));
     }
@@ -807,12 +722,8 @@ class Hub implements WebsocketClientHandler
     /**
      * Run timed or signalled work; a database error is logged and the
      * connection made again next time, so one failure doesn't stop the loop
-     *
-     * @param callable $work
-     *
-     * @return void
      */
-    private function safely($work)
+    private function safely(callable $work): void
     {
         try {
             $work();
@@ -822,11 +733,9 @@ class Hub implements WebsocketClientHandler
     }
 
     /**
-     * @param \PDOException $e
-     *
-     * @return void
+     * Log a database error and drop the connection, so the next query makes a new one
      */
-    private function forgetDatabase($e)
+    private function forgetDatabase(\PDOException $e): void
     {
         error_log('Chat socket: database error, reconnecting: ' . $e->getMessage());
         \Core\Model::disconnectDB();
