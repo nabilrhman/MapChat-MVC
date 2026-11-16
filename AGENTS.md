@@ -79,6 +79,22 @@ The scripts run as they are, with no build step, sharing globals in the order
 - A helper that exists (`readFlag`, `createPlace`, `fadeInPhotos`) is called,
   not written again.
 
+### Modern HTML
+
+The Twig views write HTML5 that says what each part is:
+
+- Landmarks and sections for what they hold (`header`, `nav`, `main`,
+  `aside`, `section` with a heading, `footer`); a `div` only for layout.
+- A `button` for anything that acts on the page and an `a` for anything that
+  goes somewhere; a click handler on a `span` or `div` is out.
+- Every field has a `label`; forms use the browser's own checks (`required`,
+  `type="email"`, `minlength`, `autocomplete`) before any script.
+- `hidden` to hide, `<time datetime>` for times, `<dialog>` for a modal,
+  `loading="lazy"` and `width`/`height` on images below the fold, `alt` on
+  every image (empty when it's decoration).
+- ARIA only where HTML has no element for it (`aria-live` for a status,
+  `aria-expanded` on a menu button), never to repeat what an element says.
+
 ### Modern CSS
 
 Custom properties for any value used twice; `gap`, `inset`, logical
