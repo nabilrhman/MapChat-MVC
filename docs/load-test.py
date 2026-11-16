@@ -68,7 +68,7 @@ def parse_chats(html):
     chats = []
     for part in re.split(r'<div class="chat[ "]', html)[1:]:
         found = re.search(r'data-id="(\d+)"', part), re.search(r'data-conversation="([^"]*)"', part), \
-            re.search(r'<p class="chat__body">([\s\S]*?)</p>', part)
+            re.search(r'<p class="body" data-part="message-body">([\s\S]*?)</p>', part)
         if all(found):
             chats.append((int(found[0][1]), found[1][1], re.sub(r'<[^>]+>', '', found[2][1])))
     return chats

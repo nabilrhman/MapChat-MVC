@@ -23,18 +23,18 @@
 <section class="map" id="map" aria-label="Map of who's here"></section>
 
 <div class="map-loading" id="map-loading">
-    <span class="loading-dots" role="status" aria-label="Loading the map"><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span></span>
+    <span class="loading-dots" role="status" aria-label="Loading the map"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
 </div>
 
 <!-- Shows the map on phones, where it starts hidden to give the chat the room -->
 <button class="map-toggle" id="map-toggle" type="button" aria-pressed="false" aria-label="Show the map" title="Show the map">
-    {{ icon('map', 'map-toggle__icon') }}
+    {{ icon('map') }}
 </button>
 
 <!-- Opens the people list on screens too narrow to show it beside the map -->
 <button class="people-toggle" id="people-toggle" type="button" aria-label="Who's online"
         aria-controls="people" aria-expanded="false">
-    {{ icon('users-group-rounded', 'people-toggle__icon') }}<span id="people-toggle-count">0</span>
+    {{ icon('users-group-rounded') }}<span id="people-toggle-count">0</span>
 </button>
 
 {# What chat.js needs from the server #}
@@ -48,98 +48,98 @@
     {# Each tab: a button that opens its chat, and on a private chat one that
        closes it (chat.js) #}
     <div class="chat-tabs" id="chat-tabs">
-        <div class="chat-tab" data-conversation="everyone">
-            <button class="chat-tab__open" type="button"><span class="chat-tab__name"># Everyone</span><span class="chat-tab__unread" hidden></span></button>
+        <div class="tab" data-part="tab" data-conversation="everyone">
+            <button class="open" type="button"><span class="name" data-part="tab-name"># Everyone</span><span class="unread" data-part="tab-unread" hidden></span></button>
         </div>
     </div>
 
     {# Phones with the map open: folds the chat down to its tabs (chat.js) #}
     <button class="chat-fold" id="chat-fold" type="button" aria-controls="chat-list" aria-expanded="true"
             aria-label="Fold the chat away" title="Fold the chat away">
-        {{ icon('alt-arrow-down', 'chat-fold__icon') }}
+        {{ icon('alt-arrow-down') }}
     </button>
 
     {# What's open: the room, or who you're talking to privately, where they
        are and their time there (chat.js) #}
     <div class="chat-header" id="chat-header">
-        <span class="chat-header__room-icon" id="chat-header-room-icon">{{ icon('hashtag-chat') }}</span>
-        <img class="chat-header__photo" id="chat-header-photo" alt="" hidden>
-        <span class="chat-header__who">
-            <span class="chat-header__top">
-                <span class="chat-header__name" id="chat-header-name">Everyone</span>
-                <span class="chat-header__tag" id="chat-header-tag">{{ icon('global', 'chat-header__tag-icon') }}Public</span>
-                <span class="chat-header__tag" id="chat-header-private-tag" hidden>{{ icon('lock', 'chat-header__tag-icon') }}Private</span>
+        <span class="room-icon" id="chat-header-room-icon">{{ icon('hashtag-chat') }}</span>
+        <img class="photo" id="chat-header-photo" alt="" hidden>
+        <span class="who">
+            <span class="top">
+                <span class="name" id="chat-header-name">Everyone</span>
+                <span class="tag" id="chat-header-tag">{{ icon('global') }}Public</span>
+                <span class="tag" id="chat-header-private-tag" hidden>{{ icon('lock') }}Private</span>
             </span>
-            <span class="chat-header__status" id="chat-header-status">Chat with people worldwide</span>
+            <span class="status" id="chat-header-status">Chat with people worldwide</span>
         </span>
     </div>
 
     {# Until you answer it: offers notifications for private messages and mentions (notifications.js) #}
     <div class="notify-prompt" id="notify-prompt">
-        <div class="notify-prompt__clip">
-            <div class="notify-prompt__content">
-                {{ icon('bell-bing', 'notify-prompt__icon') }}
-                <span class="notify-prompt__text" id="notify-prompt-text"><span class="notify-prompt__text-inner">Get notified of messages and mentions</span></span>
-                <button class="notify-prompt__button" id="notify-prompt-on" type="button">Turn on</button>
-                <button class="notify-prompt__close" id="notify-prompt-dismiss" type="button" aria-label="Not now" title="Not now">
-                    {{ icon('close', 'notify-prompt__close-icon') }}
+        <div class="clip">
+            <div class="content">
+                {{ icon('bell-bing', 'bell') }}
+                <span class="text" id="notify-prompt-text"><span class="text-inner">Get notified of messages and mentions</span></span>
+                <button class="turn-on" id="notify-prompt-on" type="button">Turn on</button>
+                <button class="close" id="notify-prompt-dismiss" type="button" aria-label="Not now" title="Not now">
+                    {{ icon('close') }}
                 </button>
             </div>
         </div>
     </div>
 
-    <div class="chat-list-wrap">
-        <div class="chat-list" id="chat-list">
+    <div class="messages">
+        <div class="list" id="chat-list">
             {% block chats %}{% endblock %}
         </div>
 
         {# While the other person in a private chat is writing to you (chat.js) #}
         <div class="typing-row" id="typing-row" aria-live="polite">
-            <div class="typing-row__clip">
-                <div class="typing-row__content">
-                    <img class="typing-row__photo" id="typing-row-photo" alt="">
-                    <span class="typing-row__dots loading-dots" aria-hidden="true"><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span></span>
-                    <span class="typing-row__label" id="typing-row-label"></span>
+            <div class="clip">
+                <div class="content">
+                    <img class="photo" id="typing-row-photo" alt="">
+                    <span class="dots loading-dots" aria-hidden="true"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+                    <span class="label" id="typing-row-label"></span>
                 </div>
             </div>
         </div>
 
         {# Shows when you've scrolled up; counts messages that came in meanwhile #}
         <button type="button" class="jump-latest" id="jump-latest" hidden>
-            {{ icon('arrow-down', 'jump-latest__icon') }}<span class="jump-latest__text" id="jump-latest-text" aria-live="polite">Latest</span>
+            {{ icon('arrow-down') }}<span class="text" id="jump-latest-text" aria-live="polite">Latest</span>
         </button>
     </div>
 
     <form class="chat-composer" method="post" id="input-container-form">
-        <div class="chat-composer__input">
-            <label class="chat-composer__label" for="textarea-send">Your message</label>
-            <span class="chat-composer__count" id="char-count" hidden></span>
-            <textarea name="message" placeholder="Type your message" rows="1" class="chat-composer__textarea" id="textarea-send"
+        <div class="box">
+            <label class="label" for="textarea-send">Your message</label>
+            <span class="count" id="char-count" hidden></span>
+            <textarea name="message" placeholder="Type your message" rows="1" class="input" id="textarea-send"
                       maxlength="{{ constant('App\\Models\\Chat::MAX_LENGTH') }}" required autofocus></textarea>
         </div>
 
-        <button name="send" class="chat-composer__send" id="button-send" type="submit"
+        <button name="send" class="send" id="button-send" type="submit"
                 aria-label="Send" title="Send" disabled>
-            {{ icon('plain', 'chat-composer__send-icon') }}
+            {{ icon('plain') }}
         </button>
     </form>
 
 </main>
 
 <aside class="people" id="people">
-    <h2 class="people__heading people__heading--top">
-        <span class="people__title"><span class="people__count" id="online-count">0</span>Online</span>
-        <button class="people__close" id="people-close" type="button" title="Close the list">&times;</button>
+    <h2 class="heading top">
+        <span class="title"><span class="count" id="online-count">0</span>Online</span>
+        <button class="close" id="people-close" type="button" title="Close the list">&times;</button>
     </h2>
 
-    <div class="people__list">
+    <div class="list">
         <div id="people-online">
-            <div class="people__loading">
-                <span class="loading-dots" role="status" aria-label="Loading"><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span></span>
+            <div class="loading">
+                <span class="loading-dots" role="status" aria-label="Loading"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
             </div>
         </div>
 
-        <h2 class="people__heading" id="recent-heading" hidden>Recently here</h2>
+        <h2 class="heading" id="recent-heading" hidden>Recently here</h2>
         <div id="people-recent"></div>
     </div>
 </aside>

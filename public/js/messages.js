@@ -63,7 +63,7 @@ const isChatSocketLive = () => isSocketLive;
 // Hands chat.js the messages newer than any shown
 function showArrivedChats(html, isAfterSending) {
     const newChats = parseHtml(html)
-        .filter((element) => element.classList.contains('chat') && Number(element.dataset.id) > lastChatId);
+        .filter((element) => element.dataset.part === 'message' && Number(element.dataset.id) > lastChatId);
     if (newChats.length === 0) return;
 
     const hasOwnSend = newChats.some((chat) => sentIds.has(Number(chat.dataset.id)));
@@ -339,7 +339,7 @@ async function fetchOlderChats(before, conversation) {
 
     // Anything not yet shown arrives with the new ones instead
     return parseHtml(html)
-        .filter((element) => element.classList.contains('chat') && Number(element.dataset.id) <= lastChatId);
+        .filter((element) => element.dataset.part === 'message' && Number(element.dataset.id) <= lastChatId);
 }
 
 // Tells the server you've seen the private messages from a person, up to
