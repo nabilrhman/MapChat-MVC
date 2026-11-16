@@ -13,7 +13,7 @@
 
 <section class="profile-page">
 
-    <h4 class="profile-page__title appear-down">Profile</h4>
+    <h1 class="profile-page__title appear-down">Profile</h1>
     <div class="divider profile-page__divider"></div>
 
     {% if user.is_guest %}
@@ -33,7 +33,7 @@
         {# Each card shows its details, and Edit turns them into fields with Cancel and Save #}
         <section class="settings-card" id="card-profile">
             <div class="settings-card__head">
-                <h5 class="settings-card__title">Profile</h5>
+                <h2 class="settings-card__title">Profile</h2>
                 <button type="button" class="button button--quiet button--small settings-card__edit-button">Edit</button>
             </div>
 
@@ -43,7 +43,7 @@
                     <img class="profile-photo__image" id="avatar" alt="Your photo"
                          src="{{ avatar_src(user.id, user.name, user.avatar) }}"
                          data-default-src="{{ default_avatar|e('html_attr') }}"/>
-                    <span class="loading-dots profile-photo__dots" aria-label="Uploading"><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span></span>
+                    <span class="loading-dots profile-photo__dots" role="status" aria-label="Uploading"><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span></span>
                 </div>
                 <div>
                     {# Without the site's own Cloudinary settings there's nowhere to upload to; removing still works #}
@@ -91,7 +91,7 @@
 
         <section class="settings-card" id="card-account">
             <div class="settings-card__head">
-                <h5 class="settings-card__title">Account</h5>
+                <h2 class="settings-card__title">Account</h2>
                 <button type="button" class="button button--quiet button--small settings-card__edit-button">Edit</button>
             </div>
 
@@ -130,7 +130,7 @@
 
     <section class="settings-card appear-down">
         <div class="settings-card__head">
-            <h5 class="settings-card__title">Privacy</h5>
+            <h2 class="settings-card__title">Privacy</h2>
         </div>
 
         <div class="privacy-setting">
@@ -161,7 +161,7 @@
     {# Per browser, so profile.js sets it from what this browser allows #}
     <section class="settings-card appear-down">
         <div class="settings-card__head">
-            <h5 class="settings-card__title">Notifications</h5>
+            <h2 class="settings-card__title">Notifications</h2>
         </div>
 
         <div class="privacy-setting">

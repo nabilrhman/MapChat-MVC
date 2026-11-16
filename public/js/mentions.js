@@ -48,7 +48,6 @@ function setUpMentions(input, canMention, getPeople) {
     input.after(picker);
     input.setAttribute('aria-controls', picker.id);
     input.setAttribute('aria-autocomplete', 'list');
-    input.setAttribute('aria-expanded', 'false');
 
     // The box's text drawn again behind it, with chips; the box's own text
     // is see-through so this shows, and the caret and selection stay real
@@ -72,8 +71,7 @@ function setUpMentions(input, canMention, getPeople) {
     function closePicker() {
         picker.hidden = true;
         matches = [];
-        input.setAttribute('aria-expanded', 'false');
-        input.removeAttribute('aria-activedescendant');
+            input.removeAttribute('aria-activedescendant');
     }
 
     function createOption(person, index) {
@@ -101,7 +99,6 @@ function setUpMentions(input, canMention, getPeople) {
     function showOptions() {
         picker.replaceChildren(...matches.map(createOption));
         picker.hidden = false;
-        input.setAttribute('aria-expanded', 'true');
         input.setAttribute('aria-activedescendant', `mention-option-${activeIndex}`);
     }
 

@@ -20,10 +20,10 @@
 
 {% block content %}
 
-<div class="map" id="map"></div>
+<section class="map" id="map" aria-label="Map of who's here"></section>
 
 <div class="map-loading" id="map-loading">
-    <span class="loading-dots" aria-label="Loading the map"><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span></span>
+    <span class="loading-dots" role="status" aria-label="Loading the map"><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span></span>
 </div>
 
 <!-- Shows the map on phones, where it starts hidden to give the chat the room -->
@@ -127,19 +127,19 @@
 </main>
 
 <aside class="people" id="people">
-    <h6 class="people__heading people__heading--top">
+    <h2 class="people__heading people__heading--top">
         <span class="people__title"><span class="people__count" id="online-count">0</span>Online</span>
         <button class="people__close" id="people-close" type="button" title="Close the list">&times;</button>
-    </h6>
+    </h2>
 
     <div class="people__list">
         <div id="people-online">
             <div class="people__loading">
-                <span class="loading-dots" aria-label="Loading"><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span></span>
+                <span class="loading-dots" role="status" aria-label="Loading"><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span></span>
             </div>
         </div>
 
-        <h6 class="people__heading" id="recent-heading" hidden>Recently here</h6>
+        <h2 class="people__heading" id="recent-heading" hidden>Recently here</h2>
         <div id="people-recent"></div>
     </div>
 </aside>

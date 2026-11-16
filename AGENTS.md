@@ -153,6 +153,8 @@ message, PR or code.
 | `composer.json`, the `Dockerfile` | `docker compose up --build` |
 | Anything a person sees | Open http://localhost:8080 and look, in the chat and on a phone width: a cramped gap or a wrong size shows only there |
 | `public/sw.js` | Reload a MapChat tab: the new version takes over at once |
+| A page's markup or colours | `python3 tests/a11y.py`: axe on every page at desktop and phone widths, against the app on :8080 |
+| A script or style from a new host | Add the host to `Core/ContentSecurityPolicy.php`; a script tag needs `nonce="{{ csp_nonce }}"` |
 
 A change is done when the tests pass, a change a person sees has been looked
 at in the browser, and the README and About page still match what the app

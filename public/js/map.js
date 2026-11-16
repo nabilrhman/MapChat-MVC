@@ -159,6 +159,8 @@ setInterval(() => document.querySelectorAll('.pin-label__time').forEach(showPinT
 function createPinElement(userId) {
     const pin = createElement('div', 'map-pin');
     pin.dataset.userId = userId;
+    // The map library labels each marker; a label needs a role to be allowed
+    pin.setAttribute('role', 'img');
     // One line, so no whitespace text sits beside the icon
     pin.innerHTML = '<svg class="map-pin__icon" width="20" height="27" viewBox="0 0 28 38" aria-hidden="true">'
         + `<path d="M14 0C6.3 0 0 6.2 0 13.9 0 24.3 14 38 14 38s14-13.7 14-24.1C28 6.2 21.7 0 14 0z" fill="${THEME.pin}"/>`

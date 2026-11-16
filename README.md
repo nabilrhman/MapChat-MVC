@@ -217,6 +217,10 @@ against their own database, `mapchat_test`, which is rebuilt from
 docker compose run --rm --build test
 ```
 
+With the app running, `python3 tests/a11y.py` checks every page for
+accessibility problems with axe-core, at desktop and phone widths, in
+headless Google Chrome.
+
 ### Settings
 
 All settings come from environment variables. `.env.example` lists them with

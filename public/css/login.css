@@ -138,6 +138,7 @@ body
 .auth-card__divider-label
 {
     padding: 0 12px;
+    color: var(--md-on-surface-variant); /* the outline colour is too faint to read on the card */
 }
 
 /* "New here?" on the left, the action on the right, at the bottom of the card */
