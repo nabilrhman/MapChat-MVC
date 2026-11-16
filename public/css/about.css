@@ -79,8 +79,8 @@
     white-space: normal;
 }
 
-/* Two cards in a row; the note spans both. The gap between cards matches
-   the space inside them */
+/* Small cards by topic, two in a row, under a heading for each group; the
+   note spans both. The gap between cards matches the space inside them */
 .about-grid
 {
     display: grid;
@@ -94,6 +94,24 @@
     {
         grid-template-columns: minmax(0, 1fr);
     }
+}
+
+/* What you can do, How it's built: a label over its cards, like the people
+   list's headings */
+.about-grid__heading
+{
+    grid-column: 1 / -1;
+    margin: var(--space-s) 0 calc(var(--space-s) - var(--space-m));
+    color: var(--md-on-surface-variant);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.about-grid__heading:first-child
+{
+    margin-top: 0;
 }
 
 .about-card
