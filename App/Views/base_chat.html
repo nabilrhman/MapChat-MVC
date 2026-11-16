@@ -53,13 +53,19 @@
         <span class="private-note__label">
             {{ icon('lock', 'private-note__icon') }}<span class="private-note__text" id="private-note-text"></span>
         </span>
-        {# While the other person is writing to you (chat.js) #}
-        <span class="private-note__typing" id="private-note-typing" aria-live="polite" hidden>Typing...</span>
+
     </div>
 
     <div class="chat-list-wrap">
         <div class="chat-list" id="chat-list">
             {% block chats %}{% endblock %}
+        </div>
+
+        {# While the other person in a private chat is writing to you (chat.js) #}
+        <div class="typing-row" id="typing-row" aria-live="polite" hidden>
+            <img class="typing-row__photo" id="typing-row-photo" alt="">
+            <span class="typing-row__dots loading-dots" aria-hidden="true"><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span></span>
+            <span class="typing-row__label" id="typing-row-label"></span>
         </div>
 
         {# Shows when you've scrolled up; counts messages that came in meanwhile #}
