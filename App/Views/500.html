@@ -1,14 +1,15 @@
 {% extends "base_app.html" %}
+{% types {} %}
 
 {% block title %}Error{% endblock %}
 
 {% block body %}
 
-<div class="error-page">
-        <h4 class="appear-down">500: Internal server error</h4>
-        <div class="divider"></div>
-        <p class="error-page__text">Something went wrong on our end. Please try again in a moment.</p>
-        <a href="/" class="button button--primary">Back to MapChat</a>
-</div>
+<section class="error-page">
+    <h4 class="appear-down">500: Internal server error</h4>
+    <div class="divider"></div>
+    <p class="error-page__text">Something went wrong on our end. Please try again in a moment.</p>
+    <a href="/" class="button button--primary">Back to MapChat</a>
+</section>
 
 {% endblock %}

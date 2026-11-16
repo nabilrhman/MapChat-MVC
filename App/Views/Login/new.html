@@ -1,5 +1,6 @@
 {% extends 'base_login.html' %}
-{% import '_form_fields.html' as form %}
+{% from '_form_fields.html' import text_field %}
+{% types {email?: 'string', remember_me?: 'bool'} %}
 
 {% block title %}Login{% endblock %}
 
@@ -12,16 +13,16 @@
 
     <form action="/login/create" method="post" class="auth-card__form">
 
-        {{ form.text_field({id: 'inputEmail', name: 'email', type: 'email', label: 'Email',
-                            value: email, autocomplete: 'email', autofocus: true}) }}
+        {{ text_field({id: 'inputEmail', name: 'email', type: 'email', label: 'Email', required: true,
+                       value: email ?? '', autocomplete: 'email', autofocus: true}) }}
 
-        {{ form.text_field({id: 'inputPassword', name: 'password', type: 'password', label: 'Password',
-                            autocomplete: 'current-password'}) }}
+        {{ text_field({id: 'inputPassword', name: 'password', type: 'password', label: 'Password', required: true,
+                       autocomplete: 'current-password'}) }}
         <a href="/password/forgot" class="auth-card__forgot">Forgot password?</a>
 
         <div class="beer auth-card__remember">
             <label class="checkbox">
-                <input type="checkbox" name="remember_me" {% if remember_me %}checked{% endif %}/>
+                <input type="checkbox" name="remember_me" {% if remember_me ?? false %}checked{% endif %}/>
                 <span class="auth-card__remember-label">Remember me</span>
             </label>
         </div>
