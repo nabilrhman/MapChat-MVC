@@ -28,6 +28,11 @@ class TestBot extends Bot
         };
     }
 
+    public static function useReply(string $reply): void
+    {
+        static::$writer = fn () => $reply;
+    }
+
     public static function forget(): void
     {
         static::$writer = null;
@@ -304,5 +309,15 @@ class BotTest extends TestCase
         TestBot::forget();
         $people = array_column(\App\Models\UserInfo::getRecentPeople(), 'is_online', 'name');
         $this->assertArrayNotHasKey('MapChat', $people);
+    }
+
+    public function testRepliesHaveNoLongDashes()
+    {
+        TestBot::useReply('Sure — the map shows cities – roughly.');
+        $this->send(self::ANN, 'what is this?', Chat::BOT_EMAIL);
+
+        $this->wait(Bot::PRIVATE_SECONDS);
+
+        $this->assertSame([[self::ANN, 'Sure, the map shows cities, roughly.']], $this->botSaid());
     }
 }
