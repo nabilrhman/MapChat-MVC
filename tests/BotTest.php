@@ -122,7 +122,7 @@ class BotTest extends TestCase
         $said = $this->botSaid();
         $this->assertCount(1, $said);
         $this->assertNull($said[0][0], 'in the open room');
-        $this->assertStringContainsString('Ann', $said[0][1]);
+        $this->assertStringStartsWith('@Ann ', $said[0][1]);
     }
 
     public function testBusyRoomGetsNoGreeting()
@@ -340,7 +340,7 @@ class BotTest extends TestCase
 
         $this->wait(Bot::FOLLOW_UP_SECONDS);
 
-        $this->assertSame([[null, 'reply 1']], $this->botSaid());
+        $this->assertSame([[null, '@Cat reply 1']], $this->botSaid(), 'tagged, as Bob spoke in between');
         $this->assertStringEndsWith("Cat: @mapchat where is Null Island?", TestBot::$asked[0][1]);
     }
 
@@ -352,5 +352,31 @@ class BotTest extends TestCase
         $this->wait(Bot::PRIVATE_SECONDS);
 
         $this->assertSame([[self::ANN, 'reply 1']], $this->botSaid());
+    }
+
+    public function testReplyIsTaggedOnlyWhenOtherMessagesCameBetween()
+    {
+        $maya = 'maya@demo.mapchat.local';
+        $this->db->prepare("INSERT INTO users (name, email, password_hash, is_active) VALUES ('Maya', ?, '!', TRUE)")
+            ->execute([$maya]);
+
+        $this->send(self::ANN, 'hello? is anyone here');
+        $this->wait(Bot::GRACE_SECONDS);
+        $this->send(self::ANN, 'what is this place?');
+        $this->send($maya, 'i want to move to Null Island');
+        $this->wait(Bot::ROOM_COOLDOWN_SECONDS);
+
+        $this->assertSame([[null, 'reply 1'], [null, '@Ann reply 2']], $this->botSaid());
+    }
+
+    public function testReplyThatMentionsThemIsntTaggedTwice()
+    {
+        TestBot::useReply('good question @ann!');
+        $this->send(self::ANN, '@MapChat what is this?');
+        $this->send(self::BOB, 'hi all');
+
+        $this->wait(Bot::FOLLOW_UP_SECONDS);
+
+        $this->assertSame([[null, 'good question @ann!']], $this->botSaid());
     }
 }

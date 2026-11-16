@@ -1307,32 +1307,37 @@ body
     text-align: right;
 }
 
-/* A message that @mentions you: a purple edge and a light tint */
+/* A message that @mentions you: a lavender tint and a thin purple edge */
 .chat--mentions-me
 {
-    background-color: color-mix(in srgb, var(--md-primary) 6%, #fafafa);
-    box-shadow: inset 3px 0 0 var(--md-primary);
+    background-color: color-mix(in srgb, var(--md-primary-container) 55%, #fafafa);
+    box-shadow: inset 2px 0 0 var(--md-primary);
 }
 
 .chat--mentions-me:hover
 {
-    background-color: color-mix(in srgb, var(--md-primary) 4%, #fff);
+    background-color: color-mix(in srgb, var(--md-primary-container) 70%, #fff);
 }
 
-/* An @mention in a message, as a chip; yours stands out */
+/* An @mention in a message: purple text on a faint tint. A chip that
+   wraps onto the next line keeps its padding on both lines */
 .mention
 {
-    padding: 0 4px;
+    padding: 1px 3px;
     border-radius: 4px;
-    background-color: var(--md-secondary-container);
-    color: var(--md-on-primary-container);
-    font-weight: 500;
+    background-color: color-mix(in srgb, var(--md-primary) var(--md-hover), transparent);
+    color: var(--md-primary);
+    font-weight: 600;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
 }
 
+/* Your own name stands out a little more, without shouting */
 .mention--me
 {
-    background-color: var(--md-primary);
-    color: var(--md-on-primary);
+    background-color: var(--md-primary-container);
+    color: var(--md-on-primary-container);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--md-primary) 30%, transparent);
 }
 
 /* Chat - ends */
