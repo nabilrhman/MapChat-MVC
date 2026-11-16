@@ -34,3 +34,12 @@
 {
     text-decoration: underline;
 }
+
+/* Phones leave it out (see styles.css) */
+@media (max-width: 700px)
+{
+    .site-footer
+    {
+        display: none;
+    }
+}
