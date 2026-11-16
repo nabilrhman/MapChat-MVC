@@ -79,6 +79,17 @@ class Config
     }
 
     /**
+     * The local port the chat socket listens on (WebSocket over TCP), and
+     * hears that new messages were saved on (UDP). Apache passes /ws to it
+     *
+     * @return int
+     */
+    public static function chatSocketPort(): int
+    {
+        return (int) static::get('CHAT_SOCKET_PORT', 8090);
+    }
+
+    /**
      * Cloudinary account that profile photos are uploaded to
      *
      * @return string

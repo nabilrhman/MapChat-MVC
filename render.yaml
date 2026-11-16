@@ -8,6 +8,8 @@ services:
     plan: free
     # A static file: Apache serves it without PHP or the database
     healthCheckPath: /health.txt
+    # The chat's WebSockets (wss://…/ws) come in on this same address; Apache
+    # passes them to the chat socket in the container (docker/start.sh)
     # Point a CNAME for this name at the service's onrender.com address
     domains:
       - mapchat.swiftsolve.net

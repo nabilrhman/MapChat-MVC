@@ -53,6 +53,8 @@
         <span class="private-note__label">
             {{ icon('lock', 'private-note__icon') }}<span class="private-note__text" id="private-note-text"></span>
         </span>
+        {# While the other person is writing to you (chat.js) #}
+        <span class="private-note__typing" id="private-note-typing" aria-live="polite" hidden>Typing...</span>
     </div>
 
     <div class="chat-list-wrap">

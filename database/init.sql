@@ -66,9 +66,15 @@ CREATE TABLE chats (
   `timestamp` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   -- When the recipient saw this private message; NULL while it's unread
   `read_at`   TIMESTAMP    NULL DEFAULT NULL,
+  -- The id the sender's page gave the message, so sending it again after a
+  -- lost reply finds this row instead of saving a second one
+  `client_id` VARCHAR(36)  NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `fk_m_email` (`email`),
   KEY `fk_m_to_email` (`to_email`),
+  UNIQUE KEY `client_id` (`email`, `client_id`),
+  -- One private chat's messages, either way, without reading anyone else's
+  KEY `pair` (`to_email`, `email`),
   CONSTRAINT `fk_m_email` FOREIGN KEY (`email`) REFERENCES users (`email`)
     ON DELETE CASCADE
     ON UPDATE CASCADE,
@@ -78,8 +84,8 @@ CREATE TABLE chats (
 )
   ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4
-  -- On TiDB, keep chat ids strictly increasing (the chat polls for id > last
-  -- seen id). MySQL ignores this comment.
+  -- On TiDB, keep chat ids strictly increasing (pages and the chat socket
+  -- read on from the last id they have). MySQL ignores this comment.
   /*T![auto_id_cache] AUTO_ID_CACHE = 1 */;
 
 -- Where each person is chatting from

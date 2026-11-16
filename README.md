@@ -54,9 +54,12 @@ so it stays awake.
 ## Features
 
 - One shared chat room for everyone who is signed in. New messages show up
-  within a second.
+  the moment they're sent, over a WebSocket.
 - Private chats: click someone's name to talk to just them, in a tab of its
-  own, with a count of the messages you haven't seen yet.
+  own, with a count of the messages you haven't seen yet. Reading them in one
+  browser tab clears the count in your others, and "Typing..." shows while
+  the other person is writing to you.
+- Who's online updates as people come and go, on the list and on the map.
 - MapChat, the room's AI, and the regulars on the map, who are AI characters
   too: see [AI chat](#ai-chat).
 - @mentions in the room: type @ to pick someone. Mentions show as chips, your
@@ -111,15 +114,15 @@ Both of them:
   someone's done chatting.
 - Read only what they need: a room reply reads the room's recent messages, a
   private reply only that one private chat. That text is sent to Groq.
-- Run without a server timer, which a free host doesn't have: each reply is a
-  job in `mapchat_jobs`, run by the chat's own polling, and checked against the
-  room again just before it posts.
+- Wait their turn as jobs in `mapchat_jobs`, which the chat worker
+  (`bin/chat-worker.php`) runs as they come due, each checked against the room
+  again just before it posts.
 
 The code is in `App/Models/Bot.php`.
 
 ## How it's built
 
-![A request goes from public/index.php to the router and a controller, which reads from MySQL through a model and answers with a Twig view or JSON](docs/images/request-path.svg)
+![A request goes from public/index.php to the router and a controller, which reads from MySQL through a model and answers with a Twig view or JSON. The browser then opens a WebSocket at /ws, which Apache passes to the chat socket's Hub, which also hears from the chat worker](docs/images/request-path.svg)
 
 - **Framework:** a model-view-controller (MVC) framework written from scratch in
   PHP 8.4, in `Core/`. The app itself is in `App/`.
@@ -129,8 +132,9 @@ The code is in `App/Models/Bot.php`.
 - **Front end:** the site's own CSS, in Material 3's colours and states
   (generated from MapChat's purple) with square corners, and Beer CSS for
   the form fields, scoped so it styles nothing else. Plain JavaScript with no
-  jQuery, and axios for every request to the server. The chat asks for new
-  messages every second.
+  jQuery, and axios for requests to the server.
+- **Live chat:** one WebSocket per open chat page, served by a PHP process of
+  its own on [amphp](https://amphp.org); see [Live chat](#live-chat).
 - **Icons:** the Bold weight of the [Solar icon set](https://www.figma.com/community/file/1166831539721848736)
   by 480 Design, under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/),
   in one sprite, `public/icons.svg`. The GitHub mark is from Simple Icons.
@@ -138,7 +142,7 @@ The code is in `App/Models/Bot.php`.
   MapChat's colours. Browsers without WebGL get OpenStreetMap tiles through
   Leaflet instead, recoloured to the same theme in the browser. No API key is
   needed for either.
-- **AI replies:** Groq's chat API, run by the chat's own polling; see
+- **AI replies:** Groq's chat API, run by the chat worker; see
   [AI chat](#ai-chat).
 - **Location:** looked up from the visitor's IP address with ipapi.co, or
   ipstack when `IPSTACK_API_KEY` is set.
@@ -146,7 +150,54 @@ The code is in `App/Models/Bot.php`.
 - **Sessions:** stored in MySQL rather than files, so restarting or waking up
   the container doesn't log anyone out.
 - **Avatars:** uploaded from the browser straight to Cloudinary.
-- **Hosting:** a Docker image with Apache and PHP.
+- **Hosting:** a Docker image with Apache, PHP-FPM, the chat socket and the
+  chat worker.
+
+## Live chat
+
+Each open chat page keeps one WebSocket to `/ws`, on the site's own address.
+Everything the chat does goes over it: new messages, sending, older pages,
+read marks, typing, and who's online. Nothing polls while it's connected.
+
+- **One reader for everyone.** The chat socket (`bin/chat-socket.php`,
+  `App/ChatSocket/`) reads new messages from MySQL in id order and sends each
+  to the pages allowed to see it: the open room's to everyone, a private one
+  only to its sender's and recipient's pages. Every process that saves a
+  message (PHP-FPM, the worker, the socket itself) signals it over local UDP,
+  so it's read at once; without a signal it's read within half a second.
+- **Sending.** A page sends each message with an id it made, and the server
+  answers once the message is in the database. If the answer is lost, the page
+  sends it again with the same id after reconnecting, and gets back the first
+  message instead of a second copy (a unique key on `chats.client_id`).
+- **Reconnecting.** A page says which message it has last whenever it
+  connects, and is caught up from MySQL from there, a page of 100 at a time,
+  before new messages go straight to it. So a dropped network, a restart or a
+  deploy loses nothing, and each message shows once and in order. A page that
+  can't keep up is cut and catches up the same way.
+- **Falling back.** If the socket can't connect twice in a row, the page goes
+  back to asking every second over HTTP, and keeps trying the socket; once it
+  connects, polling stops. Both ways resume from the same last message.
+- **Who's online.** Someone is online while any of their tabs has a socket
+  open, and for 10 seconds after their last one closes, so a reload or a brief
+  drop doesn't show them leaving. The socket pings each page every 10 seconds
+  and drops one that misses three.
+- **Typing.** "Typing..." goes only to the other person in a private chat,
+  never the text, at most every 2 seconds, and stops after 6 without a key, on
+  sending, on switching chats, or when the tab closes.
+- **Who's let in.** Only pages from the site itself (checked by Origin), with
+  a logged-in session cookie, as the HTTP chat. Every action is the session's
+  user's, checked again by the server, and logging out (or a guest account
+  expiring) closes the socket within 15 seconds. Messages over 16 KB, anything
+  but JSON text, and floods are refused.
+
+The container's main process (`docker/start.sh`) starts PHP-FPM and Apache at
+once, brings the database up to date (`database/migrate.php`), then starts
+the chat socket and the chat worker, and starts either again a second after
+it stops. On SIGTERM, a deploy or a restart, the socket closes every page's
+socket with "restarting" and the pages reconnect to the new container within
+a few seconds, at random, so they don't all arrive at once. The chat worker
+does what each poll used to set off: MapChat's due replies every second, and
+the demo people's due lines every minute.
 
 ## Run it locally
 
@@ -173,8 +224,11 @@ MapChat and the demo people chat back; see [AI chat](#ai-chat).
 Emails the app sends locally (account activation, password reset) don't go
 out. They land in Mailpit, an inbox you can open at http://localhost:8025.
 
-Code changes in `App/`, `Core/` and `public/` show up on reload. After changing
-`composer.json` or the `Dockerfile`, run `docker compose up --build` again.
+Code changes in `App/`, `Core/` and `public/` show up on reload, except in the
+chat socket and worker, which keep the code they started with: run
+`docker compose restart app` after changing `App/ChatSocket/`, `bin/` or a
+model they use. After changing `composer.json` or the `Dockerfile`, run
+`docker compose up --build` again.
 
 To start over with an empty database:
 
@@ -185,7 +239,11 @@ docker compose down -v
 ### Tests
 
 The tests cover the router, who can see which chat messages, mentions and
-nicknames, and when MapChat and the demo people answer. They run
+nicknames, and when MapChat and the demo people answer. The chat socket's
+tests start it as its own process and connect to it as pages do: private
+messages reaching only the pair, the open room reaching everyone, sending
+again after a lost answer, catching up after a restart with more than a page
+missed, typing, presence across tabs, and logging out. They run
 against their own database, `mapchat_test`, which is rebuilt from
 `database/init.sql` each run, so the app's data is never touched:
 
@@ -212,6 +270,7 @@ explanations. The main ones:
 | `GROQ_API_KEY` | Optional. Lets MapChat and the demo people chat back, through Groq's free plan (console.groq.com). Without it, MapChat only greets |
 | `MAPCHAT_MODEL` | Optional. The Groq model they write with. Default `openai/gpt-oss-120b` |
 | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_UPLOAD_PRESET` | Where avatar uploads go |
+| `CHAT_SOCKET_PORT` | Optional. The port the chat socket listens on inside the container, behind Apache's `/ws`. Default `8090` |
 
 ## Deploy for free
 
@@ -230,15 +289,23 @@ MySQL-compatible service.
    `CLOUDINARY_CLOUD_NAME` / `CLOUDINARY_UPLOAD_PRESET` for avatar uploads,
    and `GROQ_API_KEY` for MapChat and the demo people to chat back.
 
+The chat socket runs in the same container as the site, so it needs no
+service, port or address of its own: Render's HTTPS address carries
+`wss://…/ws` to Apache, which passes it on. It's one process for one
+container; more than one instance would need the instances to share new
+messages with each other, which it doesn't do.
+
 Free Render services sleep after 15 minutes without visitors, so the first visit
 after a quiet spell takes about a minute. To prevent that, the `Keep awake` GitHub
 Actions workflow requests `/health.txt` every 10 minutes. A service that never
 sleeps uses about 744 of the 750 free hours Render gives each workspace a month.
 
 A database made before later features (private messages, local times,
-countries, nicknames, MapChat's replies) is brought up to date by the container
-itself when it starts (`database/migrate.php`, which adds the `mapchat_jobs`
-table and any missing columns). The oldest of them, to add by hand:
+countries, nicknames, MapChat's replies, the live chat's `chats.client_id` and
+`pair` index) is brought up to date by the container itself when it starts
+(`database/migrate.php`, which adds the `mapchat_jobs` table and any missing
+columns and indexes, one change per statement, as TiDB needs). The oldest of
+them, to add by hand:
 
 ```sql
 ALTER TABLE chats
@@ -260,9 +327,13 @@ App/Controllers/ One class per page or action
 App/Models/      Database access for users, chats and locations, and Bot:
                  when MapChat and the demo people answer, and what they read
 App/Mention.php  @mentions, and how each person's name is shown
+App/ChatSocket/  The live chat: who's let in (Handshake), and what each page
+                 gets (Hub)
+bin/             chat-socket.php and chat-worker.php, run by docker/start.sh
 App/Views/       Twig templates
-public/          Web root: index.php, CSS, JavaScript (mentions.js is the @ list
-                 and chips), images and icons.svg
+public/          Web root: index.php, CSS, JavaScript (messages.js talks to the
+                 chat socket, mentions.js is the @ list and chips), images and
+                 icons.svg
 database/        init.sql (schema and welcome messages), demo.sql (optional
                  sample people), demo-chat.php (what they say each day),
                  migrate.php (adds columns an older database is missing, run
@@ -270,7 +341,7 @@ database/        init.sql (schema and welcome messages), demo.sql (optional
 tests/           PHPUnit tests
 docs/images/     The screenshots and diagram in this README
 docs/diagrams/   Draws the diagram: node docs/diagrams/draw.ts
-docs/load-test.* The load test and its report
+docs/load-test.* The load test and its report, with raw results in docs/load-test-results/
 ```
 
 ## Author

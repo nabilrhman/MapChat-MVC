@@ -41,6 +41,15 @@ class Schema extends \Core\Model
             'ALTER TABLE chats ADD COLUMN read_at TIMESTAMP NULL DEFAULT NULL AFTER timestamp',
             'UPDATE chats SET read_at = CURRENT_TIMESTAMP WHERE to_email IS NOT NULL',
         ]],
+        ['chats', 'client_id', [
+            'ALTER TABLE chats ADD COLUMN client_id VARCHAR(36) NULL DEFAULT NULL AFTER read_at',
+            'ALTER TABLE chats ADD UNIQUE KEY client_id (email, client_id)',
+        ]],
+    ];
+
+    /** Indexes added since the first release, as in init.sql, by table and name */
+    const ADDED_INDEXES = [
+        ['chats', 'pair', 'ALTER TABLE chats ADD KEY pair (to_email, email)'],
     ];
 
     /** Tables added since the first release, as in init.sql */
@@ -85,9 +94,10 @@ class Schema extends \Core\Model
     ];
 
     /**
-     * Add any of ADDED_TABLES and ADDED_COLUMNS the database is missing. Safe to run every start
+     * Add any of ADDED_TABLES, ADDED_COLUMNS and ADDED_INDEXES the database
+     * is missing. Safe to run every start
      *
-     * @return array The tables and columns added, as table or table.column
+     * @return array What was added, as table, table.column or table index name
      */
     public static function upgrade()
     {
@@ -108,6 +118,13 @@ class Schema extends \Core\Model
             $added[] = "$table.$column";
             foreach ($statements as $sql) {
                 $db->exec($sql);
+            }
+        }
+
+        foreach (static::ADDED_INDEXES as [$table, $index, $sql]) {
+            if (!static::hasIndex($db, $table, $index)) {
+                $db->exec($sql);
+                $added[] = "$table index $index";
             }
         }
 
@@ -163,6 +180,24 @@ class Schema extends \Core\Model
                    SELECT email, '0.0.0.0', 0, 0, 'Null Island', 'XN' FROM users WHERE email = 'bot@mapchat.local'
                    ON DUPLICATE KEY UPDATE city = COALESCE(city, 'Null Island'), country = COALESCE(country, 'XN'),
                                            lat = COALESCE(lat, 0), lng = COALESCE(lng, 0)");
+    }
+
+    /**
+     * @param PDO $db
+     * @param string $table
+     * @param string $index
+     *
+     * @return boolean
+     */
+    protected static function hasIndex($db, $table, $index)
+    {
+        $stmt = $db->prepare('SELECT COUNT(*) FROM information_schema.STATISTICS
+                              WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :table AND INDEX_NAME = :index');
+        $stmt->bindValue(':table', $table, PDO::PARAM_STR);
+        $stmt->bindValue(':index', $index, PDO::PARAM_STR);
+        $stmt->execute();
+
+        return $stmt->fetchColumn() > 0;
     }
 
     /**

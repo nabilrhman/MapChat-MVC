@@ -433,6 +433,22 @@ body
     font-size: 14px;
 }
 
+.private-note__typing
+{
+    flex-shrink: 0;
+    margin-left: 8px;
+    color: #7e57c2;
+    font-size: 12px;
+    font-style: italic;
+    line-height: 16px;
+    animation: fade-in 0.2s ease-out;
+}
+
+.private-note__typing[hidden]
+{
+    display: none;
+}
+
 /* The side panels slide in from their own edge */
 @keyframes panelInLeft
 {
@@ -492,23 +508,10 @@ body
 {
     flex: 1;
     overflow-y: auto;
+    /* Rows slide in and out sideways; that never makes it scroll sideways */
+    overflow-x: hidden;
     padding: 8px 0; /* room under the header line and after the last person */
 }
-
-/* Rows fade out at the bottom edge instead of being cut off by the footer.
-   Stops short of the scrollbar, which runs sharp down to the footer */
-.people::after
-{
-    content: '';
-    position: absolute;
-    left: 0;
-    right: 8px; /* scrollbar width */
-    bottom: 0;
-    height: 24px;
-    background: linear-gradient(rgba(250, 250, 250, 0), #fafafa);
-    pointer-events: none;
-}
-
 
 .people__heading
 {
@@ -706,8 +709,13 @@ body
 
 .person.is-entering
 {
-    animation: person-in var(--dur-slow) var(--ease-out) backwards,
-               person-arrived 1.5s var(--ease-out);
+    animation: person-in var(--dur-slow) var(--ease-out) backwards;
+}
+
+/* A separate class, so the row can slide again once it's in while the tint fades */
+.person.is-arrived
+{
+    animation: person-arrived 1.5s var(--ease-out);
 }
 
 /* The rest of the list slides to its new place instead of jumping */

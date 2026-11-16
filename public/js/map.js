@@ -16,6 +16,8 @@ const START = {lat: 43.4599, lng: -116.244, zoom: 3};
 const MAX_PIN_ZOOM = 9;
 // Same pace as the people list in people.js
 const PINS_INTERVAL = 15000;
+// Someone coming online or going moves the pins; a few at once take one fetch
+const PINS_REFRESH_DELAY = 1000;
 // The map fades in even if a slow tile never arrives
 const SHOW_MAP_TIMEOUT = 4000;
 
@@ -181,8 +183,9 @@ async function loadLocations() {
 // Everything a pin shows; when it changes, the pin is drawn again
 const getPinContent = (location) => [location.lat, location.lng, location.shown_name, location.city, location.country].join('|');
 
-// Fetches the pins now and on every round after, adding new people, dropping
-// those gone or hidden, and moving anyone whose place changed. The map only
+// Fetches the pins now, and again when someone comes online or goes
+// (refreshPinsSoon), or every round on the HTTP fallback. Adds new people,
+// drops those gone or hidden, and moves anyone whose place changed. The map only
 // zooms to the pins the first time, so it never jumps while someone looks at
 // it. Pins after the first round ease in. addPin(location, shouldAnimate)
 // returns a function that removes the pin
@@ -224,11 +227,23 @@ function keepPinsUpdated(addPin, fitPins) {
             })
             .finally(() => {
                 showMapOnce();
-                setTimeout(refreshPins, PINS_INTERVAL);
+                clearTimeout(nextPinsRefresh);
+                if (!isChatSocketLive()) nextPinsRefresh = setTimeout(refreshPins, PINS_INTERVAL);
             });
     }
 
+    refreshPinsNow = refreshPins;
     refreshPins();
+}
+
+// Set by keepPinsUpdated, once the map is made
+let refreshPinsNow = () => {};
+let nextPinsRefresh = null;
+
+// After a presence change, or when polling starts or stops (chat.js)
+function refreshPinsSoon() {
+    clearTimeout(nextPinsRefresh);
+    nextPinsRefresh = setTimeout(() => refreshPinsNow(), PINS_REFRESH_DELAY);
 }
 
 /* The vector map (MapLibre) */

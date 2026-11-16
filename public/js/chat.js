@@ -16,9 +16,12 @@ const COME_ONLINE_DELAY = 7000;
 const AT_BOTTOM_DISTANCE = 80;
 // Closer to the top than this, the next page of older messages loads
 const LOAD_OLDER_DISTANCE = 200;
-// Pages of older messages fetched in a row when none of them are for the
-// open tab, before waiting for the next scroll
-const MAX_PAGES_PER_SCROLL = 5;
+// "Typing" goes to the other person at most this often while you type,
+// and stops after this long without a key
+const TYPING_SEND_INTERVAL = 2000;
+const TYPING_IDLE_DELAY = 3000;
+// How long their "Typing..." shows without a fresh word (the server's is 6 s)
+const TYPING_SHOWN_FOR = 7000;
 // More messages than this on the page, the oldest go while you're at the
 // bottom, so a tab left open in a busy room stays small
 const MAX_MESSAGES = 300;
@@ -169,6 +172,8 @@ function addTab(conversation, name) {
 }
 
 function showConversation(conversation) {
+    // Switching chats stops "typing" in the one you leave
+    stopTyping();
     activeConversation = String(conversation);
 
     chatTabs.querySelectorAll('.chat-tab').forEach((tab) => tab.classList.remove('is-active'));
@@ -192,11 +197,10 @@ function showConversation(conversation) {
     scrollToNewest('instant');
     newMessagesWhileScrolledUp = 0;
 
+    showPartnerTyping();
     markConversationRead(activeConversation);
-    if (tab.dataset.newestId) {
-        loadConversation(activeConversation, tab.dataset.newestId);
-        delete tab.dataset.newestId;
-    }
+    // A private chat a busy room pushed out of the page loads its own messages
+    if (!hasChatsIn(activeConversation)) loadOlderIfAny(activeConversation);
 }
 
 function clearUnreadCount(tab) {
@@ -232,23 +236,20 @@ function markConversationRead(conversation) {
     });
 }
 
-// A private chat a busy room pushed out of the loaded page fetches older
-// pages until its newest message is there
-async function loadConversation(conversation, newestId) {
-    const isLoaded = () => chatList.querySelector(`.chat[data-id="${newestId}"]`);
-    if (isLoaded() || isLoadingOlder) return;
+// One of your other tabs marked the chat read: its count goes here too,
+// leaving any that came after
+function showReadElsewhere(conversation, upTo) {
+    markedReadUpTo[conversation] = Math.max(markedReadUpTo[conversation] ?? 0, upTo);
+    const tab = getTab(conversation);
+    if (!tab || conversation === activeConversation) return;
 
-    isLoadingOlder = true;
-    try {
-        while (!isLoaded() && hasOlderMessages && activeConversation === conversation) {
-            await loadOlderMessages();
-        }
-    } catch {
-        // Scrolling up tries again
-    } finally {
-        isLoadingOlder = false;
+    const unseenCount = getChats().filter((chat) => getConversation(chat) === conversation
+        && Number(chat.dataset.id) > upTo && Number(chat.dataset.senderId) !== myUserId).length;
+    if (unseenCount === 0) {
+        clearUnreadCount(tab);
+    } else {
+        setUnreadCount(tab, unseenCount);
     }
-    if (activeConversation === conversation) scrollToNewest('instant');
 }
 
 function closeTab(tab) {
@@ -541,52 +542,75 @@ jumpButton.addEventListener('click', () => {
     if (jumpButton.matches(':focus-visible')) messageInput.focus();
 });
 
-/* Older messages: the next page loads as you scroll near the top */
+/* Older messages: the open tab's next page loads as you scroll near the
+   top, straight from that chat, however busy the others have been */
 
-// The oldest message on the page; older ones are fetched before it
-let oldestChatId = 0;
-let hasOlderMessages = true;
-let isLoadingOlder = false;
 // The server's page size; a shorter page means there are no more
 const pageSize = Number(chatPanel.dataset.pageSize);
+// Per tab: false once the server has no older messages for it
+const hasOlderIn = {};
+let isLoadingOlder = false;
 
-async function loadOlderMessages() {
-    for (let page = 0; page < MAX_PAGES_PER_SCROLL && hasOlderMessages; page++) {
-        const olderChats = await fetchOlderChats(oldestChatId);
-        hasOlderMessages = olderChats.length === pageSize;
-        if (olderChats.length === 0) return;
+const hasChatsIn = (conversation) => getChats().some((chat) => getConversation(chat) === conversation);
 
-        // What you were reading stays put as the list grows above it
-        const distanceFromBottom = getDistanceFromBottom();
-
-        showTimes(olderChats);
-        olderChats.forEach((chat) => {
-            addTabFor(chat);
-            // Old news: hidden in other tabs, but not counted as unread there
-            if (getConversation(chat) !== activeConversation) chat.style.display = 'none';
-        });
-        chatList.prepend(...olderChats);
-        fadeInPhotos(olderChats.map((chat) => chat.querySelector('.chat__photo')));
-        addDayDividers();
-        oldestChatId = Number(olderChats[0].dataset.id);
-
-        chatList.scrollTop = chatList.scrollHeight - chatList.clientHeight - distanceFromBottom;
-
-        if (olderChats.some((chat) => getConversation(chat) === activeConversation)) return;
-    }
+// The tab's oldest message here; with none, the server sends its newest page
+function getOldestIdIn(conversation) {
+    const chat = getChats().find((chat) => getConversation(chat) === conversation);
+    return chat ? Number(chat.dataset.id) : Number.MAX_SAFE_INTEGER;
 }
 
-function loadOlderIfNearTop() {
-    if (isLoadingOlder || !hasOlderMessages || chatList.scrollTop > LOAD_OLDER_DISTANCE) return;
+// Each older message goes in id order among the others, so the list stays
+// in the order the room had them
+function insertInOrder(olderChats) {
+    const chats = getChats();
+    let next = 0;
+    olderChats.forEach((chat) => {
+        const id = Number(chat.dataset.id);
+        while (next < chats.length && Number(chats[next].dataset.id) < id) next += 1;
+        if (next < chats.length) {
+            chats[next].before(chat);
+        } else {
+            chatList.append(chat);
+        }
+    });
+}
+
+async function loadOlderMessages(conversation) {
+    const olderChats = (await fetchOlderChats(getOldestIdIn(conversation), conversation))
+        .filter((chat) => !chatList.querySelector(`.chat[data-id="${chat.dataset.id}"]`));
+    hasOlderIn[conversation] = olderChats.length === pageSize;
+    if (olderChats.length === 0) return;
+
+    // What you were reading stays put as the list grows above it
+    const distanceFromBottom = getDistanceFromBottom();
+
+    showTimes(olderChats);
+    olderChats.forEach((chat) => {
+        addTabFor(chat);
+        if (getConversation(chat) !== activeConversation) chat.style.display = 'none';
+    });
+    insertInOrder(olderChats);
+    fadeInPhotos(olderChats.map((chat) => chat.querySelector('.chat__photo')));
+    addDayDividers();
+
+    chatList.scrollTop = chatList.scrollHeight - chatList.clientHeight - distanceFromBottom;
+}
+
+function loadOlderIfAny(conversation) {
+    if (isLoadingOlder || hasOlderIn[conversation] === false) return;
 
     isLoadingOlder = true;
-    loadOlderMessages()
+    loadOlderMessages(conversation)
         .catch(() => {
             // The next scroll near the top tries again
         })
         .finally(() => {
             isLoadingOlder = false;
         });
+}
+
+function loadOlderIfNearTop() {
+    if (chatList.scrollTop <= LOAD_OLDER_DISTANCE) loadOlderIfAny(activeConversation);
 }
 
 // Only when you scroll up: a short tab sits at the top while it scrolls
@@ -612,9 +636,10 @@ function trimOldMessages() {
     const toDrop = chats.slice(0, chats.length - MAX_MESSAGES);
     if (activeConversation !== EVERYONE && toDrop.some((chat) => getConversation(chat) === activeConversation)) return;
 
-    toDrop.forEach((chat) => chat.remove());
-    oldestChatId = Number(chats[chats.length - MAX_MESSAGES].dataset.id);
-    hasOlderMessages = true;
+    toDrop.forEach((chat) => {
+        hasOlderIn[getConversation(chat)] = true;
+        chat.remove();
+    });
     addDayDividers();
 }
 
@@ -639,6 +664,8 @@ function showNewChats(newChats, isAfterSending) {
     if (newChats.some((chat) => !onlineUserIds.has(Number(chat.dataset.senderId)))) {
         refreshPeople();
     }
+    // Their message is in: they've stopped typing it
+    newChats.forEach((chat) => hidePartnerTyping(chat.dataset.senderId));
 
     showTimes(newChats);
     chatList.append(...newChats);
@@ -691,6 +718,7 @@ composerForm.addEventListener('submit', (event) => {
 
     isSending = true;
     updateSendButton();
+    stopTyping();
 
     sendMessage(messageInput.value.trim(), to)
         .then(() => {
@@ -727,13 +755,90 @@ messageInput.addEventListener('input', () => {
     updateSendButton();
     fitMessageInputToText();
     showCharacterCount();
+    noteTyping();
 });
+
+/* Typing: in a private chat, the other person sees "Typing..." while you
+   write to them. Only that you are, never what */
+
+const typingNote = document.getElementById('private-note-typing');
+
+// Who you're telling, when you last told them, and the timer that stops it
+let typingTo = null;
+let typingSentAt = 0;
+let typingIdleTimer = null;
+
+function noteTyping() {
+    const isPrivate = activeConversation !== EVERYONE;
+    if (!isPrivate || messageInput.value.trim() === '') {
+        stopTyping();
+        return;
+    }
+
+    clearTimeout(typingIdleTimer);
+    typingIdleTimer = setTimeout(stopTyping, TYPING_IDLE_DELAY);
+    if (typingTo === activeConversation && Date.now() - typingSentAt < TYPING_SEND_INTERVAL) return;
+
+    typingTo = activeConversation;
+    typingSentAt = Date.now();
+    sendTyping(typingTo, true);
+}
+
+function stopTyping() {
+    clearTimeout(typingIdleTimer);
+    if (typingTo === null) return;
+    sendTyping(typingTo, false);
+    typingTo = null;
+}
+
+// The people typing to you, with when it stops showing unless they type on
+const partnerTypingUntil = {};
+
+function showPartnerTyping() {
+    typingNote.hidden = (partnerTypingUntil[activeConversation] ?? 0) < Date.now();
+}
+
+function onPartnerTyping(from, isTyping) {
+    if (isTyping) {
+        partnerTypingUntil[from] = Date.now() + TYPING_SHOWN_FOR;
+        setTimeout(showPartnerTyping, TYPING_SHOWN_FOR + 50);
+    } else {
+        delete partnerTypingUntil[from];
+    }
+    showPartnerTyping();
+}
+
+function hidePartnerTyping(from) {
+    if (!(from in partnerTypingUntil)) return;
+    delete partnerTypingUntil[from];
+    showPartnerTyping();
+}
+
+// Typing never shows from before a reconnect: whoever still is says so again
+function hideAllTyping() {
+    Object.keys(partnerTypingUntil).forEach((from) => delete partnerTypingUntil[from]);
+    showPartnerTyping();
+    typingTo = null;
+}
+
+/* Who's online, as the chat socket says it changes */
+
+function onPresence(person) {
+    updatePerson(person);
+    refreshPinsSoon();
+}
+
+// The socket went down and polling took over, or the other way round
+function onPollingChanged(isPolling) {
+    setPeoplePolling(isPolling);
+    refreshPinsSoon();
+}
 
 /* Start */
 
 const historyChats = getChats();
-oldestChatId = historyChats.length ? Number(historyChats[0].dataset.id) : 0;
-hasOlderMessages = historyChats.length === pageSize;
+// A short first page is the whole history, of every tab
+if (historyChats.length < pageSize) hasOlderIn[EVERYONE] = false;
 showTimes(historyChats);
 fadeInPhotos(chatList.querySelectorAll('.chat__photo'));
 historyChats.forEach(addTabFor);
@@ -744,14 +849,22 @@ JSON.parse(chatPanel.dataset.conversations || '[]').forEach((partner) => {
 
     forgetClosedTab(conversation);
     const tab = addTab(conversation, partner.shown_name);
-    tab.dataset.newestId = partner.newest_id;
     if (Number(partner.unread) > 0) setUnreadCount(tab, partner.unread);
 });
 showConversation(EVERYONE);
 shouldAnimateNewTabs = true;
 
 keepPeopleUpdated(updateOnlineDots, openPrivateChat);
-keepMessagesUpdated(showNewChats, reloadIfUpdated);
+connectChat({
+    onNewChats: showNewChats,
+    onBuild: reloadIfUpdated,
+    onPeople: setPeople,
+    onPresence,
+    onRead: showReadElsewhere,
+    onTyping: onPartnerTyping,
+    onDisconnected: hideAllTyping,
+    onPollingChanged,
+});
 
 // Slide the panels in
 document.body.classList.add('is-ready');

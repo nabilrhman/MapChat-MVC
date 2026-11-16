@@ -15,6 +15,8 @@ services:
       - ./Core:/var/www/html/Core
       - ./public:/var/www/html/public
       - ./database:/var/www/html/database
+      # The chat socket and worker; restart the container to load changes: docker compose restart app
+      - ./bin:/var/www/html/bin
     depends_on:
       mailpit:
         condition: service_started
@@ -42,6 +44,8 @@ services:
       # The HTTP tests serve the site from here
       - ./public:/var/www/html/public
       - ./tests:/var/www/html/tests
+      # The chat socket tests start it from here
+      - ./bin:/var/www/html/bin
     depends_on:
       db:
         condition: service_healthy
