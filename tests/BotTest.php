@@ -441,18 +441,20 @@ class BotTest extends TestCase
         $this->assertStringContainsString("Maya (you): @Ann reply 1\nAnn: what do you do there?", TestBot::$asked[1][1]);
     }
 
-    public function testDemoPersonReadsTheirOwnLinesButNotTheOtherScript()
+    public function testDemoPersonReadsTheSceneTheyWereSummonedInto()
     {
         $maya = $this->addDemoPerson('Maya Thompson', 'Toronto');
         $lukas = $this->addDemoPerson('Lukas Becker', 'Berlin');
-        $this->send($maya, 'anyone else up early?');
-        $this->send($lukas, 'my team lost again');
-        $this->send(self::ANN, '@Maya me!');
+        $this->send($maya, '@Lukas any news on the mystery parcel?');
+        $this->send($lukas, 'it was socks. forty pairs of socks');
+        $this->send(self::ANN, '@Maya what parcel?');
 
         $this->wait(Bot::FOLLOW_UP_SECONDS);
 
-        $this->assertStringContainsString('Maya (you): anyone else up early?', TestBot::$asked[0][1]);
-        $this->assertStringNotContainsString('my team lost', TestBot::$asked[0][1]);
+        $this->assertStringContainsString(
+            "Maya (you): @Lukas any news on the mystery parcel?\nLukas: it was socks. forty pairs of socks\nAnn: @Maya what parcel?",
+            TestBot::$asked[0][1]
+        );
     }
 
     public function testDemoPersonAnswersPrivatelyFromThatChatOnly()
