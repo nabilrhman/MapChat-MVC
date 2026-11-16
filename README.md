@@ -16,6 +16,7 @@ I wrote from scratch in PHP.
 [![License](https://img.shields.io/badge/license-MIT-512da8?labelColor=1e0839)](LICENSE)
 
 **[Open MapChat](https://mapchat.swiftsolve.net)** &nbsp;·&nbsp;
+**[AI chat](#ai-chat)** &nbsp;·&nbsp;
 **[Run it locally](#run-it-locally)** &nbsp;·&nbsp;
 **[Deploy for free](#deploy-for-free)** &nbsp;·&nbsp;
 **[Project layout](#project-layout)**
@@ -56,10 +57,8 @@ so it stays awake.
   within a second.
 - Private chats: click someone's name to talk to just them, in a tab of its
   own, with a count of the messages you haven't seen yet.
-- MapChat, the room's AI: it says hello when someone walks into a quiet room,
-  answers someone nobody else answered, keeps a conversation going without
-  being @mentioned, and steps back while people talk to each other. It
-  answers private messages too.
+- MapChat, the room's AI, and the regulars on the map, who are AI characters
+  too: see [AI chat](#ai-chat).
 - @mentions in the room: type @ to pick someone. Mentions show as chips, your
   own stand out, and a mention in a tab you're not looking at turns its count
   purple.
@@ -79,6 +78,44 @@ so it stays awake.
 - Profiles with a name and an avatar.
 - Limits that keep one person from flooding the room: messages are at most 500
   characters, and each person can send 30 a minute (10 for guests).
+
+## AI chat
+
+Two kinds of AI share the room, and Groq's chat API (`openai/gpt-oss-120b` by
+default) writes what both say. Without `GROQ_API_KEY`, MapChat only greets and
+the regulars only follow their script.
+
+**MapChat**, the room's own account, pinned on Null Island:
+
+- Says hello when someone walks into a quiet room, once a day per person.
+- Answers someone nobody else answered: at once if nobody else is online,
+  otherwise after giving others 45 seconds.
+- Keeps a conversation going without being @mentioned, and steps back as soon
+  as people talk to each other. An @MapChat always gets an answer.
+- Answers private messages.
+
+**The regulars**, the nine people on the map, are digital characters. Through
+the day they play out stories from `database/demo-chat.php`, and:
+
+- @mention one in the room, or message them privately, and they answer in
+  character, coming online first if they were away.
+- While a guest talks with one in the room, the story waits, and goes on from
+  where it was once that conversation goes quiet.
+- Asked whether they're real, they say they're MapChat's digital characters,
+  written by AI.
+
+Both of them:
+
+- Tag who they're answering (MapChat when other messages came in between, the
+  characters always), keep replies short, and stop asking questions once
+  someone's done chatting.
+- Read only what they need: a room reply reads the room's recent messages, a
+  private reply only that one private chat. That text is sent to Groq.
+- Run without a server timer, which a free host doesn't have: each reply is a
+  job in `mapchat_jobs`, run by the chat's own polling, and checked against the
+  room again just before it posts.
+
+The code is in `App/Models/Bot.php`.
 
 ## How it's built
 
@@ -101,11 +138,8 @@ so it stays awake.
   MapChat's colours. Browsers without WebGL get OpenStreetMap tiles through
   Leaflet instead, recoloured to the same theme in the browser. No API key is
   needed for either.
-- **AI replies:** Groq's chat API (`openai/gpt-oss-120b` by default) writes
-  what MapChat and the demo people say back. Each reply is a job in
-  `mapchat_jobs`, run by the chat's own polling, since a free server has no
-  timer, and checked against the room again just before it posts. Room
-  replies only read the room, and private replies only that private chat.
+- **AI replies:** Groq's chat API, run by the chat's own polling; see
+  [AI chat](#ai-chat).
 - **Location:** looked up from the visitor's IP address with ipapi.co, or
   ipstack when `IPSTACK_API_KEY` is set.
 - **Email:** Symfony Mailer, sending through any SMTP provider or Brevo's API.
@@ -133,18 +167,8 @@ MapChat welcome; their messages from earlier days are cleared. Their accounts ca
 logged into. To start with an empty room instead, remove the `demo.sql` line
 from `docker-compose.yml`.
 
-They're digital characters, and with `GROQ_API_KEY` set they talk back:
-@mention one in the room, or message them privately, and they answer in
-character, coming online first if they were away. While a guest talks with one
-in the room, their story waits, and it goes on from where it was once that
-conversation goes quiet. Asked whether they're real, they say they're
-MapChat's digital characters, written by AI.
-
-The MapChat account says hello when you walk into a quiet room. With
-`GROQ_API_KEY` set it also chats back: it answers someone nobody else answered
-(at once if nobody else is online, otherwise after giving others 45 seconds),
-keeps talking with whoever is talking to it, goes quiet while people talk to
-each other, and answers private messages (click its name).
+With a Groq key (free at console.groq.com) as `GROQ_API_KEY` in `.env`,
+MapChat and the demo people chat back; see [AI chat](#ai-chat).
 
 Emails the app sends locally (account activation, password reset) don't go
 out. They land in Mailpit, an inbox you can open at http://localhost:8025.
