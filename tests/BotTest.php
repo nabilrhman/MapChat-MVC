@@ -320,4 +320,14 @@ class BotTest extends TestCase
 
         $this->assertSame([[self::ANN, 'Sure, the map shows cities, roughly.']], $this->botSaid());
     }
+
+    public function testRepliesDontIntroduceThemselves()
+    {
+        TestBot::useReply('MapChat here, the AI for this map chat. The map shows pins for each city.');
+        $this->send(self::ANN, 'what is this?', Chat::BOT_EMAIL);
+
+        $this->wait(Bot::PRIVATE_SECONDS);
+
+        $this->assertSame([[self::ANN, 'The map shows pins for each city.']], $this->botSaid());
+    }
 }
