@@ -415,24 +415,35 @@ h4
 
 /* The thin bar across the top while the next page loads (loadingBar.js).
    It jumps a little straight away so the click feels answered, then slows,
-   as it can't know how long is left; the next page fills the rest */
+   as it can't know how long is left; the next page fills the rest. It
+   grows by scaling from its left end */
 .loading-bar
 {
     position: fixed;
-    top: 0;
-    left: 0;
+    inset-block-start: 0;
+    inset-inline: 0;
     z-index: 10000;
-    width: 0;
     height: 4px; /* as thick as the header's yellow line */
     background-color: #ffc107;
     opacity: 0;
+    transform: scaleX(0);
+    transform-origin: left;
     pointer-events: none;
 }
 
-.loading-bar--running
+.loading-bar.is-running
 {
     opacity: 1;
-    animation: loading-bar-grow 10s linear forwards;
+    animation: loading-bar-grow var(--dur-loading-bar) linear forwards;
+}
+
+/* The next page fills it from where the last one left it (loadingBar.js),
+   then fades it out */
+.loading-bar.is-finishing
+{
+    opacity: 1;
+    animation: loading-bar-fill var(--dur) var(--ease-out) forwards,
+               fade-out var(--dur) var(--ease-in) var(--dur) forwards;
 }
 
 /* Under the header it fills the header's yellow line in amber, which shows
@@ -446,22 +457,29 @@ h4
 
 @keyframes loading-bar-grow
 {
-    0%   { width: 0; }
-    3%   { width: 30%; }
-    20%  { width: 60%; }
-    100% { width: 90%; }
+    0%   { transform: scaleX(0); }
+    3%   { transform: scaleX(0.3); }
+    20%  { transform: scaleX(0.6); }
+    100% { transform: scaleX(0.9); }
+}
+
+@keyframes loading-bar-fill
+{
+    from { transform: scaleX(var(--progress-from-last-page, 0)); }
+    to { transform: scaleX(1); }
 }
 
 /* Tooltips (tooltip.js): a small near-black label with a little arrow,
    fading in just above the thing (or below it near the top of the screen) */
 .tooltip
 {
+    --tooltip-colour: rgba(33, 33, 33, 0.92);
     position: fixed;
     z-index: 2000;
     max-width: 240px;
     padding: 5px 9px;
     border-radius: 6px;
-    background-color: rgba(33, 33, 33, 0.92);
+    background-color: var(--tooltip-colour);
     color: #fff;
     font-size: 12px;
     line-height: 1.35;
@@ -471,13 +489,7 @@ h4
     transition: opacity var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
 }
 
-.tooltip.is-shown
-{
-    opacity: 1;
-    transform: none;
-}
-
-.tooltip--below
+.tooltip.is-below
 {
     transform: translateY(-3px);
 }
@@ -490,29 +502,36 @@ h4
     top: 100%;
     left: var(--arrow-x, 50%);
     border: 4px solid transparent;
-    border-top-color: rgba(33, 33, 33, 0.92);
+    border-top-color: var(--tooltip-colour);
     transform: translateX(-50%);
 }
 
-.tooltip--below::after
+.tooltip.is-below::after
 {
     top: auto;
     bottom: 100%;
     border-top-color: transparent;
-    border-bottom-color: rgba(33, 33, 33, 0.92);
+    border-bottom-color: var(--tooltip-colour);
 }
 
 /* Beside the thing, on its left, with the arrow pointing right at it */
-.tooltip--left
+.tooltip.is-on-left
 {
     transform: translateX(3px);
 }
 
-.tooltip--left::after
+.tooltip.is-on-left::after
 {
     top: 50%;
     left: 100%;
     border-top-color: transparent;
-    border-left-color: rgba(33, 33, 33, 0.92);
+    border-left-color: var(--tooltip-colour);
     transform: translateY(-50%);
+}
+
+/* After the sides, so it wins over their small offsets */
+.tooltip.is-shown
+{
+    opacity: 1;
+    transform: none;
 }
