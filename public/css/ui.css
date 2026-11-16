@@ -342,7 +342,8 @@ h4
 }
 
 /* Toasts (toast.js): Material 3 snackbars, as in Beer CSS, with an icon
-   for the type. Bottom right, just above the footer; centred on phones */
+   for the type. Bottom right, just above the footer; on phones, centred
+   just under the header, clear of the keyboard and the message box */
 .toasts
 {
     position: fixed;
@@ -356,12 +357,13 @@ h4
     max-width: 340px;
 }
 
-@media (max-width: 600px)
+@media (max-width: 700px)
 {
     .toasts
     {
+        top: var(--toast-top, calc(var(--header-height) + 12px));
         right: auto;
-        bottom: calc(var(--footer-height) + 16px);
+        bottom: auto;
         left: 50%;
         align-items: center;
         width: max-content;
@@ -384,6 +386,15 @@ h4
     line-height: 1.4;
     cursor: pointer; /* a tap closes it */
     animation: fade-in-up var(--dur) var(--ease-out);
+}
+
+/* Coming down from the header on phones */
+@media (max-width: 700px)
+{
+    .toast
+    {
+        animation-name: fade-in-down;
+    }
 }
 
 .toast.is-leaving
