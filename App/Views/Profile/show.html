@@ -1,5 +1,6 @@
 {% extends "base_app.html" %}
-{% import '_form_fields.html' as form %}
+{% from '_form_fields.html' import text_field %}
+{% types {user: '\\App\\Models\\User', place: 'array|null', default_avatar: 'string'} %}
 
 {% block title %}Profile{% endblock %}
 
@@ -10,7 +11,7 @@
 
 {% block body %}
 
-<div class="profile-page">
+<section class="profile-page">
 
     <h4 class="profile-page__title appear-down">Profile</h4>
     <div class="divider profile-page__divider"></div>
@@ -67,11 +68,11 @@
             </dl>
 
             <div class="settings-card__edit">
-                {{ form.text_field({id: 'inputName', name: 'name', label: 'Name', value: user.name, autocomplete: 'name'}) }}
+                {{ text_field({id: 'inputName', name: 'name', label: 'Name', required: true, value: user.name, autocomplete: 'name'}) }}
                 {# Guests stay "Guest" and a number #}
                 {% if not user.is_guest %}
-                {{ form.text_field({id: 'inputNickname', name: 'nickname', label: 'Nickname (optional)', value: user.nickname,
-                                    autocomplete: 'nickname', hint: 'Shown instead of your first name. People @mention you by it'}) }}
+                {{ text_field({id: 'inputNickname', name: 'nickname', label: 'Nickname (optional)', value: user.nickname,
+                               autocomplete: 'nickname', hint: 'Shown instead of your first name. People @mention you by it'}) }}
                 {% endif %}
             </div>
 
@@ -96,19 +97,19 @@
 
             {# A guest's placeholder email isn't shown; they type their own to keep the account #}
             <div class="settings-card__edit">
-                {{ form.text_field({id: 'inputEmail', name: 'email', type: 'email', label: 'Email',
-                                    value: user.is_guest ? '' : user.email, autocomplete: 'email'}) }}
+                {{ text_field({id: 'inputEmail', name: 'email', type: 'email', label: 'Email', required: not user.is_guest,
+                               value: user.is_guest ? '' : user.email, autocomplete: 'email'}) }}
 
                 {% if user.is_guest %}
-                {{ form.text_field({id: 'inputPassword', name: 'password', type: 'password', label: 'Password', autocomplete: 'new-password',
-                                    hint: '6+ characters, a letter and a number. Needed to keep your account.'}) }}
+                {{ text_field({id: 'inputPassword', name: 'password', type: 'password', label: 'Password', autocomplete: 'new-password',
+                               minlength: 6, hint: '6+ characters, a letter and a number, to keep your account'}) }}
                 {% else %}
-                {{ form.text_field({id: 'inputPassword', name: 'password', type: 'password', label: 'New password', autocomplete: 'new-password',
-                                    hint: 'Leave blank to keep your current password.'}) }}
+                {{ text_field({id: 'inputPassword', name: 'password', type: 'password', label: 'New password', autocomplete: 'new-password',
+                               minlength: 6, hint: 'Leave blank to keep your current password.'}) }}
 
-                {{ form.text_field({id: 'inputCurrentPassword', name: 'current_password', type: 'password', label: 'Current password',
-                                    autocomplete: 'current-password', hint: 'Needed to change your email or password.',
-                                    box_id: 'current-password', hidden: true}) }}
+                {{ text_field({id: 'inputCurrentPassword', name: 'current_password', type: 'password', label: 'Current password',
+                               autocomplete: 'current-password', hint: 'Needed to change your email or password.',
+                               box_id: 'current-password', hidden: true}) }}
                 {% endif %}
             </div>
 
@@ -170,7 +171,7 @@
         </div>
     </section>
 
-</div>
+</section>
 
 {% endblock %}
 

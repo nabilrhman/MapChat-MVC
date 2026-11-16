@@ -8,7 +8,7 @@
 //
 // Both ways share lastChatId, the newest message shown: the socket resumes
 // from it on every (re)connect, and anything at or below it is skipped, so
-// each message shows once and in order however the two overlap.
+// each message shows once and in order however the two overlap
 
 const MESSAGES_INTERVAL = 1000;
 const MESSAGES_HIDDEN_INTERVAL = 8000;
@@ -22,8 +22,12 @@ const RECONNECT_DELAYS = [500, 1000, 2000, 4000, 8000, 15000, 30000];
 const FAILURES_BEFORE_POLLING = 2;
 // A send not saved by then fails; sending the same text again reuses its id
 const SEND_TIMEOUT = 15000;
+// A page of older messages not back by then fails; the next scroll asks again
+const OLDER_TIMEOUT = 15000;
 // Close codes from the chat socket (App\ChatSocket\Tab)
 const CLOSE_LOG_IN_AGAIN = 4401;
+// The open room's conversation; a private one is the other person's id
+const EVERYONE = 'everyone';
 
 // The newest message this page has; each tab keeps its own
 let lastChatId = Number(document.getElementById('chat').dataset.lastChatId);
@@ -89,14 +93,14 @@ function openSocket() {
     });
     thisSocket.addEventListener('message', (event) => {
         lastHeardAt = Date.now();
-        handleSocketMessage(JSON.parse(event.data));
+        onSocketMessage(JSON.parse(event.data));
     });
     thisSocket.addEventListener('close', (event) => {
         if (socket === thisSocket) onSocketClosed(event.code);
     });
 }
 
-function handleSocketMessage(message) {
+function onSocketMessage(message) {
     switch (message.type) {
         case 'welcome':
             onSocketWelcome(message);
@@ -114,8 +118,7 @@ function handleSocketMessage(message) {
             settleSend(message.clientId, (send) => send.reject(createSendError(message.error, message.status)));
             break;
         case 'older':
-            olderRequests.get(message.requestId)?.resolve(message.html);
-            olderRequests.delete(message.requestId);
+            settleOlderRequest(message.requestId, (request) => request.resolve(message.html));
             break;
         case 'read':
             chatHandlers.onRead(message.conversation, message.upTo);
@@ -167,8 +170,9 @@ function onSocketClosed(code) {
     }
 
     // Older pages asked for are asked again on the next scroll
-    olderRequests.forEach((request) => request.reject(new Error('The chat reconnected')));
-    olderRequests.clear();
+    olderRequests.forEach((request, requestId) => {
+        settleOlderRequest(requestId, () => request.reject(new Error('The chat reconnected')));
+    });
     chatHandlers.onDisconnected();
 
     if (!wasLive) failuresInARow += 1;
@@ -190,17 +194,16 @@ async function checkForMessages(isAfterSending = false) {
     showArrivedChats(response.data, isAfterSending);
 }
 
-function keepCheckingForMessages() {
+async function keepCheckingForMessages() {
     if (!isPolling) return;
 
-    checkForMessages()
-        .catch(() => {
-            // Try again on the next round
-        })
-        .finally(() => {
-            if (!isPolling) return;
-            pollTimer = setTimeout(keepCheckingForMessages, document.hidden ? MESSAGES_HIDDEN_INTERVAL : MESSAGES_INTERVAL);
-        });
+    try {
+        await checkForMessages();
+    } catch {
+        // Try again on the next round
+    }
+    if (!isPolling) return;
+    pollTimer = setTimeout(keepCheckingForMessages, document.hidden ? MESSAGES_HIDDEN_INTERVAL : MESSAGES_INTERVAL);
 }
 
 function startPolling() {
@@ -219,22 +222,22 @@ function stopPolling() {
     chatHandlers.onPollingChanged(false);
 }
 
-function sendOverHttp(clientId, send) {
+async function sendOverHttp(clientId, send) {
     const message = {body: send.body, client_id: clientId};
     if (send.to !== null) message.to = send.to;
 
-    postForm('/app/send', message)
-        .then((response) => {
-            settleSend(clientId, (pending) => pending.resolve(response.data.id));
-            // So it shows at once rather than on the next round. That failing
-            // doesn't fail the send: the message went out, the next round brings it
-            checkForMessages(true).catch(() => {});
-        })
-        .catch((error) => {
-            // No answer (a network error): it stays pending for the next try
-            if (!error.response) return;
-            settleSend(clientId, (pending) => pending.reject(error));
-        });
+    let response;
+    try {
+        response = await postForm('/app/send', message);
+    } catch (error) {
+        // No answer (a network error): it stays pending for the next try
+        if (error.response) settleSend(clientId, (pending) => pending.reject(error));
+        return;
+    }
+    settleSend(clientId, (pending) => pending.resolve(response.data.id));
+    // So it shows at once rather than on the next round. That failing
+    // doesn't fail the send: the message went out, the next round brings it
+    checkForMessages(true).catch(() => {});
 }
 
 /* What chat.js calls */
@@ -259,6 +262,15 @@ function connectChat(handlers) {
     openSocket();
 }
 
+function settleOlderRequest(requestId, settle) {
+    const request = olderRequests.get(requestId);
+    if (!request) return;
+
+    olderRequests.delete(requestId);
+    clearTimeout(request.timer);
+    settle(request);
+}
+
 function settleSend(clientId, settle) {
     const send = pendingSends.get(clientId);
     if (!send) return;
@@ -268,7 +280,7 @@ function settleSend(clientId, settle) {
     settle(send);
 }
 
-// An error shaped like axios's, so getErrorMessage reads both the same
+// An error shaped like axios's, so errorMessageOf reads both the same
 function createSendError(message, status) {
     return Object.assign(new Error(message), {response: {status, data: {error: message}}});
 }
@@ -314,7 +326,11 @@ async function fetchOlderChats(before, conversation) {
     if (isSocketLive) {
         const requestId = nextRequestId++;
         html = await new Promise((resolve, reject) => {
-            olderRequests.set(requestId, {resolve, reject});
+            const request = {resolve, reject};
+            request.timer = setTimeout(() => {
+                settleOlderRequest(requestId, () => reject(new Error('No answer from the server')));
+            }, OLDER_TIMEOUT);
+            olderRequests.set(requestId, request);
             socket.send(JSON.stringify({type: 'older', requestId, before, conversation}));
         });
     } else {

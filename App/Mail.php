@@ -9,9 +9,7 @@ use Symfony\Component\Mailer\Transport;
 use Symfony\Component\Mime\Email;
 
 /**
- * Mail
- *
- * Sends through whatever MAILER_DSN points at, e.g. any provider's SMTP:
+ * Sends email through whatever MAILER_DSN points at, e.g. any provider's SMTP:
  * smtp://user:pass@smtp.example.com:587
  * or Brevo's HTTPS API, for hosts that block SMTP ports (like Render's free plan):
  * brevo+api://API_KEY@default
@@ -20,16 +18,15 @@ class Mail
 {
     /**
      * Send a message. Does nothing when email is not configured. A failed
-     * send is logged instead of thrown, so the page still loads.
+     * send is logged instead of thrown, so the page still loads
      *
-     * @param string $to Recipient
-     * @param string $subject Subject
-     * @param string $text Text-only content of the message
-     * @param string $html HTML content of the message
+     * @param string $to The recipient's address
+     * @param string $text The message as plain text
+     * @param string $html The message as HTML
      *
-     * @return boolean True if the message was handed to the mail service
+     * @return bool Whether the mail service took it
      */
-    public static function send($to, $subject, $text, $html)
+    public static function send(string $to, string $subject, string $text, string $html): bool
     {
         if (!Config::mailEnabled()) {
             return false;

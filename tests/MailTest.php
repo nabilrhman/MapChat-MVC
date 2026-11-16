@@ -42,6 +42,9 @@ class MailTest extends TestCase
         }
     }
 
+    /**
+     * MAILER_DSN values that are set up wrong, each with a secret in it
+     */
     public static function brokenDsns(): array
     {
         return [

@@ -60,22 +60,24 @@ https://github.com/user-attachments/assets/06384a18-cd12-4e27-8cf0-530ab2463569
 ## Features
 
 - One open chat room for everyone signed in, live over a WebSocket.
+  Messages are up to 500 characters, at most 30 a minute, or 10 for a guest.
 - Private chats in tabs of their own, with unread counts and "Typing...".
   Each opens with a header showing who you're talking to, and their city and
   local time.
 - @mentions: type @ to pick someone; mentions show as chips.
 - Notifications for private messages and @mentions, even with MapChat closed
-  (Web Push). Turn them on from the chat or your profile; they're per
-  browser.
-- A map with a pin for each person online, at city level, never an exact
-  location, with their local time and a sun or moon.
+  (Web Push). Turn them on from the chat or your profile. They're per
+  browser, and logging out turns them off there.
+- A map with a pin for each person online, placed from their IP address and
+  rounded to about a kilometre, never from GPS, with their local time and a
+  sun or moon.
 - Hover someone, or a message's city, to point out their pin; click the city
   to fly the map to it. The night side of the world is shaded.
 - Anyone can hide their pin and city from the map.
 - MapChat, the room's AI, and AI characters who chat back: see
   [AI chat](#ai-chat).
-- Try it as a guest without signing up; guest accounts last 24 hours unless
-  kept.
+- Try it as a guest without signing up. A guest account lasts 24 hours
+  unless kept, then it's logged out and deleted.
 - Accounts with email activation, password reset, nicknames and avatars.
 - Works on phones, where the map folds away to give the chat the room.
 
@@ -85,7 +87,8 @@ Two kinds of AI share the room, and Groq's chat API (`openai/gpt-oss-120b` by
 default) writes what both say. Without `GROQ_API_KEY`, MapChat only greets and
 the characters only follow their script.
 
-**MapChat**, the room's own account, pinned on Null Island:
+**MapChat**, the room's own account. It has no pin on the map, and the
+people list places it on Null Island:
 
 - Says hello when someone walks into a quiet room, once a day per person.
 - Answers someone nobody else answered, giving others 45 seconds first.
@@ -116,6 +119,9 @@ on what's sent to its API. The code is in `App/Models/Bot.php`.
 - **Database:** MySQL, queried with prepared statements to block SQL injection.
 - **Views:** Twig 3 templates, which escape everything users type to block
   cross-site scripting.
+- **Requests:** a form, a request from a page or the chat socket that changes
+  anything must say it comes from the site itself (its Origin or Referer),
+  which blocks cross-site request forgery.
 - **Front end:** the site's own CSS, in Material 3's colours and states
   (generated from MapChat's purple) with square corners, and Beer CSS for
   the form fields, scoped so it styles nothing else. Plain JavaScript with no
@@ -136,8 +142,10 @@ on what's sent to its API. The code is in `App/Models/Bot.php`.
   needed for either.
 - **AI replies:** Groq's chat API, run by the chat worker; see
   [AI chat](#ai-chat).
-- **Location:** looked up from the visitor's IP address with ipapi.co, or
-  ipstack when `IPSTACK_API_KEY` is set.
+- **Location:** looked up from the IP address someone logs in from, which is
+  kept with their account. ipstack is tried first when `IPSTACK_API_KEY` is
+  set, then ipapi.co, ipwho.is and GeoJS. The place is stored and shown
+  rounded to two decimal places, about a kilometre.
 - **Email:** Symfony Mailer, sending through any SMTP provider or Brevo's API.
 - **Sessions:** stored in MySQL rather than files, so restarting or waking up
   the container doesn't log anyone out.
@@ -151,7 +159,8 @@ Each open chat page keeps one WebSocket, served by a PHP process of its own on
 [amphp](https://amphp.org) in the same container as the site. New messages,
 typing and who's online arrive the moment they happen, nothing is lost or
 shown twice across reconnects and deploys, and if the socket can't connect the
-page falls back to checking every second over HTTP.
+page falls back to checking every second over HTTP, or every 8 seconds in a
+hidden tab.
 
 How it works, from sending and reconnecting to who's let in, is in
 [docs/live-chat.md](docs/live-chat.md).
@@ -213,19 +222,25 @@ explanations. The main ones:
 
 | Variable | What it does |
 |---|---|
-| `APP_URL` | Public address of the site, used in links inside emails |
+| `APP_URL` | Public address of the site. Used in links inside emails, by the check that a form, a request from a page or the chat socket comes from the site itself, to mark cookies Secure when it's `https://`, and as the default `VAPID_SUBJECT`. Without it, the address each request came to |
+| `SHOW_ERRORS` | `true` shows an error's details on the page. Leave it `false` on a real site, where errors go to the log |
 | `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | Database connection |
 | `DB_SSL` | `true` for hosted MySQL that requires TLS |
+| `DB_SSL_CA` | Optional. The CA certificates `DB_SSL` checks the database against. Default `/etc/ssl/certs/ca-certificates.crt` |
 | `SECRET_KEY` | Secret for hashing login and reset tokens. Required |
-| `MAILER_DSN` | Where outgoing email goes: an SMTP address, or `brevo+api://API_KEY@default`. Empty turns email off (locally it defaults to Mailpit) |
-| `IPSTACK_API_KEY` | Optional. Without it, ipapi.co is used |
-| `DEV_FAKE_IP` | Locally every visitor has a private IP; this public IP is used for the map instead |
+| `MAILER_DSN` | Where outgoing email goes: an SMTP address, or `brevo+api://API_KEY@default`. Empty turns email off: new accounts are active at once, and a password reset says it couldn't send the email. Locally it defaults to Mailpit |
+| `MAIL_FROM` | Who emails come from. Default `MapChat <no-reply@localhost>`. Brevo needs an address on a domain verified with it |
+| `IPSTACK_API_KEY` | Optional. Makes ipstack the first place to look up where a visitor is. Its free plan is plain HTTP, with the key in the address. Without it, ipapi.co, ipwho.is and GeoJS are tried in turn |
+| `DEV_FAKE_IP` | Used in place of any private or reserved IP, in any environment. Locally every visitor has one, so this public IP puts them on the map. Leave it empty on a host |
 | `DEMO_TIMEZONE` | Optional. Where the demo people's day starts at midnight. Default `America/Toronto` |
 | `DEMO_SPEED` | Optional, for watching the demo chat locally: `60` plays the whole day in 24 minutes. Leave empty on a real site |
 | `GROQ_API_KEY` | Optional. Lets MapChat and the demo people chat back, through Groq's free plan (console.groq.com). Without it, MapChat only greets |
 | `MAPCHAT_MODEL` | Optional. The Groq model they write with. Default `openai/gpt-oss-120b` |
-| `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_UPLOAD_PRESET` | Where avatar uploads go |
-| `CHAT_SOCKET_PORT` | Optional. The port the chat socket listens on inside the container, behind Apache's `/ws`. Default `8090` |
+| `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_UPLOAD_PRESET` | The Cloudinary account and unsigned upload preset avatar uploads go to. Default my account, `nabilr` and `eu0zgzwd`, so a copy should set its own |
+| `CHAT_SOCKET_HOST` | Optional. The address the chat socket listens on inside the container, behind Apache's `/ws`. Default `127.0.0.1` |
+| `CHAT_SOCKET_PORT` | Optional. The port the chat socket listens on. Default `8090` |
+| `CHAT_PRESENCE_GRACE_SECONDS` | Optional. How long someone still shows online after their last chat page closes. Default `10` |
+| `CHAT_SESSION_CHECK_SECONDS` | Optional. How often the chat socket closes the pages of people who logged out or whose guest account ran out. Default `15` |
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | Optional. The key pair for Web Push, so notifications reach people with MapChat closed. Make it once and keep it ([docs/deploy.md](docs/deploy.md)) |
 | `VAPID_SUBJECT` | Optional. Who push services can contact about the site, `https://` or `mailto:`. Default `APP_URL` |
 
@@ -241,10 +256,14 @@ creating the database to the optional email, avatar and AI settings, are in
 ```
 Core/            The framework: router, base controller and model, views, icons, errors
 App/Controllers/ One class per page or action
-App/Models/      Database access for users, chats and locations, and Bot:
-                 when MapChat and the demo people answer, and what they read
-App/Mention.php  @mentions, and how each person's name is shown
-App/Push.php     Web Push: whose browsers each new message goes to, and sending it
+App/Models/      Database access for users, chats, locations, push subscriptions
+                 and remembered logins; Bot: when MapChat and the demo people
+                 answer, and what they read; DemoChat: the demo people's day;
+                 Schema: bringing an older database up to date
+App/*.php        Config (settings), Auth (who's logged in), Mail, Token, Flash
+                 (one-time messages), Avatar (drawn faces), Mention (@mentions,
+                 and how each person's name is shown), Push (Web Push: whose
+                 browsers each new message goes to, and sending it)
 App/ChatSocket/  The live chat: who's let in (Handshake), and what each page
                  gets (Hub)
 bin/             chat-socket.php and chat-worker.php, run by docker/start.sh
@@ -255,8 +274,9 @@ public/          Web root: index.php, CSS, JavaScript (messages.js talks to the
                  Push notifications), images and icons.svg
 database/        init.sql (schema and welcome messages), demo.sql (optional
                  sample people), demo-chat.php (what they say each day),
-                 migrate.php (adds columns an older database is missing, run
-                 when the container starts)
+                 demo-voices.php (how each of them writes, for the AI),
+                 migrate.php (brings an older database up to date, run when
+                 the container starts)
 tests/           PHPUnit tests
 docs/images/     The video, screenshots and diagram in this README
 docs/diagrams/   Draws the diagram: node docs/diagrams/draw.ts
@@ -264,6 +284,7 @@ docs/video/      Records the tour at the top: python3 docs/video/record.py
 docs/live-chat.md How the live chat works
 docs/deploy.md   How to deploy it for free
 docs/load-test.* The load test and its report, with raw results in docs/load-test-results/
+AGENTS.md        The coding rules, for people and AI agents alike
 ```
 
 ## Author

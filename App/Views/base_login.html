@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html data-icons="{{ asset('/icons.svg') }}">
+<html lang="en" data-icons="{{ asset('/icons.svg') }}">
 <head>
     <!-- The design is light only; stop browsers from auto-darkening it -->
     <meta name="color-scheme" content="only light">
@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
 
-    {% include '_beer.html' %}
+    {{ include('_beer.html', with_context = false) }}
     <link rel="stylesheet" href="{{ asset('/css/base.css') }}" />
     <link rel="stylesheet" href="{{ asset('/css/animations.css') }}" />
     <link rel="stylesheet" href="{{ asset('/css/styles.css') }}" />
@@ -16,7 +16,7 @@
     <link rel="stylesheet" type="text/css" href="{{ asset('/css/login.css') }}">
 
     <title>{% block title %}{% endblock %} · MapChat</title>
-    {% include '_meta.html' %}
+    {{ include('_meta.html', with_context = false) }}
 </head>
 
 <body>
@@ -38,7 +38,7 @@
     </div>
 
     <footer class="auth-page__footer">
-        {% include '_copyright.html' %}
+        {{ include('_copyright.html', with_context = false) }}
     </footer>
 </main>
 

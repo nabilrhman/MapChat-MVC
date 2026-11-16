@@ -11,29 +11,20 @@ use App\Controllers\Password;
 use App\Controllers\Profile;
 use App\Controllers\Push;
 use App\Controllers\Signup;
-/**
- * Front controller
- */
 
 /**
- * Composer
+ * Front controller: every request that isn't a file in public/ comes here
+ * and goes to the action its route names
  */
+
 require dirname(__DIR__) . '/vendor/autoload.php';
 
-
-/**
- * Error and Exception handling
- */
 error_reporting(E_ALL);
-set_error_handler('Core\Error::errorHandler');
-set_exception_handler('Core\Error::exceptionHandler');
+set_error_handler(Core\Error::errorHandler(...));
+set_exception_handler(Core\Error::exceptionHandler(...));
 
-
-/**
- * Sessions
- */
-// Stored in the database, so restarting the container doesn't log anyone out.
-// A session lasts a week without activity.
+// In the database, so restarting the container doesn't log anyone out. A
+// session lasts a week without activity
 session_set_save_handler(new Core\DatabaseSessionHandler(), true);
 session_start([
     'gc_maxlifetime' => 60 * 60 * 24 * 7,
@@ -44,10 +35,6 @@ session_start([
     'cookie_secure' => str_starts_with(Config::appUrl(), 'https://'),
 ]);
 
-
-/**
- * Routing
- */
 $router = new Core\Router();
 
 // Each route names its method and the exact action it runs; no other method

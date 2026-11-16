@@ -2,6 +2,7 @@
 
 namespace App\Controllers;
 
+use App\Models\PushSubscription;
 use App\Models\UserInfo;
 use Core\View;
 use App\Models\User;
@@ -9,38 +10,34 @@ use App\Auth;
 use App\Flash;
 
 /**
- * Login controller
+ * Logging in, as yourself or as a guest, and logging out
  */
 class Login extends \Core\Controller
 {
     /**
      * Show the login page
-     *
-     * @return void
      */
-    public function newAction()
+    public function newAction(): void
     {
         View::renderTemplate('Login/new.html');
     }
 
     /**
-     * Log in a user
-     *
-     * @return void
+     * Log in with an email and password
      */
-    public function createAction()
+    public function createAction(): void
     {
-        $remember_me = isset($_POST['remember_me']);
-        $user = User::authenticate($_POST['email'] ?? '', $_POST['password'] ?? '');
+        $isRemembered = isset($_POST['remember_me']);
+        $user = User::authenticate((string) ($_POST['email'] ?? ''), (string) ($_POST['password'] ?? ''));
 
         if (!$user) {
-            Flash::addMessage('Wrong email or password', Flash::WARNING);
+            Flash::addMessage('Wrong email or password.', Flash::WARNING);
         } elseif (!$user->is_active) {
             Flash::addMessage('Activate your account first. Check your email for the link.', Flash::WARNING);
         } else {
-            Auth::login($user, $remember_me);
+            Auth::login($user, $isRemembered);
 
-            Flash::addMessage('Logged in');
+            Flash::addMessage('Logged in.');
 
             UserInfo::locate($user->email, UserInfo::getRealIP());
 
@@ -49,58 +46,58 @@ class Login extends \Core\Controller
 
         View::renderTemplate('Login/new.html', [
             'email' => $_POST['email'] ?? '',
-            'remember_me' => $remember_me
+            'remember_me' => $isRemembered
         ]);
     }
 
     /**
      * Sign in with a new throwaway guest account (POST only, so link
      * previews and crawlers can't create accounts)
-     *
-     * @return void
      */
-    public function guestAction()
+    public function guestAction(): void
     {
         // Someone who was a guest in this browser gets that account back
-        $user = User::findGuestByToken($_COOKIE['guest_token'] ?? '');
+        $user = User::findGuestByToken((string) ($_COOKIE['guest_token'] ?? ''));
 
         if ($user) {
-            Flash::addMessage('Welcome back, ' . $user->name, Flash::INFO);
+            Flash::addMessage('Welcome back, ' . $user->name . '.', Flash::INFO);
         } else {
             $user = User::createGuest();
             Auth::rememberGuest($user);
-            Flash::addMessage('Signed in as ' . $user->name, Flash::INFO);
+            Flash::addMessage('Signed in as ' . $user->name . '.', Flash::INFO);
         }
 
-        Auth::login($user, false);
+        Auth::login($user, isRemembered: false);
         UserInfo::locate($user->email, UserInfo::getRealIP());
 
         $this->redirect('/app');
     }
 
     /**
-     * Log out a user (POST only, so a link or image on another site can't
-     * sign anyone out)
-     *
-     * @return void
+     * Log out (POST only, so a link or image on another site can't sign
+     * anyone out). The page sends this browser's push address along, if it
+     * has one, so its notifications stop with the login
      */
-    public function destroyAction()
+    public function destroyAction(): void
     {
+        $email = Auth::getEmail();
+        $pushEndpoint = (string) ($_POST['push_endpoint'] ?? '');
+        if ($email !== null && $pushEndpoint !== '') {
+            PushSubscription::delete($email, $pushEndpoint);
+        }
+
         Auth::logout();
 
         $this->redirect('/login/show-logout-message');
     }
 
     /**
-     * Show a "logged out" flash message and redirect to the homepage. Necessary to use the flash messages
-     * as they use the session and at the end of the logout method (destroyAction) the session is destroyed
-     * so a new action needs to be called in order to use the session.
-     *
-     * @return void
+     * Show "Logged out" on the login page. It's a request of its own because
+     * logging out destroyed the session the message is kept in
      */
-    public function showLogoutMessageAction()
+    public function showLogoutMessageAction(): void
     {
-        Flash::addMessage('Logged out');
+        Flash::addMessage('Logged out.');
 
         $this->redirect('/login');
     }

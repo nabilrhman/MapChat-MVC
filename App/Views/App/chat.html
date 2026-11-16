@@ -1,6 +1,13 @@
+{# Messages, as the page and the chat socket draw them -#}
+{% types {
+    chats: 'array',
+    current_user: 'App\\Models\\User',
+    initial?: 'bool',
+    mention_names?: 'array',
+} -%}
 {# Looked up once for the whole page of messages; the chat socket looks
    them up once for everyone it sends the same messages to #}
-{% set mention_names = mention_names is defined ? mention_names : mentioned_names(chats) %}
+{% set mention_names = mention_names ?? mentioned_names(chats) %}
 {% for chat in chats %}
 {# Which tab the message belongs in: "everyone", or the other person's id #}
 {% set mine = chat.user_id == current_user.id %}
@@ -16,19 +23,20 @@
     and (chat.email != constant('App\\Models\\Chat::BOT_EMAIL') or mapchat_can_reply) %}
 {# @mentions are for the open room; in a private chat you're already talking to them #}
 {% set mentions_me = conversation == 'everyone' and not mine and mentions(chat.body, current_user.name, current_user.nickname, current_user.is_guest) %}
-{# Nickname, or first name (see App\Mention::handle) #}
+{# Nickname, or first name (see App\Mention::shownName) #}
 {% set sender_name = shown_name(chat.name, chat.nickname, chat.is_guest) %}
 {# Messages from the poll ease in; the history and your own appear at once #}
-<div class="chat{% if mentions_me %} chat--mentions-me{% endif %}{% if not initial|default(false) and not mine %} is-entering{% endif %}"
+<div class="chat{% if mentions_me %} chat--mentions-me{% endif %}{% if not (initial ?? false) and not mine %} is-entering{% endif %}"
      data-id="{{ chat.id }}" data-sender-id="{{ chat.user_id }}" data-conversation="{{ conversation }}" data-partner="{{ partner }}">
     <div class="chat__avatar">
-        <img class="chat__photo" src="{{ avatar_src(chat.user_id, chat.name, chat.avatar, chat.is_demo) }}" alt="Avatar">
+        <img class="chat__photo" src="{{ avatar_src(chat.user_id, chat.name, chat.avatar, chat.is_demo) }}" alt=""
+             width="36" height="36" loading="lazy">
     </div>
 
     <div class="chat__content">
         {% if can_message %}
-        <h3 class="chat__name chat__name--can-message" data-user-id="{{ chat.user_id }}" data-user-name="{{ sender_name }}"
-            title="Chat privately with {{ sender_name }}">{{ sender_name }}</h3>
+        <h3 class="chat__name"><button class="chat__name-button" type="button" data-user-id="{{ chat.user_id }}" data-user-name="{{ sender_name }}"
+            title="Chat privately with {{ sender_name }}">{{ sender_name }}</button></h3>
         {% else %}
         <h3 class="chat__name">{{ sender_name }}</h3>
         {% endif %}
@@ -54,21 +62,22 @@
            private chat, whose header already says where they are #}
         {% if conversation != 'everyone' %}
         {% elseif chat.city %}
-        {# On hover the city slides to the country's flag and name #}
+        {# On hover the city slides to the country's flag and name; a click
+           shows the sender's pin on the map (chat.js) #}
         <span class="chat__location">
-            <span{% if chat.country %} class="swap"{% endif %}>
+            <button class="chat__place{% if chat.country %} swap{% endif %}" type="button">
                 <span class="swap__track">
                     <span class="swap__line">{{ icon('map-point', 'chat__place-icon') }}{{ chat.city }}</span>
                     {% if chat.country %}
                     <span class="swap__line"><span class="fi fi-{{ chat.country|lower }}"></span><span class="chat__country" data-country="{{ chat.country }}"></span></span>
                     {% endif %}
                 </span>
-            </span>
+            </button>
         </span>
         {% elseif chat.country %}
         {# Only the country is known: its flag and name, which chat.js fills in #}
         <span class="chat__location">
-            <span><span class="fi fi-{{ chat.country|lower }}"></span><span class="chat__country" data-country="{{ chat.country }}"></span></span>
+            <button class="chat__place" type="button"><span class="fi fi-{{ chat.country|lower }}"></span><span class="chat__country" data-country="{{ chat.country }}"></span></button>
         </span>
         {% endif %}
     </div>

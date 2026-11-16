@@ -8,75 +8,72 @@ use App\Flash;
 use App\Config;
 
 /**
- * Signup controller
+ * Signing up, and activating the account from the emailed link
  */
 class Signup extends \Core\Controller
 {
     /**
      * Show the signup page
-     *
-     * @return void
      */
-    public function newAction()
+    public function newAction(): void
     {
         View::renderTemplate('Signup/new.html');
     }
 
     /**
-     * Sign up a new user
-     *
-     * @return void
+     * Sign up a new user, or show the form again with what to fix
      */
-    public function createAction()
+    public function createAction(): void
     {
         // Only the form's fields
         $user = new User([
-            'name' => $_POST['name'] ?? '',
-            'email' => $_POST['email'] ?? '',
-            'password' => $_POST['password'] ?? '',
+            'name' => (string) ($_POST['name'] ?? ''),
+            'email' => (string) ($_POST['email'] ?? ''),
+            'password' => (string) ($_POST['password'] ?? ''),
         ]);
 
         if ($user->save()) {
-            if (Config::mailEnabled()) {
-                if ($user->sendActivationEmail()) {
-                    $this->redirect('/signup/success');
-                }
-
-                // Without the email the account could never be activated,
-                // so remove it and let them try again
-                $user->delete();
-                $user->errors[] = "Email: We couldn't send the activation email, please try again";
-                View::renderTemplate('Signup/new.html', ['user' => $user]);
-                return;
-            }
-
-            $this->redirect('/signup/activated');
-        } else {
-            View::renderTemplate('Signup/new.html', [
-                'user' => $user
-            ]);
+            $this->sendActivation($user);
         }
+
+        View::renderTemplate('Signup/new.html', ['user' => $user]);
     }
 
     /**
-     * Show the signup success page
-     *
-     * @return void
+     * Email a new account's activation link and say so, or, without email,
+     * go straight on: save() made the account active. If the email can't go
+     * out the account could never be activated, so it's removed and the
+     * form says to try again
      */
-    public function successAction()
+    protected function sendActivation(User $user): void
+    {
+        if (!Config::mailEnabled()) {
+            $this->redirect('/signup/activated');
+        }
+
+        if ($user->sendActivationEmail()) {
+            $this->redirect('/signup/success');
+        }
+
+        $user->delete();
+        $user->errors['email'][] = "We couldn't send the activation email. Please try again.";
+    }
+
+    /**
+     * Say the account was made, on the login page
+     */
+    public function successAction(): void
     {
         Flash::addMessage('Account created. Check your email to activate it.', Flash::SUCCESS);
         $this->redirect('/login');
     }
 
     /**
-     * Activate a new account
-     *
-     * @return void
+     * Activate a new account from the emailed link
      */
-    public function activateAction()
+    public function activateAction(): void
     {
-        if (!User::activate($this->route_params['token'])) {
+        if (!User::activate($this->routeParams['token'])) {
             Flash::addMessage('That activation link is wrong or was already used. Try logging in.', Flash::WARNING);
             $this->redirect('/login');
         }
@@ -85,11 +82,9 @@ class Signup extends \Core\Controller
     }
 
     /**
-     * Show the activation success page
-     *
-     * @return void
+     * Say the account is active, on the login page
      */
-    public function activatedAction()
+    public function activatedAction(): void
     {
         Flash::addMessage('Your account is active. Log in to start chatting.', Flash::SUCCESS);
         $this->redirect('/login');

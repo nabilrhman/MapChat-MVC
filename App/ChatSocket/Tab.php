@@ -4,10 +4,12 @@ namespace App\ChatSocket;
 
 use Amp\Websocket\WebsocketClient;
 use Amp\Websocket\WebsocketClosedException;
+use App\Models\User;
 use function Amp\async;
 
 /**
- * One open chat page's WebSocket, and where that page is in the chat
+ * One open chat page's WebSocket, and where that page is in the chat: which
+ * messages it has, and who it's typing to
  */
 class Tab
 {
@@ -17,65 +19,159 @@ class Tab
      */
     const MAX_QUEUED_BYTES = 1048576;
 
+    /** A catching-up page waits while more than this is queued for it */
+    const CATCH_UP_QUEUE_BYTES = 262144;
+
     /** Close codes the page acts on (public/js/messages.js) */
     const CLOSE_LOG_IN_AGAIN = 4401;
     const CLOSE_TOO_SLOW = 4408;
 
-    public WebsocketClient $client;
+    /** How long "typing" holds without a fresh word from the page */
+    const TYPING_SECONDS = 6;
 
-    /** @var \App\Models\User */
-    public $user;
-
-    public string $sessionId;
+    /** "Typing" is passed on at most this often per page */
+    const TYPING_FORWARD_SECONDS = 1;
 
     /** Whether the page said hello, and so takes part */
-    public bool $hasSaidHello = false;
+    public private(set) bool $hasSaidHello = false;
 
     /**
      * Whether it has every message up to the Hub's reading point, so new
      * ones go straight to it. Until then it's catching up
      */
-    public bool $isLive = false;
+    public private(set) bool $isLive = false;
 
     /** The newest message id the page has been given, or asked to start after */
-    public int $cursor = 0;
+    public private(set) int $cursor = 0;
 
-    /** Who the page says its person is typing to, until when that holds, and when it was last passed on */
-    public ?int $typingTo = null;
-    public float $typingUntil = 0;
-    public float $typingForwardedAt = 0;
+    /** Who the page says its person is typing to, or null */
+    public private(set) ?int $typingTo = null;
+
+    /** Until when that holds, and when it was last passed on, as microtime */
+    private float $typingUntil = 0;
+    private float $typingForwardedAt = 0;
 
     /** Messages waiting to be written, in order, and their size */
     private array $queued = [];
-    public int $queuedBytes = 0;
+    private int $queuedBytes = 0;
     private bool $isWriting = false;
 
     /**
-     * @param WebsocketClient $client
-     * @param \App\Models\User $user
-     * @param string $sessionId
+     * A page the Handshake let in
+     *
+     * @param string $sessionId The login session it came with
      */
-    public function __construct($client, $user, $sessionId)
-    {
-        $this->client = $client;
-        $this->user = $user;
-        $this->sessionId = $sessionId;
+    public function __construct(
+        public readonly WebsocketClient $client,
+        public readonly User $user,
+        public readonly string $sessionId,
+    ) {
     }
 
+    /**
+     * The connection's id, unique while it's open
+     */
     public function getId(): int
     {
         return $this->client->getId();
     }
 
     /**
+     * Whether the connection has closed
+     */
+    public function isClosed(): bool
+    {
+        return $this->client->isClosed();
+    }
+
+    /**
+     * The page said hello: it takes part from now, and has the messages up
+     * to the one it named
+     */
+    public function sayHello(int $afterId): void
+    {
+        $this->hasSaidHello = true;
+        $this->cursor = $afterId;
+    }
+
+    /**
+     * The page has been sent the messages up to this id
+     */
+    public function moveCursorTo(int $id): void
+    {
+        $this->cursor = max($this->cursor, $id);
+    }
+
+    /**
+     * The page has caught up to the Hub's reading point: new messages go
+     * straight to it from now
+     *
+     * @param int $lastReadId The Hub's reading point
+     */
+    public function goLive(int $lastReadId): void
+    {
+        $this->moveCursorTo($lastReadId);
+        $this->isLive = true;
+        $this->send(['type' => 'live']);
+    }
+
+    /**
+     * Whether so much is queued for the page that catching up should wait
+     */
+    public function isBacklogged(): bool
+    {
+        return $this->queuedBytes > static::CATCH_UP_QUEUE_BYTES;
+    }
+
+    /**
+     * The page's person is typing to someone. Holds for TYPING_SECONDS
+     *
+     * @param int $toUserId Who they're typing to
+     *
+     * @return bool Whether to tell that person now: at most every TYPING_FORWARD_SECONDS
+     */
+    public function noteTyping(int $toUserId): bool
+    {
+        $now = microtime(true);
+        $this->typingUntil = $now + static::TYPING_SECONDS;
+        if ($this->typingTo === $toUserId && $now - $this->typingForwardedAt < static::TYPING_FORWARD_SECONDS) {
+            return false;
+        }
+
+        $this->typingTo = $toUserId;
+        $this->typingForwardedAt = $now;
+
+        return true;
+    }
+
+    /**
+     * The page's person stopped typing
+     *
+     * @return int|null Who they were typing to, to tell them; null if nobody
+     */
+    public function stopTyping(): ?int
+    {
+        $wasTypingTo = $this->typingTo;
+        $this->typingTo = null;
+
+        return $wasTypingTo;
+    }
+
+    /**
+     * Whether the page is typing but went quiet for TYPING_SECONDS without saying so
+     */
+    public function hasTypingLapsed(): bool
+    {
+        return $this->typingTo !== null && $this->typingUntil < microtime(true);
+    }
+
+    /**
      * Queue a message for the page. Never waits: the queue is written in
      * the background, so one slow page can't hold up the others
      *
-     * @param array $message
-     *
-     * @return void
+     * @param array<string, mixed> $message Sent as JSON
      */
-    public function send($message)
+    public function send(array $message): void
     {
         if ($this->client->isClosed()) {
             return;
@@ -99,9 +195,9 @@ class Tab
     }
 
     /**
-     * @return void
+     * Write the queued messages to the page, in order, until none are left
      */
-    private function writeQueued()
+    private function writeQueued(): void
     {
         try {
             while ($this->queued && !$this->client->isClosed()) {
@@ -117,12 +213,11 @@ class Tab
     }
 
     /**
-     * @param int $code
-     * @param string $reason
+     * Close the connection, unless it's closed already
      *
-     * @return void
+     * @param int $code A WebSocket close code, or one of CLOSE_*
      */
-    public function close($code, $reason)
+    public function close(int $code, string $reason): void
     {
         if (!$this->client->isClosed()) {
             async(fn () => $this->client->close($code, $reason));

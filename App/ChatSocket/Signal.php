@@ -15,10 +15,8 @@ class Signal
     /**
      * Send the signal. A lost one only delays the message a little, so
      * nothing waits for it and nothing fails without a listener
-     *
-     * @return void
      */
-    public static function newMessages()
+    public static function newMessages(): void
     {
         static::send('m');
     }
@@ -30,21 +28,18 @@ class Signal
      *
      * @param string $fromEmail Who's typing
      * @param string $toEmail Who to tell
-     * @param bool $isTyping
-     *
-     * @return void
      */
-    public static function typing($fromEmail, $toEmail, $isTyping)
+    public static function typing(string $fromEmail, string $toEmail, bool $isTyping): void
     {
         static::send(json_encode(['typing' => ['from' => $fromEmail, 'to' => $toEmail, 'isTyping' => $isTyping]]));
     }
 
     /**
-     * @param string $datagram
+     * Send one datagram to the chat socket's UDP port, without waiting
      *
-     * @return void
+     * @param string $datagram 'm' for new messages, or typing() as JSON
      */
-    private static function send($datagram)
+    private static function send(string $datagram): void
     {
         $socket = @stream_socket_client('udp://127.0.0.1:' . Config::chatSocketPort(), $errorCode, $errorMessage, 0);
         if ($socket) {

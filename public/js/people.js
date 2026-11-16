@@ -16,13 +16,11 @@ const peoplePanel = document.getElementById('people');
 
 const myUserId = Number(document.getElementById('chat').dataset.myId);
 
-const isOnline = (person) => Number(person.is_online) === 1;
-
 // MapChat first, so there's always someone to talk to at the top, then you,
 // then everyone else
-function getListRank(person) {
-    if (Number(person.is_bot) === 1) return 0;
-    if (Number(person.id) === myUserId) return 1;
+function listRankOf(person) {
+    if (person.isBot) return 0;
+    if (person.id === myUserId) return 1;
     return 2;
 }
 
@@ -51,7 +49,7 @@ function highlightPin(userId, isHighlighted) {
 // Online: flag and city. Recently here: how long ago
 function createPersonDetail(person) {
     const detail = createElement('span', 'person__detail');
-    if (!isOnline(person)) {
+    if (!person.isOnline) {
         detail.textContent = getTimeAgo(person);
         return detail;
     }
@@ -60,23 +58,27 @@ function createPersonDetail(person) {
 }
 
 function createPersonRow(person) {
-    const isMe = Number(person.id) === myUserId;
+    const isMe = person.id === myUserId;
     const userId = String(person.id);
 
-    const row = createElement('div', 'person');
-    row.classList.toggle('is-online', isOnline(person));
+    // Your own row does nothing; anyone else's opens a private chat
+    const row = isMe ? createElement('div', 'person') : createButton('person');
+    row.classList.toggle('is-online', person.isOnline);
     row.classList.toggle('person--can-message', !isMe);
     row.dataset.userId = userId;
     row.title = isMe ? '' : `Chat privately with ${person.shown_name}`;
     row.dataset.tipSide = 'left'; // over the map, not the rows above
 
-    const avatarFrame = createElement('div', 'person__avatar');
+    const avatarFrame = createElement('span', 'person__avatar');
     const photo = createElement('img', 'person__photo');
     photo.alt = '';
+    photo.width = 32;
+    photo.height = 32;
+    photo.loading = 'lazy';
     photo.src = person.avatar_src;
     avatarFrame.append(photo);
 
-    const text = createElement('div', 'person__text');
+    const text = createElement('span', 'person__text');
     text.append(
         createElement('span', 'person__name', person.shown_name + (isMe ? ' (you)' : '')),
         createPersonDetail(person),
@@ -101,26 +103,14 @@ function getRowTops(section) {
 // Rows that were already there start where they were and slide to their
 // new place, so someone joining pushes the list down smoothly
 function slideToNewPlaces(section, topsBefore) {
-    const shiftedRows = [];
-    section.querySelectorAll(':scope > .person:not(.is-entering, .is-leaving)').forEach((row) => {
+    const shifts = new Map();
+    for (const row of section.querySelectorAll(':scope > .person:not(.is-entering, .is-leaving)')) {
         const topBefore = topsBefore.get(row.dataset.userId);
-        if (topBefore === undefined) return;
+        if (topBefore === undefined) continue;
         const shift = topBefore - row.getBoundingClientRect().top;
-        if (Math.round(shift) === 0) return;
-        // A row still sliding from the last change starts again from where it is
-        row.classList.remove('is-shifting');
-        row.style.transform = `translateY(${shift}px)`;
-        shiftedRows.push(row);
-    });
-
-    // The next frame, so the browser draws them at the old place first
-    requestAnimationFrame(() => {
-        shiftedRows.forEach((row) => {
-            row.classList.add('is-shifting');
-            row.style.transform = '';
-            onTransitionEnd(row, () => row.classList.remove('is-shifting'));
-        });
-    });
+        if (Math.round(shift) !== 0) shifts.set(row, {y: shift});
+    }
+    slideFromShifts(shifts);
 }
 
 // The row eases out where it is; then the rows below slide up into its
@@ -143,8 +133,8 @@ function easeOutRow(section, row) {
 
 // What a row shows. A row whose person shows the same is kept as it is,
 // so one still easing in or sliding isn't started over
-function getRowContent(person) {
-    const detail = isOnline(person) ? [person.city, person.country] : [getTimeAgo(person)];
+function rowContentOf(person) {
+    const detail = person.isOnline ? [person.city, person.country] : [getTimeAgo(person)];
     return [person.shown_name, person.avatar_src, ...detail].join('|');
 }
 
@@ -170,7 +160,7 @@ function fillPeople(section, people) {
     section.querySelectorAll(':scope > .person:not(.is-leaving)').forEach((row) => oldRows.set(row.dataset.userId, row));
 
     const rows = people.map((person) => {
-        const content = getRowContent(person);
+        const content = rowContentOf(person);
         const oldRow = oldRows.get(String(person.id));
         if (oldRow?.dataset.content === content) {
             personByRow.set(oldRow, person);
@@ -206,17 +196,17 @@ function fillPeople(section, people) {
     slideToNewPlaces(section, topsBefore);
 }
 
-function showPeople(people, onPeopleOnline) {
-    const onlinePeople = people.filter(isOnline);
-    const recentPeople = people.filter((person) => !isOnline(person));
+function showPeople(people) {
+    const onlinePeople = people.filter((person) => person.isOnline);
+    const recentPeople = people.filter((person) => !person.isOnline);
 
-    onlinePeople.sort((a, b) => getListRank(a) - getListRank(b) || a.shown_name.localeCompare(b.shown_name));
-    peopleToMention = [...onlinePeople, ...recentPeople].filter((person) => Number(person.id) !== myUserId);
+    onlinePeople.sort((a, b) => listRankOf(a) - listRankOf(b) || a.shown_name.localeCompare(b.shown_name));
+    peopleToMention = [...onlinePeople, ...recentPeople].filter((person) => person.id !== myUserId);
 
     // The rows are replaced, so a hovered row never gets its mouseleave
     document.querySelectorAll('.map-pin.is-highlighted').forEach((pin) => highlightPin(pin.dataset.userId, false));
 
-    onPeopleOnline(new Set(onlinePeople.map((person) => Number(person.id))));
+    peopleHandlers?.onPeopleOnline(new Set(onlinePeople.map((person) => person.id)));
 
     countTo(document.getElementById('online-count'), onlinePeople.length);
     countTo(document.getElementById('people-toggle-count'), onlinePeople.length);
@@ -226,16 +216,19 @@ function showPeople(people, onPeopleOnline) {
     fadeInPhotos(peoplePanel.querySelectorAll('img'));
 }
 
-// Set by keepPeopleUpdated
-let reportPeopleOnline = () => {};
+// What chat.js does when the list changes (see keepPeopleUpdated)
+let peopleHandlers = null;
 
-// Everyone in the list, by id
+// Everyone in the list, by their (number) id
 const peopleById = new Map();
+
+// The person with that id, given as a number or as a page's string
+const personWithId = (userId) => peopleById.get(Number(userId));
 
 function showAllPeople() {
     clearTimeout(peopleRenderTimer);
     peopleRenderTimer = null;
-    showPeople(Array.from(peopleById.values()), reportPeopleOnline);
+    showPeople([...peopleById.values()]);
 }
 
 // Changes that come close together (several people at once) move the list
@@ -246,32 +239,47 @@ function showAllPeopleSoon() {
     if (peopleRenderTimer === null) peopleRenderTimer = setTimeout(showAllPeople, PEOPLE_RENDER_DELAY);
 }
 
-// When they were last here, as a time, so the list can count on from it
-function withSeenAt(person) {
-    return {...person, seenAt: Date.now() - (Number(person.minutes_ago) || 0) * 60000};
+// A person as the server sends them, with numbers and yes-or-no flags as
+// such, and when they were last here as a time, so the list can count on
+// from it. The rest of this file and chat.js only see these
+function personFromServer(row) {
+    const {is_online, is_bot, is_guest, is_deleted, minutes_ago, ...details} = row;
+    return {
+        ...details,
+        id: Number(row.id),
+        isOnline: Number(is_online) === 1,
+        isBot: Number(is_bot) === 1,
+        isGuest: Number(is_guest) === 1,
+        isDeleted: Boolean(is_deleted),
+        seenAt: Date.now() - (Number(minutes_ago) || 0) * 60000,
+    };
 }
 
 // The whole list, as the server has it now
-function setPeople(people) {
+function setPeople(rows) {
     peopleById.clear();
-    people.forEach((person) => peopleById.set(String(person.id), withSeenAt(person)));
+    for (const row of rows) {
+        const person = personFromServer(row);
+        peopleById.set(person.id, person);
+    }
     showAllPeople();
 }
 
 // Someone came online or went. Guests are only listed while online, and a
 // deleted account not at all
-function updatePerson(person) {
-    const isGoneForGood = !isOnline(person) && (Number(person.is_guest) === 1 || person.is_deleted);
+function updatePerson(row) {
+    const person = personFromServer(row);
+    const isGoneForGood = !person.isOnline && (person.isGuest || person.isDeleted);
     if (isGoneForGood) {
-        peopleById.delete(String(person.id));
+        peopleById.delete(person.id);
     } else {
-        peopleById.set(String(person.id), withSeenAt(person));
+        peopleById.set(person.id, person);
     }
     showAllPeopleSoon();
 }
 
 setInterval(() => {
-    if (Array.from(peopleById.values()).some((person) => !isOnline(person))) showAllPeople();
+    if ([...peopleById.values()].some((person) => !person.isOnline)) showAllPeople();
 }, TIME_AGO_INTERVAL);
 
 /* The HTTP fallback: the whole list every round */
@@ -279,19 +287,16 @@ setInterval(() => {
 let isPollingPeople = false;
 let nextPeopleLoad = null;
 
-function loadPeople() {
-    postForm('/app/get-people', {timezone: Intl.DateTimeFormat().resolvedOptions().timeZone})
-        .then((response) => {
-            if (isPollingPeople) setPeople(response.data);
-        })
-        .catch(() => {
-            // Try again on the next round
-        })
-        .finally(() => {
-            // One round at a time, even after a refreshPeople()
-            clearTimeout(nextPeopleLoad);
-            if (isPollingPeople) nextPeopleLoad = setTimeout(loadPeople, PEOPLE_INTERVAL);
-        });
+async function loadPeople() {
+    try {
+        const response = await postForm('/app/get-people', {timezone: Intl.DateTimeFormat().resolvedOptions().timeZone});
+        if (isPollingPeople) setPeople(response.data);
+    } catch {
+        // Try again on the next round
+    }
+    // One round at a time, even after a refreshPeople()
+    clearTimeout(nextPeopleLoad);
+    if (isPollingPeople) nextPeopleLoad = setTimeout(loadPeople, PEOPLE_INTERVAL);
 }
 
 // While the chat socket is down; its own updates take over when it's back
@@ -347,9 +352,11 @@ document.getElementById('people-close').addEventListener('click', () => {
     setPeopleOpen(false);
 });
 
-// onPeopleOnline gets the ids of who's online whenever the list changes;
-// onPersonChosen(id, name) runs when a row is clicked
-function keepPeopleUpdated(onPeopleOnline, onPersonChosen) {
+// handlers: onPeopleOnline(ids) gets the (number) ids of who's online
+// whenever the list changes; onPersonChosen(id, name) runs when a row is
+// clicked
+function keepPeopleUpdated(handlers) {
+    peopleHandlers = handlers;
     peoplePanel.addEventListener('click', (event) => {
         const row = event.target.closest('.person--can-message');
         if (!row) return;
@@ -358,8 +365,6 @@ function keepPeopleUpdated(onPeopleOnline, onPersonChosen) {
         if (narrowScreen.matches) {
             setPeopleOpen(false);
         }
-        onPersonChosen(person.id, person.shown_name);
+        handlers.onPersonChosen(person.id, person.shown_name);
     });
-
-    reportPeopleOnline = onPeopleOnline;
 }

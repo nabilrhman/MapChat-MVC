@@ -22,20 +22,16 @@ class Push
 
     /**
      * Whether Web Push is set up
-     *
-     * @return bool
      */
-    public static function isEnabled()
+    public static function isEnabled(): bool
     {
         return Config::get('VAPID_PUBLIC_KEY') !== null && Config::get('VAPID_PRIVATE_KEY') !== null;
     }
 
     /**
      * The key browsers subscribe with, for the pages
-     *
-     * @return string
      */
-    public static function publicKey()
+    public static function publicKey(): string
     {
         return (string) Config::get('VAPID_PUBLIC_KEY', '');
     }
@@ -43,11 +39,9 @@ class Push
     /**
      * Push these new messages to the browsers they're for
      *
-     * @param array $chats As Chat::getByIds gives them
-     *
-     * @return void
+     * @param array[] $chats As Chat::getByIds gives them
      */
-    public static function sendFor($chats)
+    public static function sendFor(array $chats): void
     {
         if (!static::isEnabled() || !$chats) {
             return;
@@ -95,12 +89,12 @@ class Push
      * private chat, and in the room, those of whoever it @mentions. Never
      * the sender's own
      *
-     * @param array $chat With email, to_email and body
-     * @param array $subscriptions As PushSubscription::getAll gives them
+     * @param array{email: string, to_email: ?string, body: string} $chat
+     * @param array[] $subscriptions As PushSubscription::getAll gives them
      *
-     * @return array
+     * @return array[] The subscriptions it's for
      */
-    public static function recipientsOf($chat, $subscriptions)
+    public static function recipientsOf(array $chat, array $subscriptions): array
     {
         return array_values(array_filter($subscriptions, function ($subscription) use ($chat) {
             if ($subscription['email'] === $chat['email']) {
@@ -110,7 +104,7 @@ class Push
                 return $subscription['email'] === $chat['to_email'];
             }
 
-            return Mention::has($chat['body'], $subscription['name'], $subscription['nickname'], (bool) $subscription['is_guest']);
+            return Mention::isMentionedIn($chat['body'], $subscription['name'], $subscription['nickname'], (bool) $subscription['is_guest']);
         }));
     }
 
@@ -120,11 +114,11 @@ class Push
      * @param array $chat As Chat::getByIds gives it
      * @param array $subscription Whose browser it's for
      *
-     * @return array
+     * @return array{title: string, body: string, icon: string, tag: string, conversation: string, name: string}
      */
-    public static function payloadOf($chat, $subscription)
+    public static function payloadOf(array $chat, array $subscription): array
     {
-        $name = Mention::handle($chat['name'], $chat['nickname'], (bool) $chat['is_guest']);
+        $name = Mention::shownName($chat['name'], $chat['nickname'], (bool) $chat['is_guest']);
         $isPrivate = $chat['to_email'] !== null;
         $body = $chat['body'];
         if (mb_strlen($body) > static::BODY_LENGTH) {
@@ -136,7 +130,7 @@ class Push
         return [
             'title' => $isPrivate ? $name : "$name mentioned you",
             'body' => $body,
-            'icon' => Avatar::src($chat['user_id'], $chat['name'], $chat['avatar'], $chat['is_demo']),
+            'icon' => Avatar::src((int) $chat['user_id'], $chat['name'], $chat['avatar'], (bool) $chat['is_demo']),
             // One per chat: a newer message replaces the last one
             'tag' => "chat-$conversation",
             'conversation' => $conversation,

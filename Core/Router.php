@@ -3,25 +3,24 @@
 namespace Core;
 
 /**
- * Router
+ * The routing table: each URL pattern with the method it takes and the
+ * controller action it runs. Nothing else can be reached from a URL
  */
 class Router
 {
     /**
-     * The routing table: each route's method, URL pattern and action
-     * @var array
+     * The routes in the order they were added
+     *
+     * @var array<array{method: string, pattern: string, action: array{class-string, string}}>
      */
-    protected $routes = [];
+    protected array $routes = [];
 
     /**
      * Add a GET route; HEAD requests take it too
      *
-     * @param string $route  The route URL
-     * @param array  $action Controller class and action method
-     *
-     * @return void
+     * @param array{class-string, string} $action Controller class and action method
      */
-    public function get($route, $action)
+    public function get(string $route, array $action): void
     {
         $this->add('GET', $route, $action);
     }
@@ -29,12 +28,9 @@ class Router
     /**
      * Add a POST route
      *
-     * @param string $route  The route URL
-     * @param array  $action Controller class and action method
-     *
-     * @return void
+     * @param array{class-string, string} $action Controller class and action method
      */
-    public function post($route, $action)
+    public function post(string $route, array $action): void
     {
         $this->add('POST', $route, $action);
     }
@@ -42,38 +38,29 @@ class Router
     /**
      * Add a route to the routing table
      *
-     * @param string $method HTTP method
-     * @param string $route  The route URL, e.g. /avatar/{id:\d+}
-     * @param array  $action Controller class and action method, e.g. [Avatar::class, 'showAction']
-     *
-     * @return void
+     * @param string $route The route URL, e.g. /avatar/{id:\d+}
+     * @param array{class-string, string} $action Controller class and action method, e.g. [Avatar::class, 'showAction']
      */
-    public function add($method, $route, $action)
+    public function add(string $method, string $route, array $action): void
     {
-        // Convert the route to a regular expression: escape forward slashes
-        $route = preg_replace('/\//', '\\/', $route);
+        $pattern = str_replace('/', '\/', $route);
+        // A variable with its own pattern, {id:\d+}, becomes a named group
+        $pattern = preg_replace('/\{([a-z]+):([^\}]+)\}/', '(?P<\1>\2)', $pattern);
 
-        // Convert variables with custom regular expressions e.g. {id:\d+}
-        $route = preg_replace('/\{([a-z]+):([^\}]+)\}/', '(?P<\1>\2)', $route);
-
-        // Add start and end delimiters, and case insensitive flag
-        $route = '/^' . $route . '$/i';
-
-        $this->routes[] = ['method' => $method, 'pattern' => $route, 'action' => $action];
+        $this->routes[] = ['method' => $method, 'pattern' => '/^' . $pattern . '$/i', 'action' => $action];
     }
 
     /**
      * Find the route for a request
      *
-     * @param string $method HTTP method
-     * @param string $path   The URL's path, without the query string
+     * @param string $path The URL's path, without the query string
      *
-     * @return array The route's action and the values of its variables
+     * @return array{action: array{class-string, string}, params: array<string, string>} The route's action and the values of its variables
      *
      * @throws \Exception 404 when no route has this path
      * @throws MethodNotAllowed when routes have this path, but not for this method
      */
-    public function match($method, $path)
+    public function match(string $method, string $path): array
     {
         $allowed = [];
 
@@ -84,7 +71,7 @@ class Router
 
             // HEAD runs the GET action; the server leaves the body out
             if ($route['method'] === $method || ($method === 'HEAD' && $route['method'] === 'GET')) {
-                $params = array_filter($matches, 'is_string', ARRAY_FILTER_USE_KEY);
+                $params = array_filter($matches, is_string(...), ARRAY_FILTER_USE_KEY);
 
                 return ['action' => $route['action'], 'params' => $params];
             }
@@ -96,7 +83,7 @@ class Router
             throw new \Exception("No route matched $method $path", 404);
         }
 
-        if (in_array('GET', $allowed)) {
+        if (in_array('GET', $allowed, true)) {
             $allowed[] = 'HEAD';
         }
 
@@ -104,15 +91,11 @@ class Router
     }
 
     /**
-     * Dispatch the route, creating the controller object and running the
-     * action method
+     * Run the action the request's route names, on a new controller
      *
-     * @param string $method HTTP method
-     * @param string $url    The requested URL, e.g. /password/reset/1a2b?x=1
-     *
-     * @return void
+     * @param string $url The requested URL, e.g. /password/reset/1a2b?x=1
      */
-    public function dispatch($method, $url)
+    public function dispatch(string $method, string $url): void
     {
         // The query string is already in $_GET; only the path picks the route
         $path = explode('?', $url, 2)[0];

@@ -9,62 +9,89 @@ use Core\View;
 use App\Config;
 
 /**
- * User model
+ * A person's account: signing up, logging in, their profile, and the
+ * throwaway guest accounts
  */
 class User extends \Core\Model
 {
-    /**
-     * Error messages
-     *
-     * @var array
-     */
-    public $errors = [];
+    /** How long a guest account lasts before it is deleted, with its messages */
+    const GUEST_LIFETIME_HOURS = 24;
+
+    /** How long a password reset link works, in seconds */
+    const RESET_SECONDS = 60 * 60 * 2;
+
+    /** The longest name, in characters */
+    const MAX_NAME_LENGTH = 50;
+
+    /** The columns, as the database has them */
+    public ?int $id = null;
+    public string $name = '';
+    public ?string $nickname = null;
+    public string $email = '';
+    public string $password_hash = '';
+    public ?string $password_reset_hash = null;
+    /** UTC, Y-m-d H:i:s */
+    public ?string $password_reset_expires_at = null;
+    public ?string $activation_hash = null;
+    public bool $is_active = false;
+    public ?string $avatar = null;
+    public bool $is_guest = false;
+    public ?string $guest_token_hash = null;
+    public bool $share_location = true;
+    /** UTC, Y-m-d H:i:s */
+    public ?string $created_at = null;
+
+    /** A new password, typed into a form; only its hash is stored */
+    public ?string $password = null;
+
+    /** Tokens for the links and cookie just made; only their hashes are stored */
+    public ?string $activationToken = null;
+    public ?string $passwordResetToken = null;
+    public ?string $guestToken = null;
 
     /**
-     * Save the user model with the current property values
+     * Why the last save didn't happen, as full sentences by field
      *
-     * @return boolean  True if the user was saved, false otherwise
+     * @var array<string, string[]> E.g. ['email' => ['That email is already registered.']]
      */
-    public function save()
+    public array $errors = [];
+
+    /**
+     * Save a new account, unless its details aren't valid (see errors)
+     */
+    public function save(): bool
     {
         $this->validate();
-
-        if (empty($this->errors)) {
-            $password_hash = password_hash($this->password, PASSWORD_DEFAULT);
-
-            $token = new Token();
-            $hashed_token = $token->getHash();
-            $this->activation_token = $token->getValue();
-
-            // Without email there is no way to send an activation link, so
-            // accounts start active
-            $sql = 'INSERT INTO users (name, email, password_hash, activation_hash, is_active)
-                    VALUES (:name, :email, :password_hash, :activation_hash, :is_active)';
-
-            $db = static::getDB();
-            $stmt = $db->prepare($sql);
-
-            $stmt->bindValue(':name', $this->name, PDO::PARAM_STR);
-            $stmt->bindValue(':email', $this->email, PDO::PARAM_STR);
-            $stmt->bindValue(':password_hash', $password_hash, PDO::PARAM_STR);
-            $stmt->bindValue(':activation_hash', $hashed_token, PDO::PARAM_STR);
-            $stmt->bindValue(':is_active', Config::mailEnabled() ? 0 : 1, PDO::PARAM_INT);
-
-            if ($stmt->execute()) {
-                $this->id = $db->lastInsertId();
-                return true;
-            }
+        if ($this->errors) {
+            return false;
         }
 
-        return false;
+        $token = new Token();
+        $this->activationToken = $token->value;
+
+        $sql = 'INSERT INTO users (name, email, password_hash, activation_hash, is_active)
+                VALUES (:name, :email, :password_hash, :activation_hash, :is_active)';
+
+        $db = static::getDB();
+        $stmt = $db->prepare($sql);
+        $stmt->bindValue(':name', $this->name, PDO::PARAM_STR);
+        $stmt->bindValue(':email', $this->email, PDO::PARAM_STR);
+        $stmt->bindValue(':password_hash', password_hash($this->password, PASSWORD_DEFAULT), PDO::PARAM_STR);
+        $stmt->bindValue(':activation_hash', $token->getHash(), PDO::PARAM_STR);
+        // Without email there is no way to send an activation link, so
+        // accounts start active
+        $stmt->bindValue(':is_active', !Config::mailEnabled(), PDO::PARAM_BOOL);
+        $stmt->execute();
+
+        $this->id = (int) $db->lastInsertId();
+
+        return true;
     }
 
     /**
-     * Delete this user, e.g. a sign-up whose activation email never went out
-     *
-     * @return void
+     * Delete this account, e.g. a sign-up whose activation email never went out
      */
-    public function delete()
+    public function delete(): void
     {
         $stmt = static::getDB()->prepare('DELETE FROM users WHERE id = :id');
         $stmt->bindValue(':id', $this->id, PDO::PARAM_INT);
@@ -72,64 +99,51 @@ class User extends \Core\Model
     }
 
     /**
-     * Validate current property values, adding valiation error messages to the errors array property
-     *
-     * @return void
+     * Check the name, nickname, email and any new password, noting each
+     * problem in errors
      */
-    public function validate()
+    public function validate(): void
     {
-        // Name
-        $this->name = trim($this->name ?? '');
-        if ($this->name == '') {
-            $this->errors[] = 'Name: Required';
-        } elseif (mb_strlen($this->name) > 50) {
-            $this->errors[] = 'Name: 50 characters at most';
+        $this->errors = [];
+
+        $this->name = trim($this->name);
+        if ($this->name === '') {
+            $this->errors['name'][] = 'Enter your name.';
+        } elseif (mb_strlen($this->name) > static::MAX_NAME_LENGTH) {
+            $this->errors['name'][] = 'Your name can be ' . static::MAX_NAME_LENGTH . ' characters at most.';
         }
 
-        // Nickname: optional, one word, as people type it after an @
+        // Optional, one word, as people type it after an @
         $this->nickname = trim($this->nickname ?? '');
         if ($this->nickname !== '') {
             if (!preg_match('/^[\p{L}\p{N}_.-]{2,20}$/u', $this->nickname)) {
-                $this->errors[] = 'Nickname: 2 to 20 letters, numbers, _ . or -, with no spaces';
+                $this->errors['nickname'][] = 'A nickname is 2 to 20 letters, numbers, _ . or -, with no spaces.';
             } elseif (mb_strtolower($this->nickname) === mb_strtolower(Bot::NAME)
-                      || static::nicknameTaken($this->nickname, $this->id ?? null)) {
-                $this->errors[] = 'Nickname: Already taken';
+                      || static::isNicknameTaken($this->nickname, $this->id)) {
+                $this->errors['nickname'][] = 'That nickname is taken.';
             }
         }
 
-        // email address
         if (filter_var($this->email, FILTER_VALIDATE_EMAIL) === false) {
-            $this->errors[] = 'Email: Invalid';
+            $this->errors['email'][] = 'Enter a valid email.';
+        } elseif (static::isEmailTaken($this->email, $this->id)) {
+            $this->errors['email'][] = 'That email is already registered.';
         }
-        if (static::emailExists($this->email, $this->id ?? null)) {
-            $this->errors[] = 'Email:  Already registered';
-        }
 
-        // Password
-        if (isset($this->password)) {
-            if (strlen($this->password) < 6) {
-                $this->errors[] = 'Password: Enter at least 6 characters';
-            }
-
-            if (preg_match('/.*[a-z]+.*/i', $this->password) == 0) {
-                $this->errors[] = 'Password: Needs at least one letter';
-            }
-
-            if (preg_match('/.*\d+.*/i', $this->password) == 0) {
-                $this->errors[] = 'Password: Needs at least one number';
-            }
+        // One line for every rule, as the hint under the field says it
+        $isPasswordWeak = $this->password !== null
+            && (strlen($this->password) < 6 || !preg_match('/[a-z]/i', $this->password) || !preg_match('/\d/', $this->password));
+        if ($isPasswordWeak) {
+            $this->errors['password'][] = 'Use 6 or more characters, with a letter and a number.';
         }
     }
 
     /**
      * Whether someone else already goes by this nickname, in any case
      *
-     * @param string $nickname
      * @param int|null $ignoreId Your own id, so keeping yours isn't a clash
-     *
-     * @return bool
      */
-    public static function nicknameTaken($nickname, $ignoreId = null)
+    public static function isNicknameTaken(string $nickname, ?int $ignoreId = null): bool
     {
         $stmt = static::getDB()->prepare('SELECT COUNT(*) FROM users WHERE nickname = :nickname AND id <> :id');
         $stmt->bindValue(':nickname', $nickname, PDO::PARAM_STR);
@@ -140,76 +154,94 @@ class User extends \Core\Model
     }
 
     /**
-     * See if a user record already exists with the specified email
+     * Whether someone else already has an account with this email
      *
-     * @param string $email email address to search for
-     * @param string $ignore_id Return false anyway if the record found has this ID
-     *
-     * @return boolean  True if a record already exists with the specified email, false otherwise
+     * @param int|null $ignoreId Your own id, so keeping yours isn't a clash
      */
-    public static function emailExists($email, $ignore_id = null)
+    public static function isEmailTaken(string $email, ?int $ignoreId = null): bool
     {
         $user = static::findByEmail($email);
 
-        if ($user) {
-            if ($user->id != $ignore_id) {
-                return true;
-            }
-        }
-
-        return false;
+        return $user !== null && $user->id !== $ignoreId;
     }
 
     /**
-     * Find a user model by email address
-     *
-     * @param string $email email address to search for
-     *
-     * @return mixed User object if found, false otherwise
+     * The account with this email, if any
      */
-    public static function findByEmail($email)
+    public static function findByEmail(string $email): ?static
     {
-        $sql = 'SELECT * FROM users WHERE email = :email';
+        return static::findWhere('email = :email', [':email' => $email]);
+    }
 
-        $db = static::getDB();
-        $stmt = $db->prepare($sql);
-        $stmt->bindValue(':email', $email, PDO::PARAM_STR);
+    /**
+     * The account with this id, if any
+     */
+    public static function findByID(int $id): ?static
+    {
+        return static::findWhere('id = :id', [':id' => $id]);
+    }
 
+    /**
+     * The account a password reset link is for, while the link still works
+     *
+     * @param string $token The token from the link
+     */
+    public static function findByPasswordReset(string $token): ?static
+    {
+        return static::findWhere('password_reset_hash = :hash AND password_reset_expires_at > NOW()', [
+            ':hash' => (new Token($token))->getHash(),
+        ]);
+    }
+
+    /**
+     * The guest account a browser started earlier, if it still exists, so a
+     * returning guest gets their name and messages back
+     *
+     * @param string $token The token from the guest's cookie
+     */
+    public static function findGuestByToken(string $token): ?static
+    {
+        if ($token === '') {
+            return null;
+        }
+
+        return static::findWhere('guest_token_hash = :hash AND is_guest = 1 AND NOT (' . static::expiredGuestSql() . ')', [
+            ':hash' => (new Token($token))->getHash(),
+        ]);
+    }
+
+    /**
+     * The one account that matches a condition, if any
+     *
+     * @param string $condition SQL for the WHERE clause, with placeholders
+     * @param array<string, int|string> $params The placeholders' values
+     */
+    protected static function findWhere(string $condition, array $params): ?static
+    {
+        $stmt = static::getDB()->prepare('SELECT * FROM users WHERE ' . $condition);
         $stmt->setFetchMode(PDO::FETCH_CLASS, static::class);
+        $stmt->execute($params);
 
-        $stmt->execute();
-
-        return $stmt->fetch();
+        return $stmt->fetch() ?: null;
     }
 
     /**
-     * Authenticate a user by email and password
-     *
-     * @param string $email email address
-     * @param string $password password
-     *
-     * @return mixed  The user object or false if authentication fails
+     * The account with this email and password, if they match
      */
-    public static function authenticate($email, $password)
+    public static function authenticate(string $email, string $password): ?static
     {
         $user = static::findByEmail($email);
 
-        if ($user && password_verify($password, $user->password_hash)) {
-            return $user;
-        }
-
-        return false;
+        return $user && password_verify($password, $user->password_hash) ? $user : null;
     }
 
     /**
-     * The people "@" and their name or handle (Mention::handle) appears
-     * for in the text
+     * The people "@" and their name or shown name (Mention::shownName)
+     * appears for in the text
      *
-     * @param string $text
-     *
-     * @return array Each with name, nickname and is_guest
+     * @return array<array{name: string, nickname: ?string, is_guest: string}>
      */
-    public static function mentionedIn($text)
+    public static function mentionedIn(string $text): array
     {
         // LOCATE, not LIKE, so a name with % or _ in it is taken as typed
         $sql = 'SELECT DISTINCT name, nickname, is_guest FROM users
@@ -228,180 +260,77 @@ class User extends \Core\Model
     }
 
     /**
-     * Find a user model by ID
+     * Email a password reset link to the account with this email, if there
+     * is one
      *
-     * @param string $id The user ID
-     *
-     * @return mixed User object if found, false otherwise
+     * @return bool False only when there is an account and its email
+     *              couldn't be sent, so the answer never says which emails
+     *              have an account
      */
-    public static function findByID($id)
-    {
-        $sql = 'SELECT * FROM users WHERE id = :id';
-
-        $db = static::getDB();
-        $stmt = $db->prepare($sql);
-        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
-
-        $stmt->setFetchMode(PDO::FETCH_CLASS, static::class);
-
-        $stmt->execute();
-
-        return $stmt->fetch();
-    }
-
-    /**
-     * Remember the login by inserting a new unique token into the remembered_logins table
-     * for this user record
-     *
-     * @return boolean  True if the login was remembered successfully, false otherwise
-     */
-    public function rememberLogin()
-    {
-        $token = new Token();
-        $hashed_token = $token->getHash();
-        $this->remember_token = $token->getValue();
-
-        $this->expiry_timestamp = time() + 60 * 60 * 24 * 30;  // 30 days from now
-
-        $sql = 'INSERT INTO remembered_logins (token_hash, user_id, expires_at)
-                VALUES (:token_hash, :user_id, :expires_at)';
-
-        $db = static::getDB();
-        $stmt = $db->prepare($sql);
-
-        $stmt->bindValue(':token_hash', $hashed_token, PDO::PARAM_STR);
-        $stmt->bindValue(':user_id', $this->id, PDO::PARAM_INT);
-        $stmt->bindValue(':expires_at', date('Y-m-d H:i:s', $this->expiry_timestamp), PDO::PARAM_STR);
-
-        return $stmt->execute();
-    }
-
-    /**
-     * Send password reset instructions to the user specified
-     *
-     * @param string $email The email address
-     *
-     * @return void
-     */
-    public static function sendPasswordReset($email)
+    public static function sendPasswordReset(string $email): bool
     {
         $user = static::findByEmail($email);
-
-        if ($user) {
-            if ($user->startPasswordReset()) {
-                $user->sendPasswordResetEmail();
-            }
+        if (!$user) {
+            return true;
         }
+
+        $user->startPasswordReset();
+
+        return $user->sendPasswordResetEmail();
     }
 
     /**
-     * Start the password reset process by generating a new token and expiry
-     *
-     * @return boolean  True if the token was saved
+     * Make a new password reset token, good for RESET_SECONDS
      */
-    protected function startPasswordReset()
+    protected function startPasswordReset(): void
     {
         $token = new Token();
-        $hashed_token = $token->getHash();
-        $this->password_reset_token = $token->getValue();
+        $this->passwordResetToken = $token->value;
 
-        $expiry_timestamp = time() + 60 * 60 * 2;  // 2 hours from now
-
-        $sql = 'UPDATE users
-                SET password_reset_hash = :token_hash,
-                    password_reset_expires_at = :expires_at
-                WHERE id = :id';
-
-        $db = static::getDB();
-        $stmt = $db->prepare($sql);
-
-        $stmt->bindValue(':token_hash', $hashed_token, PDO::PARAM_STR);
-        $stmt->bindValue(':expires_at', date('Y-m-d H:i:s', $expiry_timestamp), PDO::PARAM_STR);
+        $stmt = static::getDB()->prepare('UPDATE users
+                                          SET password_reset_hash = :token_hash, password_reset_expires_at = :expires_at
+                                          WHERE id = :id');
+        $stmt->bindValue(':token_hash', $token->getHash(), PDO::PARAM_STR);
+        $stmt->bindValue(':expires_at', gmdate('Y-m-d H:i:s', time() + static::RESET_SECONDS), PDO::PARAM_STR);
         $stmt->bindValue(':id', $this->id, PDO::PARAM_INT);
-
-        return $stmt->execute();
-    }
-
-
-    /**
-     * Find a user model by password reset token and expiry
-     *
-     * @param string $token Password reset token sent to user
-     *
-     * @return mixed User object if found and the token hasn't expired, null otherwise
-     */
-    public static function findByPasswordReset($token)
-    {
-        $token = new Token($token);
-        $hashed_token = $token->getHash();
-
-        $sql = 'SELECT * FROM users
-                WHERE password_reset_hash = :token_hash';
-
-        $db = static::getDB();
-        $stmt = $db->prepare($sql);
-
-        $stmt->bindValue(':token_hash', $hashed_token, PDO::PARAM_STR);
-
-        $stmt->setFetchMode(PDO::FETCH_CLASS, static::class);
-
         $stmt->execute();
-
-        $user = $stmt->fetch();
-
-        if ($user) {
-            // Check password reset token hasn't expired
-            if (strtotime($user->password_reset_expires_at) > time()) {
-                return $user;
-            }
-        }
     }
 
     /**
-     * Reset the password
-     *
-     * @param string $password The new password
-     *
-     * @return boolean  True if the password was updated successfully, false otherwise
+     * Set a new password, unless it isn't valid (see errors), and log out
+     * every remembered browser
      */
-    public function resetPassword($password)
+    public function resetPassword(string $password): bool
     {
         $this->password = $password;
 
         $this->validate();
-
-        if (empty($this->errors)) {
-            $password_hash = password_hash($this->password, PASSWORD_DEFAULT);
-
-            $sql = 'UPDATE users
-                    SET password_hash = :password_hash,
-                        password_reset_hash = NULL,
-                        password_reset_expires_at = NULL
-                    WHERE id = :id';
-
-            $db = static::getDB();
-            $stmt = $db->prepare($sql);
-                                                  
-            $stmt->bindValue(':id', $this->id, PDO::PARAM_INT);
-            $stmt->bindValue(':password_hash', $password_hash, PDO::PARAM_STR);
-
-            $stmt->execute();
-            $this->forgetRememberedLogins();
-
-            return true;
+        if ($this->errors) {
+            return false;
         }
 
-        return false;
+        $stmt = static::getDB()->prepare('UPDATE users
+                                          SET password_hash = :password_hash,
+                                              password_reset_hash = NULL,
+                                              password_reset_expires_at = NULL
+                                          WHERE id = :id');
+        $stmt->bindValue(':id', $this->id, PDO::PARAM_INT);
+        $stmt->bindValue(':password_hash', password_hash($this->password, PASSWORD_DEFAULT), PDO::PARAM_STR);
+        $stmt->execute();
+
+        $this->forgetRememberedLogins();
+
+        return true;
     }
 
     /**
-     * Send an email to the user containing the activation link
+     * Email the activation link
      *
-     * @return boolean True if it was sent
+     * @return bool Whether the mail service took it
      */
-    public function sendActivationEmail()
+    public function sendActivationEmail(): bool
     {
-        $url = Config::appUrl() . '/signup/activate/' . $this->activation_token;
+        $url = Config::appUrl() . '/signup/activate/' . $this->activationToken;
 
         $text = View::getTemplate('Signup/activation_email.txt', ['url' => $url, 'name' => $this->name]);
         $html = View::getTemplate('Signup/activation_email.html', ['url' => $url, 'name' => $this->name]);
@@ -410,42 +339,31 @@ class User extends \Core\Model
     }
 
     /**
-     * Send password reset instructions in an email to the user
+     * Email the password reset link
      *
-     * @return void
+     * @return bool Whether the mail service took it
      */
-    protected function sendPasswordResetEmail()
+    protected function sendPasswordResetEmail(): bool
     {
-        $url = Config::appUrl() . '/password/reset/' . $this->password_reset_token;
+        $url = Config::appUrl() . '/password/reset/' . $this->passwordResetToken;
 
         $text = View::getTemplate('Password/reset_email.txt', ['url' => $url, 'name' => $this->name]);
         $html = View::getTemplate('Password/reset_email.html', ['url' => $url, 'name' => $this->name]);
 
-        Mail::send($this->email, 'Reset your MapChat password', $text, $html);
+        return Mail::send($this->email, 'Reset your MapChat password', $text, $html);
     }
 
     /**
-     * Activate the user account with the specified activation token
+     * Activate the account an activation link is for
      *
-     * @param string $value Activation token from the URL
+     * @param string $token The token from the link
      *
-     * @return boolean  False if the link was wrong or already used
+     * @return bool False if the link was wrong or already used
      */
-    public static function activate($value)
+    public static function activate(string $token): bool
     {
-        $token = new Token($value);
-        $hashed_token = $token->getHash();
-
-        $sql = 'UPDATE users
-                SET is_active = 1,
-                    activation_hash = null
-                WHERE activation_hash = :hashed_token';
-
-        $db = static::getDB();
-        $stmt = $db->prepare($sql);
-
-        $stmt->bindValue(':hashed_token', $hashed_token, PDO::PARAM_STR);
-
+        $stmt = static::getDB()->prepare('UPDATE users SET is_active = 1, activation_hash = NULL WHERE activation_hash = :hash');
+        $stmt->bindValue(':hash', (new Token($token))->getHash(), PDO::PARAM_STR);
         $stmt->execute();
 
         return $stmt->rowCount() > 0;
@@ -454,58 +372,27 @@ class User extends \Core\Model
     /**
      * Create a throwaway guest account, so visitors can try the chat without
      * signing up. Guests get a random name, an email address nobody can
-     * receive mail at, and a password nobody knows.
-     *
-     * @return User The new guest
+     * receive mail at, and a password nobody knows
      */
-    public static function createGuest()
+    public static function createGuest(): static
     {
-        static::deleteOldGuests();
-
-        $sql = 'INSERT INTO users (name, email, password_hash, is_active, is_guest, guest_token_hash)
-                VALUES (:name, :email, :password_hash, 1, 1, :guest_token_hash)';
-
-        $db = static::getDB();
-        $stmt = $db->prepare($sql);
+        static::deleteExpiredGuests();
 
         $token = new Token();
 
+        $db = static::getDB();
+        $stmt = $db->prepare('INSERT INTO users (name, email, password_hash, is_active, is_guest, guest_token_hash)
+                              VALUES (:name, :email, :password_hash, 1, 1, :guest_token_hash)');
         $stmt->bindValue(':name', 'Guest ' . random_int(1000, 9999), PDO::PARAM_STR);
         $stmt->bindValue(':email', 'guest-' . bin2hex(random_bytes(8)) . '@guest.mapchat.local', PDO::PARAM_STR);
         $stmt->bindValue(':password_hash', password_hash(bin2hex(random_bytes(32)), PASSWORD_DEFAULT), PDO::PARAM_STR);
         $stmt->bindValue(':guest_token_hash', $token->getHash(), PDO::PARAM_STR);
         $stmt->execute();
 
-        $user = static::findByID($db->lastInsertId());
-        $user->guest_token = $token->getValue();
+        $guest = static::findByID((int) $db->lastInsertId());
+        $guest->guestToken = $token->value;
 
-        return $user;
-    }
-
-    /**
-     * The guest account a browser started earlier, if it still exists, so a
-     * returning guest gets their name and messages back
-     *
-     * @param string $value The token from the guest's cookie
-     *
-     * @return mixed User object if found, false otherwise
-     */
-    public static function findGuestByToken($value)
-    {
-        if ($value === '') {
-            return false;
-        }
-
-        $token = new Token($value);
-
-        $stmt = static::getDB()->prepare('SELECT * FROM users
-                                          WHERE guest_token_hash = :hash AND is_guest = 1
-                                            AND created_at > NOW() - INTERVAL ' . static::GUEST_LIFETIME_HOURS . ' HOUR');
-        $stmt->bindValue(':hash', $token->getHash(), PDO::PARAM_STR);
-        $stmt->setFetchMode(PDO::FETCH_CLASS, static::class);
-        $stmt->execute();
-
-        return $stmt->fetch();
+        return $guest;
     }
 
     /**
@@ -513,138 +400,122 @@ class User extends \Core\Model
      *
      * @return int Unix time
      */
-    public function guestExpiresAt()
+    public function guestExpiresAt(): int
     {
         return strtotime($this->created_at . ' UTC') + static::GUEST_LIFETIME_HOURS * 3600;
     }
 
     /**
-     * How long a guest account lasts before it is deleted, with its messages
-     */
-    const GUEST_LIFETIME_HOURS = 24;
-
-    /**
      * Hours until this guest account is deleted, rounded up
-     *
-     * @return int
      */
-    public function guestHoursLeft()
+    public function guestHoursLeft(): int
     {
-        $secondsLeft = strtotime($this->created_at) + static::GUEST_LIFETIME_HOURS * 3600 - time();
+        $secondsLeft = $this->guestExpiresAt() - time();
 
         return max(1, (int) ceil($secondsLeft / 3600));
     }
 
     /**
-     * Delete guest accounts older than GUEST_LIFETIME_HOURS. Their messages
-     * and location go with them (the chats and userinfo tables cascade on
-     * delete). Runs whenever a new guest signs in, so no scheduled job is
-     * needed. Guests who set a password are no longer guests and are kept.
-     *
-     * @return void
+     * Whether this is a guest account whose GUEST_LIFETIME_HOURS are up. It
+     * stops working at once, before the chat worker deletes it
      */
-    public static function deleteOldGuests()
+    public function isExpiredGuest(): bool
+    {
+        return $this->is_guest && $this->guestExpiresAt() <= time();
+    }
+
+    /**
+     * SQL that's true for guest accounts whose GUEST_LIFETIME_HOURS are up
+     *
+     * @param string $table The users table's name or alias in the query
+     */
+    public static function expiredGuestSql(string $table = 'users'): string
+    {
+        return "$table.is_guest = 1 AND $table.created_at <= NOW() - INTERVAL " . static::GUEST_LIFETIME_HOURS . ' HOUR';
+    }
+
+    /**
+     * Delete guest accounts whose GUEST_LIFETIME_HOURS are up. Their
+     * messages and location go with them (the chats and userinfo tables
+     * cascade on delete). The chat worker runs this regularly, and so does
+     * each new guest. Guests who set a password are no longer guests and are
+     * kept
+     */
+    public static function deleteExpiredGuests(): void
     {
         $db = static::getDB();
-        $old = 'SELECT id FROM users
-                WHERE is_guest = 1
-                  AND created_at < NOW() - INTERVAL ' . (int) static::GUEST_LIFETIME_HOURS . ' HOUR';
+        $expired = 'SELECT id FROM (SELECT id FROM users WHERE ' . static::expiredGuestSql() . ') AS expired_guests';
 
-        $db->exec('DELETE FROM remembered_logins WHERE user_id IN (SELECT id FROM (' . $old . ') AS old_guests)');
-        $db->exec('DELETE FROM users WHERE id IN (SELECT id FROM (' . $old . ') AS old_guests)');
+        $db->exec("DELETE FROM remembered_logins WHERE user_id IN ($expired)");
+        $db->exec("DELETE FROM users WHERE id IN ($expired)");
     }
 
     /**
      * Turn showing this user's pin and city on or off
-     *
-     * @param bool $share
-     *
-     * @return bool True if saved
      */
-    public function setLocationSharing($share)
+    public function setLocationSharing(bool $isShared): void
     {
-        $sql = 'UPDATE users SET share_location = :share WHERE id = :id';
-
-        $db = static::getDB();
-        $stmt = $db->prepare($sql);
-        $stmt->bindValue(':share', $share ? 1 : 0, PDO::PARAM_INT);
+        $stmt = static::getDB()->prepare('UPDATE users SET share_location = :share WHERE id = :id');
+        $stmt->bindValue(':share', $isShared, PDO::PARAM_BOOL);
         $stmt->bindValue(':id', $this->id, PDO::PARAM_INT);
+        $stmt->execute();
 
-        return $stmt->execute();
+        $this->share_location = $isShared;
     }
 
     /**
-     * Update the user's profile
+     * Save the profile form, unless it isn't valid (see errors). A new
+     * password logs out every remembered browser, and a guest who sets one
+     * keeps their account
      *
-     * @param array $data Data from the edit profile form
-     *
-     * @return boolean  True if the data was updated, false otherwise
+     * @param array{name: string, nickname: string, email: string, password: string} $data
+     *        An empty password keeps the current one
      */
-    public function updateProfile($data)
+    public function updateProfile(array $data): bool
     {
         $this->name = $data['name'];
         $this->nickname = $data['nickname'];
         $this->email = $data['email'];
-
-        // Only validate and update the password if a value provided
-        if ($data['password'] != '') {
-            $this->password = $data['password'];
-        }
+        $this->password = $data['password'] === '' ? null : $data['password'];
 
         $this->validate();
-
-        if (empty($this->errors)) {
-            $sql = 'UPDATE users
-                    SET name = :name,
-                        nickname = :nickname,
-                        email = :email';
-
-            // Add password if it's set. A guest who sets their own email and
-            // password turns the guest account into a normal one.
-            if (isset($this->password)) {
-                $sql .= ', password_hash = :password_hash, is_guest = 0';
-            }
-
-
-            $sql .= "\nWHERE id = :id";
-
-
-            $db = static::getDB();
-            $stmt = $db->prepare($sql);
-
-            $stmt->bindValue(':name', $this->name, PDO::PARAM_STR);
-            // Empty means none, so it doesn't clash with anyone else's empty one
-            $stmt->bindValue(':nickname', $this->nickname === '' ? null : $this->nickname, PDO::PARAM_STR);
-            $stmt->bindValue(':email', $this->email, PDO::PARAM_STR);
-            $stmt->bindValue(':id', $this->id, PDO::PARAM_INT);
-
-            // Add password if it's set
-            if (isset($this->password)) {
-                $password_hash = password_hash($this->password, PASSWORD_DEFAULT);
-                $stmt->bindValue(':password_hash', $password_hash, PDO::PARAM_STR);
-            }
-
-            $stmt->execute();
-
-            if (isset($this->password)) {
-                $this->forgetRememberedLogins();
-            }
-
-            return true;
+        if ($this->errors) {
+            return false;
         }
 
-        return false;
+        $hasNewPassword = $this->password !== null;
+
+        $sql = 'UPDATE users SET name = :name, nickname = :nickname, email = :email';
+        if ($hasNewPassword) {
+            $sql .= ', password_hash = :password_hash, is_guest = 0';
+        }
+        $sql .= ' WHERE id = :id';
+
+        $stmt = static::getDB()->prepare($sql);
+        $stmt->bindValue(':name', $this->name, PDO::PARAM_STR);
+        // Empty means none, so it doesn't clash with anyone else's empty one
+        $stmt->bindValue(':nickname', $this->nickname === '' ? null : $this->nickname, PDO::PARAM_STR);
+        $stmt->bindValue(':email', $this->email, PDO::PARAM_STR);
+        $stmt->bindValue(':id', $this->id, PDO::PARAM_INT);
+        if ($hasNewPassword) {
+            $stmt->bindValue(':password_hash', password_hash($this->password, PASSWORD_DEFAULT), PDO::PARAM_STR);
+        }
+        $stmt->execute();
+
+        if ($hasNewPassword) {
+            $this->forgetRememberedLogins();
+        }
+
+        return true;
     }
 
     /**
-     * Set the user's photo (null for the letter avatar). Only our own
+     * Set the user's photo, or null for the letter avatar. Only our own
      * Cloudinary uploads are accepted
      *
-     * @param string|null $avatar
-     *
-     * @return boolean  True if the photo was saved
+     * @return bool Whether it was saved
      */
-    public function updateAvatar($avatar)
+    public function updateAvatar(?string $avatar): bool
     {
         $uploads = 'https://res.cloudinary.com/' . Config::cloudinaryCloudName() . '/';
 
@@ -660,11 +531,9 @@ class User extends \Core\Model
     }
 
     /**
-     * Log out every remembered device (after a password change)
-     *
-     * @return void
+     * Log out every remembered browser, after a password change
      */
-    protected function forgetRememberedLogins()
+    protected function forgetRememberedLogins(): void
     {
         $stmt = static::getDB()->prepare('DELETE FROM remembered_logins WHERE user_id = :id');
         $stmt->bindValue(':id', $this->id, PDO::PARAM_INT);

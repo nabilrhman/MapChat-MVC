@@ -5,7 +5,7 @@ namespace App;
 /**
  * Picture for people who haven't uploaded an avatar: their initials on a
  * coloured gradient, the same style as the sample people's avatars, or for
- * the demo people a drawn face. Each person always gets the same one.
+ * the demo people a drawn face. Each person always gets the same one
  */
 class Avatar
 {
@@ -84,14 +84,10 @@ class Avatar
     /**
      * Up to two initials: the first letter of the first two words that start
      * with a letter, so "Guest 4218" becomes "G" rather than "G4"
-     *
-     * @param string $name
-     *
-     * @return string
      */
-    public static function initials($name)
+    public static function initials(string $name): string
     {
-        $words = preg_split('/\s+/u', trim((string) $name), -1, PREG_SPLIT_NO_EMPTY);
+        $words = preg_split('/\s+/u', trim($name), -1, PREG_SPLIT_NO_EMPTY);
         $words = array_values(array_filter($words, fn ($word) => preg_match('/^\p{L}/u', $word)));
         $initials = '';
 
@@ -103,61 +99,70 @@ class Avatar
     }
 
     /**
-     * Image address for an avatar: the uploaded photo, or the letter avatar
+     * Image address for an avatar: the uploaded photo, or the drawn one
      * inline, so a page full of people needs no request per avatar
      *
-     * @param int $id
-     * @param string $name
      * @param string|null $photo The uploaded photo's URL, if any
-     * @param bool $is_demo The demo people (database/demo.sql) get a drawn face
-     *
-     * @return string
+     * @param bool $isDemo The demo people (database/demo.sql) get a drawn face, whatever photo is stored
      */
-    public static function src($id, $name, $photo = null, $is_demo = false)
+    public static function src(int $id, string $name, ?string $photo = null, bool $isDemo = false): string
     {
-        if ($photo && !$is_demo) {
+        if ($photo && !$isDemo) {
             return $photo;
         }
 
-        $svg = $is_demo ? static::face($id, $name) : static::svg($name, $id);
+        return 'data:image/svg+xml;base64,' . base64_encode(static::drawn($id, $name, $isDemo));
+    }
 
-        return 'data:image/svg+xml;base64,' . base64_encode($svg);
+    /**
+     * The drawn avatar as SVG: a demo person's face, or anyone else's initials
+     */
+    public static function drawn(int $id, string $name, bool $isDemo): string
+    {
+        return $isDemo ? static::face($id, $name) : static::initialsSvg($id, $name);
     }
 
     /**
      * A demo person's avatar: a line-drawn face on a pastel background, put
      * together from the parts above. The same person always gets the same face
      *
-     * @param int $seed The person's id
-     * @param string|null $name A name in LOOKS gets that look; anyone else a mix
+     * @param int $id The person's id, which picks the parts
+     * @param string $name A name in LOOKS gets that look; anyone else a mix
      *
      * @return string SVG
      */
-    public static function face($seed, $name = null)
+    public static function face(int $id, string $name): string
     {
         $look = static::LOOKS[$name] ?? null;
-        // A separate hash per part, so neighbouring ids look nothing alike
-        $pick = fn ($parts, $part) => $look
-            ? ($part === 'bg' ? $look['bg'] : $parts[$look[$part]])
-            : array_values($parts)[crc32($part . $seed) % count($parts)];
+        $pick = function (array $parts, string $part) use ($look, $id) {
+            if ($look === null) {
+                // A separate hash per part, so neighbouring ids look nothing alike
+                return array_values($parts)[crc32($part . $id) % count($parts)];
+            }
+            if ($part === 'bg') {
+                return $look['bg'];
+            }
+
+            return $parts[$look[$part]];
+        };
 
         $hair = $pick(static::HAIR, 'hair');
         // Long hair falls behind the shoulders, so it's drawn first
-        $is_long = $hair === static::HAIR['long'];
+        $isLongHair = $hair === static::HAIR['long'];
         // Bold lines, so the face stays crisp at the 24-34px it's shown at
         $line = 'stroke="' . static::INK . '" stroke-width="3.6" stroke-linejoin="round"';
 
         // Framed close on the head, so the face still reads at list size
         return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="13 8 70 70">'
             . '<rect x="13" y="8" width="70" height="70" fill="' . $pick(static::PASTELS, 'bg') . '"/>'
-            . '<g fill="' . static::INK . '">' . ($is_long ? $hair : '') . '</g>'
+            . '<g fill="' . static::INK . '">' . ($isLongHair ? $hair : '') . '</g>'
             . '<path d="M14 96C16 82 28 76 40 74L56 74C68 76 80 82 82 96Z" fill="#fff" ' . $line . '/>'
             . '<path d="M42 64V75Q48 80 54 75V64" fill="#fff" ' . $line . '/>'
             . '<ellipse cx="29" cy="50" rx="3.5" ry="5" fill="#fff" ' . $line . '/>'
             . '<ellipse cx="67" cy="50" rx="3.5" ry="5" fill="#fff" ' . $line . '/>'
             . '<ellipse cx="48" cy="47" rx="20" ry="22" fill="#fff" ' . $line . '/>'
             . '<g fill="' . static::INK . '">'
-            . ($is_long ? '' : $hair) . $pick(static::EYES, 'eyes') . $pick(static::BROWS, 'brows')
+            . ($isLongHair ? '' : $hair) . $pick(static::EYES, 'eyes') . $pick(static::BROWS, 'brows')
             . $pick(static::EXTRAS, 'extra') . $pick(static::MOUTHS, 'mouth')
             . '</g>'
             . '<path d="M48 50Q45.5 55 49 55.5" fill="none" stroke="' . static::INK . '" stroke-width="2.8" stroke-linecap="round"/>'
@@ -165,16 +170,13 @@ class Avatar
     }
 
     /**
-     * The avatar as an SVG image
+     * Someone's initials on a gradient, as SVG
      *
-     * @param string $name Shown as initials
-     * @param int $seed Picks the colour, e.g. the user's id
-     *
-     * @return string
+     * @param int $id The person's id, which picks the colour
      */
-    public static function svg($name, $seed)
+    public static function initialsSvg(int $id, string $name): string
     {
-        [$from, $to] = static::COLOURS[abs((int) $seed) % count(static::COLOURS)];
+        [$from, $to] = static::COLOURS[abs($id) % count(static::COLOURS)];
         $initials = htmlspecialchars(static::initials($name), ENT_XML1 | ENT_QUOTES, 'UTF-8');
 
         return <<<SVG

@@ -26,12 +26,12 @@ function withMentionChips(text, handles) {
     const mention = new RegExp(`@(?:${escaped.join('|')})(?![\\p{L}\\p{N}])`, 'giu');
 
     const nodes = [];
-    let last = 0;
+    let endOfLastMention = 0;
     for (const match of text.matchAll(mention)) {
-        nodes.push(text.slice(last, match.index), createElement('span', 'mention', match[0]));
-        last = match.index + match[0].length;
+        nodes.push(text.slice(endOfLastMention, match.index), createElement('span', 'mention', match[0]));
+        endOfLastMention = match.index + match[0].length;
     }
-    nodes.push(text.slice(last));
+    nodes.push(text.slice(endOfLastMention));
     return nodes;
 }
 
@@ -55,7 +55,7 @@ function setUpMentions(input, canMention, getPeople) {
     const chips = createElement('div', 'chat-composer__chips');
     chips.setAttribute('aria-hidden', 'true');
     input.before(chips);
-    input.classList.add('chat-composer__textarea--over-chips');
+    input.classList.add('is-over-chips');
 
     function showChips() {
         const handles = canMention() ? getPeople().map((person) => person.shown_name) : [];
@@ -69,7 +69,7 @@ function setUpMentions(input, canMention, getPeople) {
     // Where the @ being typed is in the box
     let atIndex = 0;
 
-    function close() {
+    function closePicker() {
         picker.hidden = true;
         matches = [];
         input.setAttribute('aria-expanded', 'false');
@@ -85,13 +85,15 @@ function setUpMentions(input, canMention, getPeople) {
 
         const photo = createElement('img', 'mention-picker__photo');
         photo.alt = '';
+        photo.width = 24;
+        photo.height = 24;
         photo.src = person.avatar_src;
         option.append(photo, createElement('span', 'mention-picker__name', person.shown_name));
 
         // mousedown, not click, so the box keeps focus
         option.addEventListener('mousedown', (event) => {
             event.preventDefault();
-            choose(person);
+            choosePerson(person);
         });
         return option;
     }
@@ -103,24 +105,26 @@ function setUpMentions(input, canMention, getPeople) {
         input.setAttribute('aria-activedescendant', `mention-option-${activeIndex}`);
     }
 
-    function update() {
+    // Shows the names that match what's typed after an @, or closes the list
+    function updatePicker() {
         const isCaret = input.selectionStart === input.selectionEnd;
         const typedSoFar = input.value.slice(0, input.selectionStart);
-        const found = canMention() && isCaret ? typedSoFar.match(MENTION_BEING_TYPED) : null;
-        if (!found) {
-            close();
+        const mentionBeingTyped = canMention() && isCaret ? typedSoFar.match(MENTION_BEING_TYPED) : null;
+        if (!mentionBeingTyped) {
+            closePicker();
             return;
         }
 
-        const typed = found[1].toLowerCase();
-        atIndex = typedSoFar.length - found[1].length - 1;
+        const typedName = mentionBeingTyped[1];
+        const typed = typedName.toLowerCase();
+        atIndex = typedSoFar.length - typedName.length - 1;
 
         // A space after someone's whole handle finishes the mention, spelled their way
-        const finished = typed.endsWith(' ')
+        const personTypedInFull = typed.endsWith(' ')
             && getPeople().find((person) => person.shown_name.toLowerCase() === typed.trimEnd());
-        if (finished) {
-            putMention(finished);
-            close();
+        if (personTypedInFull) {
+            putMention(personTypedInFull);
+            closePicker();
             showChips();
             return;
         }
@@ -134,7 +138,7 @@ function setUpMentions(input, canMention, getPeople) {
         activeIndex = 0;
 
         if (matches.length === 0) {
-            close();
+            closePicker();
         } else {
             showOptions();
         }
@@ -150,9 +154,9 @@ function setUpMentions(input, canMention, getPeople) {
         input.selectionStart = input.selectionEnd = before.length + mention.length;
     }
 
-    function choose(person) {
+    function choosePerson(person) {
         putMention(person);
-        close();
+        closePicker();
         input.dispatchEvent(new Event('input'));
     }
 
@@ -162,11 +166,11 @@ function setUpMentions(input, canMention, getPeople) {
     }
 
     input.addEventListener('input', () => {
-        update();
+        updatePicker();
         showChips();
     });
-    input.addEventListener('click', update);
-    input.addEventListener('blur', close);
+    input.addEventListener('click', updatePicker);
+    input.addEventListener('blur', closePicker);
     input.addEventListener('scroll', () => {
         chips.scrollTop = input.scrollTop;
     });
@@ -182,10 +186,10 @@ function setUpMentions(input, canMention, getPeople) {
         } else if (event.key === 'Enter' || event.key === 'Tab') {
             event.preventDefault();
             event.stopImmediatePropagation();
-            choose(matches[activeIndex]);
+            choosePerson(matches[activeIndex]);
         } else if (event.key === 'Escape') {
             event.preventDefault();
-            close();
+            closePicker();
         }
     });
 }

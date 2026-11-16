@@ -1,5 +1,6 @@
 {% extends 'base_login.html' %}
-{% import '_form_fields.html' as form %}
+{% from '_form_fields.html' import text_field %}
+{% types {token: 'string', user?: '\\App\\Models\\User'} %}
 
 {% block title %}Reset password{% endblock %}
 
@@ -15,8 +16,8 @@
 
         <input type="hidden" name="token" value="{{ token }}"/>
 
-        {{ form.text_field({id: 'inputPassword', name: 'password', type: 'password', label: 'New password', errors_key: 'Password',
-                            autocomplete: 'new-password', autofocus: true, hint: '6+ characters, a letter and a number'}, user.errors) }}
+        {{ text_field({id: 'inputPassword', name: 'password', type: 'password', label: 'New password', required: true, minlength: 6,
+                       autocomplete: 'new-password', autofocus: true, hint: '6+ characters, a letter and a number'}, user.errors.password ?? []) }}
 
         <button type="submit" class="button button--primary button--block auth-card__button">Set new password</button>
     </form>

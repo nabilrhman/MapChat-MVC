@@ -14,14 +14,11 @@ class PushSubscription extends \Core\Model
     /**
      * Save this browser for this person, or move it to them
      *
-     * @param string $email
      * @param string $endpoint The browser's push service address
      * @param string $p256dh Its public key
      * @param string $auth Its secret
-     *
-     * @return void
      */
-    public static function save($email, $endpoint, $p256dh, $auth)
+    public static function save(string $email, string $endpoint, string $p256dh, string $auth): void
     {
         $sql = 'INSERT INTO push_subscriptions (email, endpoint, endpoint_hash, p256dh, auth)
                 VALUES (:email, :endpoint, :endpoint_hash, :p256dh, :auth)
@@ -38,13 +35,8 @@ class PushSubscription extends \Core\Model
 
     /**
      * Forget this browser, if it's this person's
-     *
-     * @param string $email
-     * @param string $endpoint
-     *
-     * @return void
      */
-    public static function delete($email, $endpoint)
+    public static function delete(string $email, string $endpoint): void
     {
         $stmt = static::getDB()->prepare('DELETE FROM push_subscriptions WHERE endpoint_hash = :endpoint_hash AND email = :email');
         $stmt->bindValue(':endpoint_hash', hash('sha256', $endpoint), PDO::PARAM_STR);
@@ -54,12 +46,8 @@ class PushSubscription extends \Core\Model
 
     /**
      * Forget a browser its push service no longer knows, whoever it was for
-     *
-     * @param string $endpoint
-     *
-     * @return void
      */
-    public static function deleteGone($endpoint)
+    public static function deleteGone(string $endpoint): void
     {
         $stmt = static::getDB()->prepare('DELETE FROM push_subscriptions WHERE endpoint_hash = :endpoint_hash');
         $stmt->bindValue(':endpoint_hash', hash('sha256', $endpoint), PDO::PARAM_STR);
@@ -71,7 +59,7 @@ class PushSubscription extends \Core\Model
      *
      * @return array Each with email, endpoint, p256dh, auth, name, nickname and is_guest
      */
-    public static function getAll()
+    public static function getAll(): array
     {
         $sql = 'SELECT push_subscriptions.email, endpoint, p256dh, auth, users.name, users.nickname, users.is_guest
                 FROM push_subscriptions

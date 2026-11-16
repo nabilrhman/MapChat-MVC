@@ -116,7 +116,7 @@ class Schema extends \Core\Model
      *
      * @return array What was added, as table, table.column or table index name
      */
-    public static function upgrade()
+    public static function upgrade(): array
     {
         $db = static::getDB();
         $added = [];
@@ -154,12 +154,8 @@ class Schema extends \Core\Model
 
     /**
      * Give the demo people their country and time zone where they're missing
-     *
-     * @param PDO $db
-     *
-     * @return void
      */
-    protected static function fillDemoPlaces($db)
+    protected static function fillDemoPlaces(PDO $db): void
     {
         $stmt = $db->prepare('UPDATE userinfo
                               SET country = COALESCE(country, :country), timezone = COALESCE(timezone, :timezone)
@@ -173,25 +169,17 @@ class Schema extends \Core\Model
     /**
      * The demo people used to have picture files; now they get drawn faces
      * (Avatar::face), which only show when no picture is stored
-     *
-     * @param PDO $db
-     *
-     * @return void
      */
-    protected static function dropDemoPictures($db)
+    protected static function dropDemoPictures(PDO $db): void
     {
         $db->exec("UPDATE users SET avatar = NULL
-                   WHERE email LIKE '%@demo.mapchat.local' AND avatar LIKE '/res/avatars/%'");
+                   WHERE " . DemoChat::isDemoSql('email') . " AND avatar LIKE '/res/avatars/%'");
     }
 
     /**
      * Give the welcome bot its place on the map, as in init.sql
-     *
-     * @param PDO $db
-     *
-     * @return void
      */
-    protected static function placeBot($db)
+    protected static function placeBot(PDO $db): void
     {
         $db->exec("INSERT INTO userinfo (email, ip, lat, lng, city, country)
                    SELECT email, '0.0.0.0', 0, 0, 'Null Island', 'XN' FROM users WHERE email = 'bot@mapchat.local'
@@ -200,13 +188,9 @@ class Schema extends \Core\Model
     }
 
     /**
-     * @param PDO $db
-     * @param string $table
-     * @param string $index
-     *
-     * @return boolean
+     * Whether a table has an index of this name
      */
-    protected static function hasIndex($db, $table, $index)
+    protected static function hasIndex(PDO $db, string $table, string $index): bool
     {
         $stmt = $db->prepare('SELECT COUNT(*) FROM information_schema.STATISTICS
                               WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :table AND INDEX_NAME = :index');
@@ -218,12 +202,9 @@ class Schema extends \Core\Model
     }
 
     /**
-     * @param PDO $db
-     * @param string $table
-     *
-     * @return boolean
+     * Whether the database has a table of this name
      */
-    protected static function hasTable($db, $table)
+    protected static function hasTable(PDO $db, string $table): bool
     {
         $stmt = $db->prepare('SELECT COUNT(*) FROM information_schema.TABLES
                               WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :table');
@@ -234,13 +215,9 @@ class Schema extends \Core\Model
     }
 
     /**
-     * @param PDO $db
-     * @param string $table
-     * @param string $column
-     *
-     * @return boolean
+     * Whether a table has a column of this name
      */
-    protected static function hasColumn($db, $table, $column)
+    protected static function hasColumn(PDO $db, string $table, string $column): bool
     {
         $stmt = $db->prepare('SELECT COUNT(*) FROM information_schema.COLUMNS
                               WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :table AND COLUMN_NAME = :column');
