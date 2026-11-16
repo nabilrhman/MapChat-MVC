@@ -281,23 +281,42 @@ h4
     height: 6px;
     border-radius: 50%;
     background-color: currentColor;
-    animation: loading-dot 1s infinite ease-in-out;
+    animation: loading-dot 1.4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+/* A wave from left to right. Negative delays start each dot part way in,
+   so none waits at full strength before it starts */
+.loading-dots__dot:nth-child(1)
+{
+    animation-delay: -0.32s;
 }
 
 .loading-dots__dot:nth-child(2)
 {
-    animation-delay: 0.15s;
+    animation-delay: -0.16s;
 }
 
-.loading-dots__dot:nth-child(3)
-{
-    animation-delay: 0.3s;
-}
-
+/* Each dot rises a little and brightens in turn. It moves rather than
+   grows: a 6px dot scaled lands between pixels and shimmers */
 @keyframes loading-dot
 {
-    0%, 80%, 100% { opacity: 0.25; transform: scale(0.8); }
-    40% { opacity: 1; transform: scale(1); }
+    0%, 60%, 100% { opacity: 0.35; transform: translateY(0); }
+    30% { opacity: 1; transform: translateY(-3px); }
+}
+
+/* Less motion: they only brighten in turn, still showing something's happening */
+@media (prefers-reduced-motion: reduce)
+{
+    .loading-dots__dot
+    {
+        animation-name: loading-dot-fade;
+    }
+}
+
+@keyframes loading-dot-fade
+{
+    0%, 60%, 100% { opacity: 0.35; }
+    30% { opacity: 1; }
 }
 
 /* Beer CSS: its form fields and switch (inside .beer, see _beer.html) in
