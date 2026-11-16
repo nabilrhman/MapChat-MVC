@@ -44,47 +44,40 @@ h4
     transition-property: background-color, border-color, color, transform;
     transition-duration: var(--dur-fast);
     transition-timing-function: var(--ease-out);
+
+    &:active:not(:disabled)
+    {
+        transform: scale(0.98);
+    }
+
+    &:focus-visible
+    {
+        outline: none;
+        box-shadow: 0 0 0 3px var(--md-inverse-primary);
+    }
 }
 
-.button:active:not(:disabled)
+@scope (.button)
 {
-    transform: scale(0.98);
+    .icon
+    {
+        font-size: 18px;
+    }
 }
 
-.button:focus-visible
-{
-    outline: none;
-    box-shadow: 0 0 0 3px var(--md-inverse-primary);
-}
-
-/* Material 3's disabled look, the same for every kind of button */
-.button:disabled
-{
-    border-color: transparent;
-    background-color: color-mix(in srgb, var(--md-on-surface) 12%, transparent);
-    box-shadow: none;
-    color: color-mix(in srgb, var(--md-on-surface) 38%, transparent);
-    cursor: default;
-}
-
-.button__icon
-{
-    font-size: 18px;
-}
-
-.button--small
+.button.small
 {
     height: 32px;
     padding: 0 12px;
     font-size: 13px;
+
+    & .icon
+    {
+        font-size: 16px;
+    }
 }
 
-.button--small .button__icon
-{
-    font-size: 16px;
-}
-
-.button--block
+.button.full-width
 {
     width: 100%;
 }
@@ -93,62 +86,73 @@ h4
    text colour tints the background a little (a "state layer") */
 
 /* The main action of a page or form: a filled button */
-.button--primary
+.button.primary
 {
     background-color: var(--md-primary);
     color: var(--md-on-primary);
-}
 
-.button--primary:hover:not(:disabled)
-{
-    background-color: color-mix(in srgb, var(--md-on-primary) var(--md-hover), var(--md-primary));
-    box-shadow: var(--md-elevation-1);
-}
+    &:hover:not(:disabled)
+    {
+        background-color: color-mix(in srgb, var(--md-on-primary) var(--md-hover), var(--md-primary));
+        box-shadow: var(--md-elevation-1);
+    }
 
-.button--primary:active:not(:disabled)
-{
-    background-color: color-mix(in srgb, var(--md-on-primary) var(--md-pressed), var(--md-primary));
-    box-shadow: none;
+    &:active:not(:disabled)
+    {
+        background-color: color-mix(in srgb, var(--md-on-primary) var(--md-pressed), var(--md-primary));
+        box-shadow: none;
+    }
 }
 
 /* A second, lesser action next to the main one: an outlined button */
-.button--outline
+.button.outline
 {
     border-color: var(--md-outline);
     background-color: transparent;
     color: var(--md-primary);
-}
 
-.button--outline:hover:not(:disabled)
-{
-    background-color: color-mix(in srgb, var(--md-primary) var(--md-hover), transparent);
-}
+    &:hover:not(:disabled)
+    {
+        background-color: color-mix(in srgb, var(--md-primary) var(--md-hover), transparent);
+    }
 
-.button--outline:active:not(:disabled)
-{
-    background-color: color-mix(in srgb, var(--md-primary) var(--md-pressed), transparent);
+    &:active:not(:disabled)
+    {
+        background-color: color-mix(in srgb, var(--md-primary) var(--md-pressed), transparent);
+    }
 }
 
 /* A small action inside a card, like Edit or "Change photo": a quiet
    outlined button, grey until hovered, so it doesn't compete with the card */
-.button--quiet
+.button.quiet
 {
     border-color: var(--md-outline-variant);
     background-color: transparent;
     color: var(--md-on-surface-variant);
     font-weight: 400;
+
+    &:hover:not(:disabled)
+    {
+        border-color: var(--md-outline);
+        background-color: color-mix(in srgb, var(--md-primary) var(--md-hover), transparent);
+        color: var(--md-primary);
+    }
+
+    &:active:not(:disabled)
+    {
+        background-color: color-mix(in srgb, var(--md-primary) var(--md-pressed), transparent);
+    }
 }
 
-.button--quiet:hover:not(:disabled)
+/* Material 3's disabled look, the same for every kind of button. After the
+   kinds, which it ties with */
+.button:disabled
 {
-    border-color: var(--md-outline);
-    background-color: color-mix(in srgb, var(--md-primary) var(--md-hover), transparent);
-    color: var(--md-primary);
-}
-
-.button--quiet:active:not(:disabled)
-{
-    background-color: color-mix(in srgb, var(--md-primary) var(--md-pressed), transparent);
+    border-color: transparent;
+    background-color: color-mix(in srgb, var(--md-on-surface) 12%, transparent);
+    box-shadow: none;
+    color: color-mix(in srgb, var(--md-on-surface) 38%, transparent);
+    cursor: default;
 }
 
 /* The least action, like Cancel or Remove: a text button */
@@ -165,27 +169,27 @@ h4
     font-weight: 600;
     cursor: pointer;
     transition: background-color var(--dur-fast) var(--ease-out);
-}
 
-.link-button:hover
-{
-    background-color: color-mix(in srgb, currentColor var(--md-hover), transparent);
-}
+    &:hover
+    {
+        background-color: color-mix(in srgb, currentColor var(--md-hover), transparent);
+    }
 
-.link-button:active
-{
-    background-color: color-mix(in srgb, currentColor var(--md-pressed), transparent);
-}
+    &:active
+    {
+        background-color: color-mix(in srgb, currentColor var(--md-pressed), transparent);
+    }
 
-.link-button:focus-visible
-{
-    outline: none;
-    box-shadow: 0 0 0 3px var(--md-inverse-primary);
-}
+    &:focus-visible
+    {
+        outline: none;
+        box-shadow: 0 0 0 3px var(--md-inverse-primary);
+    }
 
-.link-button--danger
-{
-    color: var(--md-error);
+    &.danger
+    {
+        color: var(--md-error);
+    }
 }
 
 /* Small grey note under a setting or button */
@@ -210,24 +214,18 @@ h4
     font-size: 20px;
     line-height: 0;
     cursor: pointer;
-}
 
-.password-toggle:hover,
-.password-toggle:focus-visible
-{
-    color: var(--md-primary);
-}
+    &:hover,
+    &:focus-visible
+    {
+        color: var(--md-primary);
+    }
 
-.password-toggle:focus-visible
-{
-    outline: 2px solid var(--md-inverse-primary);
-    outline-offset: 2px;
-}
-
-/* Keep typed text clear of the eye button */
-.form-field .password-input
-{
-    padding-right: 40px;
+    &:focus-visible
+    {
+        outline: 2px solid var(--md-inverse-primary);
+        outline-offset: 2px;
+    }
 }
 
 /* 404 and 500 pages */
@@ -236,9 +234,12 @@ h4
     text-align: center;
 }
 
-.error-page__text
+@scope (.error-page)
 {
-    margin-bottom: 28px;
+    p
+    {
+        margin-bottom: 28px;
+    }
 }
 
 /* Three pulsing dots wherever something is loading; they fade in after a
@@ -252,49 +253,55 @@ h4
 }
 
 /* A button whose action is under way: dots in place of its label, same size */
-.button__dots
-{
-    display: none;
-    color: inherit;
-    animation: none;
-}
-
 .button.is-loading
 {
     pointer-events: none;
 }
 
-.button.is-loading .button__label
+@scope (.button)
 {
-    visibility: hidden;
-    width: 0;
-    overflow: hidden;
+    .dots
+    {
+        display: none;
+        color: inherit;
+        animation: none;
+    }
+
+    :scope.is-loading .label
+    {
+        visibility: hidden;
+        width: 0;
+        overflow: hidden;
+    }
+
+    :scope.is-loading .dots
+    {
+        display: inline-flex;
+    }
 }
 
-.button.is-loading .button__dots
+@scope (.loading-dots)
 {
-    display: inline-flex;
-}
+    .dot
+    {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background-color: currentColor;
+        animation: loading-dot var(--dur-pulse) var(--ease-in-out) infinite;
+    }
 
-.loading-dots__dot
-{
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background-color: currentColor;
-    animation: loading-dot var(--dur-pulse) var(--ease-in-out) infinite;
-}
+    /* A wave from left to right. Negative delays start each dot part way in,
+       so none waits at full strength before it starts */
+    .dot:nth-child(1)
+    {
+        animation-delay: calc(var(--dur-pulse-step) * -2);
+    }
 
-/* A wave from left to right. Negative delays start each dot part way in,
-   so none waits at full strength before it starts */
-.loading-dots__dot:nth-child(1)
-{
-    animation-delay: calc(var(--dur-pulse-step) * -2);
-}
-
-.loading-dots__dot:nth-child(2)
-{
-    animation-delay: calc(var(--dur-pulse-step) * -1);
+    .dot:nth-child(2)
+    {
+        animation-delay: calc(var(--dur-pulse-step) * -1);
+    }
 }
 
 /* Each dot rises a little and brightens in turn. It moves rather than
@@ -308,9 +315,12 @@ h4
 /* Less motion: they only brighten in turn, still showing something's happening */
 @media (prefers-reduced-motion: reduce)
 {
-    .loading-dots__dot
+    @scope (.loading-dots)
     {
-        animation-name: loading-dot-fade;
+        .dot
+        {
+            animation-name: loading-dot-fade;
+        }
     }
 }
 
@@ -340,6 +350,15 @@ h4
 .form-field
 {
     margin-top: 16px;
+}
+
+/* Keep typed text clear of the eye button */
+@scope (.form-field)
+{
+    .password
+    {
+        padding-right: 40px;
+    }
 }
 
 /* Toasts (toast.js): Material 3 snackbars, as in Beer CSS, with an icon
@@ -404,15 +423,18 @@ h4
 }
 
 /* Light tones that read on the dark snackbar */
-.toast__icon
+@scope (.toast)
 {
-    flex-shrink: 0;
-    font-size: 20px;
-    color: var(--md-inverse-primary);
-}
+    .icon
+    {
+        flex-shrink: 0;
+        font-size: 20px;
+        color: var(--md-inverse-primary);
+    }
 
-.toast--success .toast__icon { color: #a5d6a7; }
-.toast--warning .toast__icon { color: #ffb74d; }
+    :scope.success .icon { color: #a5d6a7; }
+    :scope.warning .icon { color: #ffb74d; }
+}
 
 /* The thin bar across the top while the next page loads (loadingBar.js).
    It jumps a little straight away so the click feels answered, then slows,
@@ -449,7 +471,7 @@ h4
 
 /* Under the header it fills the header's yellow line in amber, which shows
    on the yellow without shouting */
-.loading-bar--header
+.loading-bar.under-header
 {
     top: calc(var(--header-height) - 4px);
     z-index: 111; /* just above the header */

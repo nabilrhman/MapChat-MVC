@@ -11,7 +11,7 @@
 
 <div class="auth-card">
 
-    <form action="/signup/create" method="post" id="formSignup" class="auth-card__form" novalidate>
+    <form action="/signup/create" method="post" id="formSignup" novalidate>
 
         {{ text_field({id: 'inputName', name: 'name', label: 'Name', required: true,
                        value: user.name ?? '', autocomplete: 'name', autofocus: true}, user.errors.name ?? []) }}
@@ -22,10 +22,10 @@
         {{ text_field({id: 'inputPassword', name: 'password', type: 'password', label: 'Password', required: true, minlength: 6,
                        autocomplete: 'new-password', hint: '6+ characters, a letter and a number'}, user.errors.password ?? []) }}
 
-        <button type="submit" class="button button--primary button--block auth-card__button">Create account</button>
+        <button type="submit" class="button primary full-width action">Create account</button>
     </form>
 
-    <p class="auth-card__switch"><span>Already have an account?</span> <a class="auth-card__switch-link" href="/login">Log in</a></p>
+    <p class="switch-row"><span>Already have an account?</span> <a class="switch-link" href="/login">Log in</a></p>
 </div>
 
 {% endblock %}

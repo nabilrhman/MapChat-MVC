@@ -6,6 +6,24 @@
     margin: 0 auto;
 }
 
+@scope (.profile-page) to (.guest-banner, .settings-card)
+{
+    /* The page's one h1, at the size it had as an h4 */
+    .title
+    {
+        margin: 24px 0 12px;
+        font-size: 28px;
+        font-weight: 400;
+        line-height: 1.3;
+    }
+
+    /* The line under the title, as on About */
+    .divider
+    {
+        margin-bottom: 16px;
+    }
+}
+
 /* A Material 3 tonal notice: icon beside the title, the note under the
    title's words, and the button on the right; on phones the button moves
    under the note */
@@ -22,62 +40,51 @@
     color: var(--md-on-primary-container);
 }
 
-.guest-banner__icon
+@scope (.guest-banner)
 {
-    grid-column: 1;
-    grid-row: 1;
-    color: var(--md-primary);
-    font-size: 18px; /* sized to the 14px title, as About's 22px icons are to theirs */
-}
-
-.guest-banner__title
-{
-    grid-column: 2;
-    grid-row: 1;
-    font-size: 14px;
-    font-weight: 600;
-}
-
-.guest-banner__note
-{
-    grid-column: 2;
-    grid-row: 2;
-    font-size: 13px;
-}
-
-.guest-banner__button
-{
-    grid-column: 3;
-    grid-row: 1 / span 2;
-    margin-left: 8px;
-}
-
-@media (max-width: 600px)
-{
-    .guest-banner__button
+    .icon
     {
-        grid-column: 2 / span 2;
-        grid-row: 3;
-        justify-self: start;
-        margin: 10px 0 0;
+        grid-column: 1;
+        grid-row: 1;
+        color: var(--md-primary);
+        font-size: 18px; /* sized to the 14px title, as About's 22px icons are to theirs */
+    }
+
+    .title
+    {
+        grid-column: 2;
+        grid-row: 1;
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    .note
+    {
+        grid-column: 2;
+        grid-row: 2;
+        font-size: 13px;
+    }
+
+    .keep
+    {
+        grid-column: 3;
+        grid-row: 1 / span 2;
+        margin-left: 8px;
+    }
+
+    @media (max-width: 600px)
+    {
+        .keep
+        {
+            grid-column: 2 / span 2;
+            grid-row: 3;
+            justify-self: start;
+            margin: 10px 0 0;
+        }
     }
 }
 
 /* Every card: 20px inside, a 32px header row, then its content 12px below */
-.profile-page__title
-{
-    margin: 24px 0 12px;
-    font-size: 28px; /* the page's one h1, at the size it had as an h4 */
-    font-weight: 400;
-    line-height: 1.3;
-}
-
-/* The line under the title, as on About */
-.profile-page__divider
-{
-    margin-bottom: 16px;
-}
-
 .settings-card
 {
     margin-bottom: 16px;
@@ -86,11 +93,73 @@
     background-color: var(--md-surface-container-lowest);
 }
 
-.settings-card__title
+@scope (.settings-card) to (.profile-photo, .beer, .privacy-setting)
 {
-    margin: 0;
-    font-size: 17px;
-    font-weight: 600;
+    .title
+    {
+        margin: 0;
+        font-size: 17px;
+        font-weight: 600;
+    }
+
+    /* Card title on the left, its Edit button on the right; the same height
+       with or without the button */
+    .head
+    {
+        display: flex;
+        align-items: center;
+        min-height: 32px;
+        margin-bottom: 12px;
+        justify-content: space-between;
+        gap: 12px;
+    }
+
+    /* View mode: the saved details as plain text */
+    .view
+    {
+        display: grid;
+        grid-template-columns: 90px 1fr;
+        row-gap: 10px;
+        margin: 0;
+    }
+
+    .term
+    {
+        color: var(--md-on-surface-variant);
+        font-size: 13px;
+    }
+
+    .value
+    {
+        margin: 0;
+        overflow-wrap: anywhere;
+        color: var(--md-on-surface);
+        font-size: 14px;
+    }
+
+    /* Edit mode swaps the text for fields, and hides the Edit button */
+    :scope:not(.is-editing) .edit,
+    :scope.is-editing .view,
+    :scope.is-editing .edit-button
+    {
+        display: none;
+    }
+
+    /* Each swap fades in */
+    .view,
+    .edit
+    {
+        animation: fade-in var(--dur) var(--ease-out);
+    }
+
+    .actions
+    {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 16px;
+        margin-top: 8px;
+    }
 }
 
 /* Photo with its buttons beside it */
@@ -102,123 +171,67 @@
     margin-bottom: 16px;
 }
 
-.profile-photo__image
+@scope (.profile-photo)
 {
-    display: block;
-    width: 72px;
-    height: 72px;
-    border-radius: 50%;
-    object-fit: cover;
-    transition: opacity var(--dur) var(--ease-out);
-}
+    .image
+    {
+        display: block;
+        width: 72px;
+        height: 72px;
+        border-radius: 50%;
+        object-fit: cover;
+        transition: opacity var(--dur) var(--ease-out);
+    }
 
-/* A soft circle while the photo loads, and dots over a dimmed photo while a
-   new one uploads */
-.profile-photo__frame
-{
-    position: relative;
-    flex: none;
-    border-radius: 50%;
-}
+    /* A soft circle while the photo loads, and dots over a dimmed photo while a
+       new one uploads */
+    .frame
+    {
+        position: relative;
+        flex: none;
+        border-radius: 50%;
 
-.profile-photo__frame.is-loading
-{
-    background-color: #ede7f6;
-}
+        &.is-loading
+        {
+            background-color: #ede7f6;
+        }
 
-.profile-photo__frame.is-loading .profile-photo__image
-{
-    opacity: 0;
-}
+        &.is-loading .image
+        {
+            opacity: 0;
+        }
 
-.profile-photo__frame.is-uploading .profile-photo__image
-{
-    opacity: 0.4;
-}
+        &.is-uploading .image
+        {
+            opacity: 0.4;
+        }
+    }
 
-.profile-photo__dots
-{
-    position: absolute;
-    inset: 0;
-    align-items: center;
-    justify-content: center;
-    opacity: 0;
-    animation: none;
-    transition: opacity var(--dur) var(--ease-out);
-}
+    .dots
+    {
+        position: absolute;
+        inset: 0;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        animation: none;
+        transition: opacity var(--dur) var(--ease-out);
+    }
 
-.profile-photo__frame.is-uploading .profile-photo__dots
-{
-    opacity: 1;
-}
+    .frame.is-uploading .dots
+    {
+        opacity: 1;
+    }
 
-.profile-photo [hidden]
-{
-    display: none;
-}
+    [hidden]
+    {
+        display: none;
+    }
 
-/* Card title on the left, its Edit button on the right; the same height
-   with or without the button */
-.settings-card__head
-{
-    display: flex;
-    align-items: center;
-    min-height: 32px;
-    margin-bottom: 12px;
-    justify-content: space-between;
-    gap: 12px;
-}
-
-/* View mode: the saved details as plain text */
-.settings-card__view
-{
-    display: grid;
-    grid-template-columns: 90px 1fr;
-    row-gap: 10px;
-    margin: 0;
-}
-
-.settings-card__label
-{
-    color: var(--md-on-surface-variant);
-    font-size: 13px;
-}
-
-.settings-card__value
-{
-    margin: 0;
-    overflow-wrap: anywhere;
-    color: var(--md-on-surface);
-    font-size: 14px;
-}
-
-/* Edit mode swaps the text for fields, and hides the Edit button */
-.settings-card:not(.is-editing) .settings-card__edit,
-.settings-card.is-editing .settings-card__view,
-.settings-card.is-editing .settings-card__edit-button
-{
-    display: none;
-}
-
-/* Each swap fades in */
-.settings-card__view,
-.settings-card__edit
-{
-    animation: fade-in var(--dur) var(--ease-out);
-}
-
-.settings-card__actions
-{
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 16px;
-    margin-top: 8px;
-}
-
-.profile-photo__button
-{
-    margin-right: 8px;
+    .change
+    {
+        margin-right: 8px;
+    }
 }
 
 /* Privacy: the setting on the left, its switch on the right */
@@ -230,58 +243,58 @@
     gap: 16px;
 }
 
-.privacy-setting__name
+@scope (.privacy-setting)
 {
-    color: #212121;
-    font-size: 14px;
-}
+    .name
+    {
+        color: #212121;
+        font-size: 14px;
+    }
 
-.privacy-setting__switch
-{
-    flex: none;
-}
+    .control
+    {
+        flex: none;
+    }
 
-/* Beer's hover halo round the knob is a faint grey; a state layer in the
-   primary colour instead, strong enough to see on the white card. It comes
-   at once; only the knob's slide is animated, in place of Beer's own
-   transition of everything */
-.privacy-setting__switch .switch > input + span::before
-{
-    transition: transform var(--dur) var(--ease-out);
-}
+    /* Beer's hover halo round the knob is a faint grey; a state layer in the
+       primary colour instead, strong enough to see on the white card. It comes
+       at once; only the knob's slide is animated, in place of Beer's own
+       transition of everything */
+    .control .switch > input + span::before
+    {
+        transition: transform var(--dur) var(--ease-out);
+    }
 
-.privacy-setting__switch .switch:hover > input + span::before
-{
-    box-shadow: 0 0 0 9px color-mix(in srgb, var(--md-primary) var(--md-pressed), transparent);
-}
+    .control .switch:hover > input + span::before
+    {
+        box-shadow: 0 0 0 9px color-mix(in srgb, var(--md-primary) var(--md-pressed), transparent);
+    }
 
-.privacy-setting__switch .switch > input:focus-visible + span::before
-{
-    box-shadow: 0 0 0 9px color-mix(in srgb, var(--md-primary) 16%, transparent);
+    .control .switch > input:focus-visible + span::before
+    {
+        box-shadow: 0 0 0 9px color-mix(in srgb, var(--md-primary) 16%, transparent);
+    }
 }
 
 /* Flag and city, --icon-gap apart like an icon and its text */
-.place-note__place
+@scope (.place-note)
 {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--icon-gap);
-}
+    .city,
+    .when-shown
+    {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--icon-gap);
+    }
 
-.place-note__shown
-{
-    display: inline-flex;
-    align-items: center;
-    gap: var(--icon-gap);
-}
+    .when-hidden,
+    :scope.is-hidden .when-shown
+    {
+        display: none;
+    }
 
-.place-note__hidden,
-.place-note.is-hidden .place-note__shown
-{
-    display: none;
-}
-
-.place-note.is-hidden .place-note__hidden
-{
-    display: inline;
+    :scope.is-hidden .when-hidden
+    {
+        display: inline;
+    }
 }

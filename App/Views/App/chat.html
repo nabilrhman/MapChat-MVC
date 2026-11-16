@@ -26,37 +26,38 @@
 {# Nickname, or first name (see App\Mention::shownName) #}
 {% set sender_name = shown_name(chat.name, chat.nickname, chat.is_guest) %}
 {# Messages from the poll ease in; the history and your own appear at once #}
-<div class="chat{% if mentions_me %} chat--mentions-me{% endif %}{% if not (initial ?? false) and not mine %} is-entering{% endif %}"
-     data-id="{{ chat.id }}" data-sender-id="{{ chat.user_id }}" data-conversation="{{ conversation }}" data-partner="{{ partner }}">
-    <div class="chat__avatar">
-        <img class="chat__photo" src="{{ avatar_src(chat.user_id, chat.name, chat.avatar, chat.is_demo) }}" alt=""
+<div class="chat{% if mentions_me %} mentions-me{% endif %}{% if not (initial ?? false) and not mine %} is-entering{% endif %}" data-part="message"
+     data-id="{{ chat.id }}" data-sender-id="{{ chat.user_id }}" data-conversation="{{ conversation }}" data-partner="{{ partner }}"
+     {%- if mentions_me %} data-mentions-me{% endif %}>
+    <div class="avatar">
+        <img class="photo" data-part="sender-photo" src="{{ avatar_src(chat.user_id, chat.name, chat.avatar, chat.is_demo) }}" alt=""
              width="36" height="36" loading="lazy">
     </div>
 
-    <div class="chat__content">
+    <div class="content">
         {% if can_message %}
-        <h3 class="chat__name"><button class="chat__name-button" type="button" data-user-id="{{ chat.user_id }}" data-user-name="{{ sender_name }}"
+        <h3 class="name" data-part="sender-name"><button class="name-button" type="button" data-part="name-button" data-user-id="{{ chat.user_id }}" data-user-name="{{ sender_name }}"
             title="Chat privately with {{ sender_name }}">{{ sender_name }}</button></h3>
         {% else %}
-        <h3 class="chat__name">{{ sender_name }}</h3>
+        <h3 class="name" data-part="sender-name">{{ sender_name }}</h3>
         {% endif %}
         {# The page fills in the time in the reader's own time zone. In the room,
            hovering it slides to the sender's own time, with a sun or moon; a
            private chat's header already shows theirs #}
         {% set shows_sender_time = chat.lng is not null and conversation == 'everyone' %}
-        <span class="chat__time{% if shows_sender_time %} swap{% endif %}"
+        <span class="time{% if shows_sender_time %} swap{% endif %}" data-part="time"
               data-timezone="{{ chat.timezone }}" data-lng="{{ chat.lng }}" data-country="{{ chat.country }}">
-            <span class="swap__track">
-                <time class="swap__line" datetime="{{ chat.timestamp|date('c') }}"></time>
+            <span class="track">
+                <time class="line" datetime="{{ chat.timestamp|date('c') }}"></time>
                 {% if shows_sender_time %}
-                <span class="chat__sender-time swap__line">{{ icon('sun', 'chat__daylight') }}<span></span></span>
+                <span class="sender-time line" data-part="sender-time">{{ icon('sun', 'daylight') }}<span></span></span>
                 {% endif %}
             </span>
         </span>
         {% if conversation == 'everyone' %}
-        <p class="chat__body">{{ mark_mentions(chat.body, mention_names, current_user.name, current_user.nickname, current_user.is_guest) }}</p>
+        <p class="body" data-part="message-body">{{ mark_mentions(chat.body, mention_names, current_user.name, current_user.nickname, current_user.is_guest) }}</p>
         {% else %}
-        <p class="chat__body">{{ chat.body }}</p>
+        <p class="body" data-part="message-body">{{ chat.body }}</p>
         {% endif %}
         {# No row at all without a place (e.g. a hidden location), nor in a
            private chat, whose header already says where they are #}
@@ -64,20 +65,20 @@
         {% elseif chat.city %}
         {# On hover the city slides to the country's flag and name; a click
            shows the sender's pin on the map (chat.js) #}
-        <span class="chat__location">
-            <button class="chat__place{% if chat.country %} swap{% endif %}" type="button">
-                <span class="swap__track">
-                    <span class="swap__line">{{ icon('map-point', 'chat__place-icon') }}{{ chat.city }}</span>
+        <span class="location">
+            <button class="city{% if chat.country %} swap{% endif %}" type="button" data-part="city">
+                <span class="track">
+                    <span class="line">{{ icon('map-point', 'place-icon') }}{{ chat.city }}</span>
                     {% if chat.country %}
-                    <span class="swap__line"><span class="fi fi-{{ chat.country|lower }}"></span><span class="chat__country" data-country="{{ chat.country }}"></span></span>
+                    <span class="line"><span class="fi fi-{{ chat.country|lower }}"></span><span data-part="country" data-country="{{ chat.country }}"></span></span>
                     {% endif %}
                 </span>
             </button>
         </span>
         {% elseif chat.country %}
         {# Only the country is known: its flag and name, which chat.js fills in #}
-        <span class="chat__location">
-            <button class="chat__place" type="button"><span class="fi fi-{{ chat.country|lower }}"></span><span class="chat__country" data-country="{{ chat.country }}"></span></button>
+        <span class="location">
+            <button class="city" type="button" data-part="city"><span class="fi fi-{{ chat.country|lower }}"></span><span data-part="country" data-country="{{ chat.country }}"></span></button>
         </span>
         {% endif %}
     </div>

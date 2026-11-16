@@ -184,16 +184,16 @@ function stopEditing(card) {
     showCurrentPasswordIfNeeded();
 }
 
-document.querySelectorAll('.settings-card__edit-button').forEach((editButton) => {
+document.querySelectorAll('[data-part="edit"]').forEach((editButton) => {
     editButton.addEventListener('click', () => {
-        const card = editButton.closest('.settings-card');
+        const card = editButton.closest('[data-part="settings-card"]');
         startEditing(card);
-        card.querySelector('.settings-card__edit input').focus();
+        card.querySelector('[data-part="fields"] input').focus();
     });
 });
 
-document.querySelectorAll('.settings-card__cancel').forEach((cancelButton) => {
-    cancelButton.addEventListener('click', () => stopEditing(cancelButton.closest('.settings-card')));
+document.querySelectorAll('[data-part="cancel"]').forEach((cancelButton) => {
+    cancelButton.addEventListener('click', () => stopEditing(cancelButton.closest('[data-part="settings-card"]')));
 });
 
 document.getElementById('keep-account')?.addEventListener('click', () => {

@@ -83,7 +83,7 @@ function setUpNotifications() {
 // shows its chat. With Web Push on, a hidden page leaves it to public/sw.js
 function notifyOf(chat, onOpen) {
     const isPrivate = chat.dataset.conversation !== EVERYONE;
-    const isMention = chat.classList.contains('chat--mentions-me');
+    const isMention = 'mentionsMe' in chat.dataset;
     const isMine = Number(chat.dataset.senderId) === myUserId;
 
     if (!areNotificationsOn() || isMine || (!isPrivate && !isMention)) return;
@@ -91,11 +91,11 @@ function notifyOf(chat, onOpen) {
     if (notifiedIds.has(chat.dataset.id)) return;
     notifiedIds.add(chat.dataset.id);
 
-    const name = chat.querySelector('.chat__name').textContent.trim();
-    const body = chat.querySelector('.chat__body').textContent.trim();
+    const name = chat.querySelector('[data-part="sender-name"]').textContent.trim();
+    const body = chat.querySelector('[data-part="message-body"]').textContent.trim();
     const notification = new Notification(isMention ? `${name} mentioned you` : name, {
         body: body.length > NOTIFY_BODY_LENGTH ? `${body.slice(0, NOTIFY_BODY_LENGTH - 1)}…` : body,
-        icon: chat.querySelector('.chat__photo')?.src,
+        icon: chat.querySelector('[data-part="sender-photo"]')?.src,
         // One per chat: a newer message replaces the last one
         tag: `chat-${chat.dataset.conversation}`,
     });

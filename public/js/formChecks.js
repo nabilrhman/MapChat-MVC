@@ -62,11 +62,11 @@ function setUpFormChecks(form, checksByFieldName) {
     }
 
     // Beer CSS shows the field's error output in place of its hint while the
-    // field box is .invalid (see _form_fields.html)
+    // field box has Beer's own .invalid (see _form_fields.html)
     function showProblem(field, problem) {
         const hasProblem = problem !== null;
-        const fieldBox = field.closest('.field');
-        const errorOutput = fieldBox.querySelector('output.invalid');
+        const fieldBox = field.closest('[data-part="field"]');
+        const errorOutput = fieldBox.querySelector('[data-part="field-error"]');
 
         fieldBox.classList.toggle('invalid', hasProblem);
         errorOutput.textContent = problem ?? '';
@@ -126,7 +126,7 @@ function setUpFormChecks(form, checksByFieldName) {
     return {
         // Takes away the problems shown in part of the form, e.g. a card being cancelled
         clearProblems(container) {
-            container.querySelectorAll('.field.invalid input').forEach((field) => showProblem(field, null));
+            container.querySelectorAll('[data-part="field"] input[aria-invalid]').forEach((field) => showProblem(field, null));
         },
     };
 }
