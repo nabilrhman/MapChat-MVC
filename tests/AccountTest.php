@@ -34,7 +34,9 @@ class AccountTest extends TestCase
 
         $root = dirname(__DIR__);
         $command = [PHP_BINARY, '-S', self::$host, '-t', "$root/public", "$root/tests/server.php"];
-        self::$server = proc_open($command, [1 => ['file', '/dev/null', 'w'], 2 => ['file', '/dev/null', 'w']], $pipes);
+        // A site without Cloudinary settings, so photo uploads are off
+        $environment = array_diff_key(getenv(), ['CLOUDINARY_CLOUD_NAME' => '', 'CLOUDINARY_UPLOAD_PRESET' => '']);
+        self::$server = proc_open($command, [1 => ['file', '/dev/null', 'w'], 2 => ['file', '/dev/null', 'w']], $pipes, null, $environment);
 
         // Wait for it to accept connections
         for ($tries = 0; $tries < 50; $tries++) {
@@ -165,6 +167,17 @@ class AccountTest extends TestCase
     }
 
     /**
+     * The test user's saved photo address, or null for the drawn avatar
+     */
+    private function avatar(): ?string
+    {
+        $stmt = $this->db->prepare('SELECT avatar FROM users WHERE email = ?');
+        $stmt->execute([self::EMAIL]);
+
+        return $stmt->fetchColumn();
+    }
+
+    /**
      * Check the request was refused for its method, with the methods the URL takes
      */
     private function assertRefusedMethod(array $response, string $allow = 'POST'): void
@@ -259,6 +272,30 @@ class AccountTest extends TestCase
 
         $this->assertSame($before, $this->user());
         $this->assertTrue($this->isSignedIn());
+    }
+
+    public function testWithoutCloudinaryTheProfileSaysPhotoUploadsAreOff()
+    {
+        $this->logIn();
+
+        $page = $this->request('GET', '/profile/show')['body'];
+
+        $this->assertStringContainsString("Photo uploads aren't set up on this site", $page);
+        $this->assertStringNotContainsString('Change photo', $page);
+        $this->assertStringNotContainsString('id="file-upload"', $page);
+    }
+
+    public function testWithoutCloudinaryAPhotoIsRefusedButOneCanStillBeRemoved()
+    {
+        $this->logIn();
+        $photo = 'https://res.cloudinary.com/someone-else/image/upload/v1/ann.jpg';
+
+        $this->assertSame(400, $this->request('POST', '/profile/update-avatar', ['avatar' => $photo])['status']);
+        $this->assertNull($this->avatar());
+
+        $this->db->prepare('UPDATE users SET avatar = ? WHERE email = ?')->execute([$photo, self::EMAIL]);
+        $this->assertSame(200, $this->request('POST', '/profile/remove-avatar')['status']);
+        $this->assertNull($this->avatar());
     }
 
     public function testPagesAndTheirOlderUrls()

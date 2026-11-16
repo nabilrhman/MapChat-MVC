@@ -1,6 +1,6 @@
 {% extends "base_app.html" %}
 {% from '_form_fields.html' import text_field %}
-{% types {user: '\\App\\Models\\User', place: 'array|null', default_avatar: 'string'} %}
+{% types {user: '\\App\\Models\\User', place: 'array|null', default_avatar: 'string', are_photo_uploads_on: 'bool'} %}
 
 {% block title %}Profile{% endblock %}
 
@@ -46,15 +46,22 @@
                     <span class="loading-dots profile-photo__dots" aria-label="Uploading"><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span></span>
                 </div>
                 <div>
+                    {# Without the site's own Cloudinary settings there's nowhere to upload to; removing still works #}
+                    {% if are_photo_uploads_on %}
                     <label for="file-upload" class="button button--quiet button--small profile-photo__button">
                         {{ icon('camera', 'button__icon') }}Change photo
                     </label>
+                    {% endif %}
                     <button type="button" class="link-button link-button--danger" id="remove-photo"
                             {% if user.avatar is empty %}hidden{% endif %}>Remove</button>
+                    {% if are_photo_uploads_on %}
                     <p class="field-hint">JPG, PNG or GIF</p>
                     <input id="file-upload" type="file" accept="image/png,image/gif,image/jpeg" hidden
                            data-cloud-name="{{ cloudinary_cloud_name|e('html_attr') }}"
                            data-upload-preset="{{ cloudinary_upload_preset|e('html_attr') }}">
+                    {% else %}
+                    <p class="field-hint">Photo uploads aren't set up on this site</p>
+                    {% endif %}
                 </div>
             </div>
 

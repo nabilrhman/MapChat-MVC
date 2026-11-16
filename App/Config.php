@@ -88,18 +88,29 @@ class Config
     }
 
     /**
-     * Cloudinary account that profile photos are uploaded to
+     * Cloudinary account that profile photos are uploaded to, or null when
+     * this site has none
      */
-    public static function cloudinaryCloudName(): string
+    public static function cloudinaryCloudName(): ?string
     {
-        return static::get('CLOUDINARY_CLOUD_NAME', 'nabilr');
+        return static::get('CLOUDINARY_CLOUD_NAME');
     }
 
     /**
-     * Cloudinary's unsigned upload preset, which lets the browser upload directly
+     * Cloudinary's unsigned upload preset, which lets the browser upload
+     * directly, or null when this site has none
      */
-    public static function cloudinaryUploadPreset(): string
+    public static function cloudinaryUploadPreset(): ?string
     {
-        return static::get('CLOUDINARY_UPLOAD_PRESET', 'eu0zgzwd');
+        return static::get('CLOUDINARY_UPLOAD_PRESET');
+    }
+
+    /**
+     * Whether people can upload a photo. It takes both Cloudinary settings,
+     * with no default account, so a copy never uploads to someone else's
+     */
+    public static function arePhotoUploadsOn(): bool
+    {
+        return static::cloudinaryCloudName() !== null && static::cloudinaryUploadPreset() !== null;
     }
 }
