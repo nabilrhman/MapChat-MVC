@@ -171,6 +171,27 @@ function addTab(conversation, name) {
     return tab;
 }
 
+// Scroll the tab row, and nothing else, so the whole tab shows. scrollIntoView
+// also scrolled the page, and measured a new tab while it was still growing
+// in; its layout box is already full size
+function scrollTabIntoView(tab, behavior = SCROLL_BEHAVIOR) {
+    const left = tab.offsetParent === chatTabs ? tab.offsetLeft : tab.offsetLeft - chatTabs.offsetLeft;
+    const right = left + tab.offsetWidth;
+
+    if (left < chatTabs.scrollLeft) {
+        chatTabs.scrollTo({left, behavior});
+    } else if (right > chatTabs.scrollLeft + chatTabs.clientWidth) {
+        chatTabs.scrollTo({left: right - chatTabs.clientWidth, behavior});
+    }
+}
+
+// The open tab stays whole when the row gets narrower (a smaller window,
+// the people list opening beside it)
+new ResizeObserver(() => {
+    const activeTab = chatTabs.querySelector('.chat-tab.is-active');
+    if (activeTab) scrollTabIntoView(activeTab, 'instant');
+}).observe(chatTabs);
+
 function showConversation(conversation) {
     // Switching chats stops "typing" in the one you leave
     stopTyping();
@@ -180,7 +201,7 @@ function showConversation(conversation) {
     const tab = getTab(activeConversation);
     tab.classList.add('is-active');
     clearUnreadCount(tab);
-    tab.scrollIntoView({block: 'nearest', inline: 'nearest'});
+    scrollTabIntoView(tab);
 
     getChats().forEach((chat) => {
         chat.style.display = getConversation(chat) === activeConversation ? '' : 'none';
