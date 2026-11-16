@@ -35,7 +35,7 @@ was to understand what a web framework actually does, so instead of using one, I
 wrote my own: the router, controllers, models, views, sessions and login are all
 hand-written PHP.
 
-In 2026 I came back to it to bring parts of it up to date, and I'm still at it.
+In 2026 I came back to it to bring parts of it up to date.
 
 [MapChat](https://mapchat.swiftsolve.net) runs on Render's free plan, which
 sleeps when nobody visits; a GitHub Actions workflow visits it every 10 minutes
