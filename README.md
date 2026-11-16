@@ -134,7 +134,8 @@ on what's sent to its API. The code is in `App/Models/Bot.php`.
   MapChat closed they come by Web Push, sent by the chat worker with
   [minishlink/web-push](https://github.com/web-push-libs/web-push-php) and
   shown by a service worker, `public/sw.js`. Signed with VAPID keys; without
-  them, only an open page notifies.
+  them, only an open page notifies. How it all works, and setting it up, is in
+  [docs/notifications.md](docs/notifications.md).
 - **Icons:** the Bold weight of the [Solar icon set](https://www.figma.com/community/file/1166831539721848736)
   by 480 Design, under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/),
   in one sprite, `public/icons.svg`. The GitHub mark is from Simple Icons.
@@ -251,7 +252,7 @@ explanations. The main ones:
 | `CHAT_SOCKET_PORT` | Optional. The port the chat socket listens on. Default `8090` |
 | `CHAT_PRESENCE_GRACE_SECONDS` | Optional. How long someone still shows online after their last chat page closes. Default `10` |
 | `CHAT_SESSION_CHECK_SECONDS` | Optional. How often the chat socket closes the pages of people who logged out or whose guest account ran out. Default `15` |
-| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | Optional. The key pair for Web Push, so notifications reach people with MapChat closed. Make it once and keep it ([docs/deploy.md](docs/deploy.md)) |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | Optional. The key pair for Web Push, so notifications reach people with MapChat closed. Make it once and keep it ([docs/notifications.md](docs/notifications.md)) |
 | `VAPID_SUBJECT` | Optional. Who push services can contact about the site, `https://` or `mailto:`. Default `APP_URL` |
 
 ## Deploy for free
@@ -292,6 +293,7 @@ docs/images/     The video, screenshots and diagram in this README
 docs/diagrams/   Draws the diagram: node docs/diagrams/draw.ts
 docs/video/      Records the tour at the top: python3 docs/video/record.py
 docs/live-chat.md How the live chat works
+docs/notifications.md How notifications and Web Push work
 docs/deploy.md   How to deploy it for free
 docs/load-test.* The load test and its report, with raw results in docs/load-test-results/
 AGENTS.md        The coding rules, for people and AI agents alike
