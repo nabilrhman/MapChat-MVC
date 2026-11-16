@@ -19,14 +19,27 @@ function placeName(city, country) {
     return city || countryName(country);
 }
 
-// Flag and place (.place in chat.css); with a city, hovering it names the country
-function createPlace(city, country) {
-    const place = createElement('span', 'place');
-    if (country) place.append(createElement('span', `fi fi-${country.toLowerCase()}`));
-    place.append(createElement('span', 'place__name', placeName(city, country)));
-    // No tip for a code the browser can't name, like MapChat's Null Island
+// Flag and place (.place in chat.css). With slidesToCountry and a city,
+// hovering it slides to the country's name, like the place under a message
+function createPlace(city, country, slidesToCountry = false) {
+    const flag = () => (country ? [createElement('span', `fi fi-${country.toLowerCase()}`)] : []);
     const nameOfCountry = countryName(country);
-    if (city && nameOfCountry !== country) place.title = nameOfCountry;
+    const place = createElement('span', 'place');
+    const cityLine = createElement('span', 'swap__line');
+    cityLine.append(...flag(), createElement('span', 'place__name', placeName(city, country)));
+
+    // Plain without a city, or for a code the browser can't name, like MapChat's Null Island
+    if (!slidesToCountry || !city || nameOfCountry === country) {
+        place.append(...cityLine.childNodes);
+        return place;
+    }
+    // Two lines in a one-line window (.swap in chat.css)
+    const countryLine = createElement('span', 'swap__line');
+    countryLine.append(...flag(), createElement('span', 'place__name', nameOfCountry));
+    const track = createElement('span', 'swap__track');
+    track.append(cityLine, countryLine);
+    place.classList.add('swap');
+    place.append(track);
     return place;
 }
 

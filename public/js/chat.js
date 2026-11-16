@@ -357,7 +357,7 @@ function showChatHeader() {
     }
     status.replaceChildren();
     if (!person) return;
-    status.append(createPlace(person.city, person.country));
+    status.append(createPlace(person.city, person.country, true));
     // Hidden with their place when they don't share their location
     if (person.lng !== null && person.lng !== undefined) status.append(createLocalTime(person));
 }
