@@ -15,7 +15,7 @@ I wrote from scratch in PHP.
 [![Docker](https://img.shields.io/badge/Docker-ready-512da8?logo=docker&logoColor=white&labelColor=1e0839)](Dockerfile)
 [![License](https://img.shields.io/badge/license-MIT-512da8?labelColor=1e0839)](LICENSE)
 
-**[Live demo](https://mapchat.swiftsolve.net)** &nbsp;·&nbsp;
+**[Open MapChat](https://mapchat.swiftsolve.net)** &nbsp;·&nbsp;
 **[Run it locally](#run-it-locally)** &nbsp;·&nbsp;
 **[Deploy for free](#deploy-for-free)** &nbsp;·&nbsp;
 **[Project layout](#project-layout)**
@@ -36,7 +36,7 @@ hand-written PHP.
 
 In 2026 I came back to it to bring parts of it up to date, and I'm still at it.
 
-The [live demo](https://mapchat.swiftsolve.net) runs on free hosting, so the
+[MapChat](https://mapchat.swiftsolve.net) runs on free hosting, so the
 first visit after a quiet spell takes about a minute to wake up.
 
 ![The chat room with the map of who is chatting from where](docs/images/mapchat-app.png)
