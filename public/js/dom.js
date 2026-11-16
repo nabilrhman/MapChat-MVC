@@ -7,12 +7,27 @@ function createElement(tagName, className = '', text = '') {
     return element;
 }
 
-// Where someone is, as shown: their city, or their country's name when the
-// IP lookup found only the country. Older browsers show the country code
-function placeName(city, country) {
-    if (city) return city;
+// A country's name from its code. Older browsers show the code
+function countryName(country) {
     if (!country) return '';
     return window.Intl?.DisplayNames ? new Intl.DisplayNames(['en'], {type: 'region'}).of(country) : country;
+}
+
+// Where someone is, as shown: their city, or their country's name when the
+// IP lookup found only the country
+function placeName(city, country) {
+    return city || countryName(country);
+}
+
+// Flag and place (.place in chat.css); with a city, hovering it names the country
+function createPlace(city, country) {
+    const place = createElement('span', 'place');
+    if (country) place.append(createElement('span', `fi fi-${country.toLowerCase()}`));
+    place.append(createElement('span', 'place__name', placeName(city, country)));
+    // No tip for a code the browser can't name, like MapChat's Null Island
+    const nameOfCountry = countryName(country);
+    if (city && nameOfCountry !== country) place.title = nameOfCountry;
+    return place;
 }
 
 // An icon from the sprite, as Core\Icon draws one in Twig

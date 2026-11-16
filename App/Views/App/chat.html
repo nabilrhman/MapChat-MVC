@@ -32,13 +32,15 @@
         {% else %}
         <h3 class="chat__name">{{ sender_name }}</h3>
         {% endif %}
-        {# The page fills in the time in the reader's own time zone. On hover it
-           slides to the sender's own time, with a sun or moon #}
-        <span class="chat__time{% if chat.lng is not null %} swap{% endif %}"
+        {# The page fills in the time in the reader's own time zone. In the room,
+           hovering it slides to the sender's own time, with a sun or moon; a
+           private chat's header already shows theirs #}
+        {% set shows_sender_time = chat.lng is not null and conversation == 'everyone' %}
+        <span class="chat__time{% if shows_sender_time %} swap{% endif %}"
               data-timezone="{{ chat.timezone }}" data-lng="{{ chat.lng }}" data-country="{{ chat.country }}">
             <span class="swap__track">
                 <time class="swap__line" datetime="{{ chat.timestamp|date('c') }}"></time>
-                {% if chat.lng is not null %}
+                {% if shows_sender_time %}
                 <span class="chat__sender-time swap__line">{{ icon('sun', 'chat__daylight') }}<span></span></span>
                 {% endif %}
             </span>
@@ -48,8 +50,10 @@
         {% else %}
         <p class="chat__body">{{ chat.body }}</p>
         {% endif %}
-        {# No row at all without a place (e.g. a hidden location) #}
-        {% if chat.city %}
+        {# No row at all without a place (e.g. a hidden location), nor in a
+           private chat, whose header already says where they are #}
+        {% if conversation != 'everyone' %}
+        {% elseif chat.city %}
         {# On hover the city slides to the country's flag and name #}
         <span class="chat__location">
             <span{% if chat.country %} class="swap"{% endif %}>

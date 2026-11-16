@@ -313,6 +313,8 @@ class UserInfo extends \Core\Model
                        users.nickname, users.is_guest, ' . static::isBotSql() . ' AS is_bot,
                        IF(users.share_location, userinfo.city, NULL) AS city,
                        IF(users.share_location, userinfo.country, NULL) AS country,
+                       IF(users.share_location, userinfo.lng, NULL) AS lng,
+                       IF(users.share_location, userinfo.timezone, NULL) AS timezone,
                        (userinfo.online_at > NOW() - INTERVAL :online SECOND OR ' . $demo_online . ' OR ' . $bot_online . ') AS is_online,
                        TIMESTAMPDIFF(MINUTE, userinfo.online_at, NOW()) AS minutes_ago
                 FROM userinfo
@@ -353,6 +355,8 @@ class UserInfo extends \Core\Model
                        users.nickname, users.is_guest, ' . static::isBotSql() . ' AS is_bot,
                        IF(users.share_location, userinfo.city, NULL) AS city,
                        IF(users.share_location, userinfo.country, NULL) AS country,
+                       IF(users.share_location, userinfo.lng, NULL) AS lng,
+                       IF(users.share_location, userinfo.timezone, NULL) AS timezone,
                        COALESCE(TIMESTAMPDIFF(MINUTE, userinfo.online_at, NOW()), 0) AS minutes_ago
                 FROM userinfo
                 JOIN users

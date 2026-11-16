@@ -33,6 +33,35 @@ shareLocationSwitch.addEventListener('change', () => {
         });
 });
 
+/* Notifications: this browser's own setting, not saved to the account */
+
+const notificationsSwitch = document.getElementById('notifications');
+const notificationsHint = document.getElementById('notifications-hint');
+
+// Blocked or unsupported: only the browser's site settings can change that
+function showNotificationsState() {
+    const isBlocked = !isNotifySupported() || Notification.permission === 'denied';
+    notificationsSwitch.checked = areNotificationsOn();
+    notificationsSwitch.disabled = isBlocked;
+    if (isBlocked) {
+        notificationsHint.textContent = isNotifySupported()
+            ? 'Blocked by this browser. Allow them in its site settings'
+            : "This browser can't show notifications";
+    }
+}
+showNotificationsState();
+
+notificationsSwitch.addEventListener('change', async () => {
+    if (!notificationsSwitch.checked) {
+        turnNotificationsOff();
+        showToast('Notifications are off', 'info');
+        return;
+    }
+    const isOn = await turnNotificationsOn();
+    showNotificationsState();
+    if (isOn) showToast('Notifications are on');
+});
+
 /* Photo: saves as soon as it's uploaded or removed */
 
 const avatar = document.getElementById('avatar');

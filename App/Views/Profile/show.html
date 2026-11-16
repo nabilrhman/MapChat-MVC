@@ -150,6 +150,26 @@
         </div>
     </section>
 
+    {# Per browser, so profile.js sets it from what this browser allows #}
+    <section class="settings-card appear-down">
+        <div class="settings-card__head">
+            <h5 class="settings-card__title">Notifications</h5>
+        </div>
+
+        <div class="privacy-setting">
+            <div>
+                <label class="privacy-setting__name" for="notifications">Private messages and mentions</label>
+                <p class="field-hint" id="notifications-hint">On this browser, when MapChat is open in a tab</p>
+            </div>
+            <div class="beer privacy-setting__switch">
+                <label class="switch">
+                    <input type="checkbox" id="notifications">
+                    <span></span>
+                </label>
+            </div>
+        </div>
+    </section>
+
 </div>
 
 {% endblock %}
@@ -157,5 +177,6 @@
 {% block footer %}
 <script src="{{ asset('/js/passwordToggle.js') }}"></script>
 <script src="{{ asset('/js/formChecks.js') }}"></script>
+<script src="{{ asset('/js/notifications.js') }}"></script>
 <script src="{{ asset('/js/profile.js') }}"></script>
 {% endblock %}

@@ -55,10 +55,7 @@ function createPersonDetail(person) {
         detail.textContent = getTimeAgo(person);
         return detail;
     }
-    if (person.country) {
-        detail.append(createElement('span', `fi fi-${person.country.toLowerCase()}`));
-    }
-    detail.append(createElement('span', 'person__city', placeName(person.city, person.country)));
+    detail.append(createPlace(person.city, person.country));
     return detail;
 }
 
