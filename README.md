@@ -45,9 +45,9 @@ https://github.com/user-attachments/assets/06384a18-cd12-4e27-8cf0-530ab2463569
 
 <sub>A quick tour of MapChat.</sub>
 
-| The chat room |
-|---|
-| ![The chat room with the map of who is chatting from where](docs/images/mapchat-app.png) |
+| The chat room | A private chat |
+|---|---|
+| ![The chat room with the map of who is chatting from where](docs/images/mapchat-app.png) | ![A private chat with Aiko, showing her city and local time](docs/images/mapchat-private.png) |
 
 | Log in, or try it as a guest | Profile |
 |---|---|
@@ -61,7 +61,12 @@ https://github.com/user-attachments/assets/06384a18-cd12-4e27-8cf0-530ab2463569
 
 - One open chat room for everyone signed in, live over a WebSocket.
 - Private chats in tabs of their own, with unread counts and "Typing...".
+  Each opens with a header showing who you're talking to, and their city and
+  local time.
 - @mentions: type @ to pick someone; mentions show as chips.
+- Notifications for private messages and @mentions, even with MapChat closed
+  (Web Push). Turn them on from the chat or your profile; they're per
+  browser.
 - A map with a pin for each person online, at city level, never an exact
   location, with their local time and a sun or moon.
 - Hover someone, or a message's city, to point out their pin; click the city
@@ -117,6 +122,11 @@ on what's sent to its API. The code is in `App/Models/Bot.php`.
   jQuery, and axios for requests to the server.
 - **Live chat:** one WebSocket per open chat page, served by a PHP process of
   its own on [amphp](https://amphp.org); see [Live chat](#live-chat).
+- **Notifications:** while a chat page is in view it shows them itself; with
+  MapChat closed they come by Web Push, sent by the chat worker with
+  [minishlink/web-push](https://github.com/web-push-libs/web-push-php) and
+  shown by a service worker, `public/sw.js`. Signed with VAPID keys; without
+  them, only an open page notifies.
 - **Icons:** the Bold weight of the [Solar icon set](https://www.figma.com/community/file/1166831539721848736)
   by 480 Design, under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/),
   in one sprite, `public/icons.svg`. The GitHub mark is from Simple Icons.
@@ -183,7 +193,8 @@ docker compose down -v
 ### Tests
 
 The tests cover the router, who can see which chat messages, mentions and
-nicknames, and when MapChat and the demo people answer. The chat socket's
+nicknames, whose browsers a Web Push goes to, and when MapChat and the demo
+people answer. The chat socket's
 tests start it as its own process and connect to it as pages do: private
 messages reaching only the pair, the open room reaching everyone, sending
 again after a lost answer, catching up after a restart with more than a page
@@ -215,6 +226,8 @@ explanations. The main ones:
 | `MAPCHAT_MODEL` | Optional. The Groq model they write with. Default `openai/gpt-oss-120b` |
 | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_UPLOAD_PRESET` | Where avatar uploads go |
 | `CHAT_SOCKET_PORT` | Optional. The port the chat socket listens on inside the container, behind Apache's `/ws`. Default `8090` |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | Optional. The key pair for Web Push, so notifications reach people with MapChat closed. Make it once and keep it ([docs/deploy.md](docs/deploy.md)) |
+| `VAPID_SUBJECT` | Optional. Who push services can contact about the site, `https://` or `mailto:`. Default `APP_URL` |
 
 ## Deploy for free
 
@@ -231,13 +244,15 @@ App/Controllers/ One class per page or action
 App/Models/      Database access for users, chats and locations, and Bot:
                  when MapChat and the demo people answer, and what they read
 App/Mention.php  @mentions, and how each person's name is shown
+App/Push.php     Web Push: whose browsers each new message goes to, and sending it
 App/ChatSocket/  The live chat: who's let in (Handshake), and what each page
                  gets (Hub)
 bin/             chat-socket.php and chat-worker.php, run by docker/start.sh
 App/Views/       Twig templates
 public/          Web root: index.php, CSS, JavaScript (messages.js talks to the
-                 chat socket, mentions.js is the @ list and chips), images and
-                 icons.svg
+                 chat socket, mentions.js is the @ list and chips,
+                 notifications.js turns notifications on), sw.js (shows Web
+                 Push notifications), images and icons.svg
 database/        init.sql (schema and welcome messages), demo.sql (optional
                  sample people), demo-chat.php (what they say each day),
                  migrate.php (adds columns an older database is missing, run
