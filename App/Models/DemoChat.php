@@ -160,11 +160,13 @@ class DemoChat extends \Core\Model
             }
         }
 
-        // When they last spoke, for "Recently here"
+        // When they last spoke, for "Recently here", on the real clock. A
+        // time left in the future by an earlier fast-forwarded day is replaced
         $seen = $db->prepare('UPDATE userinfo SET online_at = :time
-                              WHERE email = :email AND (online_at IS NULL OR online_at < :time2)');
+                              WHERE email = :email AND (online_at IS NULL OR online_at < :time2 OR online_at > NOW())');
         foreach ($last_spoke as $email => $time) {
-            $seen->execute([':email' => $email, ':time' => $time, ':time2' => $time]);
+            $real = static::realTime($time);
+            $seen->execute([':email' => $email, ':time' => $real, ':time2' => $real]);
         }
     }
 
@@ -273,6 +275,27 @@ class DemoChat extends \Core\Model
         $day_start = static::dayStart(static::today());
 
         return $day_start + (int) (fmod(time() * $speed, 86400));
+    }
+
+    /**
+     * When a moment on the demo clock happened on the real clock. They're
+     * the same unless DEMO_SPEED fast-forwards the day; then a demo minute
+     * ago was a real second ago, and the demo clock can run hours ahead
+     *
+     * @param string $time UTC, Y-m-d H:i:s, on the demo clock
+     *
+     * @return string UTC, Y-m-d H:i:s
+     */
+    protected static function realTime($time)
+    {
+        if (!static::isFast()) {
+            return $time;
+        }
+
+        $demoSecondsAgo = static::now() - strtotime($time . ' UTC');
+        $realSecondsAgo = (int) round($demoSecondsAgo / (float) Config::get('DEMO_SPEED', 1));
+
+        return gmdate('Y-m-d H:i:s', time() - $realSecondsAgo);
     }
 
     /**
