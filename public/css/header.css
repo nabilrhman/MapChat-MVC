@@ -179,7 +179,7 @@
     align-items: center;
     gap: 8px;
     height: 44px;
-    padding: 0 17px 0 5px; /* 17px after the chevron's drawing (.icon takes back its blank sides) */
+    padding: 0 15px 0 5px; /* 15px after the chevron's drawing (.icon takes back its blank sides) */
     border: none;
     border-radius: 22px;
     background: none;
