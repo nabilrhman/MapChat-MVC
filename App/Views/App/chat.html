@@ -48,7 +48,7 @@
         {% else %}
         <p class="chat__body">{{ chat.body }}</p>
         {% endif %}
-        {# No row at all without a place (e.g. the MapChat bot, or a hidden location) #}
+        {# No row at all without a place (e.g. a hidden location) #}
         {% if chat.city %}
         {# On hover the city slides to the country's flag and name #}
         <span class="chat__location">
@@ -60,6 +60,11 @@
                     {% endif %}
                 </span>
             </span>
+        </span>
+        {% elseif chat.country %}
+        {# Only the country is known: its flag and name, which chat.js fills in #}
+        <span class="chat__location">
+            <span><span class="fi fi-{{ chat.country|lower }}"></span><span class="chat__country" data-country="{{ chat.country }}"></span></span>
         </span>
         {% endif %}
     </div>

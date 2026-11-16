@@ -185,10 +185,14 @@ class UserInfo extends \Core\Model
             return null;
         }
 
+        // Some addresses resolve to a country only; its name then stands in for
+        // the city. Services call it country_name, or country when that isn't the code
+        $countryName = $result['country_name'] ?? (strlen($result['country'] ?? '') > 2 ? $result['country'] : null);
+
         return [
             'lat' => (float) $result['latitude'],
             'lng' => (float) $result['longitude'],
-            'city' => $result['city'] ?? null,
+            'city' => ($result['city'] ?? '') !== '' ? $result['city'] : $countryName,
             'country' => isset($result['country_code']) ? strtoupper($result['country_code']) : null,
         ];
     }

@@ -127,12 +127,12 @@ function createPinLabel(location) {
     const label = createElement('div', 'pin-label');
     label.append(createElement('strong', 'pin-label__name', location.shown_name || ''));
 
-    if (location.city) {
+    if (location.city || location.country) {
         const place = createElement('span', 'pin-label__place');
         if (location.country) {
             place.append(createElement('span', `fi fi-${location.country.toLowerCase()}`));
         }
-        place.append(location.city);
+        place.append(placeName(location.city, location.country));
         label.append(place);
     }
 

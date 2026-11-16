@@ -7,6 +7,14 @@ function createElement(tagName, className = '', text = '') {
     return element;
 }
 
+// Where someone is, as shown: their city, or their country's name when the
+// IP lookup found only the country. Older browsers show the country code
+function placeName(city, country) {
+    if (city) return city;
+    if (!country) return '';
+    return window.Intl?.DisplayNames ? new Intl.DisplayNames(['en'], {type: 'region'}).of(country) : country;
+}
+
 // An icon from the sprite, as Core\Icon draws one in Twig
 function createIcon(name, className = '') {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
