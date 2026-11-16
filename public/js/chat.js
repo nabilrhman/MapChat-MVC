@@ -87,7 +87,8 @@ function slideTabs(change) {
 
     const shiftedTabs = [];
     tabs.forEach((tab, index) => {
-        if (!tab.isConnected) return;
+        // The tab being dragged stays under the pointer
+        if (!tab.isConnected || tab.classList.contains('is-dragging')) return;
         const shift = leftsBefore[index] - tab.getBoundingClientRect().left;
         if (Math.round(shift) === 0) return;
         tab.style.translate = `${shift}px 0`;
@@ -168,8 +169,41 @@ function addTab(conversation, name) {
     closeButton.title = 'Close';
 
     tab.append(onlineDot, nameLabel, unreadCount, closeButton);
-    chatTabs.append(tab);
+    placeTab(tab);
     return tab;
+}
+
+/* Private tabs can be dragged into any order after # Everyone, which stays
+   first. The order is kept like closed tabs: per account, on this device */
+
+const tabOrderKey = `tabOrder:${myUserId}`;
+let tabOrder = [];
+try {
+    tabOrder = JSON.parse(localStorage.getItem(tabOrderKey)) || [];
+} catch {
+    // No storage: tabs go in the order they open
+}
+
+function saveTabOrder() {
+    tabOrder = Array.from(chatTabs.querySelectorAll('.chat-tab:not(.is-leaving)'), (tab) => tab.dataset.conversation)
+        .filter((conversation) => conversation !== EVERYONE);
+    try {
+        localStorage.setItem(tabOrderKey, JSON.stringify(tabOrder));
+    } catch {
+        // As above
+    }
+}
+
+// A tab that was dragged before goes back to its place among the tabs
+// there; one that never was goes at the end
+function placeTab(tab) {
+    const place = tabOrder.indexOf(tab.dataset.conversation);
+    const nextTab = place === -1 ? null : Array.from(chatTabs.children).find((other) => {
+        if (other.dataset.conversation === EVERYONE) return false;
+        const otherPlace = tabOrder.indexOf(other.dataset.conversation);
+        return otherPlace === -1 || otherPlace > place;
+    });
+    chatTabs.insertBefore(tab, nextTab ?? null);
 }
 
 // The open tab is always shown whole, close button and all, however the
@@ -317,6 +351,7 @@ chatTabs.addEventListener('click', (event) => {
     const tab = event.target.closest('.chat-tab');
     if (!tab) return;
     event.preventDefault();
+    if (isEndingTabDrag) return;
     // A tab of a folded chat brings the chat back up
     if (isChatFolded()) setChatFolded(false);
 
@@ -331,6 +366,160 @@ chatTabs.addEventListener('click', (event) => {
 chatTabs.addEventListener('wheel', (event) => {
     chatTabs.scrollLeft += event.deltaY;
 });
+
+/* Dragging tabs */
+
+// A mouse press that moves this far drags the tab. A finger first holds the
+// tab still this long, since a swipe scrolls the tabs
+const DRAG_DISTANCE = 5;
+const TOUCH_HOLD_DELAY = 400;
+// Dragged this close to an end of the row, the tabs scroll along
+const DRAG_SCROLL_EDGE = 32;
+const DRAG_SCROLL_SPEED = 8;
+
+// The press on a private tab, until it's let go
+let tabDrag = null;
+// The click that ends a drag doesn't open the tab
+let isEndingTabDrag = false;
+
+// Where the pointer is along the whole row, scrolled part included
+const getRowX = (clientX) => clientX + chatTabs.scrollLeft;
+
+chatTabs.addEventListener('pointerdown', (event) => {
+    const tab = event.target.closest('.chat-tab');
+    if (!tab || tab.dataset.conversation === EVERYONE || tab.classList.contains('is-leaving')) return;
+    if (event.button !== 0 || event.target.closest('.chat-tab__close')) return;
+
+    tabDrag = {tab, pointerId: event.pointerId, startClientX: event.clientX, clientX: event.clientX, isDragging: false};
+    if (event.pointerType === 'touch') {
+        tabDrag.holdTimer = setTimeout(startTabDrag, TOUCH_HOLD_DELAY);
+    }
+});
+
+function startTabDrag() {
+    const {tab, pointerId, startClientX} = tabDrag;
+    tabDrag.isDragging = true;
+    tabDrag.startRowX = getRowX(startClientX);
+    tab.classList.remove('is-shifting');
+    tab.classList.add('is-dragging');
+    tab.setPointerCapture(pointerId);
+    scrollWhileDragging();
+}
+
+window.addEventListener('pointermove', (event) => {
+    if (!tabDrag || event.pointerId !== tabDrag.pointerId) return;
+    tabDrag.clientX = event.clientX;
+
+    if (tabDrag.isDragging) {
+        moveDraggedTab();
+    } else if (Math.abs(event.clientX - tabDrag.startClientX) > DRAG_DISTANCE) {
+        // A finger that moves before the hold is scrolling, not dragging
+        if (tabDrag.holdTimer) {
+            clearTimeout(tabDrag.holdTimer);
+            tabDrag = null;
+        } else {
+            startTabDrag();
+            moveDraggedTab();
+        }
+    }
+});
+
+// The dragged tab follows the pointer, kept within the private tabs, and
+// trades places with a neighbour once it's past that neighbour's middle
+function moveDraggedTab() {
+    const {tab} = tabDrag;
+    const everyoneTab = chatTabs.firstElementChild;
+    const firstLeft = everyoneTab.offsetLeft + everyoneTab.offsetWidth;
+    const lastTab = chatTabs.lastElementChild;
+    const lastLeft = lastTab.offsetLeft + lastTab.offsetWidth - tab.offsetWidth;
+
+    const left = Math.min(Math.max(tab.offsetLeft + getRowX(tabDrag.clientX) - tabDrag.startRowX, firstLeft), lastLeft);
+    const right = left + tab.offsetWidth;
+
+    // It passes a neighbour once its leading edge is past that neighbour's
+    // middle, so it can reach either end next to a narrower tab. A quick
+    // drag can pass several tabs between two moves
+    for (;;) {
+        const nextTab = tab.nextElementSibling;
+        const previousTab = tab.previousElementSibling;
+        if (nextTab && right > nextTab.offsetLeft + nextTab.offsetWidth / 2) {
+            swapTabs(nextTab, () => nextTab.after(tab));
+        } else if (previousTab.dataset.conversation !== EVERYONE
+                   && left < previousTab.offsetLeft + previousTab.offsetWidth / 2) {
+            swapTabs(previousTab, () => previousTab.before(tab));
+        } else {
+            break;
+        }
+    }
+    tab.style.translate = `${left - tab.offsetLeft}px 0`;
+}
+
+// Moves the dragged tab past a neighbour, which slides over to make room
+function swapTabs(neighbour, change) {
+    const {tab} = tabDrag;
+    const tabLeftBefore = tab.offsetLeft;
+    const neighbourLeftBefore = neighbour.offsetLeft;
+    change();
+    tabDrag.startRowX += tab.offsetLeft - tabLeftBefore;
+
+    neighbour.classList.remove('is-shifting');
+    neighbour.style.translate = `${neighbourLeftBefore - neighbour.offsetLeft}px 0`;
+    void neighbour.offsetWidth; // so the slide starts from there
+    neighbour.classList.add('is-shifting');
+    neighbour.style.translate = '';
+    onTransitionEnd(neighbour, () => neighbour.classList.remove('is-shifting'));
+}
+
+// Held near an end of the row, the tabs keep scrolling
+function scrollWhileDragging() {
+    if (!tabDrag?.isDragging) return;
+    const row = chatTabs.getBoundingClientRect();
+    if (tabDrag.clientX < row.left + DRAG_SCROLL_EDGE) {
+        chatTabs.scrollLeft -= DRAG_SCROLL_SPEED;
+    } else if (tabDrag.clientX > row.right - DRAG_SCROLL_EDGE) {
+        chatTabs.scrollLeft += DRAG_SCROLL_SPEED;
+    }
+    moveDraggedTab();
+    requestAnimationFrame(scrollWhileDragging);
+}
+
+function endTabDrag(event) {
+    if (!tabDrag || event.pointerId !== tabDrag.pointerId) return;
+    const {tab, isDragging, holdTimer} = tabDrag;
+    clearTimeout(holdTimer);
+    if (isDragging && event.type === 'pointerup') {
+        // Where it's let go, which can be past the last move
+        tabDrag.clientX = event.clientX;
+        moveDraggedTab();
+    }
+    tabDrag = null;
+    if (!isDragging) return;
+
+    // Settles into its place
+    tab.classList.remove('is-dragging');
+    tab.classList.add('is-shifting');
+    tab.style.translate = '';
+    onTransitionEnd(tab, () => tab.classList.remove('is-shifting'));
+    saveTabOrder();
+
+    isEndingTabDrag = true;
+    setTimeout(() => {
+        isEndingTabDrag = false;
+    });
+}
+
+window.addEventListener('pointerup', endTabDrag);
+window.addEventListener('pointercancel', endTabDrag);
+
+// While a finger drags a tab, the row doesn't scroll and no menu opens
+chatTabs.addEventListener('touchmove', (event) => {
+    if (tabDrag?.isDragging) event.preventDefault();
+}, {passive: false});
+chatTabs.addEventListener('contextmenu', (event) => {
+    if (tabDrag) event.preventDefault();
+});
+// Tabs are links, which the browser would drag off as a link instead
+chatTabs.addEventListener('dragstart', (event) => event.preventDefault());
 
 /* Messages */
 
