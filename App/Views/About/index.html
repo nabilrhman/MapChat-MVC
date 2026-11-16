@@ -40,10 +40,13 @@
             <ul class="about-list">
                 <li>Chat with everyone who is signed in, in one shared room.</li>
                 <li>Click someone's name to chat with them privately.</li>
+                <li>Type @ to mention someone in the room. Mentions of you are highlighted.</li>
+                <li>Chat with MapChat, the room's AI, in the room or privately. It says hello when the room is quiet.</li>
+                <li>Talk with the regulars on the map. They're digital characters, written by AI: mention one, or message them, and they answer.</li>
                 <li>Try it as a guest without signing up. Guest accounts disappear after 24 hours unless you keep them.</li>
-                <li>See on the map which city each person is chatting from.</li>
+                <li>See on the map which city each person online is chatting from.</li>
                 <li>Hide yourself from the map whenever you want.</li>
-                <li>Set up a profile with your name and an avatar.</li>
+                <li>Set up a profile with your name, an avatar and, if you like, a nickname to go by.</li>
                 <li>Reset your password by email if you forget it.</li>
             </ul>
         </section>
@@ -55,6 +58,7 @@
                 <li>MySQL for users and messages, queried with prepared statements to block SQL injection.</li>
                 <li>Twig templates, which escape everything users type to block cross-site scripting.</li>
                 <li>Axios to send messages and fetch new ones every second.</li>
+                <li>Groq's API to write what MapChat and the digital characters say.</li>
                 <li>MapLibre and OpenStreetMap for the map.</li>
                 <li>The site's own CSS, with Beer CSS for the form fields, and plain JavaScript with no jQuery.</li>
                 <li>Icons from the <a href="https://www.figma.com/community/file/1166831539721848736">Solar icon set</a> by 480 Design, under <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.</li>
@@ -66,6 +70,7 @@
             <ul class="about-list">
                 <li>Your location comes from your IP address, so the map only knows roughly which city you are in. It never uses GPS, and you can hide your pin and city from your profile.</li>
                 <li>Anything you write in Everyone is visible to everyone signed in. Private chats are only shown to the two of you.</li>
+                <li>MapChat and the regulars on the map are AI, not people. To write their replies, what was said in the room, or your private chat with them, is sent to Groq.</li>
                 <li>This is a portfolio project, so please don't share anything private here.</li>
             </ul>
         </section>
