@@ -32,7 +32,7 @@
     align-items: center;
     justify-content: space-between;
     background-color: #512da8;
-    border-bottom: 4px solid #ffc107; /* the yellow line is the only edge, on every page */
+    border-bottom: 4px solid #ffd54f; /* the yellow line is the only edge, on every page; pale, so the loading bar shows on it */
 }
 
 /* NAV */
