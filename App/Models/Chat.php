@@ -180,7 +180,21 @@ class Chat extends \Core\Model
      */
     public static function getAfter($viewer, $afterId)
     {
-        $sql = static::visibleSql() . ' AND chats.id > :after_id ORDER BY chats.id LIMIT ' . static::HISTORY;
+        // Read from each kind's own index, as in getRecent. Filtering every
+        // newer message instead made an idle viewer's poll reread all of
+        // other people's private messages each second
+        $after = ' AND id > :after_id ORDER BY id LIMIT ' . static::HISTORY;
+        $sql = static::selectSql() . '
+                JOIN (
+                    (SELECT id FROM chats WHERE to_email IS NULL' . $after . ')
+                    UNION ALL
+                    (SELECT id FROM chats WHERE to_email = :viewer' . $after . ')
+                    UNION ALL
+                    (SELECT id FROM chats WHERE email = :viewer AND to_email IS NOT NULL' . $after . ')
+                    ORDER BY id LIMIT ' . static::HISTORY . '
+                ) AS newer
+                ON newer.id = chats.id
+                ORDER BY chats.id';
 
         $stmt = static::getDB()->prepare($sql);
         $stmt->bindValue(':viewer', $viewer, PDO::PARAM_STR);

@@ -116,6 +116,119 @@ class ChatTest extends TestCase
         $this->assertSame(['new', 'for ann'], $this->bodies(Chat::getAfter(self::ANN, $seen)));
     }
 
+    /**
+     * Polls the way messages.js does: keep only ids past the cursor, and move
+     * the cursor to the last one kept
+     */
+    private function poll(string $viewer, int &$cursor, ?array $chats = null): array
+    {
+        $chats ??= Chat::getAfter($viewer, $cursor);
+        $kept = array_values(array_filter(array_map('intval', array_column($chats, 'id')), fn ($id) => $id > $cursor));
+        if ($kept) {
+            $cursor = end($kept);
+        }
+
+        return $kept;
+    }
+
+    /**
+     * Rows MySQL has read through this connection so far
+     */
+    private function rowsRead(): int
+    {
+        $rows = $this->db->query("SHOW SESSION STATUS LIKE 'Handler_read%'")->fetchAll(PDO::FETCH_KEY_PAIR);
+
+        return array_sum(array_map('intval', $rows));
+    }
+
+    private function sendMany(string $from, int $count, ?string $to = null): void
+    {
+        $values = implode(',', array_fill(0, $count, '(' . $this->db->quote($from) . ', '
+            . ($to === null ? 'NULL' : $this->db->quote($to)) . ", 'm')"));
+        $this->db->exec("INSERT INTO chats (email, to_email, body) VALUES $values");
+    }
+
+    public function testAfterReachesAnIdleViewerOnceOthersHaveChattedPrivately()
+    {
+        $cursor = $this->send(self::ANN, 'already seen');
+        $this->sendMany(self::BOB, 300, self::CAT);
+        $this->sendMany(self::CAT, 300, self::BOB);
+
+        // Ann's page finds nothing, so its cursor stays put
+        for ($i = 0; $i < 3; $i++) {
+            $this->assertSame([], $this->poll(self::ANN, $cursor));
+        }
+
+        $forAnn = $this->send(self::CAT, 'for ann', self::ANN);
+
+        $this->assertSame([$forAnn], $this->poll(self::ANN, $cursor));
+    }
+
+    public function testAfterDoesNotReadOtherPeoplesPrivateMessages()
+    {
+        // With a long open-room history MySQL reads every newer message in id
+        // order rather than merge the indexes; with a short one this test
+        // passes either way
+        $this->sendMany(self::BOB, 5000);
+        $cursor = $this->send(self::ANN, 'already seen');
+        $this->sendMany(self::BOB, 2000, self::CAT);
+
+        $before = $this->rowsRead();
+        Chat::getAfter(self::ANN, $cursor);
+
+        $this->assertLessThan(50, $this->rowsRead() - $before);
+    }
+
+    public function testAfterPagesThroughABacklogWithoutGapsOrRepeats()
+    {
+        $cursor = $this->send(self::ANN, 'already seen');
+        $expected = [];
+        for ($i = 0; $i < 3 * Chat::HISTORY; $i++) {
+            [$from, $to, $visible] = [
+                [self::BOB, null, true],
+                [self::BOB, self::CAT, false],
+                [self::CAT, self::ANN, true],
+                [self::CAT, self::BOB, false],
+                [self::ANN, self::BOB, true],
+            ][$i % 5];
+            $id = $this->send($from, "m$i", $to);
+            if ($visible) {
+                $expected[] = $id;
+            }
+        }
+
+        $shown = [];
+        while ($page = $this->poll(self::ANN, $cursor)) {
+            $this->assertLessThanOrEqual(Chat::HISTORY, count($page));
+            array_push($shown, ...$page);
+        }
+
+        $this->assertSame($expected, $shown);
+    }
+
+    public function testOverlappingPollsShowEachMessageOnce()
+    {
+        $cursor = $this->send(self::ANN, 'already seen');
+        $this->sendMany(self::BOB, Chat::HISTORY + 20);
+
+        // Two polls leave with the same cursor; more arrives between them, and
+        // the later reply comes back first
+        $early = Chat::getAfter(self::ANN, $cursor);
+        $this->sendMany(self::CAT, 30, self::ANN);
+        $late = Chat::getAfter(self::ANN, $cursor);
+
+        $shown = array_merge($this->poll(self::ANN, $cursor, $late), $this->poll(self::ANN, $cursor, $early));
+        while ($page = $this->poll(self::ANN, $cursor)) {
+            array_push($shown, ...$page);
+        }
+
+        $this->assertCount(Chat::HISTORY + 50, $shown);
+        $this->assertSame($shown, array_values(array_unique($shown)));
+        $sorted = $shown;
+        sort($sorted);
+        $this->assertSame($sorted, $shown);
+    }
+
     public function testBeforeReturnsOnlyOlderVisibleMessagesOldestFirst()
     {
         $this->send(self::ANN, 'old');
