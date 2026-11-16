@@ -2,6 +2,7 @@
 
 namespace App;
 
+use Symfony\Component\Mailer\Exception\ExceptionInterface as MailerException;
 use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 use Symfony\Component\Mailer\Mailer;
 use Symfony\Component\Mailer\Transport;
@@ -34,7 +35,14 @@ class Mail
             return false;
         }
 
-        $mailer = new Mailer(Transport::fromDsn(Config::get('MAILER_DSN')));
+        // A malformed or unsupported MAILER_DSN throws here. Only the error's
+        // class is logged: the DSN can hold a password or API key
+        try {
+            $mailer = new Mailer(Transport::fromDsn(Config::get('MAILER_DSN')));
+        } catch (MailerException $e) {
+            error_log('Mail is not set up right, check MAILER_DSN: ' . get_class($e));
+            return false;
+        }
 
         $email = (new Email())
             ->from(Config::get('MAIL_FROM', 'MapChat <no-reply@localhost>'))
