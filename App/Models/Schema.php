@@ -46,6 +46,10 @@ class Schema extends \Core\Model
             'ALTER TABLE chats ADD UNIQUE KEY client_id (email, client_id)',
         ]],
         ['mapchat_jobs', 'reply', ['ALTER TABLE mapchat_jobs ADD COLUMN reply TEXT NULL DEFAULT NULL AFTER posted_id']],
+        ['users', 'google_id', [
+            'ALTER TABLE users ADD COLUMN google_id VARCHAR(255) NULL DEFAULT NULL AFTER share_location',
+            'ALTER TABLE users ADD UNIQUE KEY google_id (google_id)',
+        ]],
     ];
 
     /** Indexes added since the first release, as in init.sql, by table and name */

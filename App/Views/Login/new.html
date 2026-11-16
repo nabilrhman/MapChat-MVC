@@ -32,6 +32,13 @@
 
     <div class="auth-card__divider"><span class="auth-card__divider-label">or</span></div>
 
+    {# A link, not a form: it goes to Google, which the form-action policy would block. The first time makes the account #}
+    {% if is_google_sign_in_on %}
+    <a href="/login/google" class="button button--outline button--block auth-card__button">
+        {{ icon('google', 'button__icon') }}Continue with Google
+    </a>
+    {% endif %}
+
     <form action="/login/guest" method="post" id="guestForm" class="auth-card__form">
         <button type="submit" class="button button--outline button--block auth-card__button">
             <span class="button__label">Try it as a guest</span>

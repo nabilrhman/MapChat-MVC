@@ -24,13 +24,17 @@ CREATE TABLE users (
   `guest_token_hash`          VARCHAR(64)  NULL DEFAULT NULL,
   -- "Show me on the map" in the profile
   `share_location`            BOOLEAN      NOT NULL DEFAULT TRUE,
+  -- Google's id for the account that signs in with Google; the password is
+  -- empty for an account made that way until it sets one
+  `google_id`                 VARCHAR(255) NULL DEFAULT NULL,
   `created_at`                TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `email` (`email`),
   UNIQUE KEY `nickname` (`nickname`),
   UNIQUE KEY `password_reset_hash` (`password_reset_hash`),
   UNIQUE KEY `activation_hash` (`activation_hash`),
-  UNIQUE KEY `guest_token_hash` (`guest_token_hash`)
+  UNIQUE KEY `guest_token_hash` (`guest_token_hash`),
+  UNIQUE KEY `google_id` (`google_id`)
 )
   ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4;

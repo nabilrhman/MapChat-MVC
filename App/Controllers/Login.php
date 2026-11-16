@@ -28,9 +28,15 @@ class Login extends \Core\Controller
     public function createAction(): void
     {
         $isRemembered = isset($_POST['remember_me']);
-        $user = User::authenticate((string) ($_POST['email'] ?? ''), (string) ($_POST['password'] ?? ''));
+        $email = (string) ($_POST['email'] ?? '');
+        $user = User::authenticate($email, (string) ($_POST['password'] ?? ''));
 
-        if (!$user) {
+        // Says only that the email has an account, as signing up already does
+        $isGoogleOnly = !$user && User::findByEmail($email)?->hasPassword() === false;
+
+        if ($isGoogleOnly) {
+            Flash::addMessage('This account signs in with Google. Use Continue with Google, or set a password with Forgot password.', Flash::WARNING);
+        } elseif (!$user) {
             Flash::addMessage('Wrong email or password.', Flash::WARNING);
         } elseif (!$user->is_active) {
             Flash::addMessage('Activate your account first. Check your email for the link.', Flash::WARNING);

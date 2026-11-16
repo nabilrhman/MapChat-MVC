@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use PDO;
+use App\GoogleAccount;
 use App\Token;
 use App\Mail;
 use Core\View;
@@ -38,6 +39,8 @@ class User extends \Core\Model
     public bool $is_guest = false;
     public ?string $guest_token_hash = null;
     public bool $share_location = true;
+    /** Google's id for the account it signs in with, or null for none */
+    public ?string $google_id = null;
     /** UTC, Y-m-d H:i:s */
     public ?string $created_at = null;
 
@@ -182,6 +185,16 @@ class User extends \Core\Model
     }
 
     /**
+     * The account this Google account signs in to, if any
+     *
+     * @param string $googleId Google's id for the person ("sub")
+     */
+    public static function findByGoogleId(string $googleId): ?static
+    {
+        return static::findWhere('google_id = :google_id', [':google_id' => $googleId]);
+    }
+
+    /**
      * The account a password reset link is for, while the link still works
      *
      * @param string $token The token from the link
@@ -233,6 +246,86 @@ class User extends \Core\Model
         $user = static::findByEmail($email);
 
         return $user && password_verify($password, $user->password_hash) ? $user : null;
+    }
+
+    /**
+     * Whether the account has a password to log in with. One made by
+     * signing in with Google has none until it sets one
+     */
+    public function hasPassword(): bool
+    {
+        return $this->password_hash !== '';
+    }
+
+    /**
+     * The account someone signing in with Google gets: the one already
+     * linked to their Google account, else the one with their email, now
+     * linked, else a new one
+     */
+    public static function signInWithGoogle(GoogleAccount $google): static
+    {
+        $user = static::findByGoogleId($google->id);
+        if ($user) {
+            return $user;
+        }
+
+        $user = static::findByEmail($google->email);
+        if ($user) {
+            $user->linkGoogle($google);
+            return $user;
+        }
+
+        return static::createFromGoogle($google);
+    }
+
+    /**
+     * Link this account to a Google account with its email. Google checked
+     * that email belongs to them; if this account never proved it did, a
+     * password someone else set at sign-up mustn't keep working
+     */
+    protected function linkGoogle(GoogleAccount $google): void
+    {
+        $isEmailUnproven = $this->activation_hash !== null;
+
+        $sql = 'UPDATE users SET google_id = :google_id, is_active = 1, activation_hash = NULL';
+        if ($isEmailUnproven) {
+            $sql .= ", password_hash = ''";
+        }
+        $sql .= ' WHERE id = :id';
+
+        $stmt = static::getDB()->prepare($sql);
+        $stmt->bindValue(':google_id', $google->id, PDO::PARAM_STR);
+        $stmt->bindValue(':id', $this->id, PDO::PARAM_INT);
+        $stmt->execute();
+
+        $this->google_id = $google->id;
+        $this->is_active = true;
+        $this->activation_hash = null;
+
+        if ($isEmailUnproven) {
+            $this->password_hash = '';
+            $this->forgetRememberedLogins();
+        }
+    }
+
+    /**
+     * A new, active account for someone signing in with Google, with their
+     * name there and no password
+     */
+    protected static function createFromGoogle(GoogleAccount $google): static
+    {
+        // Someone who shares no name on Google goes by their email's first part
+        $name = $google->name !== '' ? $google->name : strstr($google->email, '@', before_needle: true);
+
+        $db = static::getDB();
+        $stmt = $db->prepare("INSERT INTO users (name, email, password_hash, is_active, google_id)
+                              VALUES (:name, :email, '', 1, :google_id)");
+        $stmt->bindValue(':name', mb_substr($name, 0, static::MAX_NAME_LENGTH), PDO::PARAM_STR);
+        $stmt->bindValue(':email', $google->email, PDO::PARAM_STR);
+        $stmt->bindValue(':google_id', $google->id, PDO::PARAM_STR);
+        $stmt->execute();
+
+        return static::findByID((int) $db->lastInsertId());
     }
 
     /**

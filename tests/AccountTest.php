@@ -34,8 +34,10 @@ class AccountTest extends TestCase
 
         $root = dirname(__DIR__);
         $command = [PHP_BINARY, '-S', self::$host, '-t', "$root/public", "$root/tests/server.php"];
-        // A site without Cloudinary settings, so photo uploads are off
-        $environment = array_diff_key(getenv(), ['CLOUDINARY_CLOUD_NAME' => '', 'CLOUDINARY_UPLOAD_PRESET' => '']);
+        // A site without Cloudinary settings, so photo uploads are off, and
+        // with a Google client, so the login page offers it
+        $environment = array_diff_key(getenv(), ['CLOUDINARY_CLOUD_NAME' => '', 'CLOUDINARY_UPLOAD_PRESET' => ''])
+            + ['GOOGLE_CLIENT_ID' => 'mapchat-test.apps.googleusercontent.com', 'GOOGLE_CLIENT_SECRET' => 'test-secret'];
         self::$server = proc_open($command, [1 => ['file', '/dev/null', 'w'], 2 => ['file', '/dev/null', 'w']], $pipes, null, $environment);
 
         // Wait for it to accept connections
@@ -525,5 +527,68 @@ class AccountTest extends TestCase
         $response = $this->request('POST', '/app/get-people', [], $headers);
         $this->assertSame(200, $response['status']);
         $this->assertIsArray(json_decode($response['body'], true));
+    }
+
+    public function testTheLoginPageOffersGoogle()
+    {
+        $this->assertStringContainsString('href="/login/google"', $this->request('GET', '/login')['body']);
+    }
+
+    public function testContinueWithGoogleSendsYouToGoogleWithAStateAndAChallenge()
+    {
+        $response = $this->request('GET', '/login/google');
+
+        $this->assertSame(303, $response['status']);
+        $location = $response['headers']['location'];
+        $this->assertStringStartsWith('https://accounts.google.com/o/oauth2/v2/auth?', $location);
+
+        parse_str(parse_url($location, PHP_URL_QUERY), $query);
+        $this->assertSame('mapchat-test.apps.googleusercontent.com', $query['client_id']);
+        $this->assertStringEndsWith('/login/google/callback', $query['redirect_uri']);
+        $this->assertSame('openid email profile', $query['scope']);
+        $this->assertSame('S256', $query['code_challenge_method']);
+        $this->assertNotEmpty($query['state']);
+        $this->assertNotEmpty($query['nonce']);
+        $this->assertNotEmpty($query['code_challenge']);
+    }
+
+    public function testAGoogleCallbackThisBrowserDidNotStartIsRefused()
+    {
+        $this->request('GET', '/login/google');
+
+        $response = $this->request('GET', '/login/google/callback?state=someone-elses&code=abc');
+
+        $this->assertRedirect('/login', $response);
+        $this->assertFalse($this->isSignedIn());
+    }
+
+    public function testCancellingAtGoogleComesBackToTheLoginPage()
+    {
+        $response = $this->request('GET', '/login/google/callback?error=access_denied');
+
+        $this->assertRedirect('/login', $response);
+        $this->assertStringContainsString('Google sign-in was cancelled.', $this->request('GET', '/login')['body']);
+    }
+
+    public function testAnAccountWithNoPasswordIsToldToUseGoogle()
+    {
+        $this->db->prepare("UPDATE users SET password_hash = '' WHERE email = ?")->execute([self::EMAIL]);
+
+        $response = $this->request('POST', '/login/create', ['email' => self::EMAIL, 'password' => '']);
+
+        $this->assertSame(200, $response['status']);
+        $this->assertStringContainsString('This account signs in with Google.', $response['body']);
+        $this->assertFalse($this->isSignedIn());
+    }
+
+    public function testAnAccountWithNoPasswordSetsOneWithoutACurrentOne()
+    {
+        $this->logIn();
+        $this->db->prepare("UPDATE users SET password_hash = '' WHERE email = ?")->execute([self::EMAIL]);
+
+        $response = $this->request('POST', '/profile/update', ['name' => 'Ann', 'email' => self::EMAIL, 'password' => 'newpass1']);
+
+        $this->assertRedirect('/profile/show', $response);
+        $this->assertTrue(password_verify('newpass1', $this->user()['password_hash']));
     }
 }
