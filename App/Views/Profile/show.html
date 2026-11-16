@@ -47,13 +47,15 @@
                 </div>
                 <div>
                     {# Without the site's own Cloudinary settings there's nowhere to upload to; removing still works #}
-                    {% if are_photo_uploads_on %}
-                    <label for="file-upload" class="button quiet small change">
-                        {{ icon('camera') }}Change photo
-                    </label>
-                    {% endif %}
-                    <button type="button" class="link-button danger" id="remove-photo"
-                            {% if user.avatar is empty %}hidden{% endif %}>Remove</button>
+                    <div class="buttons">
+                        {% if are_photo_uploads_on %}
+                        <label for="file-upload" class="button quiet small change">
+                            {{ icon('camera') }}Change photo
+                        </label>
+                        {% endif %}
+                        <button type="button" class="link-button danger" id="remove-photo"
+                                {% if user.avatar is empty %}hidden{% endif %}>Remove</button>
+                    </div>
                     {% if are_photo_uploads_on %}
                     <p class="field-hint">JPG, PNG or GIF</p>
                     <input id="file-upload" type="file" accept="image/png,image/gif,image/jpeg" hidden

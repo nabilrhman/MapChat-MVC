@@ -228,9 +228,12 @@
         display: none;
     }
 
-    .change
+    /* Centred on each other: on one baseline, Change photo's icon sets Remove 3px low */
+    .buttons
     {
-        margin-right: 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
     }
 }
 
