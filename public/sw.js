@@ -3,6 +3,10 @@
 // that tab shows its own (notifications.js), so this stays quiet; other
 // pages, like the profile, don't show any
 
+// The open room's conversation, as the pages name it (messages.js); a
+// private one is the other person's id
+const EVERYONE = 'everyone';
+
 const isChat = (page) => new URL(page.url).pathname === '/app';
 
 // A new version takes over at once rather than waiting for every MapChat tab to close
@@ -36,7 +40,7 @@ self.addEventListener('notificationclick', (event) => {
             page.postMessage({openChat: conversation, name});
             return page.focus();
         }
-        const query = conversation && conversation !== 'everyone'
+        const query = conversation && conversation !== EVERYONE
             ? `?chat=${encodeURIComponent(conversation)}&name=${encodeURIComponent(name || '')}`
             : '';
         return self.clients.openWindow(`/app${query}`);

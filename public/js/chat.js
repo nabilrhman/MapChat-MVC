@@ -3,11 +3,8 @@
 // people.js. The server's values come from data attributes on #chat (see
 // base_chat.html)
 
-// The MapChat bot's made-up country, at 0°, 0° (a code free for private use,
-// so Intl has no name for it)
-const NULL_ISLAND = 'XN';
 // Scrolling down to new messages; none for people who ask for less motion
-const SCROLL_BEHAVIOR = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth';
+const SCROLL_BEHAVIOR = prefersLessMotion.matches ? 'instant' : 'smooth';
 // How far up you scroll before the "Latest" button shows
 const SCROLLED_UP_DISTANCE = 200;
 // A little after a demo person you called comes online (Bot::COME_ONLINE_SECONDS)
@@ -25,7 +22,6 @@ const TYPING_SHOWN_FOR = 7000;
 // More messages than this on the page, the oldest go while you're at the
 // bottom, so a tab left open in a busy room stays small
 const MAX_MESSAGES = 300;
-const EVERYONE = 'everyone';
 
 const chatPanel = document.getElementById('chat');
 const chatTabs = document.getElementById('chat-tabs');
@@ -613,14 +609,6 @@ function getSenderTime(date, timezone, longitude) {
     };
 }
 
-// Older browsers lack Intl.DisplayNames; they show the country code instead
-const countryNames = window.Intl?.DisplayNames ? new Intl.DisplayNames(['en'], {type: 'region'}) : null;
-
-function getCountryName(code) {
-    if (code === NULL_ISLAND) return 'Republic of Null Island';
-    return countryNames ? countryNames.of(code) : code;
-}
-
 const getSentDate = (chat) => new Date(chat.querySelector('time').getAttribute('datetime'));
 
 function showSenderTime(chat) {
@@ -645,7 +633,7 @@ function showSenderTime(chat) {
 function showTimes(chats) {
     chats.forEach((chat) => {
         chat.querySelectorAll('.chat__country').forEach((country) => {
-            country.textContent = getCountryName(country.dataset.country);
+            country.textContent = countryName(country.dataset.country);
         });
 
         chat.querySelector('time').textContent = getSentDate(chat).toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'});
@@ -1071,7 +1059,7 @@ composerForm.addEventListener('submit', (event) => {
             setTimeout(refreshPeople, COME_ONLINE_DELAY);
         })
         .catch((error) => {
-            showToast(getErrorMessage(error, 'Your message could not be sent.'), 'warning');
+            showToast(errorMessageOf(error, 'Your message could not be sent.'), 'warning');
         })
         .finally(() => {
             isSending = false;

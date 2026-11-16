@@ -26,6 +26,8 @@ const SEND_TIMEOUT = 15000;
 const OLDER_TIMEOUT = 15000;
 // Close codes from the chat socket (App\ChatSocket\Tab)
 const CLOSE_LOG_IN_AGAIN = 4401;
+// The open room's conversation; a private one is the other person's id
+const EVERYONE = 'everyone';
 
 // The newest message this page has; each tab keeps its own
 let lastChatId = Number(document.getElementById('chat').dataset.lastChatId);
@@ -279,7 +281,7 @@ function settleSend(clientId, settle) {
     settle(send);
 }
 
-// An error shaped like axios's, so getErrorMessage reads both the same
+// An error shaped like axios's, so errorMessageOf reads both the same
 function createSendError(message, status) {
     return Object.assign(new Error(message), {response: {status, data: {error: message}}});
 }

@@ -1,13 +1,22 @@
-/* Motion for the whole app: one easing and three durations, so everything
-   moves alike. Only opacity and transform are animated */
+/* Motion for the whole app: a few easings and three durations, so everything
+   moves alike, and the timings of the few motions that are their own kind.
+   Only opacity and transform are animated, besides bands sliding open
+   (grid-template-rows) and colours fading on hover */
 :root
 {
     --ease-out: cubic-bezier(0.22, 1, 0.36, 1); /* fast start, soft stop */
     --ease-in: cubic-bezier(0.64, 0, 0.78, 0); /* for things leaving */
     --ease-emphasized: cubic-bezier(0.2, 0, 0, 1); /* Material's, for things sliding open */
+    --ease-in-out: cubic-bezier(0.45, 0, 0.55, 1); /* loops that swing back and forth */
     --dur-fast: 150ms; /* hovers and small changes */
     --dur: 250ms; /* things appearing */
     --dur-slow: 350ms; /* panels and page content */
+
+    --dur-count-far: 60ms; /* a count passing numbers while it's still far off */
+    --dur-linger: 1.5s; /* a highlight fading off something that just arrived */
+    --dur-pulse: 1.4s; /* a loading dot's pulse */
+    --dur-pulse-step: 0.16s; /* from one loading dot to the next */
+    --dur-loading-bar: 10s; /* the loading bar's crawl; the next page fills the rest */
 }
 
 @keyframes fade-in
@@ -115,25 +124,31 @@
 .count-roll__number
 {
     grid-area: 1 / 1;
-    animation: var(--count-dur, var(--dur-fast)) var(--ease-out) both;
+    animation: var(--dur-fast) var(--ease-out) both;
 }
 
-.count-roll--up .count-roll__number
+/* Far off, numbers pass every frame or two, so each rolls quicker */
+.count-roll.is-far-off .count-roll__number
+{
+    animation-duration: var(--dur-count-far);
+}
+
+.count-roll.is-rolling-up .count-roll__number
 {
     animation-name: roll-in-up;
 }
 
-.count-roll--up .count-roll__number--leaving
+.count-roll.is-rolling-up .count-roll__number.is-leaving
 {
     animation-name: roll-out-up;
 }
 
-.count-roll--down .count-roll__number
+.count-roll.is-rolling-down .count-roll__number
 {
     animation-name: roll-in-down;
 }
 
-.count-roll--down .count-roll__number--leaving
+.count-roll.is-rolling-down .count-roll__number.is-leaving
 {
     animation-name: roll-out-down;
 }

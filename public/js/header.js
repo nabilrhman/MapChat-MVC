@@ -1,69 +1,70 @@
 // The header's two menus: the hamburger on phones, which opens the links
 // under the header, and the account menu, which opens Profile and Log out.
-// Each closes on a second tap, a tap anywhere outside it or Escape
-(function () {
-    function menu(root, button, openClass, onToggle) {
-        if (!root || !button) return;
+// Each closes on a second tap, a tap anywhere outside it or Escape. Logging
+// out lets go of this browser's Web Push first
 
-        function setOpen(open) {
-            root.classList.toggle(openClass, open);
-            button.setAttribute('aria-expanded', open ? 'true' : 'false');
-            if (onToggle) onToggle(open);
-        }
+// How long logging out waits on the browser's push service at each step
+// before it goes on without it
+const LOGOUT_PUSH_WAIT = 1000;
 
-        button.addEventListener('click', function () {
-            setOpen(button.getAttribute('aria-expanded') !== 'true');
-        });
+function setUpMenu(menu, button, openClass, onToggle) {
+    if (!menu || !button) return;
 
-        document.addEventListener('click', function (event) {
-            if (!root.contains(event.target)) setOpen(false);
-        });
-
-        document.addEventListener('keydown', function (event) {
-            if (event.key === 'Escape') setOpen(false);
-        });
+    function setOpen(isOpen) {
+        menu.classList.toggle(openClass, isOpen);
+        button.setAttribute('aria-expanded', String(isOpen));
+        onToggle?.(isOpen);
     }
 
-    var menuButton = document.getElementById('menu-button');
-    menu(document.querySelector('.site-header'), menuButton, 'is-menu-open', function (open) {
-        setIcon(menuButton.querySelector('.icon'), open ? 'close' : 'hamburger-menu');
+    button.addEventListener('click', () => {
+        setOpen(button.getAttribute('aria-expanded') !== 'true');
     });
 
-    menu(document.getElementById('account-menu'), document.getElementById('account-menu-button'), 'is-open');
+    document.addEventListener('click', (event) => {
+        if (!menu.contains(event.target)) setOpen(false);
+    });
 
-    // Logging out first stops this browser's Web Push (notifications.js), so
-    // whoever signs in on it next doesn't get your messages. Gives up after
-    // a moment rather than keep you waiting
-    var LOGOUT_PUSH_WAIT = 2000;
-    var logoutForm = document.querySelector('form[action="/logout"]');
-    if (!logoutForm || !navigator.serviceWorker) return;
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') setOpen(false);
+    });
+}
 
-    logoutForm.addEventListener('submit', function (event) {
+function setUpMenus() {
+    const menuButton = document.getElementById('menu-button');
+    setUpMenu(document.querySelector('.site-header'), menuButton, 'is-menu-open', (isOpen) => {
+        setIcon(menuButton.querySelector('.icon'), isOpen ? 'close' : 'hamburger-menu');
+    });
+
+    setUpMenu(document.getElementById('account-menu'), document.getElementById('account-menu-button'), 'is-open');
+}
+
+// The form takes this browser's push endpoint along, so the server deletes
+// that subscription and whoever signs in here next doesn't get your
+// messages. The browser lets go of its own copy too. A push service that
+// doesn't answer in time doesn't keep you waiting
+function setUpLogout() {
+    const logoutForm = document.querySelector('form[action="/logout"]');
+    if (!logoutForm) return;
+    let isLoggingOut = false;
+
+    logoutForm.addEventListener('submit', async (event) => {
         event.preventDefault();
-        try {
-            localStorage.removeItem('pushOn');
-        } catch (e) {
-            // No storage: nothing was kept
+        if (isLoggingOut) return;
+        isLoggingOut = true;
+        writeFlag(PUSH_ON_KEY, false);
+
+        const subscription = await withTimeLimit(getPushSubscription(), LOGOUT_PUSH_WAIT).catch(() => null);
+        if (subscription) {
+            const endpointField = createElement('input');
+            endpointField.type = 'hidden';
+            endpointField.name = 'push_endpoint';
+            endpointField.value = subscription.endpoint;
+            logoutForm.append(endpointField);
+            await withTimeLimit(subscription.unsubscribe(), LOGOUT_PUSH_WAIT).catch(() => {});
         }
+        logoutForm.submit();
+    });
+}
 
-        var unsubscribe = navigator.serviceWorker.getRegistration()
-            .then(function (registration) {
-                return registration && registration.pushManager.getSubscription();
-            })
-            .then(function (subscription) {
-                if (!subscription) return undefined;
-                return postForm('/push/unsubscribe', {endpoint: subscription.endpoint})
-                    .catch(function () {})
-                    .then(function () {
-                        return subscription.unsubscribe();
-                    });
-            });
-        var timeout = new Promise(function (resolve) {
-            setTimeout(resolve, LOGOUT_PUSH_WAIT);
-        });
-
-        Promise.race([unsubscribe, timeout]).catch(function () {}).then(function () {
-            logoutForm.submit();
-        });
-    }, {once: true});
-})();
+setUpMenus();
+setUpLogout();
