@@ -36,8 +36,9 @@ hand-written PHP.
 
 In 2026 I came back to it to bring parts of it up to date, and I'm still at it.
 
-[MapChat](https://mapchat.swiftsolve.net) runs on free hosting, so the
-first visit after a quiet spell takes about a minute to wake up.
+[MapChat](https://mapchat.swiftsolve.net) runs on Render's free plan, which
+sleeps when nobody visits; a GitHub Actions workflow visits it every 10 minutes
+so it stays awake.
 
 ![The chat room with the map of who is chatting from where](docs/images/mapchat-app.png)
 
