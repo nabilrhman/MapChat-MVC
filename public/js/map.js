@@ -441,7 +441,7 @@ function addVectorCredits(map) {
 /* Night on the vector map: shaded where the sun has set */
 
 const NIGHT_INTERVAL = 60000;
-const NIGHT_OPACITY = 0.45;
+const NIGHT_OPACITY = 0.32;
 // Sunset is when the sun's centre is 0.8° below the horizon; twilight ends at 18°
 const SUNSET_ALTITUDE = -0.8;
 const NIGHT_ALTITUDE = -18;
