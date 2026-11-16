@@ -22,6 +22,8 @@ const RECONNECT_DELAYS = [500, 1000, 2000, 4000, 8000, 15000, 30000];
 const FAILURES_BEFORE_POLLING = 2;
 // A send not saved by then fails; sending the same text again reuses its id
 const SEND_TIMEOUT = 15000;
+// A page of older messages not back by then fails; the next scroll asks again
+const OLDER_TIMEOUT = 15000;
 // Close codes from the chat socket (App\ChatSocket\Tab)
 const CLOSE_LOG_IN_AGAIN = 4401;
 
@@ -114,8 +116,7 @@ function handleSocketMessage(message) {
             settleSend(message.clientId, (send) => send.reject(createSendError(message.error, message.status)));
             break;
         case 'older':
-            olderRequests.get(message.requestId)?.resolve(message.html);
-            olderRequests.delete(message.requestId);
+            settleOlderRequest(message.requestId, (request) => request.resolve(message.html));
             break;
         case 'read':
             chatHandlers.onRead(message.conversation, message.upTo);
@@ -167,8 +168,9 @@ function onSocketClosed(code) {
     }
 
     // Older pages asked for are asked again on the next scroll
-    olderRequests.forEach((request) => request.reject(new Error('The chat reconnected')));
-    olderRequests.clear();
+    olderRequests.forEach((request, requestId) => {
+        settleOlderRequest(requestId, () => request.reject(new Error('The chat reconnected')));
+    });
     chatHandlers.onDisconnected();
 
     if (!wasLive) failuresInARow += 1;
@@ -259,6 +261,15 @@ function connectChat(handlers) {
     openSocket();
 }
 
+function settleOlderRequest(requestId, settle) {
+    const request = olderRequests.get(requestId);
+    if (!request) return;
+
+    olderRequests.delete(requestId);
+    clearTimeout(request.timer);
+    settle(request);
+}
+
 function settleSend(clientId, settle) {
     const send = pendingSends.get(clientId);
     if (!send) return;
@@ -314,7 +325,11 @@ async function fetchOlderChats(before, conversation) {
     if (isSocketLive) {
         const requestId = nextRequestId++;
         html = await new Promise((resolve, reject) => {
-            olderRequests.set(requestId, {resolve, reject});
+            const request = {resolve, reject};
+            request.timer = setTimeout(() => {
+                settleOlderRequest(requestId, () => reject(new Error('No answer from the server')));
+            }, OLDER_TIMEOUT);
+            olderRequests.set(requestId, request);
             socket.send(JSON.stringify({type: 'older', requestId, before, conversation}));
         });
     } else {
