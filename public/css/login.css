@@ -165,10 +165,11 @@ body
     text-align: center;
 }
 
-/* No fixed footer here, so toasts can sit lower (see styles.css) */
+/* No fixed header or footer here, so toasts sit nearer the edges (see ui.css) */
 :root
 {
     --toast-bottom: 24px;
+    --toast-top: 16px;
 }
 
 /* Phones: less padding inside the card */
