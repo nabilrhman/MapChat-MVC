@@ -303,7 +303,7 @@ class UserInfo extends \Core\Model
         $bot_online = static::botOnlineSql();
 
         $sql = 'SELECT users.id, users.name, users.avatar, users.email LIKE \'%@demo.mapchat.local\' AS is_demo,
-                       ' . $bot_online . ' AS is_bot,
+                       users.is_guest, ' . $bot_online . ' AS is_bot,
                        IF(users.share_location, userinfo.city, NULL) AS city,
                        IF(users.share_location, userinfo.country, NULL) AS country,
                        (userinfo.online_at > NOW() - INTERVAL :online SECOND OR ' . $demo_online . ' OR ' . $bot_online . ') AS is_online,

@@ -12,6 +12,12 @@ const myUserId = Number(document.getElementById('chat').dataset.myId);
 
 const isOnline = (person) => Number(person.is_online) === 1;
 
+// First names keep the list light, as on the messages. Guests are all
+// "Guest" and a number, so they keep the number
+function getShownName(person) {
+    return Number(person.is_guest) === 1 ? person.name : person.name.split(' ')[0];
+}
+
 // MapChat first, so there's always someone to talk to at the top, then you,
 // then everyone else
 function getListRank(person) {
@@ -61,7 +67,7 @@ function createPersonRow(person) {
     row.classList.toggle('is-online', isOnline(person));
     row.classList.toggle('person--can-message', !isMe);
     row.dataset.userId = userId;
-    row.title = isMe ? '' : `Chat privately with ${person.name}`;
+    row.title = isMe ? '' : `Chat privately with ${getShownName(person)}`;
     row.dataset.tipSide = 'left'; // over the map, not the rows above
 
     const avatarFrame = createElement('div', 'person__avatar');
@@ -72,7 +78,7 @@ function createPersonRow(person) {
 
     const text = createElement('div', 'person__text');
     text.append(
-        createElement('span', 'person__name', person.name + (isMe ? ' (you)' : '')),
+        createElement('span', 'person__name', getShownName(person) + (isMe ? ' (you)' : '')),
         createPersonDetail(person),
     );
 
