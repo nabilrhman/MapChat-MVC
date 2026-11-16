@@ -144,6 +144,23 @@ h4
     }
 }
 
+/* A quiet button that removes something, like Remove beside Change photo:
+   grey like its neighbour, red once you point at it */
+.button.quiet.danger
+{
+    &:hover:not(:disabled)
+    {
+        border-color: var(--md-error);
+        background-color: color-mix(in srgb, var(--md-error) var(--md-hover), transparent);
+        color: var(--md-error);
+    }
+
+    &:active:not(:disabled)
+    {
+        background-color: color-mix(in srgb, var(--md-error) var(--md-pressed), transparent);
+    }
+}
+
 /* Material 3's disabled look, the same for every kind of button. After the
    kinds, which it ties with */
 .button:disabled
