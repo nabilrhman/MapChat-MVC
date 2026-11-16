@@ -60,14 +60,19 @@
             <dl class="settings-card__view">
                 <dt class="settings-card__label">Name</dt>
                 <dd class="settings-card__value">{{ user.name }}</dd>
+                {% if not user.is_guest %}
                 <dt class="settings-card__label">Nickname</dt>
                 <dd class="settings-card__value">{{ user.nickname ?: 'Not set' }}</dd>
+                {% endif %}
             </dl>
 
             <div class="settings-card__edit">
                 {{ form.text_field({id: 'inputName', name: 'name', label: 'Name', value: user.name, autocomplete: 'name'}) }}
+                {# Guests stay "Guest" and a number #}
+                {% if not user.is_guest %}
                 {{ form.text_field({id: 'inputNickname', name: 'nickname', label: 'Nickname (optional)', value: user.nickname,
                                     autocomplete: 'nickname', hint: 'Shown instead of your first name. People @mention you by it'}) }}
+                {% endif %}
             </div>
 
             <div class="settings-card__actions settings-card__edit">

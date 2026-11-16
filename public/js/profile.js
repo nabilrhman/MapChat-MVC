@@ -97,7 +97,8 @@ removePhotoButton.addEventListener('click', () => {
 
 /* Name, email and password: each card opens with Edit and saves with Save */
 
-const editableFields = [nameInput, nicknameInput, emailInput, passwordInput];
+// Guests have no nickname field
+const editableFields = [nameInput, nicknameInput, emailInput, passwordInput].filter(Boolean);
 const savedValues = new Map(editableFields.map((field) => [field, field.value]));
 
 const hasChanged = (field) => field.value !== savedValues.get(field);

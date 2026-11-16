@@ -65,6 +65,12 @@ class MentionTest extends TestCase
         $this->assertFalse(Mention::has('hi @Zainab', 'Zainab Ali', 'zee'));
     }
 
+    public function testGuestsKeepTheirGuestName()
+    {
+        $this->assertSame('Guest 2189', Mention::handle('Guest 2189', 'sunny', true));
+        $this->assertFalse(Mention::has('hi @sunny', 'Guest 2189', 'sunny', true));
+    }
+
     public function testMarksTheReadersNicknameAsTheirs()
     {
         $html = Mention::mark('hi @zee', ['Zainab Ali', 'zee'], 'Zainab Ali', 'zee');

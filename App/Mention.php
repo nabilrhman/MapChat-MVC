@@ -12,8 +12,8 @@ class Mention
 {
     /**
      * How someone is shown in the chat and what's typed after the @ for
-     * them: their nickname, or else their first name. Guests are all
-     * "Guest" and a number, so theirs is the whole name
+     * them: their nickname, or else their first name. Guests are always
+     * "Guest" and their number; they can't have a nickname
      *
      * @param string $name
      * @param string|null $nickname
@@ -23,11 +23,11 @@ class Mention
      */
     public static function handle($name, $nickname = null, $isGuest = false)
     {
-        if ($nickname) {
-            return $nickname;
+        if ($isGuest) {
+            return $name;
         }
 
-        return $isGuest ? $name : explode(' ', $name)[0];
+        return $nickname ?: explode(' ', $name)[0];
     }
 
     /**
