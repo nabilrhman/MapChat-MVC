@@ -425,7 +425,7 @@ class BotTest extends TestCase
         $this->assertSame([[$maya, 'reply 1']], $this->answers(), 'Maya answers, and MapChat stays out of it');
         $this->assertStringContainsString('You are Maya Thompson', TestBot::$asked[0][0]);
         $this->assertStringContainsString('Toronto', TestBot::$asked[0][0]);
-        $this->assertStringContainsString("demo characters, written by AI", TestBot::$asked[0][0]);
+        $this->assertStringContainsString("digital characters, written by AI", TestBot::$asked[0][0]);
     }
 
     public function testGuestKeepsTalkingWithTheDemoPerson()
@@ -453,5 +453,29 @@ class BotTest extends TestCase
 
         $this->assertStringContainsString('Maya (you): anyone else up early?', TestBot::$asked[0][1]);
         $this->assertStringNotContainsString('my team lost', TestBot::$asked[0][1]);
+    }
+
+    public function testDemoPersonAnswersPrivatelyFromThatChatOnly()
+    {
+        $maya = $this->addDemoPerson('Maya Thompson', 'Toronto');
+        $this->send(self::ANN, 'hello room');
+        $this->send(self::ANN, 'hi maya, ann here', $maya);
+        $this->send(self::CAT, 'cat secret for maya', $maya);
+        $this->send(self::ANN, 'ann secret for mapchat', Chat::BOT_EMAIL);
+
+        $this->wait(Bot::PRIVATE_SECONDS);
+
+        $answers = $this->db->query('SELECT email, to_email FROM chats WHERE id IN (SELECT posted_id FROM mapchat_jobs) ORDER BY id')
+            ->fetchAll(PDO::FETCH_NUM);
+        $this->assertContains([$maya, self::ANN], $answers);
+        $this->assertContains([$maya, self::CAT], $answers);
+        $this->assertContains([Chat::BOT_EMAIL, self::ANN], $answers);
+
+        $mayaToAnn = array_values(array_filter(TestBot::$asked, fn ($asked) => str_contains($asked[1], 'hi maya')))[0];
+        $this->assertStringContainsString('You are Maya Thompson', $mayaToAnn[0]);
+        $this->assertStringContainsString('private chat with Ann', $mayaToAnn[0]);
+        $this->assertStringNotContainsString('hello room', $mayaToAnn[1]);
+        $this->assertStringNotContainsString('cat secret', $mayaToAnn[1]);
+        $this->assertStringNotContainsString('mapchat', $mayaToAnn[1]);
     }
 }
