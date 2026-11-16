@@ -51,12 +51,7 @@ function setUpMentions(input, canMention, getPeople) {
         const photo = createElement('img', 'mention-picker__photo');
         photo.alt = '';
         photo.src = person.avatar_src;
-        const text = createElement('span', 'mention-picker__text');
-        text.append(createElement('span', 'mention-picker__name', person.shown_name));
-        if (person.name !== person.shown_name) {
-            text.append(createElement('span', 'mention-picker__detail', person.name));
-        }
-        option.append(photo, text);
+        option.append(photo, createElement('span', 'mention-picker__name', person.shown_name));
 
         // mousedown, not click, so the box keeps focus
         option.addEventListener('mousedown', (event) => {

@@ -1443,16 +1443,7 @@ body
 
 .mention-picker__name
 {
-    display: block;
     font-weight: 600;
-}
-
-/* The full name, when they're shown by a nickname or first name */
-.mention-picker__detail
-{
-    display: block;
-    color: #757575;
-    font-size: 13px;
 }
 
 /* Characters left, shown only when close to the limit */
