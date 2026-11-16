@@ -101,7 +101,8 @@
 .about-grid__heading
 {
     grid-column: 1 / -1;
-    margin: var(--space-s) 0 calc(var(--space-s) - var(--space-m));
+    /* Closer to its own cards than to the ones above; the grid's gap is part of both */
+    margin: var(--space-s) 0 calc(var(--space-s) * 1.5 - var(--space-m));
     color: var(--md-on-surface-variant);
     font-size: 13px;
     font-weight: 600;
