@@ -266,7 +266,7 @@ return [
     'app_time' => [
         [
             ['emily', 'how do you all know what time it is for each other?'],
-            ['lukas', 'hover over someone\'s city under their message, it shows their local time'],
+            ['lukas', 'hover over the time on someone\'s message, it shows their local time'],
             ['emily', 'ohh! so it\'s nearly lunch for lukas and late for aiko'],
             ['aiko', 'yes, please be quiet, i\'m pretending to sleep 😴'],
         ],

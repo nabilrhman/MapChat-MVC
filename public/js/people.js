@@ -218,8 +218,8 @@ function showPeople(people, onPeopleOnline) {
 
     onPeopleOnline(new Set(onlinePeople.map((person) => Number(person.id))));
 
-    document.getElementById('online-count').textContent = onlinePeople.length;
-    document.getElementById('people-toggle-count').textContent = onlinePeople.length;
+    countTo(document.getElementById('online-count'), onlinePeople.length);
+    countTo(document.getElementById('people-toggle-count'), onlinePeople.length);
     fillPeople(document.getElementById('people-online'), onlinePeople);
     document.getElementById('recent-heading').hidden = recentPeople.length === 0;
     fillPeople(document.getElementById('people-recent'), recentPeople);

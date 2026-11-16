@@ -1,13 +1,20 @@
 // MapChat's service worker: shows Web Push notifications for private
-// messages and @mentions (App\Push sends them). While a MapChat tab is in
-// view, that tab shows its own (notifications.js), so this stays quiet
+// messages and @mentions (App\Push sends them). While the chat is in view,
+// that tab shows its own (notifications.js), so this stays quiet; other
+// pages, like the profile, don't show any
+
+const isChat = (page) => new URL(page.url).pathname === '/app';
+
+// A new version takes over at once rather than waiting for every MapChat tab to close
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
 
 self.addEventListener('push', (event) => {
     const message = event.data?.json();
     if (!message) return;
 
     event.waitUntil(self.clients.matchAll({type: 'window', includeUncontrolled: true}).then((pages) => {
-        if (pages.some((page) => page.visibilityState === 'visible')) return undefined;
+        if (pages.some((page) => isChat(page) && page.visibilityState === 'visible')) return undefined;
 
         return self.registration.showNotification(message.title, {
             body: message.body,
@@ -24,7 +31,7 @@ self.addEventListener('notificationclick', (event) => {
     const {conversation, name} = event.notification.data || {};
 
     event.waitUntil(self.clients.matchAll({type: 'window', includeUncontrolled: true}).then((pages) => {
-        const page = pages.find((client) => new URL(client.url).pathname === '/app');
+        const page = pages.find(isChat);
         if (page) {
             page.postMessage({openChat: conversation, name});
             return page.focus();
