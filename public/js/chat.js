@@ -40,7 +40,9 @@ let onlineUserIds = new Set();
 let newMessagesWhileScrolledUp = 0;
 
 const getConversation = (chat) => chat.dataset.conversation;
-const getChats = () => Array.from(chatList.querySelectorAll('.chat'));
+const getChats = () => [...chatList.querySelectorAll('.chat')];
+// The newest message on the page, in any tab, or 0
+const getNewestId = () => Number(getChats().at(-1)?.dataset.id ?? 0);
 const getDistanceFromBottom = () => chatList.scrollHeight - chatList.scrollTop - chatList.clientHeight;
 
 // True while the list scrolls itself down, so the "Latest" button doesn't
@@ -72,32 +74,22 @@ chatList.addEventListener('scrollend', stopScrollingToNewest);
 /* Tabs */
 
 // Run a change that resizes or removes tabs, then let the tabs that moved
-// slide to their new place instead of jumping. translate, not transform,
-// which would undo the tabs' flip
+// slide to their new place instead of jumping
 function slideTabs(change) {
-    const tabs = Array.from(chatTabs.querySelectorAll('.chat-tab'));
+    const tabs = [...chatTabs.querySelectorAll('.chat-tab')];
     const leftsBefore = tabs.map((tab) => tab.getBoundingClientRect().left);
 
     change();
     keepOpenTabWhole();
 
-    const shiftedTabs = [];
+    const shifts = new Map();
     tabs.forEach((tab, index) => {
         // The tab being dragged stays under the pointer
         if (!tab.isConnected || tab.classList.contains('is-dragging')) return;
         const shift = leftsBefore[index] - tab.getBoundingClientRect().left;
-        if (Math.round(shift) === 0) return;
-        tab.style.translate = `${shift}px 0`;
-        shiftedTabs.push(tab);
+        if (Math.round(shift) !== 0) shifts.set(tab, {x: shift});
     });
-
-    requestAnimationFrame(() => {
-        shiftedTabs.forEach((tab) => {
-            tab.classList.add('is-shifting');
-            tab.style.translate = '';
-            onTransitionEnd(tab, () => tab.classList.remove('is-shifting'));
-        });
-    });
+    slideFromShifts(shifts);
 }
 
 // Tabs from the history just appear; ones opened later ease in
@@ -106,22 +98,12 @@ let shouldAnimateNewTabs = false;
 /* Closed private tabs stay closed, across reloads and logging out, until a
    newer message comes in or you open the chat again */
 
-// Per account, on this device: conversation → newest message id when closed
+// Per account, on this device: conversation → newest message id when closed.
+// Without storage (private browsing) tabs just come back on reload
 const closedTabsKey = `closedTabs:${myUserId}`;
-let closedTabs = {};
-try {
-    closedTabs = JSON.parse(localStorage.getItem(closedTabsKey)) || {};
-} catch {
-    // No storage (private browsing): tabs just come back on reload
-}
+const closedTabs = readStoredJson(closedTabsKey, {});
 
-function saveClosedTabs() {
-    try {
-        localStorage.setItem(closedTabsKey, JSON.stringify(closedTabs));
-    } catch {
-        // As above
-    }
-}
+const saveClosedTabs = () => writeStoredJson(closedTabsKey, closedTabs);
 
 function forgetClosedTab(conversation) {
     if (!(conversation in closedTabs)) return;
@@ -129,11 +111,14 @@ function forgetClosedTab(conversation) {
     saveClosedTabs();
 }
 
+// Whether the tab was closed with this message, or a newer one, on the page
+const wasClosedAfter = (conversation, messageId) => Number(messageId) <= (closedTabs[conversation] ?? 0);
+
 // The chat's tab, unless it was closed after this message; a newer message
 // reopens it
 function addTabFor(chat) {
     const conversation = getConversation(chat);
-    if (Number(chat.dataset.id) <= (closedTabs[conversation] ?? 0)) return null;
+    if (wasClosedAfter(conversation, chat.dataset.id)) return null;
 
     forgetClosedTab(conversation);
     return addTab(conversation, chat.dataset.partner);
@@ -142,6 +127,13 @@ function addTabFor(chat) {
 function getTab(conversation) {
     return chatTabs.querySelector(`.chat-tab[data-conversation="${CSS.escape(conversation)}"]:not(.is-leaving)`);
 }
+
+// The name on a conversation's tab: the other person's, in a private chat
+const getTabName = (conversation) => getTab(conversation).querySelector('.chat-tab__name').textContent;
+
+// Whether someone is online, by their id as a number or as the page has it
+// (a private conversation, a sender)
+const isUserOnline = (userId) => onlineUserIds.has(Number(userId));
 
 function addTab(conversation, name) {
     const existingTab = getTab(conversation);
@@ -154,7 +146,7 @@ function addTab(conversation, name) {
 
     const onlineDot = createElement('span', 'chat-tab__online');
     onlineDot.title = 'Online';
-    onlineDot.hidden = !onlineUserIds.has(Number(conversation));
+    onlineDot.hidden = !isUserOnline(conversation);
 
     const nameLabel = createElement('span', 'chat-tab__name', name);
 
@@ -172,29 +164,22 @@ function addTab(conversation, name) {
 /* Private tabs can be dragged into any order after # Everyone, which stays
    first. The order is kept like closed tabs: per account, on this device */
 
+// Without storage, tabs go in the order they open
 const tabOrderKey = `tabOrder:${myUserId}`;
-let tabOrder = [];
-try {
-    tabOrder = JSON.parse(localStorage.getItem(tabOrderKey)) || [];
-} catch {
-    // No storage: tabs go in the order they open
-}
+let tabOrder = readStoredJson(tabOrderKey, []);
 
 function saveTabOrder() {
-    tabOrder = Array.from(chatTabs.querySelectorAll('.chat-tab:not(.is-leaving)'), (tab) => tab.dataset.conversation)
+    tabOrder = [...chatTabs.querySelectorAll('.chat-tab:not(.is-leaving)')]
+        .map((tab) => tab.dataset.conversation)
         .filter((conversation) => conversation !== EVERYONE);
-    try {
-        localStorage.setItem(tabOrderKey, JSON.stringify(tabOrder));
-    } catch {
-        // As above
-    }
+    writeStoredJson(tabOrderKey, tabOrder);
 }
 
 // A tab that was dragged before goes back to its place among the tabs
 // there; one that never was goes at the end
 function placeTab(tab) {
     const place = tabOrder.indexOf(tab.dataset.conversation);
-    const nextTab = place === -1 ? null : Array.from(chatTabs.children).find((other) => {
+    const nextTab = place === -1 ? null : [...chatTabs.children].find((other) => {
         if (other.dataset.conversation === EVERYONE) return false;
         const otherPlace = tabOrder.indexOf(other.dataset.conversation);
         return otherPlace === -1 || otherPlace > place;
@@ -240,11 +225,10 @@ function showConversation(conversation) {
     });
     replayAnimation(chatList, 'is-switching');
 
-    const name = tab.querySelector('.chat-tab__name').textContent;
     const isPrivate = activeConversation !== EVERYONE;
 
     showChatHeader();
-    messageInput.placeholder = isPrivate ? `Message ${name}` : 'Type your message';
+    messageInput.placeholder = isPrivate ? `Message ${getTabName(activeConversation)}` : 'Type your message';
     addDayDividers();
     scrollToNewest('instant');
     newMessagesWhileScrolledUp = 0;
@@ -260,7 +244,7 @@ function clearUnreadCount(tab) {
         const unreadCount = tab.querySelector('.chat-tab__unread');
         unreadCount.hidden = true;
         unreadCount.textContent = '';
-        unreadCount.classList.remove('chat-tab__unread--mention');
+        unreadCount.classList.remove('is-mention');
     });
 }
 
@@ -278,7 +262,7 @@ const markedReadUpTo = {};
 
 function markConversationRead(conversation) {
     if (conversation === EVERYONE) return;
-    const upTo = Number(getChats().at(-1)?.dataset.id ?? 0);
+    const upTo = getNewestId();
     if (upTo <= (markedReadUpTo[conversation] ?? 0)) return;
 
     markedReadUpTo[conversation] = upTo;
@@ -305,7 +289,7 @@ function showReadElsewhere(conversation, upTo) {
 }
 
 function closeTab(tab) {
-    closedTabs[tab.dataset.conversation] = Number(getChats().at(-1)?.dataset.id ?? 0);
+    closedTabs[tab.dataset.conversation] = getNewestId();
     saveClosedTabs();
 
     if (tab.classList.contains('is-active')) {
@@ -343,30 +327,30 @@ function showChatHeader() {
         return;
     }
 
-    const person = peopleById.get(activeConversation);
+    const person = personWithId(activeConversation);
     photo.src = getPhotoSrc(activeConversation);
-    document.getElementById('chat-header-name').textContent = getTab(activeConversation).querySelector('.chat-tab__name').textContent;
+    document.getElementById('chat-header-name').textContent = getTabName(activeConversation);
 
-    if (!onlineUserIds.has(Number(activeConversation))) {
+    if (!isUserOnline(activeConversation)) {
         status.replaceChildren(person ? `Seen ${getTimeAgo(person)}` : 'Away');
         return;
     }
     status.replaceChildren();
     if (!person) return;
-    const where = [createPlace(person.city, person.country)];
+    const placeAndTime = [createPlace(person.city, person.country)];
     // Hidden with their place when they don't share their location
-    if (person.lng !== null && person.lng !== undefined) where.push(createLocalTime(person));
-    status.append(...flipsToCountry(where, person));
+    if (person.lng !== null && person.lng !== undefined) placeAndTime.push(createLocalTime(person));
+    status.append(...createFlipToCountry(placeAndTime, person));
 }
 
 // Their city and time, which flip up together to show their country on
-// hover (.chat-header__flip in chat.css). Stays put without a city to flip from
-function flipsToCountry(where, person) {
-    const nameOfCountry = countryName(person.country);
-    if (!person.city || !person.country || nameOfCountry === person.country) return where;
+// hover (.chat-header__flip in chat.css). Stays put without a city to flip
+// from, or a name for the country
+function createFlipToCountry(placeAndTime, person) {
+    if (!person.city || !person.country || countryName(person.country) === person.country) return placeAndTime;
 
     const cityLine = createElement('span', 'swap__line');
-    cityLine.append(...where);
+    cityLine.append(...placeAndTime);
     const countryLine = createElement('span', 'swap__line');
     countryLine.append(createPlace(null, person.country));
     const track = createElement('span', 'swap__track');
@@ -378,13 +362,12 @@ function flipsToCountry(where, person) {
 
 // Their time now, with a sun or moon, as their pin and messages show it
 function createLocalTime(person) {
-    const localTime = getSenderTime(new Date(), person.timezone, parseFloat(person.lng));
-    const isDaytime = localTime.hour >= 6 && localTime.hour < 18;
+    const localTime = localTimeOf(new Date(), person.timezone, parseFloat(person.lng));
+    const daylightIcon = createIcon('sun', 'chat-header__daylight');
+    showDaylight(daylightIcon, 'chat-header__daylight', localTime.hour);
+
     const time = createElement('span', 'chat-header__time');
-    time.append(
-        createIcon(isDaytime ? 'sun' : 'moon', `chat-header__daylight chat-header__daylight--${isDaytime ? 'day' : 'night'}`),
-        localTime.text,
-    );
+    time.append(daylightIcon, localTime.text);
     return time;
 }
 
@@ -399,10 +382,10 @@ function updateOnlineDots(userIds) {
     onlineUserIds = userIds;
     showChatHeader();
     chatTabs.querySelectorAll('.chat-tab__online').forEach((dot) => {
-        const isPartnerOnline = onlineUserIds.has(Number(dot.closest('.chat-tab').dataset.conversation));
-        if (isPartnerOnline === !dot.hidden) return;
+        const isOnline = isUserOnline(dot.closest('.chat-tab').dataset.conversation);
+        if (isOnline === !dot.hidden) return;
 
-        if (isPartnerOnline) {
+        if (isOnline) {
             dot.hidden = false;
             return;
         }
@@ -529,12 +512,7 @@ function swapTabs(neighbour, change) {
     change();
     tabDrag.startRowX += tab.offsetLeft - tabLeftBefore;
 
-    neighbour.classList.remove('is-shifting');
-    neighbour.style.translate = `${neighbourLeftBefore - neighbour.offsetLeft}px 0`;
-    void neighbour.offsetWidth; // so the slide starts from there
-    neighbour.classList.add('is-shifting');
-    neighbour.style.translate = '';
-    onTransitionEnd(neighbour, () => neighbour.classList.remove('is-shifting'));
+    slideFromShifts(new Map([[neighbour, {x: neighbourLeftBefore - neighbour.offsetLeft}]]));
 }
 
 // Held near an end of the row, the tabs keep scrolling
@@ -562,11 +540,10 @@ function endTabDrag(event) {
     tabDrag = null;
     if (!isDragging) return;
 
-    // Settles into its place
+    // Settles into its place, from where it was let go
+    const droppedAt = parseFloat(tab.style.translate) || 0;
     tab.classList.remove('is-dragging');
-    tab.classList.add('is-shifting');
-    tab.style.translate = '';
-    onTransitionEnd(tab, () => tab.classList.remove('is-shifting'));
+    slideFromShifts(new Map([[tab, {x: droppedAt}]]));
     saveTabOrder();
 
     isEndingTabDrag = true;
@@ -590,9 +567,10 @@ chatTabs.addEventListener('dragstart', (event) => event.preventDefault());
 
 /* Messages */
 
-// The time where the sender was. Without their time zone, an estimate from
-// longitude (an hour per 15 degrees), marked with "~"
-function getSenderTime(date, timezone, longitude) {
+// The time where someone is, or was when they sent a message. Without their
+// time zone, an estimate from longitude (an hour per 15 degrees), marked
+// with "~"
+function localTimeOf(date, timezone, longitude) {
     const format = {hour: 'numeric', minute: '2-digit'};
 
     if (timezone) {
@@ -609,6 +587,16 @@ function getSenderTime(date, timezone, longitude) {
     };
 }
 
+// A daylight icon shows the sun from six in the morning to six at night,
+// and the moon otherwise, with its own --day or --night modifier
+// (iconClass--day)
+function showDaylight(icon, iconClass, hour) {
+    const isDaytime = hour >= 6 && hour < 18;
+    setIcon(icon, isDaytime ? 'sun' : 'moon');
+    icon.classList.toggle(`${iconClass}--day`, isDaytime);
+    icon.classList.toggle(`${iconClass}--night`, !isDaytime);
+}
+
 const getSentDate = (chat) => new Date(chat.querySelector('time').getAttribute('datetime'));
 
 function showSenderTime(chat) {
@@ -619,12 +607,9 @@ function showSenderTime(chat) {
     // Always midnight on Null Island, where the time zones meet
     const senderTime = timeInfo.dataset.country === NULL_ISLAND
         ? {text: '00:00', hour: 0}
-        : getSenderTime(getSentDate(chat), timeInfo.dataset.timezone, parseFloat(timeInfo.dataset.lng));
-    const isDaytime = senderTime.hour >= 6 && senderTime.hour < 18;
+        : localTimeOf(getSentDate(chat), timeInfo.dataset.timezone, parseFloat(timeInfo.dataset.lng));
 
-    const daylightIcon = senderTimeLine.querySelector('.chat__daylight');
-    setIcon(daylightIcon, isDaytime ? 'sun' : 'moon');
-    daylightIcon.classList.add(isDaytime ? 'chat__daylight--day' : 'chat__daylight--night');
+    showDaylight(senderTimeLine.querySelector('.chat__daylight'), 'chat__daylight', senderTime.hour);
     senderTimeLine.querySelector('span').textContent = senderTime.text;
 }
 
@@ -673,7 +658,7 @@ function countUnread(tab, isMention) {
     const unreadCount = tab.querySelector('.chat-tab__unread');
     slideTabs(() => {
         unreadCount.classList.toggle('is-entering', unreadCount.hidden);
-        if (isMention) unreadCount.classList.add('chat-tab__unread--mention');
+        if (isMention) unreadCount.classList.add('is-mention');
         unreadCount.textContent = (parseInt(unreadCount.textContent, 10) || 0) + 1;
         unreadCount.hidden = false;
     });
@@ -743,6 +728,7 @@ chatList.addEventListener('click', (event) => {
 /* The map toggle and the chat's fold caret, on phones */
 
 const mapToggle = document.getElementById('map-toggle');
+const MAP_OPEN_KEY = 'mapOpen';
 const chatFoldButton = document.getElementById('chat-fold');
 
 const isChatFolded = () => document.body.classList.contains('is-chat-folded');
@@ -771,18 +757,11 @@ function setMapOpen(isOpen) {
     mapToggle.setAttribute('aria-pressed', String(isOpen));
     mapToggle.setAttribute('aria-label', label);
     mapToggle.title = label;
-    try {
-        localStorage.setItem('mapOpen', isOpen ? '1' : '0');
-    } catch {
-        // Storage blocked: the choice just isn't remembered
-    }
+    writeFlag(MAP_OPEN_KEY, isOpen);
 }
 
-try {
-    setMapOpen(localStorage.getItem('mapOpen') === '1');
-} catch {
-    // Storage blocked: the map starts hidden, as it does the first time
-}
+// Without storage the map starts hidden, as it does the first time
+setMapOpen(readFlag(MAP_OPEN_KEY));
 
 mapToggle.addEventListener('click', () => {
     setMapOpen(!document.body.classList.contains('is-map-open'));
@@ -792,7 +771,7 @@ mapToggle.addEventListener('click', () => {
    this tab that arrive meanwhile, and takes you back down */
 
 const jumpButton = document.getElementById('jump-latest');
-const jumpLabel = document.getElementById('jump-latest-text');
+
 
 function getJumpLabelText() {
     if (newMessagesWhileScrolledUp === 0) return 'Latest';
@@ -800,19 +779,21 @@ function getJumpLabelText() {
     return `${newMessagesWhileScrolledUp} new messages`;
 }
 
-// The pill eases to the new label's width instead of jumping. Going from
-// "Latest" to a count, the words fade in; after that only the number
-// changes, so nothing fades and nothing flickers
+// The pill eases to the new label's width instead of jumping: it starts
+// scaled to the old width (--pill-scale, .jump-latest::before in chat.css)
+// and grows to the new. Going from "Latest" to a count, the words fade in;
+// after that only the number changes, so nothing fades and nothing flickers
 function changeJumpLabel(text) {
     const wasLatest = jumpLabel.textContent === 'Latest';
     const widthBefore = jumpButton.offsetWidth;
     jumpLabel.textContent = text;
-    jumpButton.style.width = '';
     const widthAfter = jumpButton.offsetWidth;
 
-    jumpButton.style.width = `${widthBefore}px`;
+    jumpButton.classList.remove('is-resizing');
+    jumpButton.style.setProperty('--pill-scale', widthBefore / widthAfter);
     void jumpButton.offsetWidth; // start from the old width
-    jumpButton.style.width = `${widthAfter}px`;
+    jumpButton.classList.add('is-resizing');
+    jumpButton.style.removeProperty('--pill-scale');
     if (wasLatest) replayAnimation(jumpLabel, 'is-changing');
 }
 
@@ -831,7 +812,6 @@ function updateJumpButton() {
 
     if (wasHidden || jumpLabel.textContent === text) {
         jumpLabel.textContent = text;
-        jumpButton.style.width = '';
         return;
     }
     changeJumpLabel(text);
@@ -848,7 +828,6 @@ function hideJumpButton() {
         jumpButton.classList.remove('is-leaving');
         jumpButton.hidden = true;
         jumpLabel.textContent = getJumpLabelText();
-        jumpButton.style.width = '';
     };
 
     jumpButton.classList.add('is-leaving');
@@ -926,17 +905,17 @@ async function loadOlderMessages(conversation) {
     chatList.scrollTop = chatList.scrollHeight - chatList.clientHeight - distanceFromBottom;
 }
 
-function loadOlderIfAny(conversation) {
+async function loadOlderIfAny(conversation) {
     if (isLoadingOlder || hasOlderIn[conversation] === false) return;
 
     isLoadingOlder = true;
-    loadOlderMessages(conversation)
-        .catch(() => {
-            // The next scroll near the top tries again
-        })
-        .finally(() => {
-            isLoadingOlder = false;
-        });
+    try {
+        await loadOlderMessages(conversation);
+    } catch {
+        // The next scroll near the top tries again
+    } finally {
+        isLoadingOlder = false;
+    }
 }
 
 function loadOlderIfNearTop() {
@@ -991,7 +970,7 @@ function showNewChats(newChats, isAfterSending) {
     const wasAtBottom = getDistanceFromBottom() < AT_BOTTOM_DISTANCE;
 
     // Someone the list still has as away just spoke: they're here
-    if (newChats.some((chat) => !onlineUserIds.has(Number(chat.dataset.senderId)))) {
+    if (newChats.some((chat) => !isUserOnline(chat.dataset.senderId))) {
         refreshPeople();
     }
     // Their message is in: they've stopped typing it
@@ -1040,7 +1019,7 @@ function showCharacterCount() {
     characterCount.textContent = `${length} / ${maxLength}`;
 }
 
-composerForm.addEventListener('submit', (event) => {
+composerForm.addEventListener('submit', async (event) => {
     event.preventDefault();
     if (isSending) return;
 
@@ -1050,21 +1029,19 @@ composerForm.addEventListener('submit', (event) => {
     updateSendButton();
     stopTyping();
 
-    sendMessage(messageInput.value.trim(), to)
-        .then(() => {
-            messageInput.value = '';
-            messageInput.dispatchEvent(new Event('input'));
-            // Someone you called who was away comes online a moment later
-            // (Bot::COME_ONLINE_SECONDS); look then, not on the next round
-            setTimeout(refreshPeople, COME_ONLINE_DELAY);
-        })
-        .catch((error) => {
-            showToast(errorMessageOf(error, 'Your message could not be sent.'), 'warning');
-        })
-        .finally(() => {
-            isSending = false;
-            updateSendButton();
-        });
+    try {
+        await sendMessage(messageInput.value.trim(), to);
+        messageInput.value = '';
+        messageInput.dispatchEvent(new Event('input'));
+        // Someone you called who was away comes online a moment later
+        // (Bot::COME_ONLINE_SECONDS); look then, not on the next round
+        setTimeout(refreshPeople, COME_ONLINE_DELAY);
+    } catch (error) {
+        showToast(errorMessageOf(error, 'Your message could not be sent.'), 'warning');
+    } finally {
+        isSending = false;
+        updateSendButton();
+    }
 });
 
 // @ suggests names in the open room. Set up before Enter sends, so
@@ -1126,7 +1103,7 @@ const partnerTypingUntil = {};
 
 // Their face as the list or their messages show it
 function getPhotoSrc(userId) {
-    const person = peopleById.get(String(userId));
+    const person = personWithId(userId);
     if (person) return person.avatar_src;
     return chatList.querySelector(`.chat[data-sender-id="${CSS.escape(String(userId))}"] .chat__photo`)?.src ?? '';
 }
@@ -1157,9 +1134,8 @@ function showPartnerTyping() {
     if (isTyping === typingRow.classList.contains('is-shown')) return;
 
     if (isTyping) {
-        const name = getTab(activeConversation).querySelector('.chat-tab__name').textContent;
         document.getElementById('typing-row-photo').src = getPhotoSrc(activeConversation);
-        document.getElementById('typing-row-label').textContent = `${name} is typing`;
+        document.getElementById('typing-row-label').textContent = `${getTabName(activeConversation)} is typing`;
     } else {
         document.getElementById('typing-row-label').textContent = '';
     }
@@ -1214,7 +1190,7 @@ historyChats.forEach(addTabFor);
 // Your newest private chats, loaded or not, counting what came while you were away
 JSON.parse(chatPanel.dataset.conversations || '[]').forEach((partner) => {
     const conversation = String(partner.user_id);
-    if (Number(partner.newest_id) <= (closedTabs[conversation] ?? 0)) return;
+    if (wasClosedAfter(conversation, partner.newest_id)) return;
 
     forgetClosedTab(conversation);
     const tab = addTab(conversation, partner.shown_name);
@@ -1244,7 +1220,7 @@ navigator.serviceWorker?.addEventListener('message', (event) => {
     if (event.data?.openChat) openNotifiedChat(event.data.openChat, event.data.name);
 });
 
-keepPeopleUpdated(updateOnlineDots, openPrivateChat);
+keepPeopleUpdated({onPeopleOnline: updateOnlineDots, onPersonChosen: openPrivateChat});
 connectChat({
     onNewChats: showNewChats,
     onBuild: reloadIfUpdated,

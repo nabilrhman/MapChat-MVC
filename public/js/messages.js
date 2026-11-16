@@ -8,7 +8,7 @@
 //
 // Both ways share lastChatId, the newest message shown: the socket resumes
 // from it on every (re)connect, and anything at or below it is skipped, so
-// each message shows once and in order however the two overlap.
+// each message shows once and in order however the two overlap
 
 const MESSAGES_INTERVAL = 1000;
 const MESSAGES_HIDDEN_INTERVAL = 8000;
@@ -93,14 +93,14 @@ function openSocket() {
     });
     thisSocket.addEventListener('message', (event) => {
         lastHeardAt = Date.now();
-        handleSocketMessage(JSON.parse(event.data));
+        onSocketMessage(JSON.parse(event.data));
     });
     thisSocket.addEventListener('close', (event) => {
         if (socket === thisSocket) onSocketClosed(event.code);
     });
 }
 
-function handleSocketMessage(message) {
+function onSocketMessage(message) {
     switch (message.type) {
         case 'welcome':
             onSocketWelcome(message);
@@ -194,17 +194,16 @@ async function checkForMessages(isAfterSending = false) {
     showArrivedChats(response.data, isAfterSending);
 }
 
-function keepCheckingForMessages() {
+async function keepCheckingForMessages() {
     if (!isPolling) return;
 
-    checkForMessages()
-        .catch(() => {
-            // Try again on the next round
-        })
-        .finally(() => {
-            if (!isPolling) return;
-            pollTimer = setTimeout(keepCheckingForMessages, document.hidden ? MESSAGES_HIDDEN_INTERVAL : MESSAGES_INTERVAL);
-        });
+    try {
+        await checkForMessages();
+    } catch {
+        // Try again on the next round
+    }
+    if (!isPolling) return;
+    pollTimer = setTimeout(keepCheckingForMessages, document.hidden ? MESSAGES_HIDDEN_INTERVAL : MESSAGES_INTERVAL);
 }
 
 function startPolling() {
@@ -223,22 +222,22 @@ function stopPolling() {
     chatHandlers.onPollingChanged(false);
 }
 
-function sendOverHttp(clientId, send) {
+async function sendOverHttp(clientId, send) {
     const message = {body: send.body, client_id: clientId};
     if (send.to !== null) message.to = send.to;
 
-    postForm('/app/send', message)
-        .then((response) => {
-            settleSend(clientId, (pending) => pending.resolve(response.data.id));
-            // So it shows at once rather than on the next round. That failing
-            // doesn't fail the send: the message went out, the next round brings it
-            checkForMessages(true).catch(() => {});
-        })
-        .catch((error) => {
-            // No answer (a network error): it stays pending for the next try
-            if (!error.response) return;
-            settleSend(clientId, (pending) => pending.reject(error));
-        });
+    let response;
+    try {
+        response = await postForm('/app/send', message);
+    } catch (error) {
+        // No answer (a network error): it stays pending for the next try
+        if (error.response) settleSend(clientId, (pending) => pending.reject(error));
+        return;
+    }
+    settleSend(clientId, (pending) => pending.resolve(response.data.id));
+    // So it shows at once rather than on the next round. That failing
+    // doesn't fail the send: the message went out, the next round brings it
+    checkForMessages(true).catch(() => {});
 }
 
 /* What chat.js calls */

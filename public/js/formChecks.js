@@ -1,7 +1,7 @@
 // Checks a form's fields before it's sent and shows each field's problem
-// under it. A field is checked when you leave
-// it, then again as you type once it has been checked; every field is checked
-// on submit. Fields that aren't shown (a closed card, say) are skipped.
+// under it. A field is checked when you leave it, then again as you type
+// once it has been checked; every field is checked on submit. Fields that
+// aren't shown (a closed card, say) are skipped
 
 // Each check is a test and the message shown when it fails. Tests that only
 // apply to a filled-in field pass an empty one, so "required" speaks first
@@ -29,12 +29,14 @@ const FIELD_CHECKS = {
     }),
 };
 
+// A check that gets no answer by then lets the email through
+const EMAIL_CHECK_TIMEOUT = 8000;
 const emailFreeAnswers = new Map();
 
 async function isEmailFree(email, ownUserId) {
     const query = new URLSearchParams({email, ignore_id: ownUserId});
     if (!emailFreeAnswers.has(query.toString())) {
-        const answer = fetch(`/account/validate-email?${query}`)
+        const answer = fetch(`/account/validate-email?${query}`, {signal: AbortSignal.timeout(EMAIL_CHECK_TIMEOUT)})
             .then((response) => response.json())
             // The server decides again on submit, so a failed check lets it through
             .catch(() => true);

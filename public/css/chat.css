@@ -275,23 +275,39 @@ body
     padding: 0 14px; /* even, as .icon takes back the arrow's blank sides */
     border: none;
     border-radius: 17px;
-    background-color: var(--md-primary);
+    background: none;
     color: var(--md-on-primary);
     font-size: 13px;
     font-weight: 600;
-    box-shadow: var(--md-elevation-3);
-    overflow: hidden;
     white-space: nowrap;
     /* translate, not transform: fade-in-up animates transform, which would
        drop the centring while it runs and slide the button in from the right */
     translate: -50% 0;
     cursor: pointer;
-    transition: width var(--dur) var(--ease-out);
     animation: fade-in-up var(--dur) var(--ease-out);
 }
 
+/* The pill itself, behind the label. When the label changes it starts at
+   the old width (--pill-scale, from chat.js) and grows from the middle */
+.jump-latest::before
+{
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background-color: var(--md-primary);
+    box-shadow: var(--md-elevation-3);
+    transform: scaleX(var(--pill-scale, 1));
+}
+
+.jump-latest.is-resizing::before
+{
+    transition: transform var(--dur) var(--ease-out);
+}
+
 /* The new label fades in as the pill widens (chat.js) */
-#jump-latest-text.is-changing
+.jump-latest__text.is-changing
 {
     animation: fade-in var(--dur) var(--ease-out);
 }
@@ -317,7 +333,7 @@ body
     }
 }
 
-.jump-latest:hover
+.jump-latest:hover::before
 {
     background-color: color-mix(in srgb, var(--md-on-primary) var(--md-hover), var(--md-primary));
 }
@@ -327,6 +343,10 @@ body
 .jump-latest:focus-visible
 {
     outline: 3px solid transparent;
+}
+
+.jump-latest:focus-visible::before
+{
     box-shadow: 0 0 0 3px #d1c4e9;
 }
 
@@ -504,13 +524,13 @@ body
 }
 
 /* Someone @mentioned you in a tab you're not looking at */
-.chat-tab__unread--mention
+.chat-tab__unread.is-mention
 {
     background-color: var(--md-primary);
     color: var(--md-on-primary);
 }
 
-.chat-tab__unread--mention::before
+.chat-tab__unread.is-mention::before
 {
     content: "@ ";
 }
@@ -1127,10 +1147,11 @@ body
                person-arrived 1.5s var(--ease-out);
 }
 
-/* The rest of the list slides to its new place instead of jumping */
+/* The rest of the list slides to its new place instead of jumping
+   (slideFromShifts in dom.js) */
 .person.is-shifting
 {
-    transition: transform var(--dur) var(--ease-out);
+    transition: translate var(--dur) var(--ease-out);
 }
 
 .person.is-leaving
@@ -1816,7 +1837,7 @@ body
 /* With chips drawn behind it (mentions.js): the box's text is see-through
    and the layer behind shows it. Both keep room for a scrollbar, so their
    lines wrap at the same place */
-.chat-composer__textarea--over-chips
+.chat-composer__textarea.is-over-chips
 {
     position: relative;
     background-color: transparent;
@@ -1827,7 +1848,7 @@ body
 
 /* Its own colour: Firefox draws the hint in the box's text colour, which is
    transparent here, so the hint vanished there */
-.chat-composer__textarea--over-chips::placeholder
+.chat-composer__textarea.is-over-chips::placeholder
 {
     color: var(--md-outline);
     opacity: 1;
