@@ -112,18 +112,6 @@ Twig 3 shows what the controller worked out; deciding happens in PHP.
   `|json_encode|e('html_attr')` for a list), not in a `<script>` that sets a
   variable.
 
-### Modern CSS
-
-Custom properties for any value used twice; `gap`, `inset`, logical
-properties (`margin-inline`, `padding-block`); `:has()` and `color-mix()`
-over extra classes and hand-mixed colours. Keyframes are kebab-case like
-classes.
-
-BEM stays, because the scripts and templates find elements by these names
-too: one unique, searchable name per part keeps a change in one place. Native
-nesting groups a rule's states and children (`&:hover`, `&.is-open`,
-`& .icon`), never builds a name (`&__name` doesn't work without Sass).
-
 ### CSS
 
 BEM: a block is a component (`.person`), an element `__` (`.person__name`), a
@@ -134,6 +122,16 @@ transform; a band sliding open to a height it can't know animates
 `grid-template-rows` from `0fr` to `1fr`, and a colour may fade on hover.
 Sizes follow the type scale in use: 13px names and tabs, 11px times, places
 and tags.
+
+Custom properties for any value used twice; `gap`, `inset`, logical
+properties (`margin-inline`, `padding-block`); `:has()` and `color-mix()`
+over extra classes and hand-mixed colours. Keyframes are kebab-case like
+classes.
+
+BEM stays, because the scripts and templates find elements by these names
+too: one unique, searchable name per part keeps a change in one place. Native
+nesting groups a rule's states and children (`&:hover`, `&.is-open`,
+`& .icon`), never builds a name (`&__name` doesn't work without Sass).
 
 ### Copy
 
