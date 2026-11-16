@@ -44,6 +44,8 @@ function getTimeAgo(person) {
 // Point out the person's pin on the map
 function highlightPin(userId, isHighlighted) {
     document.querySelector(`.map-pin[data-user-id="${CSS.escape(userId)}"]`)?.classList.toggle('is-highlighted', isHighlighted);
+    // With its label (map.js)
+    setPinLabelShown(userId, isHighlighted);
 }
 
 // Online: flag and city. Recently here: how long ago
@@ -215,7 +217,7 @@ function showPeople(people, onPeopleOnline) {
     peopleToMention = [...onlinePeople, ...recentPeople].filter((person) => Number(person.id) !== myUserId);
 
     // The rows are replaced, so a hovered row never gets its mouseleave
-    document.querySelectorAll('.map-pin.is-highlighted').forEach((pin) => pin.classList.remove('is-highlighted'));
+    document.querySelectorAll('.map-pin.is-highlighted').forEach((pin) => highlightPin(pin.dataset.userId, false));
 
     onPeopleOnline(new Set(onlinePeople.map((person) => Number(person.id))));
 

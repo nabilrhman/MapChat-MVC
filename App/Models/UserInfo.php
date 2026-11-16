@@ -202,7 +202,7 @@ class UserInfo extends \Core\Model
      */
     public static function getAllLocations()
     {
-        $sql = 'SELECT userinfo.lat, userinfo.lng, userinfo.city, userinfo.country,
+        $sql = 'SELECT userinfo.lat, userinfo.lng, userinfo.city, userinfo.country, userinfo.timezone,
                        users.id AS user_id, users.name, users.nickname, users.is_guest, users.avatar,
                        users.email LIKE \'%@demo.mapchat.local\' AS is_demo
                 FROM userinfo

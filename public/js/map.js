@@ -86,7 +86,11 @@ function themeLayer(layer) {
 
 /* Pins */
 
-// Shown when hovering a pin: the name, then the flag and city
+// Their local time in a pin's label moves on while it's open
+const PIN_TIME_INTERVAL = 30000;
+
+// Shown when hovering a pin: the name, the flag and city, then their local
+// time with a sun or moon, as a message shows its sender's
 function createPinLabel(location) {
     const label = createElement('div', 'pin-label');
     label.append(createElement('strong', 'pin-label__name', location.shown_name || ''));
@@ -100,8 +104,29 @@ function createPinLabel(location) {
         label.append(place);
     }
 
+    const time = createElement('span', 'pin-label__time');
+    time.dataset.timezone = location.timezone || '';
+    time.dataset.lng = location.lng;
+    time.append(createIcon('sun', 'pin-label__daylight'), createElement('span'));
+    showPinTime(time);
+    label.append(time);
+
     return label;
 }
+
+// Without their time zone, getSenderTime estimates it from the longitude
+function showPinTime(time) {
+    const localTime = getSenderTime(new Date(), time.dataset.timezone, parseFloat(time.dataset.lng));
+    const isDaytime = localTime.hour >= 6 && localTime.hour < 18;
+
+    const daylightIcon = time.querySelector('.pin-label__daylight');
+    setIcon(daylightIcon, isDaytime ? 'sun' : 'moon');
+    daylightIcon.classList.toggle('pin-label__daylight--day', isDaytime);
+    daylightIcon.classList.toggle('pin-label__daylight--night', !isDaytime);
+    time.querySelector('span').textContent = localTime.text;
+}
+
+setInterval(() => document.querySelectorAll('.pin-label__time').forEach(showPinTime), PIN_TIME_INTERVAL);
 
 // A yellow map pin like the original marker icon. userId lets the people
 // list, and a message's city, highlight this pin
@@ -181,7 +206,7 @@ async function loadLocations() {
 }
 
 // Everything a pin shows; when it changes, the pin is drawn again
-const getPinContent = (location) => [location.lat, location.lng, location.shown_name, location.city, location.country].join('|');
+const getPinContent = (location) => [location.lat, location.lng, location.shown_name, location.city, location.country, location.timezone].join('|');
 
 // Fetches the pins now, and again when someone comes online or goes
 // (refreshPinsSoon), or every round on the HTTP fallback. Adds new people,
@@ -246,6 +271,19 @@ function refreshPinsSoon() {
     nextPinsRefresh = setTimeout(() => refreshPinsNow(), PINS_REFRESH_DELAY);
 }
 
+// Each pin's label, by user id: a pin highlighted from the people list or a
+// message's city shows its label too
+const pinLabelsByUserId = new Map();
+
+function setPinLabelShown(userId, isShown) {
+    const label = pinLabelsByUserId.get(String(userId));
+    if (isShown) {
+        label?.show();
+    } else {
+        label?.hide();
+    }
+}
+
 /* The vector map (MapLibre) */
 
 // One label at a time, so tapping another pin swaps them
@@ -254,8 +292,10 @@ let openPinPopup = null;
 // Adds a MapLibre pin; returns a function that removes it
 function addVectorPin(map, location, shouldAnimate) {
     const lngLat = getLngLat(location);
+    const label = createPinLabel(location);
+    const popupTime = label.querySelector('.pin-label__time');
     const popup = new maplibregl.Popup({closeButton: false, offset: 26})
-        .setDOMContent(createPinLabel(location));
+        .setDOMContent(label);
     const marker = new maplibregl.Marker({element: createPinElement(location.user_id), anchor: 'bottom'})
         .setLngLat(lngLat)
         .addTo(map);
@@ -263,6 +303,8 @@ function addVectorPin(map, location, shouldAnimate) {
     function showLabel() {
         if (openPinPopup !== popup) openPinPopup?.remove();
         openPinPopup = popup;
+        // Made when the pin was; the time is now's
+        showPinTime(popupTime);
         popup.setLngLat(lngLat).addTo(map);
     }
 
@@ -278,7 +320,10 @@ function addVectorPin(map, location, shouldAnimate) {
         showLabel();
     });
 
+    pinLabelsByUserId.set(String(location.user_id), {show: showLabel, hide: () => popup.remove()});
+
     return () => {
+        pinLabelsByUserId.delete(String(location.user_id));
         popup.remove();
         fadeOutPin(pin, () => marker.remove());
     };
@@ -459,10 +504,14 @@ function addTilePin(map, location, shouldAnimate) {
     pin.classList.toggle('is-entering', shouldAnimate);
     const icon = L.divIcon({className: '', html: pin.outerHTML, iconSize: [20, 27], iconAnchor: [10, 27]});
     const marker = L.marker(getLatLng(location), {icon})
-        .bindTooltip(createPinLabel(location).outerHTML, {direction: 'top', offset: [0, -26]})
+        // Made each time it opens, so the time is now's
+        .bindTooltip(() => createPinLabel(location), {direction: 'top', offset: [0, -26]})
         .addTo(map);
 
+    pinLabelsByUserId.set(String(location.user_id), {show: () => marker.openTooltip(), hide: () => marker.closeTooltip()});
+
     return () => {
+        pinLabelsByUserId.delete(String(location.user_id));
         marker.closeTooltip();
         fadeOutPin(marker.getElement().querySelector('.map-pin'), () => marker.remove());
     };
