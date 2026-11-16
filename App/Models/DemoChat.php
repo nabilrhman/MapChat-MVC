@@ -242,7 +242,7 @@ class DemoChat extends \Core\Model
         foreach ($scenes as $n => $scene) {
             foreach ($scene as $i => [$speaker, $body]) {
                 $seconds = (int) round(($minute + $offsets[$n][$i]) * 60) + mt_rand(0, 30);
-                $messages[] = [gmdate('Y-m-d H:i:s', $day_start + $seconds), $speaker . static::DOMAIN, $body];
+                $messages[] = [gmdate('Y-m-d H:i:s', $day_start + $seconds), $speaker . static::DOMAIN, static::withAddressee($body)];
             }
 
             $minute += end($offsets[$n]) + ($weights[$n] ?? 0) * $scale;
@@ -251,6 +251,45 @@ class DemoChat extends \Core\Model
         mt_srand();
 
         return $messages;
+    }
+
+    /**
+     * A line that starts by naming another demo person ("rafael how was
+     * it?") starts with an @mention of them instead, so it shows as one
+     *
+     * @param string $body
+     *
+     * @return string
+     */
+    protected static function withAddressee($body)
+    {
+        foreach (static::firstNames() as $key => $firstName) {
+            $named = '/^(?:' . preg_quote($key, '/') . '|' . preg_quote($firstName, '/') . ')(?![\p{L}\p{N}-])/iu';
+            if (preg_match($named, $body)) {
+                return preg_replace($named, '@' . $firstName, $body, 1);
+            }
+        }
+
+        return $body;
+    }
+
+    /**
+     * Each demo person's first name, by the key their lines use (the start
+     * of their email, e.g. jaewon => Jae-won)
+     *
+     * @return array
+     */
+    protected static function firstNames()
+    {
+        $stmt = static::getDB()->prepare('SELECT email, name FROM users WHERE email LIKE :demo');
+        $stmt->execute([':demo' => '%' . static::DOMAIN]);
+
+        $names = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $person) {
+            $names[strstr($person['email'], '@', true)] = explode(' ', $person['name'])[0];
+        }
+
+        return $names;
     }
 
     /**

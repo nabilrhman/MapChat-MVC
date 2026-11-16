@@ -17,6 +17,11 @@ class TestDemoChat extends DemoChat
         return static::realTime($time);
     }
 
+    public static function addressed(string $body): string
+    {
+        return static::withAddressee($body);
+    }
+
     protected static function now()
     {
         return static::$demoNow;
@@ -48,5 +53,25 @@ class DemoChatTest extends TestCase
         $seen = strtotime(TestDemoChat::seenAt($line) . ' UTC');
 
         $this->assertEqualsWithDelta(time() - 30, $seen, 2);
+    }
+
+    public function testLinesThatNameSomeoneTagThem()
+    {
+        $db = TestDb::get();
+        $db->beginTransaction();
+        try {
+            foreach (['Rafael Costa' => 'rafael', 'Jae-won Park' => 'jaewon'] as $name => $key) {
+                $db->prepare("INSERT INTO users (name, email, password_hash, is_active) VALUES (?, ?, '!', TRUE)")
+                    ->execute([$name, "$key@demo.mapchat.local"]);
+            }
+
+            $this->assertSame('@Rafael how was it?', TestDemoChat::addressed('rafael how was it?'));
+            $this->assertSame('@Rafael, important question', TestDemoChat::addressed('rafael, important question'));
+            $this->assertSame('@Jae-won is the kimchi ready?', TestDemoChat::addressed('jaewon is the kimchi ready?'));
+            $this->assertSame('tried surfing with rafael', TestDemoChat::addressed('tried surfing with rafael'));
+            $this->assertSame('rafaela says hi', TestDemoChat::addressed('rafaela says hi'));
+        } finally {
+            $db->rollBack();
+        }
     }
 }
