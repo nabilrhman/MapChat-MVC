@@ -239,10 +239,12 @@
 }
 
 /* Beer's hover halo round the knob is a faint grey; a state layer in the
-   primary colour instead, strong enough to see on the white card */
+   primary colour instead, strong enough to see on the white card. It comes
+   at once; only the knob's slide is animated, in place of Beer's own
+   transition of everything */
 .privacy-setting__switch .switch > input + span::before
 {
-    transition: box-shadow var(--dur-fast) var(--ease-out);
+    transition: transform var(--dur) var(--ease-out);
 }
 
 .privacy-setting__switch .switch:hover > input + span::before

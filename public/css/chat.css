@@ -36,7 +36,7 @@ body
     z-index:0; /* keep the map's layers below the chat panel */
     /* Hidden until it has moved to the pins and drawn them (map.js) */
     opacity: 0;
-    transition: opacity 400ms var(--ease-out);
+    transition: opacity var(--dur-slow) var(--ease-out);
 }
 
 .map.is-shown
@@ -782,7 +782,7 @@ body
 
 .notify-prompt__text.is-scrolling .notify-prompt__text-inner
 {
-    animation: notify-marquee var(--marquee-time) ease-in-out infinite alternate;
+    animation: notify-marquee var(--marquee-time) var(--ease-in-out) infinite alternate;
 }
 
 @keyframes notify-marquee
@@ -851,17 +851,17 @@ body
 }
 
 /* The side panels slide in from their own edge */
-@keyframes panelInLeft
+@keyframes panel-in-left
 {
     from { transform: translateX(-100%); }
 }
 
-@keyframes panelInRight
+@keyframes panel-in-right
 {
     from { transform: translateX(100%); }
 }
 
-@keyframes panelOutRight
+@keyframes panel-out-right
 {
     to { transform: translateX(100%); }
 }
@@ -870,12 +870,12 @@ body
    page is ready rather than while it loads */
 .chat-panel
 {
-    animation: panelInLeft var(--dur-slow) var(--ease-out) both paused;
+    animation: panel-in-left var(--dur-slow) var(--ease-out) both paused;
 }
 
 .people
 {
-    animation: panelInRight var(--dur-slow) var(--ease-out) both paused;
+    animation: panel-in-right var(--dur-slow) var(--ease-out) both paused;
 }
 
 .is-ready .chat-panel,
@@ -887,7 +887,7 @@ body
 /* Closing the people list: slide out, then the page hides it */
 .is-ready .people.is-closing
 {
-    animation: panelOutRight var(--dur) var(--ease-in) forwards;
+    animation: panel-out-right var(--dur) var(--ease-in) forwards;
 }
 
 /* Chat container - ends */
@@ -1137,14 +1137,14 @@ body
 /* A separate class, so the row can slide again once it's in while the tint fades */
 .person.is-arrived
 {
-    animation: person-arrived 1.5s var(--ease-out);
+    animation: person-arrived var(--dur-linger) var(--ease-out);
 }
 
 /* Both at once in one rule: each class's own rule would override the other's */
 .person.is-entering.is-arrived
 {
     animation: person-in var(--dur-slow) var(--ease-out) backwards,
-               person-arrived 1.5s var(--ease-out);
+               person-arrived var(--dur-linger) var(--ease-out);
 }
 
 /* The rest of the list slides to its new place instead of jumping
@@ -1204,7 +1204,7 @@ body
     font-weight: 600;
     box-shadow: var(--md-elevation-2);
     cursor: pointer;
-    transition: background-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+    transition: background-color var(--dur-fast) var(--ease-out);
 }
 
 /* Only a faint tint: over the map a stronger one, or a deeper shadow, turns it grey */

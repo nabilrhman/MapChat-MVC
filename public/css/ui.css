@@ -40,7 +40,8 @@ h4
     text-decoration: none;
     white-space: nowrap;
     cursor: pointer;
-    transition-property: background-color, border-color, color, box-shadow, transform;
+    /* Colours fade on hover; the hover shadow and the focus ring come at once */
+    transition-property: background-color, border-color, color, transform;
     transition-duration: var(--dur-fast);
     transition-timing-function: var(--ease-out);
 }
@@ -247,7 +248,7 @@ h4
     display: inline-flex;
     gap: 5px;
     color: var(--md-primary);
-    animation: fade-in var(--dur) var(--ease-out) 200ms backwards;
+    animation: fade-in var(--dur) var(--ease-out) var(--delay-loading) backwards;
 }
 
 /* A button whose action is under way: dots in place of its label, same size */
@@ -281,19 +282,19 @@ h4
     height: 6px;
     border-radius: 50%;
     background-color: currentColor;
-    animation: loading-dot 1.4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+    animation: loading-dot var(--dur-pulse) var(--ease-in-out) infinite;
 }
 
 /* A wave from left to right. Negative delays start each dot part way in,
    so none waits at full strength before it starts */
 .loading-dots__dot:nth-child(1)
 {
-    animation-delay: -0.32s;
+    animation-delay: calc(var(--dur-pulse-step) * -2);
 }
 
 .loading-dots__dot:nth-child(2)
 {
-    animation-delay: -0.16s;
+    animation-delay: calc(var(--dur-pulse-step) * -1);
 }
 
 /* Each dot rises a little and brightens in turn. It moves rather than

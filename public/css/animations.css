@@ -14,6 +14,7 @@
 
     --dur-count-far: 60ms; /* a count passing numbers while it's still far off */
     --dur-linger: 1.5s; /* a highlight fading off something that just arrived */
+    --delay-loading: 200ms; /* before a loading sign shows, so a quick load never flashes it */
     --dur-pulse: 1.4s; /* a loading dot's pulse */
     --dur-pulse-step: 0.16s; /* from one loading dot to the next */
     --dur-loading-bar: 10s; /* the loading bar's crawl; the next page fills the rest */
