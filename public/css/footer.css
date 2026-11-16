@@ -3,10 +3,9 @@
 .site-footer
 {
     position: fixed;
-    left: 0;
+    inset-inline: 0;
     bottom: 0;
     z-index: 999;
-    width: 100%;
     height: var(--footer-height); /* see styles.css */
     padding: 0 24px;
     display: flex;

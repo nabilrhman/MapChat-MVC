@@ -249,12 +249,12 @@
 
 .privacy-setting__switch .switch:hover > input + span::before
 {
-    box-shadow: 0 0 0 9px rgba(81, 45, 168, 0.12);
+    box-shadow: 0 0 0 9px color-mix(in srgb, var(--md-primary) var(--md-pressed), transparent);
 }
 
 .privacy-setting__switch .switch > input:focus-visible + span::before
 {
-    box-shadow: 0 0 0 9px rgba(81, 45, 168, 0.16);
+    box-shadow: 0 0 0 9px color-mix(in srgb, var(--md-primary) 16%, transparent);
 }
 
 /* Flag and city, --icon-gap apart like an icon and its text */
