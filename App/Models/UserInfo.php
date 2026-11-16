@@ -326,13 +326,16 @@ class UserInfo extends \Core\Model
     }
 
     /**
-     * SQL that's true for the demo people in the room now (DemoChat::presentNow)
+     * SQL that's true for the demo people in the room now: those in the
+     * script (DemoChat::presentNow), and those talking with someone who
+     * called or messaged them (Bot::talkingDemoPeople)
      *
      * @return string
      */
     protected static function demoOnlineSql()
     {
-        $emails = array_map([static::getDB(), 'quote'], DemoChat::presentNow());
+        $present = array_unique(array_merge(DemoChat::presentNow(), Bot::talkingDemoPeople()));
+        $emails = array_map([static::getDB(), 'quote'], $present);
 
         return $emails ? 'users.email IN (' . implode(', ', $emails) . ')' : 'FALSE';
     }

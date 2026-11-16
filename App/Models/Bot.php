@@ -731,6 +731,22 @@ class Bot extends \Core\Model
     }
 
     /**
+     * The demo people talking with someone now: from when they were called
+     * or messaged until CONVERSATION_MINUTES after their last answer, so
+     * they stay online between answers
+     *
+     * @return array Their emails
+     */
+    public static function talkingDemoPeople()
+    {
+        $stmt = static::getDB()->prepare('SELECT DISTINCT speaker FROM mapchat_jobs
+                                          WHERE speaker LIKE :demo AND (done_at IS NULL OR done_at > :since)');
+        $stmt->execute([':demo' => '%' . DemoChat::DOMAIN, ':since' => static::time(-static::CONVERSATION_MINUTES * 60)]);
+
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    }
+
+    /**
      * How long the demo story has waited since the given time: from each
      * time a guest called a demo person into a room conversation until it
      * went quiet, CONVERSATION_MINUTES after their last answer. Times that

@@ -509,4 +509,20 @@ class BotTest extends TestCase
         $this->assertStringNotContainsString('done chatting', TestBot::$asked[0][0]);
         $this->assertStringContainsString('done chatting for now', TestBot::$asked[1][0]);
     }
+
+    public function testDemoPersonStaysOnlineWhileTalking()
+    {
+        $wanjiru = $this->addDemoPerson('Wanjiru Kamau', 'Nairobi');
+        $online = fn () => array_column(\App\Models\UserInfo::getRecentPeople(), 'is_online', 'name')['Wanjiru Kamau'] ?? null;
+
+        $this->send(self::ANN, 'hi wanjiru', $wanjiru);
+        $this->assertEquals(1, $online(), 'online while her answer is coming');
+
+        $this->wait(Bot::PRIVATE_SECONDS);
+        $this->db->exec("UPDATE userinfo SET online_at = NOW() - INTERVAL 2 MINUTE WHERE email = '$wanjiru'");
+        $this->assertContains($wanjiru, Bot::talkingDemoPeople(), 'and a while after it');
+
+        TestBot::$later += Bot::CONVERSATION_MINUTES * 60 + 1;
+        $this->assertNotContains($wanjiru, TestBot::talkingDemoPeople(), 'until the chat goes quiet');
+    }
 }
