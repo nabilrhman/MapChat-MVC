@@ -1332,6 +1332,13 @@ body
     line-height: 16px;
 }
 
+/* A sender with a pin on the map: clicking the city brings it to the
+   middle. Just the text; two classes, to win over .swap's own cursor */
+.chat__location .is-on-map
+{
+    cursor: pointer;
+}
+
 /* Two lines in a one-line window: the reader's time then the sender's, or the
    city then the country. Hovering slides the second line into view */
 .swap

@@ -246,6 +246,11 @@ function keepPinsUpdated(addPin, fitPins) {
                     fitPins(locations);
                     isFirstRound = false;
                 }
+                hasPins = true;
+                if (pinToFocus !== null) {
+                    focusPin(pinToFocus);
+                    pinToFocus = null;
+                }
             })
             .catch(() => {
                 // Try again on the next round
@@ -271,14 +276,41 @@ function refreshPinsSoon() {
     nextPinsRefresh = setTimeout(() => refreshPinsNow(), PINS_REFRESH_DELAY);
 }
 
+// How far above a pin's tip its label sits. A highlighted pin grows by
+// 1.35 from its tip (.map-pin.is-highlighted), so its label sits higher by
+// what it grew, or the pin pokes into it
+const PIN_HEIGHT = 27;
+const PIN_LABEL_OFFSET = 26;
+const HIGHLIGHTED_PIN_LABEL_OFFSET = PIN_LABEL_OFFSET + Math.round(PIN_HEIGHT * 0.35);
+
 // Each pin's label, by user id: a pin highlighted from the people list or a
 // message's city shows its label too
 const pinLabelsByUserId = new Map();
 
+// Clicking a message's city zooms in at least this far, to the region around the pin
+const FOCUS_PIN_ZOOM = 4;
+// Set once the map has its pins; a pin asked for before then is focused once it does
+let hasPins = false;
+let pinToFocus = null;
+
+// Brings the person's pin to the middle of the map's visible part, with its
+// label open (a click on a message's city). Nothing if they have no pin:
+// offline, or hidden from the map
+function focusPin(userId) {
+    const label = pinLabelsByUserId.get(String(userId));
+    if (!label) {
+        if (!hasPins) pinToFocus = String(userId);
+        return;
+    }
+    label.focus();
+}
+
+const getLabelOffset = (pin) => (pin.classList.contains('is-highlighted') ? HIGHLIGHTED_PIN_LABEL_OFFSET : PIN_LABEL_OFFSET);
+
 function setPinLabelShown(userId, isShown) {
     const label = pinLabelsByUserId.get(String(userId));
     if (isShown) {
-        label?.show();
+        label?.show(HIGHLIGHTED_PIN_LABEL_OFFSET);
     } else {
         label?.hide();
     }
@@ -294,15 +326,16 @@ function addVectorPin(map, location, shouldAnimate) {
     const lngLat = getLngLat(location);
     const label = createPinLabel(location);
     const popupTime = label.querySelector('.pin-label__time');
-    const popup = new maplibregl.Popup({closeButton: false, offset: 26})
+    const popup = new maplibregl.Popup({closeButton: false, offset: PIN_LABEL_OFFSET})
         .setDOMContent(label);
     const marker = new maplibregl.Marker({element: createPinElement(location.user_id), anchor: 'bottom'})
         .setLngLat(lngLat)
         .addTo(map);
 
-    function showLabel() {
+    function showLabel(offset = PIN_LABEL_OFFSET) {
         if (openPinPopup !== popup) openPinPopup?.remove();
         openPinPopup = popup;
+        popup.setOffset(offset);
         // Made when the pin was; the time is now's
         showPinTime(popupTime);
         popup.setLngLat(lngLat).addTo(map);
@@ -320,7 +353,16 @@ function addVectorPin(map, location, shouldAnimate) {
         showLabel();
     });
 
-    pinLabelsByUserId.set(String(location.user_id), {show: showLabel, hide: () => popup.remove()});
+    pinLabelsByUserId.set(String(location.user_id), {
+        show: showLabel,
+        hide: () => popup.remove(),
+        focus: () => {
+            // An ease, not a flight: no zooming out and back in, which fetches
+            // tiles at in-between zooms and hitches
+            map.easeTo({center: lngLat, zoom: Math.max(map.getZoom(), FOCUS_PIN_ZOOM), padding: getMapPadding(), duration: 800});
+            showLabel(getLabelOffset(pin));
+        },
+    });
 
     return () => {
         pinLabelsByUserId.delete(String(location.user_id));
@@ -456,13 +498,65 @@ function themeTile(imageData) {
     return imageData;
 }
 
-// Each OpenStreetMap tile, recoloured on a canvas before it's shown
+// Fetching, decoding and recolouring a tile takes about 2 ms; a zoom brings
+// a few dozen at once, and on the page's own thread they made the map hitch.
+// A worker does it instead and sends back the finished image. It runs this
+// file's own themeTile and hexToRgb, from their source, so there's one copy
+function createTileWorker() {
+    if (!window.Worker || !window.OffscreenCanvas || !window.createImageBitmap) return null;
+
+    const source = `
+        const THEME = ${JSON.stringify({water: THEME.water, waterText: THEME.waterText})};
+        ${hexToRgb}
+        ${themeTile}
+        self.onmessage = async ({data: {id, url}}) => {
+            try {
+                const response = await fetch(url);
+                const tile = await createImageBitmap(await response.blob());
+                const canvas = new OffscreenCanvas(256, 256);
+                const context = canvas.getContext('2d', {willReadFrequently: true});
+                context.drawImage(tile, 0, 0);
+                context.putImageData(themeTile(context.getImageData(0, 0, 256, 256)), 0, 0);
+                const image = canvas.transferToImageBitmap();
+                self.postMessage({id, image}, [image]);
+            } catch (error) {
+                self.postMessage({id, error: String(error)});
+            }
+        };`;
+    return new Worker(URL.createObjectURL(new Blob([source], {type: 'text/javascript'})));
+}
+
+// Each OpenStreetMap tile, recoloured before it's shown: by the worker, or
+// on the page where there's none
 function createThemedTileLayer() {
+    const worker = createTileWorker();
+    const waitingTiles = new Map();
+    let nextTileId = 1;
+
+    worker?.addEventListener('message', ({data: {id, image, error}}) => {
+        const tile = waitingTiles.get(id);
+        if (!tile) return;
+        waitingTiles.delete(id);
+        if (image) {
+            tile.canvas.getContext('2d').drawImage(image, 0, 0);
+            image.close();
+        }
+        tile.done(error ?? null, tile.canvas);
+    });
+
     const ThemedTiles = L.GridLayer.extend({
         createTile(coords, done) {
             const canvas = document.createElement('canvas');
             canvas.width = 256;
             canvas.height = 256;
+            const url = `https://tile.openstreetmap.org/${coords.z}/${coords.x}/${coords.y}.png`;
+
+            if (worker) {
+                const id = nextTileId++;
+                waitingTiles.set(id, {canvas, done});
+                worker.postMessage({id, url});
+                return canvas;
+            }
 
             const tile = new Image();
             tile.crossOrigin = 'anonymous';
@@ -473,7 +567,7 @@ function createThemedTileLayer() {
                 done(null, canvas);
             };
             tile.onerror = (error) => done(error, canvas);
-            tile.src = `https://tile.openstreetmap.org/${coords.z}/${coords.x}/${coords.y}.png`;
+            tile.src = url;
 
             return canvas;
         },
@@ -502,13 +596,38 @@ function addTileCredits(map) {
 function addTilePin(map, location, shouldAnimate) {
     const pin = createPinElement(location.user_id);
     pin.classList.toggle('is-entering', shouldAnimate);
-    const icon = L.divIcon({className: '', html: pin.outerHTML, iconSize: [20, 27], iconAnchor: [10, 27]});
+    const icon = L.divIcon({className: '', html: pin.outerHTML, iconSize: [20, PIN_HEIGHT], iconAnchor: [10, PIN_HEIGHT]});
     const marker = L.marker(getLatLng(location), {icon})
         // Made each time it opens, so the time is now's
-        .bindTooltip(() => createPinLabel(location), {direction: 'top', offset: [0, -26]})
+        .bindTooltip(() => createPinLabel(location), {direction: 'top', offset: [0, -PIN_LABEL_OFFSET]})
         .addTo(map);
 
-    pinLabelsByUserId.set(String(location.user_id), {show: () => marker.openTooltip(), hide: () => marker.closeTooltip()});
+    const setTooltipOffset = (offset) => {
+        marker.getTooltip().options.offset = L.point(0, -offset);
+    };
+    const showTooltip = (offset) => {
+        setTooltipOffset(offset);
+        marker.openTooltip();
+    };
+    pinLabelsByUserId.set(String(location.user_id), {
+        show: showTooltip,
+        // A bounds of one point, as only fitting bounds takes the map's padding here
+        focus: () => {
+            const latLng = getLatLng(location);
+            const padding = getMapPadding();
+            map.flyToBounds([latLng, latLng], {
+                paddingTopLeft: [padding.left, padding.top],
+                paddingBottomRight: [padding.right, padding.bottom],
+                maxZoom: Math.max(map.getZoom(), FOCUS_PIN_ZOOM),
+            });
+            showTooltip(getLabelOffset(marker.getElement().querySelector('.map-pin')));
+        },
+        // Back to the usual height, for a plain hover on the pin
+        hide: () => {
+            marker.closeTooltip();
+            setTooltipOffset(PIN_LABEL_OFFSET);
+        },
+    });
 
     return () => {
         pinLabelsByUserId.delete(String(location.user_id));
