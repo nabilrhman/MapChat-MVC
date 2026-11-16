@@ -80,10 +80,9 @@ notificationsSwitch.addEventListener('change', async () => {
 
 const avatar = document.getElementById('avatar');
 const photoFrame = document.getElementById('photo-frame');
+// Missing when the site has no Cloudinary settings, so uploads are off
 const photoUpload = document.getElementById('file-upload');
 const removePhotoButton = document.getElementById('remove-photo');
-const CLOUDINARY_URL = `https://api.cloudinary.com/v1_1/${photoUpload.dataset.cloudName}/image/upload`;
-const CLOUDINARY_UPLOAD_PRESET = photoUpload.dataset.uploadPreset;
 // A photo takes longer than a form to send on a slow connection
 const PHOTO_UPLOAD_TIMEOUT = 60000;
 
@@ -95,16 +94,18 @@ function showPhoto(src) {
 showPhoto(avatar.src);
 
 async function uploadPhoto(file) {
+    const {cloudName, uploadPreset} = photoUpload.dataset;
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+    formData.append('upload_preset', uploadPreset);
 
-    const response = await axios.post(CLOUDINARY_URL, formData, {timeout: PHOTO_UPLOAD_TIMEOUT});
+    const uploadUrl = `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`;
+    const response = await axios.post(uploadUrl, formData, {timeout: PHOTO_UPLOAD_TIMEOUT});
     return response.data.secure_url;
 }
 
 // Upload the photo, then save it; on any failure the old one stays
-photoUpload.addEventListener('change', async () => {
+photoUpload?.addEventListener('change', async () => {
     const file = photoUpload.files[0];
     if (!file) return;
     photoUpload.value = '';

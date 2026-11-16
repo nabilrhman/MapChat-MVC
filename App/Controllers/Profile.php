@@ -5,6 +5,7 @@ namespace App\Controllers;
 use Core\View;
 use App\Auth;
 use App\Avatar;
+use App\Config;
 use App\Flash;
 use App\Models\User;
 use App\Models\UserInfo;
@@ -38,7 +39,8 @@ class Profile extends Authenticated
         View::renderTemplate('Profile/show.html', [
             'user' => $this->user,
             'place' => UserInfo::getPlace($this->user->email),
-            'default_avatar' => Avatar::src($this->user->id, $this->user->name)
+            'default_avatar' => Avatar::src($this->user->id, $this->user->name),
+            'are_photo_uploads_on' => Config::arePhotoUploadsOn(),
         ]);
     }
 
@@ -83,11 +85,12 @@ class Profile extends Authenticated
     }
 
     /**
-     * Save the uploaded photo (for AJAX)
+     * Save the uploaded photo (for AJAX). Refused while the site has no
+     * Cloudinary account, so no photo from anyone else's gets in
      */
     public function updateAvatarAction(): void
     {
-        if (!$this->user->updateAvatar((string) ($_POST['avatar'] ?? ''))) {
+        if (!Config::arePhotoUploadsOn() || !$this->user->updateAvatar((string) ($_POST['avatar'] ?? ''))) {
             http_response_code(400);
         }
     }
