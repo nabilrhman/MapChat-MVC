@@ -228,23 +228,18 @@ MySQL-compatible service.
 2. In Render, choose **New > Blueprint** and pick this repository. Render reads
    `render.yaml` and asks for the database host, user and password from TiDB's
    **Connect** dialog, and for `APP_URL` (the `onrender.com` address).
-3. Optional: set `MAILER_DSN` to turn on activation and password-reset emails
-   (Render's free plan blocks SMTP ports, so use `brevo+api://API_KEY@default`),
-   `CLOUDINARY_CLOUD_NAME` / `CLOUDINARY_UPLOAD_PRESET` for avatar uploads,
-   and `GROQ_API_KEY` for MapChat and the demo people to chat back.
+3. Optional settings:
+   - `MAILER_DSN` for activation and password-reset emails. Render's free plan
+     blocks SMTP, so use `brevo+api://API_KEY@default`.
+   - `CLOUDINARY_CLOUD_NAME` and `CLOUDINARY_UPLOAD_PRESET` for avatar uploads.
+   - `GROQ_API_KEY` for MapChat and the AI characters to chat back.
 
-The chat socket needs no service of its own: Render's HTTPS address carries
-`wss://…/ws` to it. It runs as one instance; see
-[docs/live-chat.md](docs/live-chat.md).
+Free Render services sleep after 15 minutes without visitors; the `Keep awake`
+workflow visits every 10 minutes, well within Render's 750 free hours a month.
+The container also brings an older database up to date when it starts.
 
-Free Render services sleep after 15 minutes without visitors, so the first visit
-after a quiet spell takes about a minute. To prevent that, the `Keep awake` GitHub
-Actions workflow requests `/health.txt` every 10 minutes. A service that never
-sleeps uses about 744 of the 750 free hours Render gives each workspace a month.
-
-An older database is brought up to date by the container when it starts
-(`database/migrate.php`). The oldest changes, from before that, are added by
-hand:
+<details>
+<summary>Upgrading a database from before the automatic upgrades</summary>
 
 ```sql
 ALTER TABLE chats
@@ -257,6 +252,8 @@ ALTER TABLE userinfo
   ADD COLUMN country CHAR(2) AFTER city,
   ADD COLUMN timezone VARCHAR(64) AFTER country;
 ```
+
+</details>
 
 ## Project layout
 
