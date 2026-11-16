@@ -21,26 +21,19 @@
  * ends, Ctrl+C included. It clears that guest's earlier private chats with
  * Maya and Rafael first, so the tour starts with none.
  *
- * Needs Chrome and ffmpeg. MAPCHAT_URL changes the address (default
- * http://localhost:8080). MAPCHAT_ROOT is the checkout whose docker compose
- * project runs the app (default this one): set it when recording from a git
- * worktree. MAPCHAT_SCALE, MAPCHAT_GPU and MAPCHAT_CHROME_FLAGS are below
+ * Needs Chrome and ffmpeg. MAPCHAT_SCALE is below; MAPCHAT_URL, MAPCHAT_ROOT
+ * (set it when recording from a git worktree), MAPCHAT_GPU and
+ * MAPCHAT_CHROME_FLAGS are in chrome.ts
  */
-import {execFile} from 'node:child_process';
 import {mkdtempSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {join, resolve} from 'node:path';
-import {promisify} from 'node:util';
-import {type Browser, chromium, type Locator, type Page} from 'playwright';
+import {join} from 'node:path';
+import type {Browser, Locator, Page} from 'playwright';
 
+import {app, launchChrome, printRenderer, REPO, run, sql, URL, USES_GPU} from './chrome.ts';
 import {Person, type Point, SeededRandom, waitSeconds} from './person.ts';
 import {drawPointer, readThemeCursors} from './pointer.ts';
 
-const run = promisify(execFile);
-
-const REPO = resolve(import.meta.dirname, '../..');
-const COMPOSE_ROOT = process.env.MAPCHAT_ROOT ?? REPO;
-const URL = (process.env.MAPCHAT_URL ?? 'http://localhost:8080').replace(/\/+$/, '');
 const SESSION = process.env.MAPCHAT_SESSION ?? '';
 const GUEST_EMAIL = (process.env.MAPCHAT_GUEST_EMAIL ?? '').replaceAll("'", '');
 const OUT = join(REPO, 'docs/images/mapchat-tour.mp4');
@@ -48,14 +41,6 @@ const WIDTH = 1440;
 const HEIGHT = 900;
 // Pixels per CSS pixel; 2 is a Retina screen, and the video is WIDTH×HEIGHT times this
 const SCALE = Number(process.env.MAPCHAT_SCALE ?? 2);
-// Chrome draws on the GPU (through ANGLE and EGL), as software drawing
-// can't keep up at SCALE 2; MAPCHAT_GPU=0 turns it off
-const USES_GPU = process.env.MAPCHAT_GPU !== '0';
-const GPU_FLAGS = ['--enable-gpu', '--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl-egl'];
-const CHROME_FLAGS = [
-    ...(USES_GPU ? GPU_FLAGS : []),
-    ...(process.env.MAPCHAT_CHROME_FLAGS ?? '').split(/\s+/).filter(Boolean),
-];
 const FPS = 60;
 // A frame unchanged for longer than this is shown for only this long
 const LONGEST_STILL_SECONDS = 1.0;
@@ -63,22 +48,6 @@ const SEED = 7;
 
 /** A frame from Chrome's screencast: when it was drawn, in seconds, and its file */
 type Frame = {drawnAt: number, file: string};
-
-/** Runs a command in the app's container */
-async function app(...command: string[]): Promise<string> {
-    const {stdout} = await run('docker', ['compose', 'exec', '-T', 'app', ...command], {cwd: COMPOSE_ROOT});
-    return stdout;
-}
-
-/** Runs a statement on the app's database */
-async function sql(statement: string): Promise<string> {
-    const {stdout} = await run(
-        'docker',
-        ['compose', 'exec', '-T', 'db', 'mysql', '--default-character-set=utf8mb4', '-uroot', '-pmapchat', 'mapchat', '-N', '-e', statement],
-        {cwd: COMPOSE_ROOT},
-    );
-    return stdout.trim();
-}
 
 let isWorkerPaused = false;
 
@@ -404,26 +373,15 @@ async function main(): Promise<void> {
     await pauseWorker();
     const jobs = new JobRunner();
     try {
-        browser = await chromium.launch({
-            channel: 'chrome',
-            headless: true,
-            args: [`--window-size=${WIDTH},${HEIGHT}`, '--hide-scrollbars', `--force-device-scale-factor=${SCALE}`, ...CHROME_FLAGS],
-            // The handlers above close it and let the worker go
-            handleSIGINT: false,
-            handleSIGTERM: false,
-        });
+        // The handlers above close it and let the worker go
+        browser = await launchChrome(
+            [`--window-size=${WIDTH},${HEIGHT}`, '--hide-scrollbars', `--force-device-scale-factor=${SCALE}`],
+            {handlesSignals: true},
+        );
         const context = await browser.newContext({viewport: {width: WIDTH, height: HEIGHT}, deviceScaleFactor: SCALE});
         await context.addInitScript(drawPointer, readThemeCursors(SCALE));
         const page = await context.newPage();
-        const renderer = await page.evaluate(() => {
-            const gl = document.createElement('canvas').getContext('webgl');
-            const rendererInfo = gl?.getExtension('WEBGL_debug_renderer_info');
-            if (!gl) {
-                return 'no WebGL';
-            }
-            return rendererInfo ? gl.getParameter(rendererInfo.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
-        });
-        console.log('Drawing with', renderer);
+        await printRenderer(page);
 
         // Every repaint, with when it was drawn, as Chrome sends it
         const devTools = await context.newCDPSession(page);
