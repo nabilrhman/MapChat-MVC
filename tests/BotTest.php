@@ -422,7 +422,7 @@ class BotTest extends TestCase
 
         $this->wait(Bot::FOLLOW_UP_SECONDS);
 
-        $this->assertSame([[$maya, 'reply 1']], $this->answers(), 'Maya answers, and MapChat stays out of it');
+        $this->assertSame([[$maya, '@Ann reply 1']], $this->answers(), 'Maya answers, tagging Ann, and MapChat stays out of it');
         $this->assertStringContainsString('You are Maya Thompson', TestBot::$asked[0][0]);
         $this->assertStringContainsString('Toronto', TestBot::$asked[0][0]);
         $this->assertStringContainsString("digital characters, written by AI", TestBot::$asked[0][0]);
@@ -437,8 +437,8 @@ class BotTest extends TestCase
 
         $this->wait(Bot::ROOM_COOLDOWN_SECONDS);
 
-        $this->assertSame([[$maya, 'reply 1'], [$maya, 'reply 2']], $this->answers());
-        $this->assertStringContainsString("Maya (you): reply 1\nAnn: what do you do there?", TestBot::$asked[1][1]);
+        $this->assertSame([[$maya, '@Ann reply 1'], [$maya, '@Ann reply 2']], $this->answers());
+        $this->assertStringContainsString("Maya (you): @Ann reply 1\nAnn: what do you do there?", TestBot::$asked[1][1]);
     }
 
     public function testDemoPersonReadsTheirOwnLinesButNotTheOtherScript()
