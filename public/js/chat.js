@@ -156,7 +156,6 @@ function addTab(conversation, name) {
     onlineDot.hidden = !onlineUserIds.has(Number(conversation));
 
     const nameLabel = createElement('span', 'chat-tab__name', name);
-    nameLabel.title = name;
 
     const unreadCount = createElement('span', 'chat-tab__unread');
     unreadCount.hidden = true;
