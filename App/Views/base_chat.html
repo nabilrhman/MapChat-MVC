@@ -1,4 +1,12 @@
 {% extends 'base_app.html' %}
+{# The chat page (App::indexAction): the map, the chat panel and the people
+   list. Its messages come in the chats block #}
+{% types {
+    current_user: 'App\\Models\\User',
+    last_chat_id: 'int',
+    conversations?: 'array',
+    build_id?: 'string',
+} -%}
 
 {% block title %}Chat{% endblock %}
 
@@ -30,17 +38,19 @@
 </button>
 
 {# What chat.js needs from the server #}
-<div class="chat-panel" id="chat"
+<main class="chat-panel" id="chat"
      data-my-id="{{ current_user.id|e('html_attr') }}"
      data-last-chat-id="{{ last_chat_id|e('html_attr') }}"
      data-page-size="{{ constant('App\\Models\\Chat::HISTORY') }}"
-     data-conversations="{{ conversations|default([])|json_encode|e('html_attr') }}"
-     data-build="{{ build_id|default('')|e('html_attr') }}">
+     data-conversations="{{ (conversations ?? [])|json_encode|e('html_attr') }}"
+     data-build="{{ (build_id ?? '')|e('html_attr') }}">
 
+    {# Each tab: a button that opens its chat, and on a private chat one that
+       closes it (chat.js) #}
     <div class="chat-tabs" id="chat-tabs">
-        <a class="chat-tab" href="#" data-conversation="everyone">
-            <span class="chat-tab__name"># Everyone</span><span class="chat-tab__unread" hidden></span>
-        </a>
+        <div class="chat-tab" data-conversation="everyone">
+            <button class="chat-tab__open" type="button"><span class="chat-tab__name"># Everyone</span><span class="chat-tab__unread" hidden></span></button>
+        </div>
     </div>
 
     {# Phones with the map open: folds the chat down to its tabs (chat.js) #}
@@ -96,15 +106,16 @@
 
         {# Shows when you've scrolled up; counts messages that came in meanwhile #}
         <button type="button" class="jump-latest" id="jump-latest" hidden>
-            {{ icon('arrow-down', 'jump-latest__icon') }}<span id="jump-latest-text" aria-live="polite">Latest</span>
+            {{ icon('arrow-down', 'jump-latest__icon') }}<span class="jump-latest__text" id="jump-latest-text" aria-live="polite">Latest</span>
         </button>
     </div>
 
     <form class="chat-composer" method="post" id="input-container-form">
         <div class="chat-composer__input">
+            <label class="chat-composer__label" for="textarea-send">Your message</label>
             <span class="chat-composer__count" id="char-count" hidden></span>
             <textarea name="message" placeholder="Type your message" rows="1" class="chat-composer__textarea" id="textarea-send"
-                      maxlength="{{ constant('App\\Models\\Chat::MAX_LENGTH') }}" autofocus></textarea>
+                      maxlength="{{ constant('App\\Models\\Chat::MAX_LENGTH') }}" required autofocus></textarea>
         </div>
 
         <button name="send" class="chat-composer__send" id="button-send" type="submit"
@@ -113,12 +124,12 @@
         </button>
     </form>
 
-</div>
+</main>
 
 <aside class="people" id="people">
     <h6 class="people__heading people__heading--top">
         <span class="people__title"><span class="people__count" id="online-count">0</span>Online</span>
-        <span class="people__close" id="people-close" title="Close">&times;</span>
+        <button class="people__close" id="people-close" type="button" title="Close the list">&times;</button>
     </h6>
 
     <div class="people__list">

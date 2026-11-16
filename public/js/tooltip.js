@@ -1,122 +1,132 @@
 // Tooltips in the app's style instead of the browser's grey box. Anything
 // with a title gets one: on hover the title moves to data-tip (so the
 // browser's own doesn't show too) and a small dark label appears above it,
-// or below when there's no room. Touch screens keep no tooltips, as before.
-(function () {
+// or below when there's no room. Touch screens keep no tooltips, as before
+
+// Just long enough not to flicker when the mouse passes over
+const TOOLTIP_DELAY = 150;
+// Between the label and the screen's edge, and the label and its thing
+const TOOLTIP_EDGE_GAP = 8;
+const TOOLTIP_GAP = 6;
+const HAS_TOOLTIP = '[title], [data-tip]';
+
+// Moves the element's title to data-tip and gives back the tip's text
+function moveTitleToTip(element) {
+    const title = element.getAttribute('title');
+    if (title) {
+        element.dataset.tip = title;
+        element.removeAttribute('title');
+        // Keep a name for screen readers on things with no text of their own
+        if (!element.getAttribute('aria-label') && !element.textContent.trim()) {
+            element.setAttribute('aria-label', title);
+        }
+    } else if (title === '') {
+        delete element.dataset.tip; // the title was cleared, e.g. your own row
+    }
+    return element.dataset.tip || '';
+}
+
+// Where the thing's text actually is: a name spans its whole row, but
+// the tooltip should sit over the name itself
+function textBoxOf(element) {
+    if (element.textContent.trim() && !element.querySelector('img, i, svg')) {
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        const rect = range.getBoundingClientRect();
+        if (rect.width) return rect;
+    }
+    return element.getBoundingClientRect();
+}
+
+function setUpTooltips() {
     if (!window.matchMedia('(hover: hover)').matches) return;
 
-    var DELAY = 150; // just long enough not to flicker when the mouse passes over
-    var tip = document.createElement('div');
-    tip.className = 'tooltip';
-    tip.setAttribute('role', 'tooltip');
-    document.body.appendChild(tip);
+    const tooltip = createElement('div', 'tooltip');
+    tooltip.setAttribute('role', 'tooltip');
+    document.body.append(tooltip);
 
-    var target = null;
-    var timer = null;
-    var mouse = {x: 0, y: 0};
+    let tipTarget = null;
+    let showTimer = null;
+    const mousePosition = {x: 0, y: 0};
 
-    document.addEventListener('mousemove', function (event) {
-        mouse.x = event.clientX;
-        mouse.y = event.clientY;
+    document.addEventListener('mousemove', (event) => {
+        mousePosition.x = event.clientX;
+        mousePosition.y = event.clientY;
     });
 
-    function textOf(el) {
-        var title = el.getAttribute('title');
-        if (title) {
-            el.dataset.tip = title;
-            el.removeAttribute('title');
-            // Keep a name for screen readers on things with no text of their own
-            if (!el.getAttribute('aria-label') && !el.textContent.trim()) {
-                el.setAttribute('aria-label', title);
-            }
-        } else if (title === '') {
-            delete el.dataset.tip; // the title was cleared, e.g. your own row
-        }
-        return el.dataset.tip || '';
-    }
-
-    // Where the thing's text actually is: a name spans its whole row, but
-    // the tooltip should sit over the name itself
-    function boxOf(el) {
-        if (el.textContent.trim() && !el.querySelector('img, i, svg')) {
-            var range = document.createRange();
-            range.selectNodeContents(el);
-            var rect = range.getBoundingClientRect();
-            if (rect.width) return rect;
-        }
-        return el.getBoundingClientRect();
-    }
-
-    function show() {
+    function showTooltip() {
         // Redrawn while we waited: use what's under the mouse now
-        if (target && !target.isConnected) {
-            var under = document.elementFromPoint(mouse.x, mouse.y);
-            target = under && under.closest('[title], [data-tip]');
+        if (tipTarget && !tipTarget.isConnected) {
+            tipTarget = document.elementFromPoint(mousePosition.x, mousePosition.y)?.closest(HAS_TOOLTIP) ?? null;
         }
 
-        var text = target && textOf(target);
+        const text = tipTarget && moveTitleToTip(tipTarget);
         if (!text) return;
 
-        tip.textContent = text;
-        tip.classList.remove('tooltip--below', 'tooltip--left');
-        var box = boxOf(target);
-        var width = tip.offsetWidth;
-        var height = tip.offsetHeight;
+        tooltip.textContent = text;
+        tooltip.classList.remove('is-below', 'is-on-left');
+        const box = textBoxOf(tipTarget);
+        const width = tooltip.offsetWidth;
+        const height = tooltip.offsetHeight;
 
         // To the left, for rows in a list at the screen's right edge, where
         // above would cover the row before
-        if (target.dataset.tipSide === 'left' && box.left - width - 8 > 8) {
-            tip.classList.add('tooltip--left');
-            tip.style.left = (box.left - width - 8) + 'px';
-            tip.style.top = (box.top + box.height / 2 - height / 2) + 'px';
-            tip.classList.add('is-shown');
+        const leftOfBox = box.left - width - TOOLTIP_EDGE_GAP;
+        if (tipTarget.dataset.tipSide === 'left' && leftOfBox > TOOLTIP_EDGE_GAP) {
+            tooltip.classList.add('is-on-left');
+            tooltip.style.left = `${leftOfBox}px`;
+            tooltip.style.top = `${box.top + box.height / 2 - height / 2}px`;
+            tooltip.classList.add('is-shown');
             return;
         }
 
-        var left = Math.min(Math.max(8, box.left + box.width / 2 - width / 2), window.innerWidth - width - 8);
-        var top = box.top - height - 6;
-        if (top < 8) {
-            top = box.bottom + 6;
-            tip.classList.add('tooltip--below');
+        const centredLeft = box.left + box.width / 2 - width / 2;
+        const left = Math.min(Math.max(TOOLTIP_EDGE_GAP, centredLeft), window.innerWidth - width - TOOLTIP_EDGE_GAP);
+        let top = box.top - height - TOOLTIP_GAP;
+        if (top < TOOLTIP_EDGE_GAP) {
+            top = box.bottom + TOOLTIP_GAP;
+            tooltip.classList.add('is-below');
         }
 
         // The arrow points at the middle of the thing, even when the label is
         // pushed in from the screen's edge
-        tip.style.setProperty('--arrow-x', (box.left + box.width / 2 - left) + 'px');
-        tip.style.left = left + 'px';
-        tip.style.top = top + 'px';
-        tip.classList.add('is-shown');
+        tooltip.style.setProperty('--arrow-x', `${box.left + box.width / 2 - left}px`);
+        tooltip.style.left = `${left}px`;
+        tooltip.style.top = `${top}px`;
+        tooltip.classList.add('is-shown');
     }
 
-    function hide() {
-        clearTimeout(timer);
-        target = null;
-        tip.classList.remove('is-shown');
+    function hideTooltip() {
+        clearTimeout(showTimer);
+        tipTarget = null;
+        tooltip.classList.remove('is-shown');
     }
 
-    document.addEventListener('mouseover', function (event) {
-        var el = event.target.closest('[title], [data-tip]');
-        if (el === target) return;
+    document.addEventListener('mouseover', (event) => {
+        const element = event.target.closest(HAS_TOOLTIP);
+        if (element === tipTarget) return;
 
         // A list that redraws itself (the people list) swaps the row under
         // the mouse for an identical one; keep the tooltip on the new row
-        if (el && tip.classList.contains('is-shown') && textOf(el) === tip.textContent) {
-            target = el;
+        if (element && tooltip.classList.contains('is-shown') && moveTitleToTip(element) === tooltip.textContent) {
+            tipTarget = element;
             return;
         }
 
-        hide();
-        if (!el) return;
+        hideTooltip();
+        if (!element) return;
 
-        target = el;
-        textOf(el); // take the title away now, before the browser shows its own
-        timer = setTimeout(show, DELAY);
+        tipTarget = element;
+        moveTitleToTip(element); // now, before the browser shows its own
+        showTimer = setTimeout(showTooltip, TOOLTIP_DELAY);
     });
 
-    document.addEventListener('mousedown', hide);
+    document.addEventListener('mousedown', hideTooltip);
     // Typing means the mouse is resting, not pointing; something opening
     // under it (the @ list) mustn't have a tooltip showing through
-    document.addEventListener('keydown', hide);
-    document.addEventListener('scroll', hide, true);
-    window.addEventListener('blur', hide);
-})();
+    document.addEventListener('keydown', hideTooltip);
+    document.addEventListener('scroll', hideTooltip, true);
+    window.addEventListener('blur', hideTooltip);
+}
+
+setUpTooltips();

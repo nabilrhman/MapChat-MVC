@@ -3,7 +3,7 @@
 // Drawn with MapLibre on OpenFreeMap's vector tiles (OpenStreetMap data, no
 // API key). Their light "positron" style is recoloured below to match the
 // lavender theme MapChat used on Google Maps: grey land, lavender water and
-// parks, purple water labels, and yellow pins.
+// parks, purple water labels, and yellow pins
 
 const STYLE_URL = 'https://tiles.openfreemap.org/styles/positron';
 const MAPLIBRE_URL = 'https://unpkg.com/maplibre-gl@4.7.1/dist/';
@@ -20,6 +20,8 @@ const PINS_INTERVAL = 15000;
 const PINS_REFRESH_DELAY = 1000;
 // The map fades in even if a slow tile never arrives
 const SHOW_MAP_TIMEOUT = 4000;
+// Without the style by then, the tile map takes over
+const STYLE_TIMEOUT = 10000;
 
 // MapChat's purple map, by map layer: near-white land, lavender water, and
 // text in purples from deep (countries) to light (small places)
@@ -88,12 +90,12 @@ const LABEL_COLOURS = [
 
 const hasText = (layer) => layer.type === 'symbol' && Boolean(layer.layout?.['text-field']);
 
-function getLabelColour(layerId) {
+function labelColourOf(layerId) {
     return LABEL_COLOURS.find(({isLayer}) => isLayer(layerId))?.colour ?? THEME.otherText;
 }
 
 function themeLabel(layer) {
-    layer.paint['text-color'] = getLabelColour(layer.id);
+    layer.paint['text-color'] = labelColourOf(layer.id);
     layer.paint['text-halo-color'] = /^water/.test(layer.id) ? THEME.waterTextHalo : THEME.textHalo;
     layer.paint['text-halo-width'] = 1.2;
 
@@ -128,11 +130,8 @@ function createPinLabel(location) {
     label.append(createElement('strong', 'pin-label__name', location.shown_name || ''));
 
     if (location.city || location.country) {
-        const place = createElement('span', 'pin-label__place');
-        if (location.country) {
-            place.append(createElement('span', `fi fi-${location.country.toLowerCase()}`));
-        }
-        place.append(placeName(location.city, location.country));
+        const place = createPlace(location.city, location.country);
+        place.classList.add('pin-label__place');
         label.append(place);
     }
 
@@ -146,15 +145,10 @@ function createPinLabel(location) {
     return label;
 }
 
-// Without their time zone, getSenderTime estimates it from the longitude
+// Without their time zone, localTimeOf (chat.js) estimates it from the longitude
 function showPinTime(time) {
-    const localTime = getSenderTime(new Date(), time.dataset.timezone, parseFloat(time.dataset.lng));
-    const isDaytime = localTime.hour >= 6 && localTime.hour < 18;
-
-    const daylightIcon = time.querySelector('.pin-label__daylight');
-    setIcon(daylightIcon, isDaytime ? 'sun' : 'moon');
-    daylightIcon.classList.toggle('pin-label__daylight--day', isDaytime);
-    daylightIcon.classList.toggle('pin-label__daylight--night', !isDaytime);
+    const localTime = localTimeOf(new Date(), time.dataset.timezone, parseFloat(time.dataset.lng));
+    showDaylight(time.querySelector('.pin-label__daylight'), 'pin-label__daylight', localTime.hour);
     time.querySelector('span').textContent = localTime.text;
 }
 
@@ -178,8 +172,8 @@ function fadeOutPin(pin, removePin) {
     pin.addEventListener('animationend', removePin, {once: true});
 }
 
-const getLngLat = (location) => [parseFloat(location.lng), parseFloat(location.lat)];
-const getLatLng = (location) => [parseFloat(location.lat), parseFloat(location.lng)];
+const lngLatOf = (location) => [parseFloat(location.lng), parseFloat(location.lat)];
+const latLngOf = (location) => [parseFloat(location.lat), parseFloat(location.lng)];
 
 /* Fitting the map */
 
@@ -238,7 +232,19 @@ async function loadLocations() {
 }
 
 // Everything a pin shows; when it changes, the pin is drawn again
-const getPinContent = (location) => [location.lat, location.lng, location.shown_name, location.city, location.country, location.timezone].join('|');
+const pinContentOf = (location) => [location.lat, location.lng, location.shown_name, location.city, location.country, location.timezone].join('|');
+
+// What the rest of the page asks of the pins (refreshPinsSoon, focusPin)
+// and the map's own rounds share
+const pins = {
+    // Fetches them now; set by keepPinsUpdated, once the map is made
+    refresh: () => {},
+    nextRefreshTimer: null,
+    // Set once the map has its pins; a pin asked for before then is
+    // focused once it does
+    haveLoaded: false,
+    userIdToFocus: null,
+};
 
 // Fetches the pins now, and again when someone comes online or goes
 // (refreshPinsSoon), or every round on the HTTP fallback. Adds new people,
@@ -254,7 +260,7 @@ function keepPinsUpdated(addPin, fitPins) {
         const shownUserIds = new Set();
 
         locations.forEach((location) => {
-            const content = getPinContent(location);
+            const content = pinContentOf(location);
             const pin = pinsByUserId.get(location.user_id);
             shownUserIds.add(location.user_id);
 
@@ -270,42 +276,35 @@ function keepPinsUpdated(addPin, fitPins) {
         });
     }
 
-    function refreshPins() {
-        loadLocations()
-            .then((locations) => {
-                updatePins(locations);
-                if (isFirstRound) {
-                    fitPins(locations);
-                    isFirstRound = false;
-                }
-                hasPins = true;
-                if (pinToFocus !== null) {
-                    focusPin(pinToFocus);
-                    pinToFocus = null;
-                }
-            })
-            .catch(() => {
-                // Try again on the next round
-            })
-            .finally(() => {
-                showMapOnce();
-                clearTimeout(nextPinsRefresh);
-                if (!isChatSocketLive()) nextPinsRefresh = setTimeout(refreshPins, PINS_INTERVAL);
-            });
+    async function refreshPins() {
+        try {
+            const locations = await loadLocations();
+            updatePins(locations);
+            if (isFirstRound) {
+                fitPins(locations);
+                isFirstRound = false;
+            }
+            pins.haveLoaded = true;
+            if (pins.userIdToFocus !== null) {
+                focusPin(pins.userIdToFocus);
+                pins.userIdToFocus = null;
+            }
+        } catch {
+            // Try again on the next round
+        }
+        showMapOnce();
+        clearTimeout(pins.nextRefreshTimer);
+        if (!isChatSocketLive()) pins.nextRefreshTimer = setTimeout(refreshPins, PINS_INTERVAL);
     }
 
-    refreshPinsNow = refreshPins;
+    pins.refresh = refreshPins;
     refreshPins();
 }
 
-// Set by keepPinsUpdated, once the map is made
-let refreshPinsNow = () => {};
-let nextPinsRefresh = null;
-
 // After a presence change, or when polling starts or stops (chat.js)
 function refreshPinsSoon() {
-    clearTimeout(nextPinsRefresh);
-    nextPinsRefresh = setTimeout(() => refreshPinsNow(), PINS_REFRESH_DELAY);
+    clearTimeout(pins.nextRefreshTimer);
+    pins.nextRefreshTimer = setTimeout(() => pins.refresh(), PINS_REFRESH_DELAY);
 }
 
 // How far above a pin's tip its label sits. A highlighted pin grows by
@@ -324,9 +323,6 @@ const FOCUS_PIN_ZOOM = 4;
 // ...in this long; the vector map starts gently, speeds up, then settles
 const FOCUS_DURATION = 800;
 const easeInOut = (progress) => (progress < 0.5 ? 4 * progress ** 3 : 1 - (-2 * progress + 2) ** 3 / 2);
-// Set once the map has its pins; a pin asked for before then is focused once it does
-let hasPins = false;
-let pinToFocus = null;
 
 // Brings the person's pin to the middle of the map's visible part, with its
 // label open (a click on a message's city). Nothing if they have no pin:
@@ -334,7 +330,7 @@ let pinToFocus = null;
 function focusPin(userId) {
     const label = pinLabelsByUserId.get(String(userId));
     if (!label) {
-        if (!hasPins) pinToFocus = String(userId);
+        if (!pins.haveLoaded) pins.userIdToFocus = String(userId);
         return;
     }
     label.focus();
@@ -358,7 +354,7 @@ let openPinPopup = null;
 
 // Adds a MapLibre pin; returns a function that removes it
 function addVectorPin(map, location, shouldAnimate) {
-    const lngLat = getLngLat(location);
+    const lngLat = lngLatOf(location);
     const label = createPinLabel(location);
     const popupTime = label.querySelector('.pin-label__time');
     const popup = new maplibregl.Popup({closeButton: false, offset: PIN_LABEL_OFFSET})
@@ -414,7 +410,7 @@ function addVectorPin(map, location, shouldAnimate) {
 
 function fitVectorPins(map, locations) {
     const bounds = new maplibregl.LngLatBounds();
-    locations.forEach((location) => bounds.extend(getLngLat(location)));
+    locations.forEach((location) => bounds.extend(lngLatOf(location)));
 
     const padding = getMapPadding();
     if (locations.length === 1) {
@@ -458,7 +454,7 @@ const DEGREES = Math.PI / 180;
 
 // Where the sun is straight overhead, from the usual low-precision solar
 // formulas (to about 0.1°)
-function getSubsolarPoint(date) {
+function subsolarPointAt(date) {
     const daysSince2000 = date.getTime() / 86400000 - 10957.5;
     const meanLongitude = 280.46 + 0.9856474 * daysSince2000;
     const meanAnomaly = (357.528 + 0.9856003 * daysSince2000) * DEGREES;
@@ -474,7 +470,7 @@ function getSubsolarPoint(date) {
 }
 
 // 0 in daylight, 1 at full night, eased through twilight
-function getNightAmount(sunAltitude) {
+function nightAmountAt(sunAltitude) {
     const progress = (SUNSET_ALTITUDE - sunAltitude) / (SUNSET_ALTITUDE - NIGHT_ALTITUDE);
     const clamped = Math.min(1, Math.max(0, progress));
     return clamped * clamped * (3 - 2 * clamped);
@@ -483,7 +479,7 @@ function getNightAmount(sunAltitude) {
 // Drawn pixel by pixel in Web Mercator rows, so MapLibre can stretch it
 // over the map without bending the edge of night
 function drawNightShade(date) {
-    const sun = getSubsolarPoint(date);
+    const sun = subsolarPointAt(date);
     const sinSunLat = Math.sin(sun.lat * DEGREES);
     const cosSunLat = Math.cos(sun.lat * DEGREES);
     const [red, green, blue] = hexToRgb(THEME.night);
@@ -502,7 +498,7 @@ function drawNightShade(date) {
             shade.data[pixel] = red;
             shade.data[pixel + 1] = green;
             shade.data[pixel + 2] = blue;
-            shade.data[pixel + 3] = 255 * NIGHT_OPACITY * getNightAmount(Math.asin(sinAltitude) / DEGREES);
+            shade.data[pixel + 3] = 255 * NIGHT_OPACITY * nightAmountAt(Math.asin(sinAltitude) / DEGREES);
         }
     }
 
@@ -522,7 +518,7 @@ function addNightShade(map) {
 }
 
 async function loadThemedStyle() {
-    const response = await fetch(STYLE_URL);
+    const response = await fetch(STYLE_URL, {signal: AbortSignal.timeout(STYLE_TIMEOUT)});
     if (!response.ok) throw new Error(`Map style ${response.status}`);
 
     const style = await response.json();
@@ -721,12 +717,20 @@ function addTileCredits(map) {
     });
 }
 
+// The room around the pins (getMapPadding) as Leaflet takes it
+function leafletPaddingOf(padding) {
+    return {
+        paddingTopLeft: [padding.left, padding.top],
+        paddingBottomRight: [padding.right, padding.bottom],
+    };
+}
+
 // Adds a Leaflet pin; returns a function that removes it
 function addTilePin(map, location, shouldAnimate) {
     const pin = createPinElement(location.user_id);
     pin.classList.toggle('is-entering', shouldAnimate);
     const icon = L.divIcon({className: '', html: pin.outerHTML, iconSize: [20, PIN_HEIGHT], iconAnchor: [10, PIN_HEIGHT]});
-    const marker = L.marker(getLatLng(location), {icon})
+    const marker = L.marker(latLngOf(location), {icon})
         // Made each time it opens, so the time is now's
         .bindTooltip(() => createPinLabel(location), {direction: 'top', offset: [0, -PIN_LABEL_OFFSET]})
         .addTo(map);
@@ -745,11 +749,9 @@ function addTilePin(map, location, shouldAnimate) {
         // left tiles unloaded or drawn off to the side. A bounds of one point,
         // as only fitting bounds takes the map's padding here
         focus: () => {
-            const latLng = getLatLng(location);
-            const padding = getMapPadding();
+            const latLng = latLngOf(location);
             map.flyToBounds([latLng, latLng], {
-                paddingTopLeft: [padding.left, padding.top],
-                paddingBottomRight: [padding.right, padding.bottom],
+                ...leafletPaddingOf(getMapPadding()),
                 maxZoom: Math.max(map.getZoom(), FOCUS_PIN_ZOOM),
                 duration: FOCUS_DURATION / 1000,
             });
@@ -772,10 +774,8 @@ function addTilePin(map, location, shouldAnimate) {
 function fitTilePins(map, locations) {
     if (locations.length === 0) return;
 
-    const padding = getMapPadding();
-    map.fitBounds(locations.map(getLatLng), {
-        paddingTopLeft: [padding.left, padding.top],
-        paddingBottomRight: [padding.right, padding.bottom],
+    map.fitBounds(locations.map(latLngOf), {
+        ...leafletPaddingOf(getMapPadding()),
         maxZoom: MAX_PIN_ZOOM,
     });
 }

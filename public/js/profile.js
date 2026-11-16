@@ -20,17 +20,17 @@ function showPlaceNote(isLocationShared) {
 }
 showPlaceNote(shareLocationSwitch.checked);
 
-shareLocationSwitch.addEventListener('change', () => {
+shareLocationSwitch.addEventListener('change', async () => {
     const isLocationShared = shareLocationSwitch.checked;
-    postForm('/profile/update-location-sharing', {share: isLocationShared ? 1 : 0})
-        .then(() => {
-            showPlaceNote(isLocationShared);
-            showToast(isLocationShared ? 'You are shown on the map' : 'You are hidden from the map', 'info');
-        })
-        .catch(() => {
-            shareLocationSwitch.checked = !isLocationShared;
-            showToast('Could not save. Try again.', 'warning');
-        });
+    try {
+        await postForm('/profile/update-location-sharing', {share: isLocationShared ? 1 : 0});
+    } catch {
+        shareLocationSwitch.checked = !isLocationShared;
+        showToast('Could not save. Try again.', 'warning');
+        return;
+    }
+    showPlaceNote(isLocationShared);
+    showToast(isLocationShared ? 'You are shown on the map' : 'You are hidden from the map', 'info');
 });
 
 /* Notifications: this browser's own setting, not saved to the account */
@@ -38,16 +38,21 @@ shareLocationSwitch.addEventListener('change', () => {
 const notificationsSwitch = document.getElementById('notifications');
 const notificationsHint = document.getElementById('notifications-hint');
 
-// Blocked or unsupported: only the browser's site settings can change that.
-// With Web Push set up, they come with MapChat closed too
+// The hint under the switch: the first that applies. Blocked or
+// unsupported, only the browser's site settings can change that; with Web
+// Push set up, they come with MapChat closed too
+const NOTIFICATIONS_HINTS = [
+    {appliesNow: () => !isNotifySupported(), text: "This browser can't show notifications"},
+    {appliesNow: () => Notification.permission === 'denied', text: "Blocked in your browser's site settings"},
+    {appliesNow: isPushSupported, text: 'On this browser, even when MapChat is closed'},
+    {appliesNow: () => true, text: 'On this browser, when MapChat is open in a tab'},
+];
+
 function showNotificationsState() {
     const isBlocked = !isNotifySupported() || Notification.permission === 'denied';
     notificationsSwitch.checked = areNotificationsOn();
     notificationsSwitch.disabled = isBlocked;
-    if (!isNotifySupported()) notificationsHint.textContent = "This browser can't show notifications";
-    else if (isBlocked) notificationsHint.textContent = "Blocked in your browser's site settings";
-    else if (isPushSupported()) notificationsHint.textContent = 'On this browser, even when MapChat is closed';
-    else notificationsHint.textContent = 'On this browser, when MapChat is open in a tab';
+    notificationsHint.textContent = NOTIFICATIONS_HINTS.find(({appliesNow}) => appliesNow()).text;
 }
 showNotificationsState();
 keepPushUpToDate();
@@ -79,16 +84,13 @@ const photoUpload = document.getElementById('file-upload');
 const removePhotoButton = document.getElementById('remove-photo');
 const CLOUDINARY_URL = `https://api.cloudinary.com/v1_1/${photoUpload.dataset.cloudName}/image/upload`;
 const CLOUDINARY_UPLOAD_PRESET = photoUpload.dataset.uploadPreset;
+// A photo takes longer than a form to send on a slow connection
+const PHOTO_UPLOAD_TIMEOUT = 60000;
 
 // An uploaded photo fades in over a soft circle once loaded
 function showPhoto(src) {
     avatar.src = src;
-    if (avatar.complete || src.startsWith('data:')) return;
-
-    photoFrame.classList.add('is-loading');
-    const onPhotoSettled = () => photoFrame.classList.remove('is-loading');
-    avatar.addEventListener('load', onPhotoSettled, {once: true});
-    avatar.addEventListener('error', onPhotoSettled, {once: true});
+    fadeInPhotos([avatar]);
 }
 showPhoto(avatar.src);
 
@@ -97,7 +99,7 @@ async function uploadPhoto(file) {
     formData.append('file', file);
     formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
 
-    const response = await axios.post(CLOUDINARY_URL, formData);
+    const response = await axios.post(CLOUDINARY_URL, formData, {timeout: PHOTO_UPLOAD_TIMEOUT});
     return response.data.secure_url;
 }
 
@@ -121,16 +123,16 @@ photoUpload.addEventListener('change', async () => {
     }
 });
 
-removePhotoButton.addEventListener('click', () => {
-    postForm('/profile/remove-avatar')
-        .then(() => {
-            showPhoto(avatar.dataset.defaultSrc);
-            removePhotoButton.hidden = true;
-            showToast('Photo removed');
-        })
-        .catch(() => {
-            showToast('Your photo could not be removed. Try again.', 'warning');
-        });
+removePhotoButton.addEventListener('click', async () => {
+    try {
+        await postForm('/profile/remove-avatar');
+    } catch {
+        showToast('Your photo could not be removed. Try again.', 'warning');
+        return;
+    }
+    showPhoto(avatar.dataset.defaultSrc);
+    removePhotoButton.hidden = true;
+    showToast('Photo removed');
 });
 
 /* Name, email and password: each card opens with Edit and saves with Save */
