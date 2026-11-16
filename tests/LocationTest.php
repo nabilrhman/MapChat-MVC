@@ -64,6 +64,30 @@ class LocationTest extends TestCase
         $this->assertSame('43.65', (string) $pin['lat'], 'no more places than that');
     }
 
+    public function testTheHttpsLocationServicesAreAskedWithoutAnIpstackKey()
+    {
+        putenv('IPSTACK_API_KEY');
+
+        $this->assertSame(['ipapi.co', 'ipwho.is', 'geojs'], array_keys(UserInfo::locationServiceUrls('8.8.8.8')));
+    }
+
+    public function testIpstackIsAskedLastBecauseItsKeyGoesOverPlainHttp()
+    {
+        putenv('IPSTACK_API_KEY=test-key');
+
+        try {
+            $services = UserInfo::locationServiceUrls('8.8.8.8');
+        } finally {
+            putenv('IPSTACK_API_KEY');
+        }
+
+        $this->assertSame(['ipapi.co', 'ipwho.is', 'geojs', 'ipstack'], array_keys($services));
+        $this->assertSame('http://api.ipstack.com/8.8.8.8?access_key=test-key', $services['ipstack']);
+        foreach (['ipapi.co', 'ipwho.is', 'geojs'] as $name) {
+            $this->assertStringStartsWith('https://', $services[$name], $name);
+        }
+    }
+
     public function testThePeopleListsLongitudeIsRoundedToo()
     {
         $this->db->prepare("UPDATE userinfo SET lat = 43.6532198, lng = -79.3831843, city = 'Toronto' WHERE email = ?")

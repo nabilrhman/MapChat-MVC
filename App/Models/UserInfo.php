@@ -122,9 +122,8 @@ class UserInfo extends \Core\Model
      * Look up the approximate location of an IP address
      *
      * Free services limit or block requests from hosting providers, so
-     * several are tried in turn until one answers: ipstack (only when
-     * IPSTACK_API_KEY is set), then ipapi.co, ipwho.is and GeoJS. Private and
-     * local addresses (e.g. in Docker) use DEV_FAKE_IP when it is set, so the
+     * several are tried in turn until one answers (locationServiceUrls has
+     * the order). Private and local addresses (e.g. in Docker) use DEV_FAKE_IP when it is set, so the
      * map still has a point locally
      *
      * @return array{lat: ?float, lng: ?float, city: ?string, country: ?string}
@@ -141,17 +140,7 @@ class UserInfo extends \Core\Model
             }
         }
 
-        $ip = urlencode($ip);
-        $services = [];
-        $ipstackKey = Config::get('IPSTACK_API_KEY');
-        if ($ipstackKey !== null) {
-            $services['ipstack'] = 'http://api.ipstack.com/' . $ip . '?access_key=' . urlencode($ipstackKey);
-        }
-        $services['ipapi.co'] = 'https://ipapi.co/' . $ip . '/json/';
-        $services['ipwho.is'] = 'https://ipwho.is/' . $ip;
-        $services['geojs'] = 'https://get.geojs.io/v1/ip/geo/' . $ip . '.json';
-
-        foreach ($services as $name => $url) {
+        foreach (static::locationServiceUrls($ip) as $name => $url) {
             $location = static::fetchLocation($url);
             if ($location !== null) {
                 return $location;
@@ -160,6 +149,31 @@ class UserInfo extends \Core\Model
         }
 
         return $empty;
+    }
+
+    /**
+     * The IP location services to ask about an IP, in the order they're
+     * tried: the https ones, then ipstack when IPSTACK_API_KEY is set. It
+     * comes last because its free plan is plain http, with the key in the
+     * address
+     *
+     * @return array<string, string> Each service's address, by its name
+     */
+    public static function locationServiceUrls(string $ip): array
+    {
+        $ip = urlencode($ip);
+        $services = [
+            'ipapi.co' => 'https://ipapi.co/' . $ip . '/json/',
+            'ipwho.is' => 'https://ipwho.is/' . $ip,
+            'geojs' => 'https://get.geojs.io/v1/ip/geo/' . $ip . '.json',
+        ];
+
+        $ipstackKey = Config::get('IPSTACK_API_KEY');
+        if ($ipstackKey !== null) {
+            $services['ipstack'] = 'http://api.ipstack.com/' . $ip . '?access_key=' . urlencode($ipstackKey);
+        }
+
+        return $services;
     }
 
     /**

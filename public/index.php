@@ -35,6 +35,8 @@ session_start([
     'cookie_secure' => str_starts_with(Config::appUrl(), 'https://'),
 ]);
 
+Core\ContentSecurityPolicy::send();
+
 $router = new Core\Router();
 
 // Each route names its method and the exact action it runs; no other method

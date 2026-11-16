@@ -118,7 +118,9 @@ on what's sent to its API. The code is in `App/Models/Bot.php`.
   PHP 8.4, in `Core/`. The app itself is in `App/`.
 - **Database:** MySQL, queried with prepared statements to block SQL injection.
 - **Views:** Twig 3 templates, which escape everything users type to block
-  cross-site scripting.
+  cross-site scripting. A strict Content-Security-Policy backs that up: a
+  script runs only if it carries the page's one-time nonce, or a script that
+  did loaded it (`Core/ContentSecurityPolicy.php`).
 - **Requests:** a form, a request from a page or the chat socket that changes
   anything must say it comes from the site itself (its Origin or Referer),
   which blocks cross-site request forgery.
@@ -143,13 +145,15 @@ on what's sent to its API. The code is in `App/Models/Bot.php`.
 - **AI replies:** Groq's chat API, run by the chat worker; see
   [AI chat](#ai-chat).
 - **Location:** looked up from the IP address someone logs in from, which is
-  kept with their account. ipstack is tried first when `IPSTACK_API_KEY` is
-  set, then ipapi.co, ipwho.is and GeoJS. The place is stored and shown
+  kept with their account. ipapi.co, ipwho.is and GeoJS are tried in turn,
+  then ipstack when `IPSTACK_API_KEY` is set. The place is stored and shown
   rounded to two decimal places, about a kilometre.
 - **Email:** Symfony Mailer, sending through any SMTP provider or Brevo's API.
 - **Sessions:** stored in MySQL rather than files, so restarting or waking up
   the container doesn't log anyone out.
-- **Avatars:** uploaded from the browser straight to Cloudinary.
+- **Avatars:** uploaded from the browser straight to the site's own
+  Cloudinary account. Without one, uploads are off and everyone keeps a
+  drawn avatar.
 - **Hosting:** a Docker image with Apache, PHP-FPM, the chat socket and the
   chat worker.
 
@@ -215,6 +219,10 @@ against their own database, `mapchat_test`, which is rebuilt from
 docker compose run --rm --build test
 ```
 
+With the app running, `python3 tests/a11y.py` checks every page for
+accessibility problems with axe-core, at desktop and phone widths, in
+headless Google Chrome.
+
 ### Settings
 
 All settings come from environment variables. `.env.example` lists them with
@@ -230,13 +238,13 @@ explanations. The main ones:
 | `SECRET_KEY` | Secret for hashing login and reset tokens. Required |
 | `MAILER_DSN` | Where outgoing email goes: an SMTP address, or `brevo+api://API_KEY@default`. Empty turns email off: new accounts are active at once, and a password reset says it couldn't send the email. Locally it defaults to Mailpit |
 | `MAIL_FROM` | Who emails come from. Default `MapChat <no-reply@localhost>`. Brevo needs an address on a domain verified with it |
-| `IPSTACK_API_KEY` | Optional. Makes ipstack the first place to look up where a visitor is. Its free plan is plain HTTP, with the key in the address. Without it, ipapi.co, ipwho.is and GeoJS are tried in turn |
+| `IPSTACK_API_KEY` | Optional. Adds ipstack as the last place to look up where a visitor is, after ipapi.co, ipwho.is and GeoJS. Last because its free plan is plain HTTP, with the key in the address |
 | `DEV_FAKE_IP` | Used in place of any private or reserved IP, in any environment. Locally every visitor has one, so this public IP puts them on the map. Leave it empty on a host |
 | `DEMO_TIMEZONE` | Optional. Where the demo people's day starts at midnight. Default `America/Toronto` |
 | `DEMO_SPEED` | Optional, for watching the demo chat locally: `60` plays the whole day in 24 minutes. Leave empty on a real site |
 | `GROQ_API_KEY` | Optional. Lets MapChat and the demo people chat back, through Groq's free plan (console.groq.com). Without it, MapChat only greets |
 | `MAPCHAT_MODEL` | Optional. The Groq model they write with. Default `openai/gpt-oss-120b` |
-| `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_UPLOAD_PRESET` | The Cloudinary account and unsigned upload preset avatar uploads go to. Default my account, `nabilr` and `eu0zgzwd`, so a copy should set its own |
+| `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_UPLOAD_PRESET` | The Cloudinary account and unsigned upload preset photo uploads go to. Both are needed for uploads, with no default: with either empty, uploads are off and the profile says so. Removing a photo still works |
 | `CHAT_SOCKET_HOST` | Optional. The address the chat socket listens on inside the container, behind Apache's `/ws`. Default `127.0.0.1` |
 | `CHAT_SOCKET_PORT` | Optional. The port the chat socket listens on. Default `8090` |
 | `CHAT_PRESENCE_GRACE_SECONDS` | Optional. How long someone still shows online after their last chat page closes. Default `10` |

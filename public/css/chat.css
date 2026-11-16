@@ -23,7 +23,7 @@
     --text-strong: #212121;
     --text-muted: #616161;
     --text-soft: #757575;
-    --text-faint: #9e9e9e;
+    --text-faint: #737373; /* the lightest grey small text can be and still read (4.5:1 on the cards) */
     --online: #43a047;
     --danger: #e53935; /* close buttons on hover, a count near its limit */
     --daylight-day: #ffa000; /* the sun beside a local time */

@@ -13,17 +13,17 @@
 {% block head %}
 <link rel="stylesheet" href="{{ asset('/css/chat.css') }}">
 {# map.js loads MapLibre itself, on phones only once the map is opened; wider screens fetch it at once #}
-<link rel="preload" as="script" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js" media="(min-width: 701px)">
+<link rel="preload" as="script" nonce="{{ csp_nonce }}" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js" media="(min-width: 701px)">
 <link rel="preload" as="style" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" media="(min-width: 701px)">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flag-icons@7.2.3/css/flag-icons.min.css">
 {% endblock %}
 
 {% block content %}
 
-<div class="map" id="map"></div>
+<section class="map" id="map" aria-label="Map of who's here"></section>
 
 <div class="map-loading" id="map-loading">
-    <span class="loading-dots" aria-label="Loading the map"><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span></span>
+    <span class="loading-dots" role="status" aria-label="Loading the map"><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span></span>
 </div>
 
 <!-- Shows the map on phones, where it starts hidden to give the chat the room -->
@@ -127,19 +127,19 @@
 </main>
 
 <aside class="people" id="people">
-    <h6 class="people__heading people__heading--top">
+    <h2 class="people__heading people__heading--top">
         <span class="people__title"><span class="people__count" id="online-count">0</span>Online</span>
         <button class="people__close" id="people-close" type="button" title="Close the list">&times;</button>
-    </h6>
+    </h2>
 
     <div class="people__list">
         <div id="people-online">
             <div class="people__loading">
-                <span class="loading-dots" aria-label="Loading"><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span></span>
+                <span class="loading-dots" role="status" aria-label="Loading"><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span></span>
             </div>
         </div>
 
-        <h6 class="people__heading" id="recent-heading" hidden>Recently here</h6>
+        <h2 class="people__heading" id="recent-heading" hidden>Recently here</h2>
         <div id="people-recent"></div>
     </div>
 </aside>
@@ -147,10 +147,10 @@
 {% endblock %}
 
 {% block footer %}
-<script src="{{ asset('/js/people.js') }}"></script>
-<script src="{{ asset('/js/mentions.js') }}"></script>
-<script src="{{ asset('/js/messages.js') }}"></script>
-<script src="{{ asset('/js/notifications.js') }}"></script>
-<script src="{{ asset('/js/chat.js') }}"></script>
-<script src="{{ asset('/js/map.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/people.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/mentions.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/messages.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/notifications.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/chat.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/map.js') }}"></script>
 {% endblock %}

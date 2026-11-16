@@ -4,3 +4,4 @@
 /logs/*.txt
 /build-id
 /.claude/worktrees/
+__pycache__/

@@ -2,4 +2,4 @@
    "beer" (the form fields, the switch). Layers, lowest first: base.css's
    global basics, then Beer, then the site's own CSS, which isn't in a layer
    and so always wins #}
-<style>@layer base, beer; @import url("https://cdn.jsdelivr.net/npm/beercss@5.0.3/dist/cdn/beer.scoped.min.css") layer(beer);</style>
+<style nonce="{{ csp_nonce }}">@layer base, beer; @import url("https://cdn.jsdelivr.net/npm/beercss@5.0.3/dist/cdn/beer.scoped.min.css") layer(beer);</style>

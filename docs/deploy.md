@@ -34,10 +34,14 @@ MySQL-compatible service.
      Without them, notifications still come while MapChat is open in a tab.
 
    Only the database settings are required.
-4. Avatar uploads go from the browser to Cloudinary. Without settings of its
-   own, a copy uploads to my Cloudinary account, so add
+4. Photo uploads go from the browser to Cloudinary, and need both
    `CLOUDINARY_CLOUD_NAME` and `CLOUDINARY_UPLOAD_PRESET` (an unsigned upload
-   preset) for yours in the service's **Environment** tab.
+   preset) for your own account, set in the service's **Environment** tab.
+   There's no default account: without both, uploads are off and the profile
+   says so. Removing a photo and the drawn avatars still work.
+5. Optional: `IPSTACK_API_KEY` adds ipstack as a last place to look up where
+   a visitor is, after ipapi.co, ipwho.is and GeoJS. It comes last because its
+   free plan is plain http, with the key in the address.
 
 Free Render services sleep after 15 minutes without visitors. The `Keep awake`
 workflow visits the site every 10 minutes, well within Render's 750 free hours
@@ -48,3 +52,11 @@ The container brings an older database up to date each time it starts
 (`database/migrate.php`): it adds the tables, columns and keys it's missing,
 and fills in the demo people's countries and MapChat's place on Null Island. If that fails, the site
 starts anyway and the error is in the service's logs.
+
+## A site that used the old default Cloudinary account
+
+Earlier versions uploaded photos to a built-in Cloudinary account when the
+two settings were empty. If your site relied on that, add
+`CLOUDINARY_CLOUD_NAME` and `CLOUDINARY_UPLOAD_PRESET` in Render's
+**Environment** tab, with the values that account used, before you deploy
+this version. Otherwise photo uploads turn off.

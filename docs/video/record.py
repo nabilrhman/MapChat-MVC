@@ -417,6 +417,14 @@ def tour(browser):
     map_ready()
     time.sleep(1.5)
 
+    # The offer to turn notifications on slides in; close it for the tour
+    if wait_for("document.getElementById('notify-prompt')?.classList.contains('is-shown')", 5):
+        time.sleep(1.2)
+        person.move_to(*centre("document.getElementById('notify-prompt-dismiss')"))
+        time.sleep(0.3)
+        person.click(*centre("document.getElementById('notify-prompt-dismiss')"))
+        time.sleep(1)
+
     # Hovering someone online points out their pin, with their local time
     person.move_to(*online('Maya'))
     time.sleep(1.8)

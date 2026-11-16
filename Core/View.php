@@ -66,6 +66,7 @@ class View
         $twig->addFunction(new TwigFunction('mentions', Mention::isMentionedIn(...)));
         $twig->addFunction(new TwigFunction('mark_mentions', Mention::mark(...), ['is_safe' => ['html']]));
         $twig->addGlobal('app_url', Config::appUrl());
+        $twig->addGlobal('csp_nonce', ContentSecurityPolicy::nonce());
         $twig->addGlobal('mapchat_can_reply', Bot::canReply());
         // For marking the current page in the header
         $twig->addGlobal('current_path', parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH));

@@ -42,11 +42,11 @@
     </footer>
 </main>
 
-<script src="{{ asset('/js/dom.js') }}"></script>
-<script src="{{ asset('/js/formChecks.js') }}"></script>
-<script src="{{ asset('/js/authForms.js') }}"></script>
-<script src="{{ asset('/js/passwordToggle.js') }}"></script>
-<script src="{{ asset('/js/loadingBar.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/dom.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/formChecks.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/authForms.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/passwordToggle.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/loadingBar.js') }}"></script>
 
 {% block footer %}{% endblock %}
 </body>

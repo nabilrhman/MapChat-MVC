@@ -6,7 +6,7 @@
     push_public_key: 'string',
 } -%}
 <!DOCTYPE html>
-<html data-icons="{{ asset('/icons.svg') }}">
+<html lang="en" data-icons="{{ asset('/icons.svg') }}">
 <head>
     <!-- The design is light only; stop browsers from auto-darkening it -->
     <meta name="color-scheme" content="only light">
@@ -45,14 +45,14 @@
 
 {{ include('_footer.html', with_context = false) }}
 
-<script src="https://unpkg.com/axios@1.21.0/dist/axios.min.js"></script>
-<script src="{{ asset('/js/dom.js') }}"></script>
-<script src="{{ asset('/js/http.js') }}"></script>
-<script src="{{ asset('/js/push.js') }}"></script>
-<script src="{{ asset('/js/toast.js') }}"></script>
-<script src="{{ asset('/js/loadingBar.js') }}"></script>
-<script src="{{ asset('/js/header.js') }}"></script>
-<script src="{{ asset('/js/tooltip.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="https://unpkg.com/axios@1.21.0/dist/axios.min.js"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/dom.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/http.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/push.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/toast.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/loadingBar.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/header.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/tooltip.js') }}"></script>
 {{ include('_flash.html', with_context = false) }}
 
 {% block footer %}{% endblock %}
