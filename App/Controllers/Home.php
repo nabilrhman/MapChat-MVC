@@ -5,21 +5,15 @@ namespace App\Controllers;
 use App\Auth;
 
 /**
- * Home controller
+ * The site's address, which leads to the chat or the login page
  */
 class Home extends \Core\Controller
 {
     /**
      * Send people to the chat if they're logged in, otherwise to the login page
-     *
-     * @return void
      */
-    public function indexAction()
+    public function indexAction(): void
     {
-        if (Auth::getUser()) {
-            $this->redirect('/app');
-        } else {
-            $this->redirect('/login');
-        }
+        $this->redirect(Auth::getUser() ? '/app' : '/login');
     }
 }

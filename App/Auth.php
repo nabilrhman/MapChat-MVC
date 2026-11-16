@@ -6,40 +6,39 @@ use App\Models\User;
 use App\Models\RememberedLogin;
 
 /**
- * Authentication
+ * Who is logged in: the session, the remember-me cookie, and a guest's
+ * cookie that brings them back to their account
  */
 class Auth
 {
+    /** How long "Remember me" keeps someone logged in, in seconds */
+    const REMEMBER_SECONDS = 60 * 60 * 24 * 30;
+
     /**
-     * Login the user
+     * Log the user in on this browser
      *
-     * @param User $user The user model
-     * @param boolean $remember_me Remember the login if true
-     *
-     * @return void
+     * @param bool $isRemembered Keep them logged in after the browser closes
      */
-    public static function login($user, $remember_me)
+    public static function login(User $user, bool $isRemembered): void
     {
         session_regenerate_id(true);
 
         $_SESSION['user_id'] = $user->id;
 
-        if ($remember_me && $user->rememberLogin()) {
-            static::setRememberCookie($user->remember_token, $user->expiry_timestamp);
+        if ($isRemembered) {
+            $expiresAt = time() + static::REMEMBER_SECONDS;
+            $token = RememberedLogin::create($user->id, $expiresAt);
+            static::setCookie('remember_me', $token, $expiresAt);
         }
     }
 
     /**
-     * Logout the user
-     *
-     * @return void
+     * Log out on this browser: the session, its cookie and any remembered login
      */
-    public static function logout()
+    public static function logout(): void
     {
-        // Unset all of the session variables
         $_SESSION = [];
 
-        // Delete the session cookie
         if (ini_get('session.use_cookies')) {
             $params = session_get_cookie_params();
 
@@ -54,33 +53,17 @@ class Auth
             );
         }
 
-        // Finally destroy the session
         session_destroy();
 
         static::forgetLogin();
     }
 
     /**
-     * Remember the originally-requested page in the session
-     *
-     * @return void
+     * Remember the page asked for, to come back to after logging in
      */
-    public static function rememberRequestedPage()
+    public static function rememberRequestedPage(): void
     {
         $_SESSION['return_to'] = $_SERVER['REQUEST_URI'];
-    }
-
-    /**
-     * Set or clear the remember-me cookie, with the session cookie's rules
-     *
-     * @param string $value
-     * @param int $expires
-     *
-     * @return void
-     */
-    protected static function setRememberCookie($value, $expires)
-    {
-        static::setCookie('remember_me', $value, $expires);
     }
 
     /**
@@ -88,24 +71,18 @@ class Auth
      * "Try it as a guest" brings them back to it
      *
      * @param User $guest A guest just created by User::createGuest
-     *
-     * @return void
      */
-    public static function rememberGuest($guest)
+    public static function rememberGuest(User $guest): void
     {
-        static::setCookie('guest_token', $guest->guest_token, $guest->guestExpiresAt());
+        static::setCookie('guest_token', $guest->guestToken, $guest->guestExpiresAt());
     }
 
     /**
      * Set a cookie with the session cookie's rules
      *
-     * @param string $name
-     * @param string $value
-     * @param int $expires
-     *
-     * @return void
+     * @param int $expires Unix time
      */
-    protected static function setCookie($name, $value, $expires)
+    protected static function setCookie(string $name, string $value, int $expires): void
     {
         setcookie($name, $value, [
             'expires' => $expires,
@@ -117,11 +94,9 @@ class Auth
     }
 
     /**
-     * Get the originally-requested page to return to after requiring login, or default to the homepage
-     *
-     * @return string
+     * The page to go to after logging in: the one asked for, or the home page
      */
-    public static function getReturnToPage()
+    public static function getReturnToPage(): string
     {
         $page = $_SESSION['return_to'] ?? '/';
         unset($_SESSION['return_to']);
@@ -135,76 +110,65 @@ class Auth
     }
 
     /**
-     * Get the current logged-in user, from the session or the remember-me cookie
-     *
-     * @return mixed The user model or null if not logged in
+     * The logged-in user, from the session or the remember-me cookie. A
+     * guest whose day is up counts as logged out
      */
-    public static function getUser()
+    public static function getUser(): ?User
     {
         // Asked for many times per request; each lookup is a database round trip
         static $user = false;
 
+        $sessionUserId = isset($_SESSION['user_id']) ? (int) $_SESSION['user_id'] : null;
+
         // Look again if someone logged in or out since
-        if ($user === false || $user?->id != ($_SESSION['user_id'] ?? null)) {
-            $user = isset($_SESSION['user_id'])
-                ? User::findByID($_SESSION['user_id'])
+        if ($user === false || $user?->id !== $sessionUserId) {
+            $user = $sessionUserId !== null
+                ? User::findByID($sessionUserId)
                 : static::loginFromRememberCookie();
+        }
+
+        return $user && !$user->isExpiredGuest() ? $user : null;
+    }
+
+    /**
+     * The logged-in user's email, or null
+     */
+    public static function getEmail(): ?string
+    {
+        return static::getUser()?->email;
+    }
+
+    /**
+     * Log in from the remember-me cookie, if it's still good
+     */
+    protected static function loginFromRememberCookie(): ?User
+    {
+        $rememberedLogin = RememberedLogin::findByToken($_COOKIE['remember_me'] ?? '');
+        if (!$rememberedLogin || $rememberedLogin->hasExpired()) {
+            return null;
+        }
+
+        $user = User::findByID($rememberedLogin->user_id);
+        if ($user) {
+            static::login($user, isRemembered: false);
         }
 
         return $user;
     }
 
     /**
-     * Get the logged-in user's email
-     *
-     * @return mixed The user email or null if not logged in
+     * Forget this browser's remembered login, if it has one
      */
-    public static function getEmail()
+    protected static function forgetLogin(): void
     {
-        return static::getUser()?->email;
-    }
-
-    /**
-     * Login the user from a remembered login cookie
-     *
-     * @return mixed The user model if login cookie found; null otherwise
-     */
-    protected static function loginFromRememberCookie()
-    {
-        $cookie = $_COOKIE['remember_me'] ?? false;
-
-        if ($cookie) {
-            $remembered_login = RememberedLogin::findByToken($cookie);
-
-            if ($remembered_login && !$remembered_login->hasExpired()) {
-                $user = $remembered_login->getUser();
-
-                static::login($user, false);
-
-                return $user;
-            }
+        $cookie = $_COOKIE['remember_me'] ?? '';
+        if ($cookie === '') {
+            return;
         }
 
-        return null;
-    }
+        RememberedLogin::findByToken($cookie)?->delete();
 
-    /**
-     * Forget the remembered login, if present
-     *
-     * @return void
-     */
-    protected static function forgetLogin()
-    {
-        $cookie = $_COOKIE['remember_me'] ?? false;
-
-        if ($cookie) {
-            $remembered_login = RememberedLogin::findByToken($cookie);
-
-            if ($remembered_login) {
-                $remembered_login->delete();
-            }
-
-            static::setRememberCookie('', time() - 3600);  // expired, so the browser drops it
-        }
+        // Expired, so the browser drops it
+        static::setCookie('remember_me', '', time() - 3600);
     }
 }

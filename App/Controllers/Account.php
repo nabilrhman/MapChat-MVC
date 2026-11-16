@@ -5,19 +5,19 @@ namespace App\Controllers;
 use App\Models\User;
 
 /**
- * Account controller
+ * Checks the sign-up and profile forms make while you type
  */
 class Account extends \Core\Controller
 {
     /**
-     * Validate if email is available (AJAX) for a new signup or an existing user.
-     * The ID of an existing user can be passed in in the querystring to ignore when
-     * checking if an email already exists or not.
-     *
-     * @return void
+     * Answer whether an email is free to use (for AJAX): true or false. The
+     * profile form passes ignore_id, its own user's id, so keeping your own
+     * email isn't a clash
      */
-    public function validateEmailAction()
+    public function validateEmailAction(): void
     {
-        $this->json(!User::emailExists($_GET['email'] ?? '', $_GET['ignore_id'] ?? null));
+        $ignoreId = isset($_GET['ignore_id']) ? (int) $_GET['ignore_id'] : null;
+
+        $this->json(!User::isEmailTaken((string) ($_GET['email'] ?? ''), $ignoreId));
     }
 }

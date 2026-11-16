@@ -15,14 +15,12 @@ class Push extends Authenticated
 
     /**
      * Save this browser's subscription for the signed-in user (for AJAX)
-     *
-     * @return void
      */
-    public function subscribeAction()
+    public function subscribeAction(): void
     {
-        $endpoint = $_POST['endpoint'] ?? '';
-        $p256dh = $_POST['p256dh'] ?? '';
-        $auth = $_POST['auth'] ?? '';
+        $endpoint = (string) ($_POST['endpoint'] ?? '');
+        $p256dh = (string) ($_POST['p256dh'] ?? '');
+        $auth = (string) ($_POST['auth'] ?? '');
 
         // Only push services' own https addresses; never one of ours or a local one
         if (!static::isPushEndpoint($endpoint) || $p256dh === '' || $auth === ''
@@ -37,24 +35,18 @@ class Push extends Authenticated
 
     /**
      * Forget this browser for the signed-in user (for AJAX)
-     *
-     * @return void
      */
-    public function unsubscribeAction()
+    public function unsubscribeAction(): void
     {
-        PushSubscription::delete(Auth::getEmail(), $_POST['endpoint'] ?? '');
+        PushSubscription::delete(Auth::getEmail(), (string) ($_POST['endpoint'] ?? ''));
         $this->json(['subscribed' => false]);
     }
 
     /**
      * Whether this looks like a push service's address: https, with a host
      * that isn't an IP address
-     *
-     * @param string $endpoint
-     *
-     * @return bool
      */
-    public static function isPushEndpoint($endpoint)
+    public static function isPushEndpoint(string $endpoint): bool
     {
         if (strlen($endpoint) > static::MAX_ENDPOINT_LENGTH || parse_url($endpoint, PHP_URL_SCHEME) !== 'https') {
             return false;

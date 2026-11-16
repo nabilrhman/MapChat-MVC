@@ -2,21 +2,20 @@
 
 namespace App\Controllers;
 
+use App\Models\DemoChat;
 use App\Models\User;
 
 /**
- * Initials avatars for people without an uploaded picture
+ * Drawn avatars for people without an uploaded picture
  */
 class Avatar extends Authenticated
 {
     /**
-     * Send the avatar of the user in the route, as SVG
-     *
-     * @return void
+     * Send the drawn avatar of the user in the route, as SVG
      */
-    public function showAction()
+    public function showAction(): void
     {
-        $user = User::findByID($this->route_params['id']);
+        $user = User::findByID((int) $this->routeParams['id']);
 
         if (!$user) {
             throw new \Exception('No such user', 404);
@@ -25,8 +24,6 @@ class Avatar extends Authenticated
         header('Content-Type: image/svg+xml');
         // The URL carries the name, so a renamed user gets a fresh image
         header('Cache-Control: private, max-age=86400');
-        echo str_ends_with($user->email, \App\Models\DemoChat::DOMAIN)
-            ? \App\Avatar::face($user->id, $user->name)
-            : \App\Avatar::svg($user->name, $user->id);
+        echo \App\Avatar::drawn($user->id, $user->name, DemoChat::isDemoEmail($user->email));
     }
 }
