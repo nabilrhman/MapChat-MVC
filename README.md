@@ -43,7 +43,7 @@ so it stays awake.
 
 https://github.com/user-attachments/assets/99c9917a-9a19-4b5e-b0e1-0ae6a7d4dc10
 
-<sub>A tour at 60fps: pins on the map, private chats with two AI characters answering for real, typing included, and tabs dragged and closed. Also in <a href="docs/images/mapchat-tour.mp4">docs/images/mapchat-tour.mp4</a>.</sub>
+<sub>A tour at 60fps: pins on the map, private chats with two AI characters answering for real, typing included, and tabs dragged and closed.</sub>
 
 | Log in, or try it as a guest | Profile |
 |---|---|
