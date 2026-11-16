@@ -238,6 +238,23 @@
     flex: none;
 }
 
+/* Beer's hover halo round the knob is a faint grey; a state layer in the
+   primary colour instead, strong enough to see on the white card */
+.privacy-setting__switch .switch > input + span::before
+{
+    transition: box-shadow var(--dur-fast) var(--ease-out);
+}
+
+.privacy-setting__switch .switch:hover > input + span::before
+{
+    box-shadow: 0 0 0 9px rgba(81, 45, 168, 0.12);
+}
+
+.privacy-setting__switch .switch > input:focus-visible + span::before
+{
+    box-shadow: 0 0 0 9px rgba(81, 45, 168, 0.16);
+}
+
 /* Flag and city, --icon-gap apart like an icon and its text */
 .place-note__place
 {
