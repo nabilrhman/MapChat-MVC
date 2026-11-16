@@ -38,22 +38,27 @@ shareLocationSwitch.addEventListener('change', () => {
 const notificationsSwitch = document.getElementById('notifications');
 const notificationsHint = document.getElementById('notifications-hint');
 
+// Blocked or unsupported: only the browser's site settings can change that.
 // With Web Push set up, they come with MapChat closed too
-if (isPushSupported()) notificationsHint.textContent = 'On this browser, even when MapChat is closed';
-keepPushUpToDate();
-
-// Blocked or unsupported: only the browser's site settings can change that
 function showNotificationsState() {
     const isBlocked = !isNotifySupported() || Notification.permission === 'denied';
     notificationsSwitch.checked = areNotificationsOn();
     notificationsSwitch.disabled = isBlocked;
-    if (isBlocked) {
-        notificationsHint.textContent = isNotifySupported()
-            ? 'Blocked by this browser. Allow them in its site settings'
-            : "This browser can't show notifications";
-    }
+    if (!isNotifySupported()) notificationsHint.textContent = "This browser can't show notifications";
+    else if (isBlocked) notificationsHint.textContent = "Blocked in your browser's site settings";
+    else if (isPushSupported()) notificationsHint.textContent = 'On this browser, even when MapChat is closed';
+    else notificationsHint.textContent = 'On this browser, when MapChat is open in a tab';
 }
 showNotificationsState();
+keepPushUpToDate();
+
+// Changed in the browser's site settings while this page is open
+navigator.permissions?.query({name: 'notifications'}).then((permission) => {
+    permission.addEventListener('change', () => {
+        showNotificationsState();
+        keepPushUpToDate();
+    });
+}).catch(() => {});
 
 notificationsSwitch.addEventListener('change', async () => {
     if (!notificationsSwitch.checked) {
