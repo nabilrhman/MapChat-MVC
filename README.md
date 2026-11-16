@@ -41,7 +41,7 @@ In 2026 I came back to it to bring parts of it up to date, and I'm still at it.
 sleeps when nobody visits; a GitHub Actions workflow visits it every 10 minutes
 so it stays awake.
 
-https://github.com/user-attachments/assets/4bc68204-06d7-48d1-b466-6f2e9d36d4f6
+https://github.com/user-attachments/assets/99c9917a-9a19-4b5e-b0e1-0ae6a7d4dc10
 
 <sub>A tour at 60fps: pins on the map, private chats with two AI characters answering for real, typing included, and tabs dragged and closed. Also in <a href="docs/images/mapchat-tour.mp4">docs/images/mapchat-tour.mp4</a>.</sub>
 
