@@ -104,7 +104,7 @@ function createPinLabel(location) {
 }
 
 // A yellow map pin like the original marker icon. userId lets the people
-// list highlight this pin
+// list, and a message's city, highlight this pin
 function createPinElement(userId) {
     const pin = createElement('div', 'map-pin');
     pin.dataset.userId = userId;

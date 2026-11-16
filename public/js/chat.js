@@ -457,6 +457,17 @@ document.addEventListener('visibilitychange', () => {
     markConversationRead(activeConversation);
 });
 
+// Hovering a message's city points out its sender's pin, as the people
+// list does. mouseover and mouseout, as they reach the list from each line
+function onCityHover(event, isHighlighted) {
+    const place = event.target.closest('.chat__location');
+    if (!place || place.contains(event.relatedTarget)) return;
+    highlightPin(place.closest('.chat').dataset.senderId, isHighlighted);
+}
+
+chatList.addEventListener('mouseover', (event) => onCityHover(event, true));
+chatList.addEventListener('mouseout', (event) => onCityHover(event, false));
+
 chatList.addEventListener('click', (event) => {
     const senderName = event.target.closest('.chat__name--can-message');
     if (senderName) {

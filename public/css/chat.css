@@ -827,7 +827,7 @@ body
     animation: shrink-out var(--dur-fast) var(--ease-in) forwards;
 }
 
-/* The pin of the person hovered in the list */
+/* The pin of the person hovered in the list, or whose message's city is */
 .map-pin__icon
 {
     transition: transform var(--dur-fast) var(--ease-out);
