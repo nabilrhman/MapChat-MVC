@@ -1398,17 +1398,17 @@ body
 }
 
 /* Names to @mention, just above the message box (mentions.js). A white
-   card like the account menu's */
+   card like the account menu's, with tighter rows */
 .mention-picker
 {
     position: absolute;
     left: 0;
     bottom: calc(100% + 8px);
     z-index: 2;
-    min-width: 240px;
+    min-width: 180px;
     max-width: 100%;
     margin: 0;
-    padding: 8px 0;
+    padding: 4px 0;
     list-style: none;
     background-color: #fff;
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
@@ -1420,8 +1420,8 @@ body
 {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 10px 16px;
+    gap: 10px;
+    padding: 6px 12px;
     font-size: 14px;
     cursor: pointer;
 }
@@ -1435,8 +1435,8 @@ body
 .mention-picker__photo
 {
     flex: none;
-    width: 34px;
-    height: 34px;
+    width: 24px;
+    height: 24px;
     border-radius: 50%;
     object-fit: cover;
 }
