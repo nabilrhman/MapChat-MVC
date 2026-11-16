@@ -60,8 +60,8 @@ so it stays awake.
   browser tab clears the count in your others, and "Typing..." shows while
   the other person is writing to you.
 - Who's online updates as people come and go, on the list and on the map.
-- MapChat, the room's AI, and the regulars on the map, who are AI characters
-  too: see [AI chat](#ai-chat).
+- MapChat, the room's AI, and the AI characters on the map: see
+  [AI chat](#ai-chat).
 - @mentions in the room: type @ to pick someone. Mentions show as chips, your
   own stand out, and a mention in a tab you're not looking at turns its count
   purple.
@@ -72,6 +72,8 @@ so it stays awake.
   shows their city and local time, with a sun or moon; hovering someone in
   the list or a message's city points their pin out, and clicking the city
   brings it to the middle of the map.
+- The side of the world where it's night is shaded, and it moves with the
+  sun.
 - Anyone can hide their pin and city from the map in their profile.
 - On phones the map starts hidden to give the chat the room. A button shows
   it above the chat, and the chat can then fold down to its tabs to give the
@@ -89,7 +91,7 @@ so it stays awake.
 
 Two kinds of AI share the room, and Groq's chat API (`openai/gpt-oss-120b` by
 default) writes what both say. Without `GROQ_API_KEY`, MapChat only greets and
-the regulars only follow their script.
+the characters only follow their script.
 
 **MapChat**, the room's own account, pinned on Null Island:
 
@@ -100,7 +102,7 @@ the regulars only follow their script.
   as people talk to each other. An @MapChat always gets an answer.
 - Answers private messages.
 
-**The regulars**, the nine people on the map, are digital characters. Through
+**The characters**, the nine people on the map, are AI too. Through
 the day they play out stories from `database/demo-chat.php`, and:
 
 - @mention one in the room, or message them privately, and they answer in
@@ -116,7 +118,9 @@ Both of them:
   characters always), keep replies short, and stop asking questions once
   someone's done chatting.
 - Read only what they need: a room reply reads the room's recent messages, a
-  private reply only that one private chat. That text is sent to Groq.
+  private reply only that one private chat. That text is sent to Groq,
+  which [says](https://console.groq.com/docs/your-data) it doesn't train on
+  what's sent to its API.
 - Wait their turn as jobs in `mapchat_jobs`, which the chat worker
   (`bin/chat-worker.php`) runs as they come due, each checked against the room
   again just before it posts.

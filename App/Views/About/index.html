@@ -50,14 +50,15 @@
             <h3 class="about-card__title">{{ icon('stars-minimalistic', 'about-card__icon') }}AI in the room</h3>
             <ul class="about-list">
                 <li>MapChat, the room's AI, chats in the room or privately, and says hello when it's quiet.</li>
-                <li>The regulars on the map are digital characters, written by AI. Mention one, or message them, and they answer.</li>
+                <li>The people on the map are AI characters. Mention or message one and they answer.</li>
             </ul>
         </section>
 
         <section class="about-card appear-down">
             <h3 class="about-card__title">{{ icon('map-point', 'about-card__icon') }}The map</h3>
             <ul class="about-list">
-                <li>See which city each person online is chatting from.</li>
+                <li>See where each person online is chatting from, and their local time.</li>
+                <li>Where it's night is shaded.</li>
                 <li>Hide yourself from the map whenever you want.</li>
             </ul>
         </section>
@@ -86,7 +87,7 @@
             <h3 class="about-card__title">{{ icon('plain', 'about-card__icon') }}Live chat</h3>
             <ul class="about-list">
                 <li>A WebSocket for each open chat, on amphp, so messages, who's online and who's typing arrive at once.</li>
-                <li>Without it, the chat falls back to asking every second.</li>
+                <li>If it can't connect, the chat checks every second instead.</li>
             </ul>
         </section>
 
@@ -111,7 +112,7 @@
             <ul class="about-list">
                 <li>Your location comes from your IP address, so the map only knows roughly which city you are in. It never uses GPS, and you can hide your pin and city from your profile.</li>
                 <li>Anything you write in Everyone is visible to everyone signed in. Private chats are only shown to the two of you.</li>
-                <li>MapChat and the regulars on the map are AI, not people. To write their replies, what was said in the room, or your private chat with them, is sent to Groq.</li>
+                <li>MapChat and the characters on the map are AI. To reply, they send the chat to Groq, which says it doesn't train on it.</li>
                 <li>This is a portfolio project, so please don't share anything private here.</li>
             </ul>
         </section>
