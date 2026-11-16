@@ -19,7 +19,7 @@
 {% set sender_name = shown_name(chat.name, chat.nickname, chat.is_guest) %}
 {# Messages from the poll ease in; the history and your own appear at once #}
 <div class="chat{% if mentions_me %} chat--mentions-me{% endif %}{% if not initial|default(false) and not mine %} is-entering{% endif %}"
-     data-id="{{ chat.id }}" data-conversation="{{ conversation }}" data-partner="{{ partner }}">
+     data-id="{{ chat.id }}" data-sender-id="{{ chat.user_id }}" data-conversation="{{ conversation }}" data-partner="{{ partner }}">
     <div class="chat__avatar">
         <img class="chat__photo" src="{{ avatar_src(chat.user_id, chat.name, chat.avatar, chat.is_demo) }}" alt="Avatar">
     </div>

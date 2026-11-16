@@ -51,6 +51,12 @@ class Bot extends \Core\Model
     /** How soon MapChat answers a private message */
     const PRIVATE_SECONDS = 2;
 
+    /**
+     * How soon a demo person answers when called or messaged: long enough
+     * to be seen coming online first
+     */
+    const DEMO_ANSWER_SECONDS = 5;
+
     /** At most this many people answer one message that @mentions several */
     const MOST_ASKED = 2;
 
@@ -139,8 +145,12 @@ class Bot extends \Core\Model
 
         // A private message to MapChat or a demo person gets an answer there;
         // one to anyone else is between them
-        if ($toEmail === Chat::BOT_EMAIL || str_ends_with((string) $toEmail, DemoChat::DOMAIN)) {
+        if ($toEmail === Chat::BOT_EMAIL) {
             static::schedule('dm', $email, $chatId, "dm:$chatId", static::PRIVATE_SECONDS, $toEmail);
+            return;
+        }
+        if (str_ends_with((string) $toEmail, DemoChat::DOMAIN)) {
+            static::schedule('dm', $email, $chatId, "dm:$chatId", static::DEMO_ANSWER_SECONDS, $toEmail);
             return;
         }
 
@@ -156,7 +166,8 @@ class Bot extends \Core\Model
         // Asked by name: whoever was asked answers, however busy the room is
         $asked = static::askedIn($body);
         foreach ($asked as $speaker) {
-            static::schedule('mention', $email, $chatId, "mention:$chatId:$speaker", static::FOLLOW_UP_SECONDS, $speaker);
+            $delay = $speaker === Chat::BOT_EMAIL ? static::FOLLOW_UP_SECONDS : static::DEMO_ANSWER_SECONDS;
+            static::schedule('mention', $email, $chatId, "mention:$chatId:$speaker", $delay, $speaker);
         }
         if ($asked) {
             return;

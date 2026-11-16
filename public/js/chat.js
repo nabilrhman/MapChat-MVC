@@ -619,6 +619,11 @@ function reloadIfUpdated(liveBuild) {
 function showNewChats(newChats, isAfterSending) {
     const wasAtBottom = getDistanceFromBottom() < AT_BOTTOM_DISTANCE;
 
+    // Someone the list still has as away just spoke: they're here
+    if (newChats.some((chat) => !onlineUserIds.has(Number(chat.dataset.senderId)))) {
+        refreshPeople();
+    }
+
     showTimes(newChats);
     chatList.append(...newChats);
     fadeInPhotos(newChats.map((chat) => chat.querySelector('.chat__photo')));
@@ -675,6 +680,7 @@ composerForm.addEventListener('submit', (event) => {
         .then(() => {
             messageInput.value = '';
             messageInput.dispatchEvent(new Event('input'));
+            refreshPeople();
         })
         .catch((error) => {
             showToast(getErrorMessage(error, 'Your message could not be sent.'), 'warning');

@@ -154,13 +154,28 @@ function showPeople(people, onPeopleOnline) {
     fadeInPhotos(peoplePanel.querySelectorAll('img'));
 }
 
-function loadPeople(onPeopleOnline) {
+// Set by keepPeopleUpdated
+let reportPeopleOnline = () => {};
+let nextPeopleLoad = null;
+
+function loadPeople() {
     postForm('/app/get-people', {timezone: Intl.DateTimeFormat().resolvedOptions().timeZone})
-        .then((response) => showPeople(response.data, onPeopleOnline))
+        .then((response) => showPeople(response.data, reportPeopleOnline))
         .catch(() => {
             // Try again on the next round
         })
-        .finally(() => setTimeout(() => loadPeople(onPeopleOnline), PEOPLE_INTERVAL));
+        .finally(() => {
+            // One round at a time, even after a refreshPeople()
+            clearTimeout(nextPeopleLoad);
+            nextPeopleLoad = setTimeout(loadPeople, PEOPLE_INTERVAL);
+        });
+}
+
+// The list now rather than on the next round: after you message someone,
+// so whoever you called shows up online before they answer
+function refreshPeople() {
+    clearTimeout(nextPeopleLoad);
+    loadPeople();
 }
 
 // A drawer on narrow screens, a column that can be closed on wide ones
@@ -214,5 +229,6 @@ function keepPeopleUpdated(onPeopleOnline, onPersonChosen) {
         onPersonChosen(person.id, person.shown_name);
     });
 
-    loadPeople(onPeopleOnline);
+    reportPeopleOnline = onPeopleOnline;
+    loadPeople();
 }
