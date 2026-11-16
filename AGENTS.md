@@ -45,8 +45,9 @@ A comment says why: the reason or trap the code can't show, in one short
 line where it can. Each file, class and section opens with a line on what it
 is for, and each PHP method has a docblock whose first line says what it
 does; its `@param` and `@return` add only what the types can't say (an
-array's keys, a unit, what null means). Comments end without a full stop,
-like the rest.
+array's keys, a unit, what null means). A test method's name is its
+docblock (`testAPrivateMessageGoesToTheOtherPersonOnly`), and so are
+`setUp` and `tearDown`'s. Comments end without a full stop, like the rest.
 
 ### Modern PHP
 
