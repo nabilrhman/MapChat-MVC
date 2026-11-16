@@ -510,6 +510,110 @@ class BotTest extends TestCase
         $this->assertStringContainsString('done chatting for now', TestBot::$asked[1][0]);
     }
 
+    /**
+     * Post demo lines as today's script does, oldest first
+     */
+    private function postScript(array $lines): void
+    {
+        $add = $this->db->prepare('INSERT INTO chats (email, body, timestamp) VALUES (?, ?, ?)');
+        foreach ($lines as [$who, $body]) {
+            $add->execute([$who . '@demo.mapchat.local', $body, gmdate('Y-m-d H:i:s')]);
+        }
+    }
+
+    public function testDemoPersonKnowsTheirStoryFromHoursAgo()
+    {
+        $emily = $this->addDemoPerson('Emily Carter', 'Boise');
+        foreach ([['Aiko Tanaka', 'Tokyo'], ['Lukas Becker', 'Berlin'], ['Sofia Ramírez', 'Mexico City'], ['Jae-won Park', 'Seoul']] as [$name, $city]) {
+            $this->addDemoPerson($name, $city);
+        }
+        // The sourdough story's first two scenes, of three
+        $this->postScript([
+            ['emily', 'i started a sourdough starter. she\'s called Doughlores 🍞'],
+            ['lukas', 'strong name'],
+            ['emily', 'update: Doughlores escaped 😱 she pushed the lid off overnight'],
+            ['aiko', '@Emily she wants to see the world 😂'],
+            ['emily', 'moved her to a bigger jar. she looks very pleased with herself'],
+        ]);
+        // Then the room moves on, past what a reply reads of it
+        for ($i = 0; $i < Bot::CONTEXT_MESSAGES + 5; $i++) {
+            $this->send(self::BOB, "something else $i");
+        }
+
+        $this->send(self::ANN, '@Emily what happened with Doughlores?');
+        $this->wait(Bot::COME_ONLINE_SECONDS + Bot::DEMO_ANSWER_SECONDS);
+
+        $emilys = array_values(array_filter(TestBot::$asked, fn ($asked) => str_contains($asked[0], 'You are Emily')));
+        $this->assertCount(1, $emilys);
+        [$instructions, $chat] = $emilys[0];
+        $this->assertStringNotContainsString('Doughlores escaped', $chat, 'too long ago for the room it reads');
+        $this->assertStringContainsString(
+            "Emily (you): update: Doughlores escaped 😱 she pushed the lid off overnight\nAiko: @Emily she wants to see the world 😂",
+            $instructions
+        );
+        $this->assertStringContainsString('Not over yet', $instructions, 'her first loaf is still to come');
+        $this->assertStringNotContainsString('FIRST LOAF', $instructions);
+    }
+
+    public function testDemoPersonKnowsTheirStoryInPrivateWithoutItsEnding()
+    {
+        $tanvir = $this->addDemoPerson('Tanvir Hasan', 'Dhaka');
+        $this->addDemoPerson('Sofia Ramírez', 'Mexico City');
+        $this->addDemoPerson('Maya Thompson', 'Toronto');
+        // The biryani story's first scene; the tasting is still to come
+        $this->postScript([
+            ['tanvir', 'making my nani\'s biryani for the first time today 🍚 she\'s watching on video call'],
+            ['sofia', 'watching or judging? 😅'],
+            ['tanvir', 'judging. she already said my onions are "too shy"'],
+        ]);
+        // Someone else's story doesn't come along
+        $this->postScript([['maya', 'made pancakes for the first time']]);
+
+        $this->send(self::ANN, 'how did the biryani turn out??', $tanvir);
+        $this->wait(Bot::COME_ONLINE_SECONDS + Bot::DEMO_ANSWER_SECONDS);
+
+        [$instructions, $chat] = TestBot::$asked[0];
+        $this->assertSame('Ann: how did the biryani turn out??', $chat, 'the private chat stays private');
+        $this->assertStringContainsString('Tanvir (you): judging. she already said my onions are "too shy"', $instructions);
+        $this->assertStringContainsString('Not over yet', $instructions);
+        $this->assertStringNotContainsString('not bad', $instructions);
+        $this->assertStringNotContainsString('pancakes', $instructions);
+    }
+
+    public function testEachDemoPersonHasTheirOwnVoice()
+    {
+        $emily = $this->addDemoPerson('Emily Carter', 'Boise');
+        $tanvir = $this->addDemoPerson('Tanvir Hasan', 'Dhaka');
+        $this->send(self::ANN, '@Emily @Tanvir what are you cooking this week?');
+        $this->wait(Bot::COME_ONLINE_SECONDS + Bot::DEMO_ANSWER_SECONDS);
+        $this->wait(Bot::ROOM_COOLDOWN_SECONDS);
+
+        $voices = require dirname(__DIR__) . '/database/demo-voices.php';
+        $asked = array_column(TestBot::$asked, 0);
+        $this->assertCount(2, $asked);
+        $emilys = array_values(array_filter($asked, fn ($instructions) => str_contains($instructions, 'You are Emily')))[0];
+        $tanvirs = array_values(array_filter($asked, fn ($instructions) => str_contains($instructions, 'You are Tanvir')))[0];
+        $this->assertStringContainsString($voices['emily'], $emilys);
+        $this->assertStringContainsString($voices['tanvir'], $tanvirs);
+        $this->assertStringNotContainsString($voices['tanvir'], $emilys);
+    }
+
+    public function testThanksGotItClosesTheChat()
+    {
+        $tanvir = $this->addDemoPerson('Tanvir Hasan', 'Dhaka');
+        foreach (['thanks, got it', 'ok cool, makes sense 👍', 'Not really.', "i'm good, thank you so much!"] as $i => $closing) {
+            $this->send(self::ANN, $closing, $tanvir);
+            $this->wait(Bot::COME_ONLINE_SECONDS + Bot::DEMO_ANSWER_SECONDS);
+            $this->assertStringContainsString('done chatting for now', TestBot::$asked[$i][0], $closing);
+        }
+
+        foreach (['not good at all', 'thanks! but what did your nani say about the rice?'] as $i => $notClosing) {
+            $this->send(self::ANN, $notClosing, $tanvir);
+            $this->wait(Bot::COME_ONLINE_SECONDS + Bot::DEMO_ANSWER_SECONDS);
+            $this->assertStringNotContainsString('done chatting', TestBot::$asked[4 + $i][0], $notClosing);
+        }
+    }
+
     public function testDemoPersonComesOnlineAMomentLaterAndStaysWhileTalking()
     {
         $wanjiru = $this->addDemoPerson('Wanjiru Kamau', 'Nairobi');

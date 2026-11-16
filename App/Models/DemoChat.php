@@ -205,6 +205,56 @@ class DemoChat extends \Core\Model
         return array_keys($present);
     }
 
+    /** At most this many of a demo person's stories go to the writer, the latest ones */
+    const MOST_STORIES = 6;
+
+    /**
+     * The stories a demo person has been part of in the room today, from
+     * each one's start up to its latest line posted so far, so they can talk
+     * about them however long ago they came up. Only lines already in the
+     * room count: what's still to come in a story hasn't happened yet
+     *
+     * @param string $email The demo person
+     *
+     * @return array Oldest first, each [lines => [[name, email, body]], isOver => bool]
+     */
+    public static function storiesSoFar($email)
+    {
+        $firstNames = static::firstNames();
+        $stories = require dirname(__DIR__, 2) . '/database/demo-chat.php';
+
+        // Which story each line belongs to, as the room has it (with its @mention)
+        $storyOf = [];
+        foreach ($stories as $name => $scenes) {
+            foreach (array_merge(...$scenes) as [$speaker, $body]) {
+                $storyOf[$speaker . static::DOMAIN . ' ' . static::withAddressee($body, $firstNames)] = $name;
+            }
+        }
+
+        $stmt = static::getDB()->prepare('SELECT email, body FROM chats WHERE email LIKE :demo AND to_email IS NULL
+                                            AND timestamp >= :start AND ' . static::NOT_REPLIES . ' ORDER BY id');
+        $stmt->execute([':demo' => '%' . static::DOMAIN, ':start' => gmdate('Y-m-d H:i:s', static::dayStart(static::today()))]);
+
+        $posted = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $line) {
+            $story = $storyOf[$line['email'] . ' ' . $line['body']] ?? null;
+            if ($story !== null) {
+                $name = $firstNames[strstr($line['email'], '@', true)] ?? strstr($line['email'], '@', true);
+                $posted[$story][] = [$name, $line['email'], $line['body']];
+            }
+        }
+
+        // Theirs: the ones they've spoken in so far. The array keeps the order
+        // stories started in; the latest few are kept
+        $theirs = array_filter($posted, fn ($lines) => in_array($email, array_column($lines, 1), true));
+        $theirs = array_slice($theirs, -static::MOST_STORIES, null, true);
+
+        return array_values(array_map(fn ($lines, $story) => [
+            'lines' => $lines,
+            'isOver' => count($lines) >= count(array_merge(...$stories[$story])),
+        ], $theirs, array_keys($theirs)));
+    }
+
     /**
      * The day's messages in order, as [UTC time, email, body]. The same date
      * always gives the same day, so every request agrees on it
