@@ -26,7 +26,10 @@ class Bot extends \Core\Model
     /** One greeting per person this often, however many times they open the chat */
     const GREET_COOLDOWN_HOURS = 24;
 
-    /** How long someone else in the room has to answer a visitor before MapChat does */
+    /**
+     * How long someone else online has to answer a visitor before MapChat
+     * does. With nobody else online it answers as soon as a follow-up
+     */
     const GRACE_SECONDS = 45;
 
     /** How soon MapChat answers someone it's already talking to */
@@ -128,7 +131,8 @@ class Bot extends \Core\Model
         if (static::isTalkingWith($email, $chatId)) {
             static::schedule('reply', $email, $chatId, "reply:$chatId", static::FOLLOW_UP_SECONDS);
         } elseif (static::isQuiet($email, $chatId)) {
-            static::schedule('reply', $email, $chatId, "reply:$chatId", static::GRACE_SECONDS);
+            $grace = static::isAnyoneElseOnline($email) ? static::GRACE_SECONDS : static::FOLLOW_UP_SECONDS;
+            static::schedule('reply', $email, $chatId, "reply:$chatId", $grace);
         }
     }
 
@@ -488,6 +492,23 @@ class Bot extends \Core\Model
     }
 
     /**
+     * Whether another person has the chat open, who could answer instead
+     *
+     * @param string $email
+     *
+     * @return bool
+     */
+    protected static function isAnyoneElseOnline($email)
+    {
+        $stmt = static::getDB()->prepare('SELECT COUNT(*) FROM userinfo
+                                          WHERE email <> :email AND online_at > :since'
+                                          . static::peopleOnlySql('userinfo.email'));
+        $stmt->execute([':email' => $email, ':since' => static::time(-UserInfo::ONLINE_SECONDS)]);
+
+        return $stmt->fetchColumn() > 0;
+    }
+
+    /**
      * Whether another person spoke in the open room after this message
      *
      * @param string $email
@@ -562,23 +583,27 @@ class Bot extends \Core\Model
     }
 
     /**
-     * Leaves MapChat and the demo people out of a query on chats
+     * Leaves MapChat and the demo people out of a query
+     *
+     * @param string $column The column holding each row's email
      *
      * @return string
      */
-    protected static function peopleOnlySql()
+    protected static function peopleOnlySql($column = 'chats.email')
     {
-        return ' AND chats.email <> \'' . Chat::BOT_EMAIL . '\'' . static::notDemoSql();
+        return " AND $column <> '" . Chat::BOT_EMAIL . "'" . static::notDemoSql($column);
     }
 
     /**
-     * Leaves the demo people out of a query on chats
+     * Leaves the demo people out of a query
+     *
+     * @param string $column The column holding each row's email
      *
      * @return string
      */
-    protected static function notDemoSql()
+    protected static function notDemoSql($column = 'chats.email')
     {
-        return ' AND chats.email NOT LIKE \'%' . DemoChat::DOMAIN . '\'';
+        return " AND $column NOT LIKE '%" . DemoChat::DOMAIN . "'";
     }
 
     /**

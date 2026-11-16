@@ -59,7 +59,8 @@ class BotTest extends TestCase
         foreach ([self::ANN, self::BOB, self::CAT] as $email) {
             $this->db->prepare("INSERT INTO users (name, email, password_hash, is_active, is_guest) VALUES (?, ?, '!', TRUE, ?)")
                 ->execute([ucfirst(strtok($email, '@')), $email, (int) ($email === self::CAT)]);
-            $this->db->prepare("INSERT INTO userinfo (email, ip, lat, lng, city, country) VALUES (?, '8.8.8.8', 1, 2, 'Dhaka', 'BD')")
+            // Everyone has the chat open, so others could answer a visitor
+            $this->db->prepare("INSERT INTO userinfo (email, ip, lat, lng, city, country, online_at) VALUES (?, '8.8.8.8', 1, 2, 'Dhaka', 'BD', NOW())")
                 ->execute([$email]);
         }
 
@@ -159,6 +160,16 @@ class BotTest extends TestCase
         $this->assertSame([], $this->botSaid(), 'nobody else has had their chance to answer yet');
 
         $this->wait(Bot::GRACE_SECONDS);
+        $this->assertSame([[null, 'reply 1']], $this->botSaid());
+    }
+
+    public function testVisitorAloneGetsAQuickReply()
+    {
+        $this->db->prepare('UPDATE userinfo SET online_at = NULL WHERE email IN (?, ?)')->execute([self::BOB, self::CAT]);
+        $this->send(self::ANN, 'hello? is anyone here');
+
+        $this->wait(Bot::FOLLOW_UP_SECONDS);
+
         $this->assertSame([[null, 'reply 1']], $this->botSaid());
     }
 
@@ -281,5 +292,17 @@ class BotTest extends TestCase
 
         $this->assertStringContainsString('cat secret for mapchat', $chats['cat']);
         $this->assertStringNotContainsString('ann secret', $chats['cat']);
+    }
+
+    public function testMapChatIsOnlineWhileItCanChatBack()
+    {
+        $people = array_column(\App\Models\UserInfo::getRecentPeople(), null, 'name');
+        $this->assertEquals(1, $people['MapChat']['is_online']);
+        $this->assertEquals(1, $people['MapChat']['is_bot']);
+        $this->assertEquals(0, $people['Ann']['is_bot']);
+
+        TestBot::forget();
+        $people = array_column(\App\Models\UserInfo::getRecentPeople(), 'is_online', 'name');
+        $this->assertArrayNotHasKey('MapChat', $people);
     }
 }

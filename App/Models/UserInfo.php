@@ -292,18 +292,21 @@ class UserInfo extends \Core\Model
     /**
      * People seen in the chat in the last day, most recent first. Guests
      * only while they're online: they're throwaway accounts, and a day of
-     * them buries everyone else
+     * them buries everyone else. MapChat is always online while it can
+     * chat back
      *
      * @return array
      */
     public static function getRecentPeople()
     {
         $demo_online = static::demoOnlineSql();
+        $bot_online = static::botOnlineSql();
 
         $sql = 'SELECT users.id, users.name, users.avatar, users.email LIKE \'%@demo.mapchat.local\' AS is_demo,
+                       ' . $bot_online . ' AS is_bot,
                        IF(users.share_location, userinfo.city, NULL) AS city,
                        IF(users.share_location, userinfo.country, NULL) AS country,
-                       (userinfo.online_at > NOW() - INTERVAL :online SECOND OR ' . $demo_online . ') AS is_online,
+                       (userinfo.online_at > NOW() - INTERVAL :online SECOND OR ' . $demo_online . ' OR ' . $bot_online . ') AS is_online,
                        TIMESTAMPDIFF(MINUTE, userinfo.online_at, NOW()) AS minutes_ago
                 FROM userinfo
                 JOIN users
@@ -311,6 +314,7 @@ class UserInfo extends \Core\Model
                 WHERE (userinfo.online_at > NOW() - INTERVAL 1 DAY AND users.is_guest = 0)
                    OR (userinfo.online_at > NOW() - INTERVAL :guest_online SECOND AND users.is_guest = 1)
                    OR ' . $demo_online . '
+                   OR ' . $bot_online . '
                 ORDER BY userinfo.online_at DESC';
 
         $stmt = static::getDB()->prepare($sql);
@@ -331,6 +335,17 @@ class UserInfo extends \Core\Model
         $emails = array_map([static::getDB(), 'quote'], DemoChat::presentNow());
 
         return $emails ? 'users.email IN (' . implode(', ', $emails) . ')' : 'FALSE';
+    }
+
+    /**
+     * SQL that's true for the MapChat account while it can chat back, so
+     * people see there's someone to talk to
+     *
+     * @return string
+     */
+    protected static function botOnlineSql()
+    {
+        return Bot::canReply() ? 'users.email = ' . static::getDB()->quote(Chat::BOT_EMAIL) : 'FALSE';
     }
 
     /**

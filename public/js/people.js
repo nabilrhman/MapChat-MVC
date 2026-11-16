@@ -12,6 +12,14 @@ const myUserId = Number(document.getElementById('chat').dataset.myId);
 
 const isOnline = (person) => Number(person.is_online) === 1;
 
+// MapChat first, so there's always someone to talk to at the top, then you,
+// then everyone else
+function getListRank(person) {
+    if (Number(person.is_bot) === 1) return 0;
+    if (Number(person.id) === myUserId) return 1;
+    return 2;
+}
+
 const personByRow = new WeakMap();
 
 function getTimeAgo(minutes) {
@@ -123,9 +131,7 @@ function showPeople(people, onPeopleOnline) {
     const onlinePeople = people.filter(isOnline);
     const recentPeople = people.filter((person) => !isOnline(person));
 
-    // You first, then everyone else by name
-    const isMeFirst = (person) => Number(Number(person.id) === myUserId);
-    onlinePeople.sort((a, b) => isMeFirst(b) - isMeFirst(a) || a.name.localeCompare(b.name));
+    onlinePeople.sort((a, b) => getListRank(a) - getListRank(b) || a.name.localeCompare(b.name));
 
     // The rows are replaced, so a hovered row never gets its mouseleave
     document.querySelectorAll('.map-pin.is-highlighted').forEach((pin) => pin.classList.remove('is-highlighted'));
