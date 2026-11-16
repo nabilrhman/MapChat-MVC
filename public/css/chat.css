@@ -405,6 +405,8 @@ body
     font-size: 13px;
     font-weight: 400;
     white-space: nowrap;
+    user-select: none; /* a drag moves the tab, not a text selection */
+    -webkit-touch-callout: none;
     transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
 
@@ -451,6 +453,16 @@ body
 .chat-tab.is-shifting
 {
     transition: translate var(--dur) var(--ease-out);
+}
+
+/* A private tab being dragged into a new place (chat.js) rides above the rest */
+.chat-tab.is-dragging
+{
+    position: relative;
+    z-index: 1;
+    background-color: #fafafa;
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
+    cursor: grabbing;
 }
 
 /* A new unread count pops in */
