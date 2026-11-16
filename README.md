@@ -47,7 +47,7 @@ https://github.com/user-attachments/assets/06384a18-cd12-4e27-8cf0-530ab2463569
 
 | The chat room | A private chat |
 |---|---|
-| ![The chat room with the map of who is chatting from where](docs/images/mapchat-app.png) | ![A private chat with Aiko, showing her city and local time](docs/images/mapchat-private.png) |
+| ![The chat room with the map of who is chatting from where](docs/images/mapchat-app.png) | ![A private chat with a demo person, showing their city and local time](docs/images/mapchat-private.png) |
 
 | Log in, or try it as a guest | Profile |
 |---|---|
@@ -290,7 +290,8 @@ database/        init.sql (schema and welcome messages), demo.sql (optional
 tests/           PHPUnit tests; tests/browser/ the Playwright checks (npm run a11y)
 docs/images/     The video, screenshots and diagram in this README
 docs/diagrams/   Draws the diagram: node docs/diagrams/draw.ts
-docs/video/      Records the tour at the top: python3 docs/video/record.py
+docs/video/      Records the tour at the top with Playwright (npm run tour) and
+                 takes the screenshots (npm run screenshots)
 docs/live-chat.md How the live chat works
 docs/deploy.md   How to deploy it for free
 docs/load-test.* The load test and its report, with raw results in docs/load-test-results/
