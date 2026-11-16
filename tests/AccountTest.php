@@ -187,6 +187,23 @@ class AccountTest extends TestCase
         $this->assertSame(200, $this->request('GET', '/login')['status']);
     }
 
+    public function testEveryScriptOnAPageCarriesThePolicysNonce()
+    {
+        $this->logIn();
+
+        foreach (['/login', '/app', '/profile/show', '/about'] as $path) {
+            $response = $this->request('GET', $path);
+            $this->assertMatchesRegularExpression("/script-src 'nonce-([^']+)' 'strict-dynamic'/", $response['headers']['content-security-policy']);
+            preg_match("/'nonce-([^']+)'/", $response['headers']['content-security-policy'], $nonce);
+
+            preg_match_all('/<script\b[^>]*>/', $response['body'], $scripts);
+            $this->assertNotEmpty($scripts[0], $path);
+            foreach ($scripts[0] as $script) {
+                $this->assertStringContainsString('nonce="' . $nonce[1] . '"', $script, "$path: $script");
+            }
+        }
+    }
+
     public function testLoginOverPostSignsIn()
     {
         $response = $this->request('POST', '/login/create', ['email' => self::EMAIL, 'password' => self::PASSWORD]);

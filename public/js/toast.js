@@ -25,3 +25,10 @@ function showToast(text, type = 'success') {
     toast.addEventListener('click', closeToast, {once: true});
     setTimeout(closeToast, TOAST_DURATION);
 }
+
+// The page's one-time messages (_flash.html), once the page is parsed
+document.addEventListener('DOMContentLoaded', () => {
+    const flashMessages = document.getElementById('flash-messages');
+    if (!flashMessages) return;
+    JSON.parse(flashMessages.dataset.messages).forEach(({body, type}) => showToast(body, type));
+});

@@ -176,8 +176,8 @@
 {% endblock %}
 
 {% block footer %}
-<script src="{{ asset('/js/passwordToggle.js') }}"></script>
-<script src="{{ asset('/js/formChecks.js') }}"></script>
-<script src="{{ asset('/js/notifications.js') }}"></script>
-<script src="{{ asset('/js/profile.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/passwordToggle.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/formChecks.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/notifications.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/profile.js') }}"></script>
 {% endblock %}

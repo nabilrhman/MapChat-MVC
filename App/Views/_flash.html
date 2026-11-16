@@ -1,12 +1,6 @@
-{# One-time messages ("Logout successful" etc.) shown as toasts that fade on their own #}
+{# One-time messages ("Logout successful" etc.) for toast.js to show as
+   toasts that fade on their own #}
 {% set flash_messages = flash_messages() %}
 {% if flash_messages %}
-<script>
-    (function () {
-        var messages = {{ flash_messages|json_encode(constant('JSON_HEX_TAG') b-or constant('JSON_HEX_AMP') b-or constant('JSON_HEX_APOS') b-or constant('JSON_HEX_QUOT'))|raw }};
-        messages.forEach(function (message) {
-            showToast(message.body, message.type);
-        });
-    })();
-</script>
+<template id="flash-messages" data-messages="{{ flash_messages|json_encode|e('html_attr') }}"></template>
 {% endif %}
