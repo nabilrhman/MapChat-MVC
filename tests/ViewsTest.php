@@ -22,7 +22,7 @@ class ViewsTest extends TestCase
         $this->assertMatchesRegularExpression('/id="inputName-error">Enter your name\.</', $html);
         $this->assertMatchesRegularExpression('/id="inputEmail-error">Enter a valid email\.</', $html);
         $this->assertMatchesRegularExpression(
-            '/id="inputPassword-error">Your password needs at least 6 characters\. Your password needs a number\.</',
+            '/id="inputPassword-error">Use 6 or more characters, with a letter and a number\.</',
             $html
         );
         $this->assertStringNotContainsString('Name:', $html);

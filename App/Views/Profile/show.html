@@ -102,7 +102,7 @@
 
                 {% if user.is_guest %}
                 {{ text_field({id: 'inputPassword', name: 'password', type: 'password', label: 'Password', autocomplete: 'new-password',
-                               minlength: 6, hint: '6+ characters, a letter and a number. Needed to keep your account.'}) }}
+                               minlength: 6, hint: '6+ characters, a letter and a number, to keep your account'}) }}
                 {% else %}
                 {{ text_field({id: 'inputPassword', name: 'password', type: 'password', label: 'New password', autocomplete: 'new-password',
                                minlength: 6, hint: 'Leave blank to keep your current password.'}) }}

@@ -130,16 +130,11 @@ class User extends \Core\Model
             $this->errors['email'][] = 'That email is already registered.';
         }
 
-        if ($this->password !== null) {
-            if (strlen($this->password) < 6) {
-                $this->errors['password'][] = 'Your password needs at least 6 characters.';
-            }
-            if (!preg_match('/[a-z]/i', $this->password)) {
-                $this->errors['password'][] = 'Your password needs a letter.';
-            }
-            if (!preg_match('/\d/', $this->password)) {
-                $this->errors['password'][] = 'Your password needs a number.';
-            }
+        // One line for every rule, as the hint under the field says it
+        $isPasswordWeak = $this->password !== null
+            && (strlen($this->password) < 6 || !preg_match('/[a-z]/i', $this->password) || !preg_match('/\d/', $this->password));
+        if ($isPasswordWeak) {
+            $this->errors['password'][] = 'Use 6 or more characters, with a letter and a number.';
         }
     }
 
