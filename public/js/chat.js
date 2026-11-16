@@ -714,8 +714,22 @@ chatList.addEventListener('mouseout', (event) => onCityHover(event, false));
 chatList.addEventListener('click', (event) => {
     const city = event.target.closest(CITY);
     if (!city) return;
-    if (!isShown(document.getElementById('map'))) setMapOpen(true);
-    focusPin(city.closest('.chat').dataset.senderId);
+    const senderId = city.closest('.chat').dataset.senderId;
+    if (isMapOpen()) {
+        focusPin(senderId);
+        return;
+    }
+    // The button's own handlers open the map and start it loading (map.js).
+    // The pin waits for the chat to slide down, as the room it leaves sets
+    // where the middle of the map is
+    mapToggle.click();
+    // Its own slide: the tapped city's swap ends inside it first
+    const onChatSlid = (slide) => {
+        if (slide.target !== chatPanel || slide.propertyName !== 'top') return;
+        chatPanel.removeEventListener('transitionend', onChatSlid);
+        focusPin(senderId);
+    };
+    chatPanel.addEventListener('transitionend', onChatSlid);
 });
 
 chatList.addEventListener('click', (event) => {
