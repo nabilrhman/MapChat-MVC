@@ -718,6 +718,13 @@ body
     animation: person-arrived 1.5s var(--ease-out);
 }
 
+/* Both at once in one rule: each class's own rule would override the other's */
+.person.is-entering.is-arrived
+{
+    animation: person-in var(--dur-slow) var(--ease-out) backwards,
+               person-arrived 1.5s var(--ease-out);
+}
+
 /* The rest of the list slides to its new place instead of jumping */
 .person.is-shifting
 {

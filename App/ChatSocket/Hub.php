@@ -724,9 +724,6 @@ class Hub implements WebsocketClientHandler
     {
         unset($person['email']);
         $person['is_online'] = $isOnline ? 1 : 0;
-        if (!$isOnline) {
-            $person['minutes_ago'] = 0;
-        }
 
         return $person;
     }
