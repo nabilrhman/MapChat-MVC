@@ -1412,12 +1412,14 @@ body
     pointer-events: none;
 }
 
-/* The text can't move, so no padding or bold here; a shadow in the chip's
-   own colour stands in for the padding */
+/* The text can't move, so no padding or real bold here: a shadow in the
+   chip's own colour stands in for the padding, and a thin outline on the
+   letters makes them bold without widening them */
 .chat-composer__chips .mention
 {
     padding: 0;
     font-weight: inherit;
+    -webkit-text-stroke: 0.5px currentColor;
     box-shadow: 0 0 0 2px color-mix(in srgb, var(--md-primary) var(--md-hover), transparent);
 }
 
