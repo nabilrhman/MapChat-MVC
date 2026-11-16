@@ -5,12 +5,14 @@
     --footer-height: 48px;
 }
 
-/* Phones: a shorter header (see header.css) */
+/* Phones: a shorter header (see header.css), and no footer, to give the
+   page the room */
 @media (max-width: 700px)
 {
     :root
     {
         --header-height: 61px;
+        --footer-height: 0px;
     }
 }
 

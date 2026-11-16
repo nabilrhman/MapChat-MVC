@@ -12,6 +12,8 @@
     /* The wordmark's "p" hangs below the line; nudge it up so the letters,
        not the whole box, sit level with the menu */
     margin-top: -7px;
+    /* 24px in, level with the GitHub icon in the footer below */
+    margin-left: 4px;
     /* The logo is a picture; its text is only for screen readers */
     text-indent: -9999px;
     overflow: hidden;
@@ -102,6 +104,7 @@
         width: 124px;
         height: 38px;
         margin-top: -6px;
+        margin-left: 0;
     }
 
     .site-header__menu-button
