@@ -292,8 +292,11 @@ body
 .chat-tab__online
 {
     flex: none;
-    width: 8px;
-    height: 8px;
+    /* A whole number of screen pixels at 100%, 133%, 150% and 200%, so
+       it stays round; 7 or 8 blur into an oval on a 133% screen */
+    width: 6px;
+    height: 6px;
+    margin-right: 2px; /* on top of the tab's gap, so the dot doesn't crowd the name */
     border-radius: 50%;
     background-color: #43a047;
 }
