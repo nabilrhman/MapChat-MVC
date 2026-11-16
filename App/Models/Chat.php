@@ -230,7 +230,7 @@ class Chat extends \Core\Model
     protected static function selectSql()
     {
         return 'SELECT chats.id, chats.body, chats.timestamp, users.id AS user_id, users.name, users.email, users.avatar,
-                       users.email LIKE \'%@demo.mapchat.local\' AS is_demo,
+                       users.email LIKE \'%@demo.mapchat.local\' AS is_demo, users.is_guest,
                        IF(users.share_location, userinfo.city, NULL) AS city,
                        IF(users.share_location, userinfo.country, NULL) AS country,
                        IF(users.share_location, userinfo.lng, NULL) AS lng,
