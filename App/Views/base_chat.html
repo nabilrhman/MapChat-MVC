@@ -55,11 +55,13 @@
         <span class="chat-header__room-icon" id="chat-header-room-icon">{{ icon('hashtag-chat') }}</span>
         <img class="chat-header__photo" id="chat-header-photo" alt="" hidden>
         <span class="chat-header__who">
-            <span class="chat-header__name" id="chat-header-name">Everyone</span>
+            <span class="chat-header__top">
+                <span class="chat-header__name" id="chat-header-name">Everyone</span>
+                <span class="chat-header__tag" id="chat-header-tag">{{ icon('global', 'chat-header__tag-icon') }}Public</span>
+                <span class="chat-header__tag" id="chat-header-private-tag" hidden>{{ icon('lock', 'chat-header__tag-icon') }}Private</span>
+            </span>
             <span class="chat-header__status" id="chat-header-status">Chat with people worldwide</span>
         </span>
-        <span class="chat-header__tag" id="chat-header-tag">{{ icon('global', 'chat-header__tag-icon') }}Public</span>
-        <span class="chat-header__tag" id="chat-header-private-tag" hidden>{{ icon('lock', 'chat-header__tag-icon') }}Private</span>
     </div>
 
     {# Until you answer it: offers notifications for private messages and mentions (notifications.js) #}

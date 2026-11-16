@@ -357,9 +357,27 @@ function showChatHeader() {
     }
     status.replaceChildren();
     if (!person) return;
-    status.append(createPlace(person.city, person.country, true));
+    const where = [createPlace(person.city, person.country)];
     // Hidden with their place when they don't share their location
-    if (person.lng !== null && person.lng !== undefined) status.append(createLocalTime(person));
+    if (person.lng !== null && person.lng !== undefined) where.push(createLocalTime(person));
+    status.append(...flipsToCountry(where, person));
+}
+
+// Their city and time, which flip up together to show their country on
+// hover (.chat-header__flip in chat.css). Stays put without a city to flip from
+function flipsToCountry(where, person) {
+    const nameOfCountry = countryName(person.country);
+    if (!person.city || !person.country || nameOfCountry === person.country) return where;
+
+    const cityLine = createElement('span', 'swap__line');
+    cityLine.append(...where);
+    const countryLine = createElement('span', 'swap__line');
+    countryLine.append(createPlace(null, person.country));
+    const track = createElement('span', 'swap__track');
+    track.append(cityLine, countryLine);
+    const flip = createElement('span', 'swap chat-header__flip');
+    flip.append(track);
+    return [flip];
 }
 
 // Their time now, with a sun or moon, as their pin and messages show it

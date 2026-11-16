@@ -19,28 +19,61 @@ function placeName(city, country) {
     return city || countryName(country);
 }
 
-// Flag and place (.place in chat.css). With slidesToCountry and a city,
-// hovering it slides to the country's name, like the place under a message
-function createPlace(city, country, slidesToCountry = false) {
-    const flag = () => (country ? [createElement('span', `fi fi-${country.toLowerCase()}`)] : []);
-    const nameOfCountry = countryName(country);
+// Flag and place (.place in chat.css): the city, or the country without one
+function createPlace(city, country) {
     const place = createElement('span', 'place');
-    const cityLine = createElement('span', 'swap__line');
-    cityLine.append(...flag(), createElement('span', 'place__name', placeName(city, country)));
-
-    // Plain without a city, or for a code the browser can't name, like MapChat's Null Island
-    if (!slidesToCountry || !city || nameOfCountry === country) {
-        place.append(...cityLine.childNodes);
-        return place;
-    }
-    // Two lines in a one-line window (.swap in chat.css)
-    const countryLine = createElement('span', 'swap__line');
-    countryLine.append(...flag(), createElement('span', 'place__name', nameOfCountry));
-    const track = createElement('span', 'swap__track');
-    track.append(cityLine, countryLine);
-    place.classList.add('swap');
-    place.append(track);
+    if (country) place.append(createElement('span', `fi fi-${country.toLowerCase()}`));
+    place.append(createElement('span', 'place__name', placeName(city, country)));
     return place;
+}
+
+// Counts a number shown in an element up or down to the target instead of
+// snapping, as Rove's useCountUp does: each frame covers a fraction of the
+// distance left, so it slows as it lands. Each number it passes rolls in
+// (.count-roll in animations.css), quicker while it's still far off.
+// Snaps under reduced motion
+const COUNT_EASE = 0.18;
+const COUNT_SNAP = 0.05;
+const countFrames = new WeakMap();
+
+function countTo(element, target) {
+    cancelAnimationFrame(countFrames.get(element));
+    // The first number shows at once, like the hook's starting value
+    if (element.dataset.count === undefined) {
+        element.dataset.count = target;
+        element.classList.add('count-roll');
+        element.replaceChildren(createElement('span', 'count-roll__number', String(target)));
+        return;
+    }
+    let current = Number(element.dataset.count);
+
+    const step = () => {
+        const remaining = target - current;
+        const shouldSnap = Math.abs(remaining) < COUNT_SNAP || matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const shown = Math.round(current);
+        current = shouldSnap ? target : current + remaining * COUNT_EASE;
+        element.dataset.count = current;
+        if (Math.round(current) !== shown) rollTo(element, Math.round(current), Math.abs(remaining));
+        if (!shouldSnap) countFrames.set(element, requestAnimationFrame(step));
+    };
+    countFrames.set(element, requestAnimationFrame(step));
+}
+
+// Slides the old number out and the new one in, up or down with the count
+function rollTo(element, number, distanceLeft) {
+    const isUp = number > Number(element.lastElementChild?.textContent);
+    element.classList.toggle('count-roll--up', isUp);
+    element.classList.toggle('count-roll--down', !isUp);
+    // Far off, numbers pass every frame or two, so each rolls quicker
+    element.style.setProperty('--count-dur', distanceLeft > 3 ? '60ms' : '');
+
+    element.querySelectorAll('.count-roll__number--leaving').forEach((old) => old.remove());
+    const old = element.lastElementChild;
+    if (old) {
+        old.classList.add('count-roll__number--leaving');
+        old.addEventListener('animationend', () => old.remove(), {once: true});
+    }
+    element.append(createElement('span', 'count-roll__number', String(number)));
 }
 
 // An icon from the sprite, as Core\Icon draws one in Twig

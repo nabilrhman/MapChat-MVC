@@ -101,6 +101,63 @@
     transform: scale(1.05);
 }
 
+/* A count that rolls like an odometer (countTo in dom.js): the new number
+   slides in from below as it goes up, from above as it goes down, and the
+   old one slides out the other way. Its box hides both outside it */
+.count-roll
+{
+    display: inline-grid;
+    justify-content: center;
+    overflow: clip;
+    vertical-align: top;
+}
+
+.count-roll__number
+{
+    grid-area: 1 / 1;
+    animation: var(--count-dur, var(--dur-fast)) var(--ease-out) both;
+}
+
+.count-roll--up .count-roll__number
+{
+    animation-name: roll-in-up;
+}
+
+.count-roll--up .count-roll__number--leaving
+{
+    animation-name: roll-out-up;
+}
+
+.count-roll--down .count-roll__number
+{
+    animation-name: roll-in-down;
+}
+
+.count-roll--down .count-roll__number--leaving
+{
+    animation-name: roll-out-down;
+}
+
+@keyframes roll-in-up
+{
+    from { transform: translateY(100%); }
+}
+
+@keyframes roll-out-up
+{
+    to { transform: translateY(-100%); }
+}
+
+@keyframes roll-in-down
+{
+    from { transform: translateY(-100%); }
+}
+
+@keyframes roll-out-down
+{
+    to { transform: translateY(100%); }
+}
+
 /* Movement off for people who ask for less; the loading dots and the
    loading bar keep moving, as they're the only sign something is happening */
 @media (prefers-reduced-motion: reduce)
