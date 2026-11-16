@@ -9,13 +9,23 @@ MySQL-compatible service.
 1. Create a TiDB Cloud Starter cluster. In its SQL editor, run
    `CREATE DATABASE mapchat; USE mapchat;`, then the contents of `database/init.sql`,
    and, if you want the sample conversation, `database/demo.sql`.
-2. In Render, choose **New > Blueprint** and pick this repository. Render reads
-   `render.yaml` and asks for the database host, user and password from TiDB's
-   **Connect** dialog, and for `APP_URL` (the `onrender.com` address).
-3. Optional settings:
+2. Fork this repository and make it point at your site, not mine:
+   - In `render.yaml`, `APP_URL` and `domains` are set to
+     `mapchat.swiftsolve.net`. Put your own domain in both. Without a domain,
+     delete the two `domains` lines, and once Render shows the service's
+     `onrender.com` address, set `APP_URL` to it and push.
+   - In `.github/workflows/keep-awake.yml`, change the address it visits to
+     yours (see below).
+3. In Render, choose **New > Blueprint** and pick your fork. Render reads
+   `render.yaml` and asks for the settings it leaves blank:
+   - `DB_HOST`, `DB_USER` and `DB_PASSWORD`, from TiDB's **Connect** dialog.
    - `MAILER_DSN` for activation and password-reset emails. Render's free plan
-     blocks SMTP, so use `brevo+api://API_KEY@default`.
-   - `CLOUDINARY_CLOUD_NAME` and `CLOUDINARY_UPLOAD_PRESET` for avatar uploads.
+     blocks SMTP, so use `brevo+api://API_KEY@default`. Left empty, email is
+     off: new accounts are active at once, and a password reset says it
+     couldn't send the email.
+   - `MAIL_FROM`, the sender, on a domain verified with Brevo, e.g.
+     `MapChat <no-reply@mail.example.com>`. Brevo refuses the default,
+     `MapChat <no-reply@localhost>`.
    - `GROQ_API_KEY` for MapChat and the AI characters to chat back.
    - `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` for notifications that reach
      people with MapChat closed. Make the pair once on your computer and keep
@@ -23,23 +33,18 @@ MySQL-compatible service.
      `docker compose run --rm app php -r 'require "vendor/autoload.php"; print_r(Minishlink\WebPush\VAPID::createVapidKeys());'`
      Without them, notifications still come while MapChat is open in a tab.
 
-Free Render services sleep after 15 minutes without visitors; the `Keep awake`
-workflow visits every 10 minutes, well within Render's 750 free hours a month.
-The container also brings an older database up to date when it starts.
+   Only the database settings are required.
+4. Avatar uploads go from the browser to Cloudinary. Without settings of its
+   own, a copy uploads to my Cloudinary account, so add
+   `CLOUDINARY_CLOUD_NAME` and `CLOUDINARY_UPLOAD_PRESET` (an unsigned upload
+   preset) for yours in the service's **Environment** tab.
 
-<details>
-<summary>Upgrading a database from before the automatic upgrades</summary>
+Free Render services sleep after 15 minutes without visitors. The `Keep awake`
+workflow visits the site every 10 minutes, well within Render's 750 free hours
+a month. GitHub turns scheduled workflows off in a fork, so turn them on in
+your fork's **Actions** tab.
 
-```sql
-ALTER TABLE chats
-  ADD COLUMN to_email VARCHAR(255) NULL DEFAULT NULL AFTER email,
-  ADD KEY fk_m_to_email (to_email),
-  ADD CONSTRAINT fk_m_to_email FOREIGN KEY (to_email) REFERENCES users (email)
-    ON DELETE CASCADE ON UPDATE CASCADE;
-
-ALTER TABLE userinfo
-  ADD COLUMN country CHAR(2) AFTER city,
-  ADD COLUMN timezone VARCHAR(64) AFTER country;
-```
-
-</details>
+The container brings an older database up to date each time it starts
+(`database/migrate.php`): it adds the tables, columns and keys it's missing,
+and fills in the demo people's countries and MapChat's place on Null Island. If that fails, the site
+starts anyway and the error is in the service's logs.

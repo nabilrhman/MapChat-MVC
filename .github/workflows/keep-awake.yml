@@ -1,5 +1,6 @@
 # Free Render services sleep after 15 minutes without visitors.
 # Ping the site every 10 minutes so it stays awake.
+# This pings my site: in a copy, change the address to yours.
 name: Keep awake
 
 on:

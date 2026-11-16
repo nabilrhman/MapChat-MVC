@@ -10,10 +10,12 @@ services:
     healthCheckPath: /health.txt
     # The chat's WebSockets (wss://…/ws) come in on this same address; Apache
     # passes them to the chat socket in the container (docker/start.sh)
-    # Point a CNAME for this name at the service's onrender.com address
+    # Point a CNAME for this name at the service's onrender.com address.
+    # This is my site: for your own, change it and APP_URL (docs/deploy.md)
     domains:
       - mapchat.swiftsolve.net
     envVars:
+      # Change to your own address, as with domains above
       - key: APP_URL
         value: https://mapchat.swiftsolve.net
       - key: DB_HOST
@@ -35,7 +37,7 @@ services:
       # Free plans block SMTP ports, so use Brevo's API: brevo+api://API_KEY@default
       - key: MAILER_DSN
         sync: false
-      # Must use the verified domain, e.g. MapChat <no-reply@mail.swiftsolve.net>
+      # The sender, on a domain verified with Brevo, e.g. MapChat <no-reply@mail.swiftsolve.net>
       - key: MAIL_FROM
         sync: false
       # Lets MapChat and the demo people chat back (free key at console.groq.com)
