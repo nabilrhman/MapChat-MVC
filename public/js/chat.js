@@ -824,19 +824,40 @@ function getPhotoSrc(userId) {
     return chatList.querySelector(`.chat[data-sender-id="${CSS.escape(String(userId))}"] .chat__photo`)?.src ?? '';
 }
 
+// While the row opens or closes, the list keeps its newest message in view,
+// frame by frame, if that's where you were
+function keepNewestInViewWhileTypingRowMoves() {
+    if (getDistanceFromBottom() >= AT_BOTTOM_DISTANCE) return;
+
+    let isMoving = true;
+    onTransitionEnd(typingRow, () => {
+        isMoving = false;
+    });
+    // In case no transition runs (less motion, a hidden page)
+    setTimeout(() => {
+        isMoving = false;
+    }, 1000);
+
+    const follow = () => {
+        chatList.scrollTop = chatList.scrollHeight;
+        if (isMoving) requestAnimationFrame(follow);
+    };
+    follow();
+}
+
 function showPartnerTyping() {
     const isTyping = (partnerTypingUntil[activeConversation] ?? 0) >= Date.now();
-    if (isTyping === !typingRow.hidden) return;
+    if (isTyping === typingRow.classList.contains('is-shown')) return;
 
-    // Room for the row comes off the list; keep the newest message in view
-    const wasAtBottom = getDistanceFromBottom() < AT_BOTTOM_DISTANCE;
     if (isTyping) {
         const name = getTab(activeConversation).querySelector('.chat-tab__name').textContent;
         document.getElementById('typing-row-photo').src = getPhotoSrc(activeConversation);
         document.getElementById('typing-row-label').textContent = `${name} is typing`;
+    } else {
+        document.getElementById('typing-row-label').textContent = '';
     }
-    typingRow.hidden = !isTyping;
-    if (wasAtBottom) scrollToNewest('instant');
+    keepNewestInViewWhileTypingRowMoves();
+    typingRow.classList.toggle('is-shown', isTyping);
 }
 
 function onPartnerTyping(from, isTyping) {
