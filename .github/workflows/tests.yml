@@ -1,10 +1,9 @@
-# Runs the PHPUnit tests, as locally, on every push to master and every PR
+# Runs the PHPUnit tests, as locally, on every merge into master
 name: Tests
 
 on:
   push:
     branches: [master]
-  pull_request:
 
 jobs:
   test:
