@@ -22,13 +22,14 @@
 <div class="chat{% if mentions_me %} chat--mentions-me{% endif %}{% if not initial|default(false) and not mine %} is-entering{% endif %}"
      data-id="{{ chat.id }}" data-sender-id="{{ chat.user_id }}" data-conversation="{{ conversation }}" data-partner="{{ partner }}">
     <div class="chat__avatar">
-        <img class="chat__photo" src="{{ avatar_src(chat.user_id, chat.name, chat.avatar, chat.is_demo) }}" alt="Avatar">
+        <img class="chat__photo" src="{{ avatar_src(chat.user_id, chat.name, chat.avatar, chat.is_demo) }}" alt=""
+             width="36" height="36" loading="lazy">
     </div>
 
     <div class="chat__content">
         {% if can_message %}
-        <h3 class="chat__name chat__name--can-message" data-user-id="{{ chat.user_id }}" data-user-name="{{ sender_name }}"
-            title="Chat privately with {{ sender_name }}">{{ sender_name }}</h3>
+        <h3 class="chat__name"><button class="chat__name-button" type="button" data-user-id="{{ chat.user_id }}" data-user-name="{{ sender_name }}"
+            title="Chat privately with {{ sender_name }}">{{ sender_name }}</button></h3>
         {% else %}
         <h3 class="chat__name">{{ sender_name }}</h3>
         {% endif %}
@@ -54,21 +55,22 @@
            private chat, whose header already says where they are #}
         {% if conversation != 'everyone' %}
         {% elseif chat.city %}
-        {# On hover the city slides to the country's flag and name #}
+        {# On hover the city slides to the country's flag and name; a click
+           shows the sender's pin on the map (chat.js) #}
         <span class="chat__location">
-            <span{% if chat.country %} class="swap"{% endif %}>
+            <button class="chat__place{% if chat.country %} swap{% endif %}" type="button">
                 <span class="swap__track">
                     <span class="swap__line">{{ icon('map-point', 'chat__place-icon') }}{{ chat.city }}</span>
                     {% if chat.country %}
                     <span class="swap__line"><span class="fi fi-{{ chat.country|lower }}"></span><span class="chat__country" data-country="{{ chat.country }}"></span></span>
                     {% endif %}
                 </span>
-            </span>
+            </button>
         </span>
         {% elseif chat.country %}
         {# Only the country is known: its flag and name, which chat.js fills in #}
         <span class="chat__location">
-            <span><span class="fi fi-{{ chat.country|lower }}"></span><span class="chat__country" data-country="{{ chat.country }}"></span></span>
+            <button class="chat__place" type="button"><span class="fi fi-{{ chat.country|lower }}"></span><span class="chat__country" data-country="{{ chat.country }}"></span></button>
         </span>
         {% endif %}
     </div>

@@ -85,6 +85,8 @@ function setUpMentions(input, canMention, getPeople) {
 
         const photo = createElement('img', 'mention-picker__photo');
         photo.alt = '';
+        photo.width = 24;
+        photo.height = 24;
         photo.src = person.avatar_src;
         option.append(photo, createElement('span', 'mention-picker__name', person.shown_name));
 

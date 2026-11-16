@@ -36,6 +36,27 @@
 }
 
 /* The page is the map and the panels over it; nothing scrolls but them */
+/* Buttons drawn as the text or row they sit in; the rules below give
+   each its look */
+.people__close,
+.chat-tab__open,
+.chat-tab__close,
+.chat__name-button,
+.chat__place,
+.person
+{
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: none;
+    color: inherit;
+    font: inherit;
+    letter-spacing: inherit;
+    text-align: inherit;
+    text-shadow: inherit;
+    text-transform: inherit;
+}
+
 html
 {
     height: 100%;
@@ -255,7 +276,8 @@ body
 }
 
 /* For screen readers only */
-.typing-row__label
+.typing-row__label,
+.chat-composer__label
 {
     position: absolute;
     width: 1px;
@@ -540,8 +562,19 @@ body
     content: "@ ";
 }
 
+/* Everything in a tab but its close button: what opens its chat */
+.chat-tab__open
+{
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 100%;
+    cursor: pointer;
+}
+
 .chat-tab__close
 {
+    cursor: pointer;
     color: var(--text-faint);
     font-size: 20px;
     line-height: 1;
@@ -987,6 +1020,7 @@ body
 .person
 {
     display: grid;
+    width: 100%; /* a button, for anyone but you */
     grid-template-columns: 32px 1fr; /* avatar as big as in the chat */
     column-gap: 12px;
     align-items: center;
@@ -1607,12 +1641,18 @@ body
     font-weight: 600;
 }
 
-.chat__name--can-message
+/* Someone you can chat with privately: their name opens that chat */
+.chat__name-button
 {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     cursor: pointer;
 }
 
-.chat__name--can-message:hover
+.chat__name-button:hover
 {
     color: var(--md-primary);
 }
@@ -1639,8 +1679,14 @@ body
     line-height: 16px;
 }
 
+/* The place, as a button: just the text, which reveals on hover */
+.chat__place
+{
+    cursor: default;
+}
+
 /* A sender with a pin on the map: clicking the city brings it to the
-   middle. Just the text; two classes, to win over .swap's own cursor */
+   middle. Two classes, to win over .swap's own cursor */
 .chat__location .is-on-map
 {
     cursor: pointer;

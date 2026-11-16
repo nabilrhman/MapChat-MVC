@@ -61,20 +61,24 @@ function createPersonRow(person) {
     const isMe = person.id === myUserId;
     const userId = String(person.id);
 
-    const row = createElement('div', 'person');
+    // Your own row does nothing; anyone else's opens a private chat
+    const row = isMe ? createElement('div', 'person') : createButton('person');
     row.classList.toggle('is-online', person.isOnline);
     row.classList.toggle('person--can-message', !isMe);
     row.dataset.userId = userId;
     row.title = isMe ? '' : `Chat privately with ${person.shown_name}`;
     row.dataset.tipSide = 'left'; // over the map, not the rows above
 
-    const avatarFrame = createElement('div', 'person__avatar');
+    const avatarFrame = createElement('span', 'person__avatar');
     const photo = createElement('img', 'person__photo');
     photo.alt = '';
+    photo.width = 32;
+    photo.height = 32;
+    photo.loading = 'lazy';
     photo.src = person.avatar_src;
     avatarFrame.append(photo);
 
-    const text = createElement('div', 'person__text');
+    const text = createElement('span', 'person__text');
     text.append(
         createElement('span', 'person__name', person.shown_name + (isMe ? ' (you)' : '')),
         createPersonDetail(person),

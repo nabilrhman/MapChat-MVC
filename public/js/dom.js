@@ -7,6 +7,13 @@ function createElement(tagName, className = '', text = '') {
     return element;
 }
 
+// A button that acts on the page, not one that submits a form
+function createButton(className = '', text = '') {
+    const button = createElement('button', className, text);
+    button.type = 'button';
+    return button;
+}
+
 // The MapChat bot's made-up country, at 0°, 0° (a code free for private use,
 // so Intl has no name for it)
 const NULL_ISLAND = 'XN';

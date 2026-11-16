@@ -139,8 +139,7 @@ function addTab(conversation, name) {
     const existingTab = getTab(conversation);
     if (existingTab) return existingTab;
 
-    const tab = createElement('a', 'chat-tab');
-    tab.href = '#';
+    const tab = createElement('div', 'chat-tab');
     tab.dataset.conversation = conversation;
     tab.classList.toggle('is-entering', shouldAnimateNewTabs);
 
@@ -153,10 +152,13 @@ function addTab(conversation, name) {
     const unreadCount = createElement('span', 'chat-tab__unread');
     unreadCount.hidden = true;
 
-    const closeButton = createElement('span', 'chat-tab__close', '×');
+    const openButton = createButton('chat-tab__open');
+    openButton.append(onlineDot, nameLabel, unreadCount);
+
+    const closeButton = createButton('chat-tab__close', '×');
     closeButton.title = 'Close';
 
-    tab.append(onlineDot, nameLabel, unreadCount, closeButton);
+    tab.append(openButton, closeButton);
     placeTab(tab);
     return tab;
 }
@@ -562,8 +564,6 @@ chatTabs.addEventListener('touchmove', (event) => {
 chatTabs.addEventListener('contextmenu', (event) => {
     if (tabDrag) event.preventDefault();
 });
-// Tabs are links, which the browser would drag off as a link instead
-chatTabs.addEventListener('dragstart', (event) => event.preventDefault());
 
 /* Messages */
 
@@ -693,7 +693,7 @@ document.addEventListener('visibilitychange', () => {
 
 // The city and country under a message: the text only, not the whole
 // width of its row
-const CITY = '.chat__location > span';
+const CITY = '.chat__place';
 
 // Hovering a message's city points out its sender's pin, as the people
 // list does. mouseover and mouseout, as they reach the list from each line.
@@ -719,7 +719,7 @@ chatList.addEventListener('click', (event) => {
 });
 
 chatList.addEventListener('click', (event) => {
-    const senderName = event.target.closest('.chat__name--can-message');
+    const senderName = event.target.closest('.chat__name-button');
     if (senderName) {
         openPrivateChat(senderName.dataset.userId, senderName.dataset.userName);
     }
