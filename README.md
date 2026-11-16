@@ -118,7 +118,9 @@ on what's sent to its API. The code is in `App/Models/Bot.php`.
   PHP 8.4, in `Core/`. The app itself is in `App/`.
 - **Database:** MySQL, queried with prepared statements to block SQL injection.
 - **Views:** Twig 3 templates, which escape everything users type to block
-  cross-site scripting.
+  cross-site scripting. A strict Content-Security-Policy backs that up: a
+  script runs only if it carries the page's one-time nonce, or a script that
+  did loaded it (`Core/ContentSecurityPolicy.php`).
 - **Requests:** a form, a request from a page or the chat socket that changes
   anything must say it comes from the site itself (its Origin or Referer),
   which blocks cross-site request forgery.
