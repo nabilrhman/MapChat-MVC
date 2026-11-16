@@ -202,7 +202,7 @@ class UserInfo extends \Core\Model
     public static function getAllLocations()
     {
         $sql = 'SELECT userinfo.lat, userinfo.lng, userinfo.city, userinfo.country,
-                       users.id AS user_id, users.name, users.avatar,
+                       users.id AS user_id, users.name, users.nickname, users.is_guest, users.avatar,
                        users.email LIKE \'%@demo.mapchat.local\' AS is_demo
                 FROM userinfo
                 LEFT JOIN users
@@ -215,7 +215,7 @@ class UserInfo extends \Core\Model
         $stmt->bindValue(':bot_email', Chat::BOT_EMAIL, PDO::PARAM_STR);
         $stmt->execute();
 
-        return static::withAvatarSrc($stmt->fetchAll(PDO::FETCH_ASSOC), 'user_id');
+        return \App\Mention::withShownNames(static::withAvatarSrc($stmt->fetchAll(PDO::FETCH_ASSOC), 'user_id'));
     }
 
     /**
@@ -303,7 +303,7 @@ class UserInfo extends \Core\Model
         $bot_online = static::botOnlineSql();
 
         $sql = 'SELECT users.id, users.name, users.avatar, users.email LIKE \'%@demo.mapchat.local\' AS is_demo,
-                       users.is_guest, ' . $bot_online . ' AS is_bot,
+                       users.nickname, users.is_guest, ' . $bot_online . ' AS is_bot,
                        IF(users.share_location, userinfo.city, NULL) AS city,
                        IF(users.share_location, userinfo.country, NULL) AS country,
                        (userinfo.online_at > NOW() - INTERVAL :online SECOND OR ' . $demo_online . ' OR ' . $bot_online . ') AS is_online,
@@ -322,7 +322,7 @@ class UserInfo extends \Core\Model
         $stmt->bindValue(':guest_online', static::ONLINE_SECONDS, PDO::PARAM_INT);
         $stmt->execute();
 
-        return static::withAvatarSrc($stmt->fetchAll(PDO::FETCH_ASSOC), 'id');
+        return \App\Mention::withShownNames(static::withAvatarSrc($stmt->fetchAll(PDO::FETCH_ASSOC), 'id'));
     }
 
     /**

@@ -70,7 +70,7 @@ class Profile extends Authenticated
             }
         }
 
-        $data = ['name' => $_POST['name'] ?? '', 'email' => $email, 'password' => $password];
+        $data = ['name' => $_POST['name'] ?? '', 'nickname' => $_POST['nickname'] ?? '', 'email' => $email, 'password' => $password];
 
         if ($this->user->updateProfile($data)) {
             Flash::clear();

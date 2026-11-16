@@ -22,7 +22,7 @@
             <button type="button" class="account-menu__button{{ on_profile ? ' is-current' }}" id="account-menu-button"
                     aria-controls="account-menu-list" aria-expanded="false" aria-haspopup="true">
                 <img class="account-menu__avatar" src="{{ avatar_src(current_user.id, current_user.name, current_user.avatar) }}" alt="">
-                <span class="account-menu__name">{{ current_user.name }}</span>
+                <span class="account-menu__name">{{ shown_name(current_user.name, current_user.nickname, current_user.is_guest) }}</span>
                 {{ icon('alt-arrow-down', 'account-menu__chevron') }}
             </button>
             <div class="account-menu__list" id="account-menu-list">

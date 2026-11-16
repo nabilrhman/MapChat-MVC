@@ -314,7 +314,7 @@ class Bot extends \Core\Model
             return null;
         }
 
-        $name = static::person($job['email'])['name'] ?? 'them';
+        $name = static::handleOf($job['email']);
 
         return static::write(
             "You're in the open room, which everyone can read. Reply to $name's latest message.",
@@ -335,7 +335,7 @@ class Bot extends \Core\Model
             return null;
         }
 
-        $name = static::person($job['email'])['name'] ?? 'them';
+        $name = static::handleOf($job['email']);
 
         return static::write(
             "This is your private chat with $name; nobody else can read it. Reply to their latest message.",
@@ -353,7 +353,7 @@ class Bot extends \Core\Model
      */
     protected static function roomHistory($upToId)
     {
-        $stmt = static::getDB()->prepare('SELECT users.name, chats.email, chats.body FROM chats
+        $stmt = static::getDB()->prepare('SELECT users.name, users.nickname, users.is_guest, chats.email, chats.body FROM chats
                                           JOIN users ON chats.email = users.email
                                           WHERE chats.to_email IS NULL AND chats.id <= :id' . static::notDemoSql() . '
                                           ORDER BY chats.id DESC LIMIT ' . static::CONTEXT_MESSAGES);
@@ -372,7 +372,7 @@ class Bot extends \Core\Model
      */
     protected static function privateHistory($email, $upToId)
     {
-        $stmt = static::getDB()->prepare('SELECT users.name, chats.email, chats.body FROM chats
+        $stmt = static::getDB()->prepare('SELECT users.name, users.nickname, users.is_guest, chats.email, chats.body FROM chats
                                           JOIN users ON chats.email = users.email
                                           WHERE ((chats.email = :person AND chats.to_email = :bot)
                                               OR (chats.email = :bot2 AND chats.to_email = :person2))
@@ -401,7 +401,9 @@ class Bot extends \Core\Model
         }
 
         $lines = array_map(
-            fn ($message) => ($message['email'] === Chat::BOT_EMAIL ? 'MapChat (you)' : $message['name']) . ': ' . $message['body'],
+            fn ($message) => ($message['email'] === Chat::BOT_EMAIL
+                ? 'MapChat (you)'
+                : Mention::handle($message['name'], $message['nickname'], $message['is_guest'])) . ': ' . $message['body'],
             $messages
         );
 
@@ -648,7 +650,21 @@ class Bot extends \Core\Model
     }
 
     /**
-     * Name, whether they're a guest, and, if they share it, city
+     * How someone is shown and @mentioned (Mention::handle)
+     *
+     * @param string $email
+     *
+     * @return string
+     */
+    protected static function handleOf($email)
+    {
+        $person = static::person($email);
+
+        return $person ? Mention::handle($person['name'], $person['nickname'], $person['is_guest']) : 'them';
+    }
+
+    /**
+     * Name, nickname, whether they're a guest, and, if they share it, city
      *
      * @param string $email
      *
@@ -656,7 +672,7 @@ class Bot extends \Core\Model
      */
     protected static function person($email)
     {
-        $stmt = static::getDB()->prepare('SELECT users.name, users.is_guest, IF(users.share_location, userinfo.city, NULL) AS city
+        $stmt = static::getDB()->prepare('SELECT users.name, users.nickname, users.is_guest, IF(users.share_location, userinfo.city, NULL) AS city
                                           FROM users LEFT JOIN userinfo ON users.email = userinfo.email
                                           WHERE users.email = :email');
         $stmt->execute([':email' => $email]);
@@ -693,11 +709,11 @@ class Bot extends \Core\Model
     {
         $person = static::person($email);
 
-        if (!$person || Mention::has($body, $person['name'], $person['is_guest'])) {
+        if (!$person || Mention::has($body, $person['name'], $person['nickname'], $person['is_guest'])) {
             return $body;
         }
 
-        return '@' . Mention::handle($person['name'], $person['is_guest']) . ' ' . $body;
+        return '@' . Mention::handle($person['name'], $person['nickname'], $person['is_guest']) . ' ' . $body;
     }
 
     /**

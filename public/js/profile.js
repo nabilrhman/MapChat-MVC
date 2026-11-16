@@ -6,6 +6,7 @@ const ownUserId = profileForm.dataset.userId;
 const isGuest = profileForm.dataset.guest === 'true';
 
 const nameInput = document.getElementById('inputName');
+const nicknameInput = document.getElementById('inputNickname');
 const emailInput = document.getElementById('inputEmail');
 const passwordInput = document.getElementById('inputPassword');
 const currentPasswordField = document.getElementById('current-password');
@@ -96,7 +97,7 @@ removePhotoButton.addEventListener('click', () => {
 
 /* Name, email and password: each card opens with Edit and saves with Save */
 
-const editableFields = [nameInput, emailInput, passwordInput];
+const editableFields = [nameInput, nicknameInput, emailInput, passwordInput];
 const savedValues = new Map(editableFields.map((field) => [field, field.value]));
 
 const hasChanged = (field) => field.value !== savedValues.get(field);
@@ -109,6 +110,11 @@ function showCurrentPasswordIfNeeded() {
 
 const formChecks = setUpFormChecks(profileForm, {
     name: [FIELD_CHECKS.required()],
+    // As the server checks it (User::validate); whether it's taken, the server says
+    nickname: [{
+        message: '2 to 20 letters, numbers, _ . or -, with no spaces.',
+        test: (value) => value.trim() === '' || /^[\p{L}\p{N}_.-]{2,20}$/u.test(value.trim()),
+    }],
     email: [
         {
             // A guest only needs an email when setting a password

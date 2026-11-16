@@ -7,17 +7,16 @@
 {% set conversation, partner = 'everyone', '' %}
 {% else %}
 {% set conversation = mine ? chat.to_user_id : chat.user_id %}
-{% set partner = mine ? chat.to_name : chat.name %}
+{% set partner = mine ? shown_name(chat.to_name, chat.to_nickname, chat.to_is_guest) : shown_name(chat.name, chat.nickname, chat.is_guest) %}
 {% endif %}
 {# Only in the open room; inside a private chat you're already talking to them.
    MapChat only while it can write back #}
 {% set can_message = conversation == 'everyone' and not mine
     and (chat.email != constant('App\\Models\\Chat::BOT_EMAIL') or mapchat_can_reply) %}
 {# @mentions are for the open room; in a private chat you're already talking to them #}
-{% set mentions_me = conversation == 'everyone' and not mine and mentions(chat.body, current_user.name, current_user.is_guest) %}
-{# First names keep the messages light. Guests are all "Guest" and a
-   number, so they keep the number #}
-{% set shown_name = chat.is_guest ? chat.name : chat.name|split(' ')|first %}
+{% set mentions_me = conversation == 'everyone' and not mine and mentions(chat.body, current_user.name, current_user.nickname, current_user.is_guest) %}
+{# Nickname, or first name (see App\Mention::handle) #}
+{% set sender_name = shown_name(chat.name, chat.nickname, chat.is_guest) %}
 {# Messages from the poll ease in; the history and your own appear at once #}
 <div class="chat{% if mentions_me %} chat--mentions-me{% endif %}{% if not initial|default(false) and not mine %} is-entering{% endif %}"
      data-id="{{ chat.id }}" data-conversation="{{ conversation }}" data-partner="{{ partner }}">
@@ -27,10 +26,10 @@
 
     <div class="chat__content">
         {% if can_message %}
-        <h3 class="chat__name chat__name--can-message" data-user-id="{{ chat.user_id }}" data-user-name="{{ chat.name }}"
-            title="Chat privately with {{ shown_name }}">{{ shown_name }}</h3>
+        <h3 class="chat__name chat__name--can-message" data-user-id="{{ chat.user_id }}" data-user-name="{{ sender_name }}"
+            title="Chat privately with {{ sender_name }}">{{ sender_name }}</h3>
         {% else %}
-        <h3 class="chat__name">{{ shown_name }}</h3>
+        <h3 class="chat__name">{{ sender_name }}</h3>
         {% endif %}
         {# The page fills in the time in the reader's own time zone. On hover it
            slides to the sender's own time, with a sun or moon #}
@@ -44,7 +43,7 @@
             </span>
         </span>
         {% if conversation == 'everyone' %}
-        <p class="chat__body">{{ mark_mentions(chat.body, mention_names, current_user.name, current_user.is_guest) }}</p>
+        <p class="chat__body">{{ mark_mentions(chat.body, mention_names, current_user.name, current_user.nickname, current_user.is_guest) }}</p>
         {% else %}
         <p class="chat__body">{{ chat.body }}</p>
         {% endif %}

@@ -46,8 +46,8 @@ class MentionTest extends TestCase
     {
         $this->assertTrue(Mention::has('hi @maya!', 'Maya Thompson'));
         $this->assertTrue(Mention::has('hi @Maya Thompson', 'Maya Thompson'));
-        $this->assertFalse(Mention::has('hi @Guest', 'Guest 2189', true));
-        $this->assertTrue(Mention::has('hi @guest 2189', 'Guest 2189', true));
+        $this->assertFalse(Mention::has('hi @Guest', 'Guest 2189', null, true));
+        $this->assertTrue(Mention::has('hi @guest 2189', 'Guest 2189', null, true));
     }
 
     public function testMarksTheReadersFirstNameAsTheirs()
@@ -55,5 +55,20 @@ class MentionTest extends TestCase
         $html = Mention::mark('@Maya and @Ann', ['Maya Thompson', 'Maya', 'Ann Lee', 'Ann'], 'Ann Lee');
 
         $this->assertSame('<span class="mention">@Maya</span> and <span class="mention mention--me">@Ann</span>', $html);
+    }
+
+    public function testANicknameTakesThePlaceOfTheFirstName()
+    {
+        $this->assertSame('zee', Mention::handle('Zainab Ali', 'zee'));
+        $this->assertTrue(Mention::has('hi @Zee', 'Zainab Ali', 'zee'));
+        $this->assertTrue(Mention::has('hi @Zainab Ali', 'Zainab Ali', 'zee'));
+        $this->assertFalse(Mention::has('hi @Zainab', 'Zainab Ali', 'zee'));
+    }
+
+    public function testMarksTheReadersNicknameAsTheirs()
+    {
+        $html = Mention::mark('hi @zee', ['Zainab Ali', 'zee'], 'Zainab Ali', 'zee');
+
+        $this->assertSame('hi <span class="mention mention--me">@zee</span>', $html);
     }
 }

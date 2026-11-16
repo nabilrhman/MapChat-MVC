@@ -5,22 +5,28 @@ namespace App;
 use App\Models\User;
 
 /**
- * @mentions in the open room: "@" and someone's first name, shown as a chip.
- * Their whole name counts too. Guests are all "Guest" and a number, so
- * theirs is the whole name
+ * @mentions in the open room: "@" and someone's handle, shown as a chip.
+ * Their whole name counts too
  */
 class Mention
 {
     /**
-     * What to type after the @ for this person
+     * How someone is shown in the chat and what's typed after the @ for
+     * them: their nickname, or else their first name. Guests are all
+     * "Guest" and a number, so theirs is the whole name
      *
      * @param string $name
+     * @param string|null $nickname
      * @param bool $isGuest
      *
      * @return string
      */
-    public static function handle($name, $isGuest = false)
+    public static function handle($name, $nickname = null, $isGuest = false)
     {
+        if ($nickname) {
+            return $nickname;
+        }
+
         return $isGuest ? $name : explode(' ', $name)[0];
     }
 
@@ -29,18 +35,19 @@ class Mention
      *
      * @param string $text
      * @param string $name
+     * @param string|null $nickname
      * @param bool $isGuest
      *
      * @return bool
      */
-    public static function has($text, $name, $isGuest = false)
+    public static function has($text, $name, $nickname = null, $isGuest = false)
     {
-        return preg_match(static::pattern([$name, static::handle($name, $isGuest)]), $text) === 1;
+        return preg_match(static::pattern([$name, static::handle($name, $nickname, $isGuest)]), $text) === 1;
     }
 
     /**
      * Every way people are mentioned in any of these messages, names and
-     * first names, so a page of them takes one look-up
+     * handles, so a page of them takes one look-up
      *
      * @param array $chats Each with a body
      *
@@ -56,7 +63,7 @@ class Mention
         $names = [];
         foreach (User::mentionedIn(implode("\n", $bodies)) as $person) {
             $names[] = $person['name'];
-            $names[] = static::handle($person['name'], $person['is_guest']);
+            $names[] = static::handle($person['name'], $person['nickname'], $person['is_guest']);
         }
 
         return array_values(array_unique($names));
@@ -69,11 +76,12 @@ class Mention
      * @param string $text
      * @param array $names From namesIn()
      * @param string $readerName
+     * @param string|null $readerNickname
      * @param bool $readerIsGuest
      *
      * @return string
      */
-    public static function mark($text, $names, $readerName, $readerIsGuest = false)
+    public static function mark($text, $names, $readerName, $readerNickname = null, $readerIsGuest = false)
     {
         $html = htmlspecialchars($text, ENT_QUOTES, 'UTF-8');
         if (!$names) {
@@ -81,17 +89,36 @@ class Mention
         }
 
         // The text is escaped by now, so look for the names escaped the same way
-        $escape = fn ($name) => mb_strtolower(htmlspecialchars($name, ENT_QUOTES, 'UTF-8'));
-        $readerNames = [$escape($readerName), $escape(static::handle($readerName, $readerIsGuest))];
+        $escape = fn ($name) => htmlspecialchars($name, ENT_QUOTES, 'UTF-8');
+        $readerNames = array_map(
+            fn ($name) => mb_strtolower($escape($name)),
+            [$readerName, static::handle($readerName, $readerNickname, $readerIsGuest)]
+        );
 
         return preg_replace_callback(
-            static::pattern(array_map(fn ($name) => htmlspecialchars($name, ENT_QUOTES, 'UTF-8'), $names)),
+            static::pattern(array_map($escape, $names)),
             function ($match) use ($readerNames) {
                 $class = in_array(mb_strtolower($match[1]), $readerNames, true) ? 'mention mention--me' : 'mention';
                 return '<span class="' . $class . '">' . $match[0] . '</span>';
             },
             $html
         );
+    }
+
+    /**
+     * Add each person's handle as shown_name, for the scripts
+     *
+     * @param array $people Rows with name, nickname and is_guest
+     *
+     * @return array
+     */
+    public static function withShownNames($people)
+    {
+        foreach ($people as &$person) {
+            $person['shown_name'] = static::handle($person['name'], $person['nickname'], $person['is_guest']);
+        }
+
+        return $people;
     }
 
     /**

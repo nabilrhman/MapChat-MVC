@@ -86,6 +86,17 @@ class User extends \Core\Model
             $this->errors[] = 'Name: 50 characters at most';
         }
 
+        // Nickname: optional, one word, as people type it after an @
+        $this->nickname = trim($this->nickname ?? '');
+        if ($this->nickname !== '') {
+            if (!preg_match('/^[\p{L}\p{N}_.-]{2,20}$/u', $this->nickname)) {
+                $this->errors[] = 'Nickname: 2 to 20 letters, numbers, _ . or -, with no spaces';
+            } elseif (mb_strtolower($this->nickname) === mb_strtolower(Bot::NAME)
+                      || static::nicknameTaken($this->nickname, $this->id ?? null)) {
+                $this->errors[] = 'Nickname: Already taken';
+            }
+        }
+
         // email address
         if (filter_var($this->email, FILTER_VALIDATE_EMAIL) === false) {
             $this->errors[] = 'Email: Invalid';
@@ -108,6 +119,24 @@ class User extends \Core\Model
                 $this->errors[] = 'Password: Needs at least one number';
             }
         }
+    }
+
+    /**
+     * Whether someone else already goes by this nickname, in any case
+     *
+     * @param string $nickname
+     * @param int|null $ignoreId Your own id, so keeping yours isn't a clash
+     *
+     * @return bool
+     */
+    public static function nicknameTaken($nickname, $ignoreId = null)
+    {
+        $stmt = static::getDB()->prepare('SELECT COUNT(*) FROM users WHERE nickname = :nickname AND id <> :id');
+        $stmt->bindValue(':nickname', $nickname, PDO::PARAM_STR);
+        $stmt->bindValue(':id', $ignoreId ?? 0, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return $stmt->fetchColumn() > 0;
     }
 
     /**
@@ -173,23 +202,26 @@ class User extends \Core\Model
     }
 
     /**
-     * The people "@" and their name or first name appears for in the text.
-     * A guest's first name is just "Guest", so only their whole name counts
+     * The people "@" and their name or handle (Mention::handle) appears
+     * for in the text
      *
      * @param string $text
      *
-     * @return array Each with name and is_guest
+     * @return array Each with name, nickname and is_guest
      */
     public static function mentionedIn($text)
     {
         // LOCATE, not LIKE, so a name with % or _ in it is taken as typed
-        $sql = 'SELECT DISTINCT name, is_guest FROM users
+        $sql = 'SELECT DISTINCT name, nickname, is_guest FROM users
                 WHERE LOCATE(CONCAT(\'@\', name), :text) > 0
-                   OR (NOT is_guest AND LOCATE(CONCAT(\'@\', SUBSTRING_INDEX(name, \' \', 1)), :text2) > 0)';
+                   OR LOCATE(CONCAT(\'@\', nickname), :text2) > 0
+                   OR (nickname IS NULL AND NOT is_guest
+                       AND LOCATE(CONCAT(\'@\', SUBSTRING_INDEX(name, \' \', 1)), :text3) > 0)';
 
         $stmt = static::getDB()->prepare($sql);
         $stmt->bindValue(':text', $text, PDO::PARAM_STR);
         $stmt->bindValue(':text2', $text, PDO::PARAM_STR);
+        $stmt->bindValue(':text3', $text, PDO::PARAM_STR);
         $stmt->execute();
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -551,6 +583,7 @@ class User extends \Core\Model
     public function updateProfile($data)
     {
         $this->name = $data['name'];
+        $this->nickname = $data['nickname'];
         $this->email = $data['email'];
 
         // Only validate and update the password if a value provided
@@ -563,6 +596,7 @@ class User extends \Core\Model
         if (empty($this->errors)) {
             $sql = 'UPDATE users
                     SET name = :name,
+                        nickname = :nickname,
                         email = :email';
 
             // Add password if it's set. A guest who sets their own email and
@@ -579,6 +613,8 @@ class User extends \Core\Model
             $stmt = $db->prepare($sql);
 
             $stmt->bindValue(':name', $this->name, PDO::PARAM_STR);
+            // Empty means none, so it doesn't clash with anyone else's empty one
+            $stmt->bindValue(':nickname', $this->nickname === '' ? null : $this->nickname, PDO::PARAM_STR);
             $stmt->bindValue(':email', $this->email, PDO::PARAM_STR);
             $stmt->bindValue(':id', $this->id, PDO::PARAM_INT);
 

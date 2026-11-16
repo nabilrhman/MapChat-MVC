@@ -51,7 +51,12 @@ function setUpMentions(input, canMention, getPeople) {
         const photo = createElement('img', 'mention-picker__photo');
         photo.alt = '';
         photo.src = person.avatar_src;
-        option.append(photo, createElement('span', 'mention-picker__name', getShownName(person)));
+        const text = createElement('span', 'mention-picker__text');
+        text.append(createElement('span', 'mention-picker__name', person.shown_name));
+        if (person.name !== person.shown_name) {
+            text.append(createElement('span', 'mention-picker__detail', person.name));
+        }
+        option.append(photo, text);
 
         // mousedown, not click, so the box keeps focus
         option.addEventListener('mousedown', (event) => {
@@ -79,7 +84,9 @@ function setUpMentions(input, canMention, getPeople) {
 
         const typed = found[1].toLowerCase();
         atIndex = typedSoFar.length - found[1].length - 1;
-        matches = getPeople().filter((person) => matchesTyped(person.name, typed)).slice(0, MENTION_LIMIT);
+        matches = getPeople()
+            .filter((person) => matchesTyped(person.name, typed) || matchesTyped(person.shown_name, typed))
+            .slice(0, MENTION_LIMIT);
         activeIndex = 0;
 
         if (matches.length === 0) {
@@ -89,11 +96,11 @@ function setUpMentions(input, canMention, getPeople) {
         }
     }
 
-    // Swap the @ and what's typed for their first name and a space
+    // Swap the @ and what's typed for their handle (nickname or first name) and a space
     function choose(person) {
         const before = input.value.slice(0, atIndex);
         const after = input.value.slice(input.selectionStart);
-        const mention = `@${getShownName(person)} `;
+        const mention = `@${person.shown_name} `;
 
         input.value = before + mention + after;
         input.selectionStart = input.selectionEnd = before.length + mention.length;

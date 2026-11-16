@@ -379,4 +379,16 @@ class BotTest extends TestCase
 
         $this->assertSame([[null, 'good question @ann!']], $this->botSaid());
     }
+
+    public function testTagsByNickname()
+    {
+        $this->db->prepare("UPDATE users SET nickname = 'annie' WHERE email = ?")->execute([self::ANN]);
+        $this->send(self::ANN, '@MapChat hi');
+        $this->send(self::BOB, 'hello');
+
+        $this->wait(Bot::FOLLOW_UP_SECONDS);
+
+        $this->assertSame([[null, '@annie reply 1']], $this->botSaid());
+        $this->assertStringContainsString('annie: @MapChat hi', TestBot::$asked[0][1]);
+    }
 }

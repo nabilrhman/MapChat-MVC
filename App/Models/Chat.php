@@ -121,7 +121,8 @@ class Chat extends \Core\Model
      */
     public static function getConversations($viewer, $upToId)
     {
-        $sql = 'SELECT users.id AS user_id, users.name, MAX(private.id) AS newest_id, SUM(private.is_unread) AS unread
+        $sql = 'SELECT users.id AS user_id, users.name, users.nickname, users.is_guest,
+                       MAX(private.id) AS newest_id, SUM(private.is_unread) AS unread
                 FROM (
                     (SELECT email AS partner, id, read_at IS NULL AS is_unread FROM chats
                      WHERE to_email = :viewer AND id <= :up_to_id)
@@ -131,7 +132,7 @@ class Chat extends \Core\Model
                 ) AS private
                 JOIN users
                 ON private.partner = users.email
-                GROUP BY users.id, users.name
+                GROUP BY users.id, users.name, users.nickname, users.is_guest
                 ORDER BY newest_id DESC
                 LIMIT ' . static::CONVERSATIONS;
 
@@ -140,7 +141,7 @@ class Chat extends \Core\Model
         $stmt->bindValue(':up_to_id', $upToId, PDO::PARAM_INT);
         $stmt->execute();
 
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return \App\Mention::withShownNames($stmt->fetchAll(PDO::FETCH_ASSOC));
     }
 
     /**
@@ -230,12 +231,13 @@ class Chat extends \Core\Model
     protected static function selectSql()
     {
         return 'SELECT chats.id, chats.body, chats.timestamp, users.id AS user_id, users.name, users.email, users.avatar,
-                       users.email LIKE \'%@demo.mapchat.local\' AS is_demo, users.is_guest,
+                       users.email LIKE \'%@demo.mapchat.local\' AS is_demo, users.nickname, users.is_guest,
                        IF(users.share_location, userinfo.city, NULL) AS city,
                        IF(users.share_location, userinfo.country, NULL) AS country,
                        IF(users.share_location, userinfo.lng, NULL) AS lng,
                        IF(users.share_location, userinfo.timezone, NULL) AS timezone,
-                       recipients.id AS to_user_id, recipients.name AS to_name
+                       recipients.id AS to_user_id, recipients.name AS to_name,
+                       recipients.nickname AS to_nickname, recipients.is_guest AS to_is_guest
                 FROM chats
                 LEFT JOIN users
                 ON chats.email = users.email

@@ -1397,30 +1397,31 @@ body
     box-shadow: none;
 }
 
-/* Names to @mention, just above the message box (mentions.js) */
+/* Names to @mention, just above the message box (mentions.js). A white
+   card like the account menu's */
 .mention-picker
 {
     position: absolute;
     left: 0;
-    bottom: calc(100% + 6px);
+    bottom: calc(100% + 8px);
     z-index: 2;
-    min-width: 220px;
+    min-width: 240px;
     max-width: 100%;
     margin: 0;
-    padding: 4px 0;
+    padding: 8px 0;
     list-style: none;
-    border-radius: 4px;
-    background-color: var(--md-surface-container-lowest);
-    box-shadow: var(--md-elevation-2);
-    animation: fade-in-up var(--dur-fast) var(--ease-out);
+    background-color: #fff;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+    color: #212121;
+    animation: fade-in-up var(--dur) var(--ease-out);
 }
 
 .mention-picker__option
 {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 6px 12px;
+    gap: 12px;
+    padding: 10px 16px;
     font-size: 14px;
     cursor: pointer;
 }
@@ -1428,15 +1429,30 @@ body
 .mention-picker__option:hover,
 .mention-picker__option.is-active
 {
-    background-color: color-mix(in srgb, var(--md-primary) var(--md-hover), var(--md-surface-container-lowest));
+    background-color: #f5f1fb;
 }
 
 .mention-picker__photo
 {
-    width: 24px;
-    height: 24px;
+    flex: none;
+    width: 34px;
+    height: 34px;
     border-radius: 50%;
     object-fit: cover;
+}
+
+.mention-picker__name
+{
+    display: block;
+    font-weight: 600;
+}
+
+/* The full name, when they're shown by a nickname or first name */
+.mention-picker__detail
+{
+    display: block;
+    color: #757575;
+    font-size: 13px;
 }
 
 /* Characters left, shown only when close to the limit */

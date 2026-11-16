@@ -719,7 +719,7 @@ JSON.parse(chatPanel.dataset.conversations || '[]').forEach((partner) => {
     if (Number(partner.newest_id) <= (closedTabs[conversation] ?? 0)) return;
 
     forgetClosedTab(conversation);
-    const tab = addTab(conversation, partner.name);
+    const tab = addTab(conversation, partner.shown_name);
     tab.dataset.newestId = partner.newest_id;
     if (Number(partner.unread) > 0) setUnreadCount(tab, partner.unread);
 });

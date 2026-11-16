@@ -46,6 +46,7 @@ class View
             $twig->addFunction(new \Twig\TwigFunction('asset', [Asset::class, 'url']));
             $twig->addFunction(new \Twig\TwigFunction('icon', [Icon::class, 'svg'], ['is_safe' => ['html']]));
             // @mentions in the open room, as chips (see App\Mention)
+            $twig->addFunction(new \Twig\TwigFunction('shown_name', [\App\Mention::class, 'handle']));
             $twig->addFunction(new \Twig\TwigFunction('mentioned_names', [\App\Mention::class, 'namesIn']));
             $twig->addFunction(new \Twig\TwigFunction('mentions', [\App\Mention::class, 'has']));
             $twig->addFunction(new \Twig\TwigFunction('mark_mentions', [\App\Mention::class, 'mark'], ['is_safe' => ['html']]));

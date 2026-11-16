@@ -12,12 +12,6 @@ const myUserId = Number(document.getElementById('chat').dataset.myId);
 
 const isOnline = (person) => Number(person.is_online) === 1;
 
-// First names keep the list light, as on the messages. Guests are all
-// "Guest" and a number, so they keep the number
-function getShownName(person) {
-    return Number(person.is_guest) === 1 ? person.name : person.name.split(' ')[0];
-}
-
 // MapChat first, so there's always someone to talk to at the top, then you,
 // then everyone else
 function getListRank(person) {
@@ -67,7 +61,7 @@ function createPersonRow(person) {
     row.classList.toggle('is-online', isOnline(person));
     row.classList.toggle('person--can-message', !isMe);
     row.dataset.userId = userId;
-    row.title = isMe ? '' : `Chat privately with ${getShownName(person)}`;
+    row.title = isMe ? '' : `Chat privately with ${person.shown_name}`;
     row.dataset.tipSide = 'left'; // over the map, not the rows above
 
     const avatarFrame = createElement('div', 'person__avatar');
@@ -78,7 +72,7 @@ function createPersonRow(person) {
 
     const text = createElement('div', 'person__text');
     text.append(
-        createElement('span', 'person__name', getShownName(person) + (isMe ? ' (you)' : '')),
+        createElement('span', 'person__name', person.shown_name + (isMe ? ' (you)' : '')),
         createPersonDetail(person),
     );
 
@@ -144,7 +138,7 @@ function showPeople(people, onPeopleOnline) {
     const onlinePeople = people.filter(isOnline);
     const recentPeople = people.filter((person) => !isOnline(person));
 
-    onlinePeople.sort((a, b) => getListRank(a) - getListRank(b) || a.name.localeCompare(b.name));
+    onlinePeople.sort((a, b) => getListRank(a) - getListRank(b) || a.shown_name.localeCompare(b.shown_name));
     peopleToMention = [...onlinePeople, ...recentPeople].filter((person) => Number(person.id) !== myUserId);
 
     // The rows are replaced, so a hovered row never gets its mouseleave
@@ -217,7 +211,7 @@ function keepPeopleUpdated(onPeopleOnline, onPersonChosen) {
         if (narrowScreen.matches) {
             setPeopleOpen(false);
         }
-        onPersonChosen(person.id, person.name);
+        onPersonChosen(person.id, person.shown_name);
     });
 
     loadPeople(onPeopleOnline);

@@ -9,6 +9,8 @@ SET NAMES utf8mb4;
 CREATE TABLE users (
   `id`                        INT          NOT NULL AUTO_INCREMENT,
   `name`                      VARCHAR(50)  NOT NULL,
+  -- Optional; shown instead of the first name, and what @mentions use
+  `nickname`                  VARCHAR(20)  NULL DEFAULT NULL,
   `email`                     VARCHAR(255) NOT NULL,
   `password_hash`             VARCHAR(255) NOT NULL,
   `password_reset_hash`       VARCHAR(64)  NULL DEFAULT NULL,
@@ -25,6 +27,7 @@ CREATE TABLE users (
   `created_at`                TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `email` (`email`),
+  UNIQUE KEY `nickname` (`nickname`),
   UNIQUE KEY `password_reset_hash` (`password_reset_hash`),
   UNIQUE KEY `activation_hash` (`activation_hash`),
   UNIQUE KEY `guest_token_hash` (`guest_token_hash`)
