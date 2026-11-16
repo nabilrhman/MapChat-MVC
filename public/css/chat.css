@@ -68,7 +68,8 @@ body
     visibility: hidden;
 }
 
-/* Pin tooltip: the name, then the flag and city, centred over the pin */
+/* Pin tooltip: the name, the flag and city, then their local time, centred
+   over the pin */
 .pin-label
 {
     text-align: center;
@@ -91,6 +92,33 @@ body
     margin-top: 2px;
     color: #757575;
     font-size: 12px;
+}
+
+.pin-label__time
+{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--icon-gap);
+    margin-top: 2px;
+    color: #757575;
+    font-size: 12px;
+}
+
+/* Sun or moon, as on a message's sender time */
+.pin-label__daylight
+{
+    font-size: 13px;
+}
+
+.pin-label__daylight--day
+{
+    color: #ffa000;
+}
+
+.pin-label__daylight--night
+{
+    color: #5c6bc0;
 }
 
 .pin-label .fi
@@ -1302,6 +1330,13 @@ body
     color: #7e57c2;
     font-size: 12px;
     line-height: 16px;
+}
+
+/* A sender with a pin on the map: clicking the city brings it to the
+   middle. Just the text; two classes, to win over .swap's own cursor */
+.chat__location .is-on-map
+{
+    cursor: pointer;
 }
 
 /* Two lines in a one-line window: the reader's time then the sender's, or the

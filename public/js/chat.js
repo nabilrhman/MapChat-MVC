@@ -457,16 +457,32 @@ document.addEventListener('visibilitychange', () => {
     markConversationRead(activeConversation);
 });
 
+// The city and country under a message: the text only, not the whole
+// width of its row
+const CITY = '.chat__location > span';
+
 // Hovering a message's city points out its sender's pin, as the people
-// list does. mouseover and mouseout, as they reach the list from each line
+// list does. mouseover and mouseout, as they reach the list from each line.
+// It takes a pointer cursor only when there's a pin to click through to
 function onCityHover(event, isHighlighted) {
-    const place = event.target.closest('.chat__location');
-    if (!place || place.contains(event.relatedTarget)) return;
-    highlightPin(place.closest('.chat').dataset.senderId, isHighlighted);
+    const city = event.target.closest(CITY);
+    if (!city || city.contains(event.relatedTarget)) return;
+    const senderId = city.closest('.chat').dataset.senderId;
+    city.classList.toggle('is-on-map', pinLabelsByUserId.has(senderId));
+    highlightPin(senderId, isHighlighted);
 }
 
 chatList.addEventListener('mouseover', (event) => onCityHover(event, true));
 chatList.addEventListener('mouseout', (event) => onCityHover(event, false));
+
+// Clicking it brings their pin to the middle of the map; on a phone the
+// map opens first
+chatList.addEventListener('click', (event) => {
+    const city = event.target.closest(CITY);
+    if (!city) return;
+    if (!isShown(document.getElementById('map'))) setMapOpen(true);
+    focusPin(city.closest('.chat').dataset.senderId);
+});
 
 chatList.addEventListener('click', (event) => {
     const senderName = event.target.closest('.chat__name--can-message');

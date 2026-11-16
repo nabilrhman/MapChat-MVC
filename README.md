@@ -68,7 +68,10 @@ so it stays awake.
 - Names show as first names. Signed-up people can pick a nickname, which shows
   instead and is what others @mention them by. Guests stay "Guest 1234".
 - A map with a pin for each person online, placed by their IP address at
-  roughly city level. Nobody's exact location is ever shown.
+  roughly city level. Nobody's exact location is ever shown. A pin's label
+  shows their city and local time, with a sun or moon; hovering someone in
+  the list or a message's city points their pin out, and clicking the city
+  brings it to the middle of the map.
 - Anyone can hide their pin and city from the map in their profile.
 - On phones the map starts hidden to give the chat the room. A button shows
   it above the chat, and the chat can then fold down to its tabs to give the

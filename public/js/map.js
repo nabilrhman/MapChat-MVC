@@ -86,7 +86,11 @@ function themeLayer(layer) {
 
 /* Pins */
 
-// Shown when hovering a pin: the name, then the flag and city
+// Their local time in a pin's label moves on while it's open
+const PIN_TIME_INTERVAL = 30000;
+
+// Shown when hovering a pin: the name, the flag and city, then their local
+// time with a sun or moon, as a message shows its sender's
 function createPinLabel(location) {
     const label = createElement('div', 'pin-label');
     label.append(createElement('strong', 'pin-label__name', location.shown_name || ''));
@@ -100,8 +104,29 @@ function createPinLabel(location) {
         label.append(place);
     }
 
+    const time = createElement('span', 'pin-label__time');
+    time.dataset.timezone = location.timezone || '';
+    time.dataset.lng = location.lng;
+    time.append(createIcon('sun', 'pin-label__daylight'), createElement('span'));
+    showPinTime(time);
+    label.append(time);
+
     return label;
 }
+
+// Without their time zone, getSenderTime estimates it from the longitude
+function showPinTime(time) {
+    const localTime = getSenderTime(new Date(), time.dataset.timezone, parseFloat(time.dataset.lng));
+    const isDaytime = localTime.hour >= 6 && localTime.hour < 18;
+
+    const daylightIcon = time.querySelector('.pin-label__daylight');
+    setIcon(daylightIcon, isDaytime ? 'sun' : 'moon');
+    daylightIcon.classList.toggle('pin-label__daylight--day', isDaytime);
+    daylightIcon.classList.toggle('pin-label__daylight--night', !isDaytime);
+    time.querySelector('span').textContent = localTime.text;
+}
+
+setInterval(() => document.querySelectorAll('.pin-label__time').forEach(showPinTime), PIN_TIME_INTERVAL);
 
 // A yellow map pin like the original marker icon. userId lets the people
 // list, and a message's city, highlight this pin
@@ -181,7 +206,7 @@ async function loadLocations() {
 }
 
 // Everything a pin shows; when it changes, the pin is drawn again
-const getPinContent = (location) => [location.lat, location.lng, location.shown_name, location.city, location.country].join('|');
+const getPinContent = (location) => [location.lat, location.lng, location.shown_name, location.city, location.country, location.timezone].join('|');
 
 // Fetches the pins now, and again when someone comes online or goes
 // (refreshPinsSoon), or every round on the HTTP fallback. Adds new people,
@@ -221,6 +246,11 @@ function keepPinsUpdated(addPin, fitPins) {
                     fitPins(locations);
                     isFirstRound = false;
                 }
+                hasPins = true;
+                if (pinToFocus !== null) {
+                    focusPin(pinToFocus);
+                    pinToFocus = null;
+                }
             })
             .catch(() => {
                 // Try again on the next round
@@ -246,6 +276,49 @@ function refreshPinsSoon() {
     nextPinsRefresh = setTimeout(() => refreshPinsNow(), PINS_REFRESH_DELAY);
 }
 
+// How far above a pin's tip its label sits. A highlighted pin grows by
+// 1.35 from its tip (.map-pin.is-highlighted), so its label sits higher by
+// what it grew, or the pin pokes into it
+const PIN_HEIGHT = 27;
+const PIN_LABEL_OFFSET = 26;
+const HIGHLIGHTED_PIN_LABEL_OFFSET = PIN_LABEL_OFFSET + Math.round(PIN_HEIGHT * 0.35);
+
+// Each pin's label, by user id: a pin highlighted from the people list or a
+// message's city shows its label too
+const pinLabelsByUserId = new Map();
+
+// Clicking a message's city zooms in at least this far, to the region around the pin
+const FOCUS_PIN_ZOOM = 4;
+// ...in this long; the vector map starts gently, speeds up, then settles
+const FOCUS_DURATION = 800;
+const easeInOut = (progress) => (progress < 0.5 ? 4 * progress ** 3 : 1 - (-2 * progress + 2) ** 3 / 2);
+// Set once the map has its pins; a pin asked for before then is focused once it does
+let hasPins = false;
+let pinToFocus = null;
+
+// Brings the person's pin to the middle of the map's visible part, with its
+// label open (a click on a message's city). Nothing if they have no pin:
+// offline, or hidden from the map
+function focusPin(userId) {
+    const label = pinLabelsByUserId.get(String(userId));
+    if (!label) {
+        if (!hasPins) pinToFocus = String(userId);
+        return;
+    }
+    label.focus();
+}
+
+const getLabelOffset = (pin) => (pin.classList.contains('is-highlighted') ? HIGHLIGHTED_PIN_LABEL_OFFSET : PIN_LABEL_OFFSET);
+
+function setPinLabelShown(userId, isShown) {
+    const label = pinLabelsByUserId.get(String(userId));
+    if (isShown) {
+        label?.show(HIGHLIGHTED_PIN_LABEL_OFFSET);
+    } else {
+        label?.hide();
+    }
+}
+
 /* The vector map (MapLibre) */
 
 // One label at a time, so tapping another pin swaps them
@@ -254,15 +327,20 @@ let openPinPopup = null;
 // Adds a MapLibre pin; returns a function that removes it
 function addVectorPin(map, location, shouldAnimate) {
     const lngLat = getLngLat(location);
-    const popup = new maplibregl.Popup({closeButton: false, offset: 26})
-        .setDOMContent(createPinLabel(location));
+    const label = createPinLabel(location);
+    const popupTime = label.querySelector('.pin-label__time');
+    const popup = new maplibregl.Popup({closeButton: false, offset: PIN_LABEL_OFFSET})
+        .setDOMContent(label);
     const marker = new maplibregl.Marker({element: createPinElement(location.user_id), anchor: 'bottom'})
         .setLngLat(lngLat)
         .addTo(map);
 
-    function showLabel() {
+    function showLabel(offset = PIN_LABEL_OFFSET) {
         if (openPinPopup !== popup) openPinPopup?.remove();
         openPinPopup = popup;
+        popup.setOffset(offset);
+        // Made when the pin was; the time is now's
+        showPinTime(popupTime);
         popup.setLngLat(lngLat).addTo(map);
     }
 
@@ -278,7 +356,25 @@ function addVectorPin(map, location, shouldAnimate) {
         showLabel();
     });
 
+    pinLabelsByUserId.set(String(location.user_id), {
+        show: showLabel,
+        hide: () => popup.remove(),
+        focus: () => {
+            // An ease, not a flight: no zooming out and back in, which fetches
+            // tiles at in-between zooms and hitches
+            map.easeTo({
+                center: lngLat,
+                zoom: Math.max(map.getZoom(), FOCUS_PIN_ZOOM),
+                padding: getMapPadding(),
+                duration: FOCUS_DURATION,
+                easing: easeInOut,
+            });
+            showLabel(getLabelOffset(pin));
+        },
+    });
+
     return () => {
+        pinLabelsByUserId.delete(String(location.user_id));
         popup.remove();
         fadeOutPin(pin, () => marker.remove());
     };
@@ -411,17 +507,73 @@ function themeTile(imageData) {
     return imageData;
 }
 
-// Each OpenStreetMap tile, recoloured on a canvas before it's shown
+// Decoding and recolouring a tile takes about 2 ms; a zoom brings a few
+// dozen at once, and on the page's own thread they made the map hitch. The
+// page still loads each tile as an image, so OpenStreetMap gets the request
+// it expects (its servers refuse ones without the site's address); the
+// browser decodes it off the page's thread, and a worker recolours it and
+// sends it back. It runs this file's own themeTile and hexToRgb, from their
+// source, so there's one copy
+function createTileWorker() {
+    if (!window.Worker || !window.OffscreenCanvas || !window.createImageBitmap) return null;
+
+    const source = `
+        const THEME = ${JSON.stringify({water: THEME.water, waterText: THEME.waterText})};
+        ${hexToRgb}
+        ${themeTile}
+        self.onmessage = ({data: {id, tile}}) => {
+            try {
+                const canvas = new OffscreenCanvas(256, 256);
+                const context = canvas.getContext('2d', {willReadFrequently: true});
+                context.drawImage(tile, 0, 0);
+                tile.close();
+                context.putImageData(themeTile(context.getImageData(0, 0, 256, 256)), 0, 0);
+                const image = canvas.transferToImageBitmap();
+                self.postMessage({id, image}, [image]);
+            } catch (error) {
+                self.postMessage({id, error: String(error)});
+            }
+        };`;
+    return new Worker(URL.createObjectURL(new Blob([source], {type: 'text/javascript'})));
+}
+
+// Each OpenStreetMap tile, recoloured before it's shown: by the worker, or
+// on the page where there's none
 function createThemedTileLayer() {
+    const worker = createTileWorker();
+    const waitingTiles = new Map();
+    let nextTileId = 1;
+
+    worker?.addEventListener('message', ({data: {id, image, error}}) => {
+        const tile = waitingTiles.get(id);
+        if (!tile) return;
+        waitingTiles.delete(id);
+        if (image) {
+            tile.canvas.getContext('2d').drawImage(image, 0, 0);
+            image.close();
+        }
+        tile.done(error ?? null, tile.canvas);
+    });
+
     const ThemedTiles = L.GridLayer.extend({
         createTile(coords, done) {
             const canvas = document.createElement('canvas');
             canvas.width = 256;
             canvas.height = 256;
-
             const tile = new Image();
             tile.crossOrigin = 'anonymous';
             tile.onload = () => {
+                if (worker) {
+                    const id = nextTileId++;
+                    waitingTiles.set(id, {canvas, done});
+                    createImageBitmap(tile)
+                        .then((bitmap) => worker.postMessage({id, tile: bitmap}, [bitmap]))
+                        .catch((error) => {
+                            waitingTiles.delete(id);
+                            done(error, canvas);
+                        });
+                    return;
+                }
                 const context = canvas.getContext('2d', {willReadFrequently: true});
                 context.drawImage(tile, 0, 0);
                 context.putImageData(themeTile(context.getImageData(0, 0, 256, 256)), 0, 0);
@@ -457,12 +609,45 @@ function addTileCredits(map) {
 function addTilePin(map, location, shouldAnimate) {
     const pin = createPinElement(location.user_id);
     pin.classList.toggle('is-entering', shouldAnimate);
-    const icon = L.divIcon({className: '', html: pin.outerHTML, iconSize: [20, 27], iconAnchor: [10, 27]});
+    const icon = L.divIcon({className: '', html: pin.outerHTML, iconSize: [20, PIN_HEIGHT], iconAnchor: [10, PIN_HEIGHT]});
     const marker = L.marker(getLatLng(location), {icon})
-        .bindTooltip(createPinLabel(location).outerHTML, {direction: 'top', offset: [0, -26]})
+        // Made each time it opens, so the time is now's
+        .bindTooltip(() => createPinLabel(location), {direction: 'top', offset: [0, -PIN_LABEL_OFFSET]})
         .addTo(map);
 
+    const setTooltipOffset = (offset) => {
+        marker.getTooltip().options.offset = L.point(0, -offset);
+    };
+    const showTooltip = (offset) => {
+        setTooltipOffset(offset);
+        marker.openTooltip();
+    };
+    pinLabelsByUserId.set(String(location.user_id), {
+        show: showTooltip,
+        // Leaflet's own flight, which keeps its tiles in step; it slows into
+        // place but doesn't ease off. Driving it frame by frame for that
+        // left tiles unloaded or drawn off to the side. A bounds of one point,
+        // as only fitting bounds takes the map's padding here
+        focus: () => {
+            const latLng = getLatLng(location);
+            const padding = getMapPadding();
+            map.flyToBounds([latLng, latLng], {
+                paddingTopLeft: [padding.left, padding.top],
+                paddingBottomRight: [padding.right, padding.bottom],
+                maxZoom: Math.max(map.getZoom(), FOCUS_PIN_ZOOM),
+                duration: FOCUS_DURATION / 1000,
+            });
+            showTooltip(getLabelOffset(marker.getElement().querySelector('.map-pin')));
+        },
+        // Back to the usual height, for a plain hover on the pin
+        hide: () => {
+            marker.closeTooltip();
+            setTooltipOffset(PIN_LABEL_OFFSET);
+        },
+    });
+
     return () => {
+        pinLabelsByUserId.delete(String(location.user_id));
         marker.closeTooltip();
         fadeOutPin(marker.getElement().querySelector('.map-pin'), () => marker.remove());
     };
