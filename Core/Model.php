@@ -11,6 +11,9 @@ use App\Config;
 #[\AllowDynamicProperties]
 abstract class Model
 {
+    /** The connection every model shares, made on first use */
+    private static $db = null;
+
     /**
      * Class constructor
      *
@@ -32,9 +35,7 @@ abstract class Model
      */
     protected static function getDB()
     {
-        static $db = null;
-
-        if ($db === null) {
+        if (self::$db === null) {
             $dsn = 'mysql:host=' . Config::get('DB_HOST', 'localhost')
                 . ';port=' . Config::get('DB_PORT', '3306')
                 . ';dbname=' . Config::get('DB_NAME', 'mapchat')
@@ -47,12 +48,23 @@ abstract class Model
                 $options[PDO::MYSQL_ATTR_SSL_CA] = Config::get('DB_SSL_CA', '/etc/ssl/certs/ca-certificates.crt');
             }
 
-            $db = new PDO($dsn, Config::get('DB_USER', 'root'), Config::get('DB_PASSWORD', ''), $options);
+            self::$db = new PDO($dsn, Config::get('DB_USER', 'root'), Config::get('DB_PASSWORD', ''), $options);
 
             // Throw an Exception when an error occurs
-            $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            self::$db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         }
 
-        return $db;
+        return self::$db;
+    }
+
+    /**
+     * Drop the connection, so the next query makes a new one. For the
+     * long-running chat processes, whose connection the database can close
+     *
+     * @return void
+     */
+    public static function disconnectDB()
+    {
+        self::$db = null;
     }
 }

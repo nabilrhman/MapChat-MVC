@@ -1,0 +1,454 @@
+<?php
+
+namespace Tests;
+
+use App\Models\Chat;
+use App\Models\User;
+use PDO;
+use PHPUnit\Framework\TestCase;
+
+/**
+ * The chat socket (bin/chat-socket.php), run as its own process against the
+ * test database, with pages played by SocketClient: who gets which message,
+ * sending again after a lost answer, catching up after a restart, typing,
+ * presence, and who's let in
+ */
+class ChatSocketTest extends TestCase
+{
+    const PEOPLE = ['ann', 'bob', 'cat'];
+
+    /** Short, so presence and logout tests don't wait long */
+    const GRACE_SECONDS = 1;
+    const SESSION_CHECK_SECONDS = 1;
+
+    private static $server = null;
+    private static int $port;
+    private static string $address;
+
+    private PDO $db;
+
+    /**
+     * The test people's emails, users and sessions, by name. Each test has
+     * new people, so one test's leaving can't be taken for the next one's
+     */
+    private array $emails = [];
+    private array $users = [];
+    private array $sessions = [];
+
+    /** @var SocketClient[] Closed after each test */
+    private array $clients = [];
+
+    public static function setUpBeforeClass(): void
+    {
+        // A free port: bind to 0, read the port back, then let it go
+        $socket = stream_socket_server('tcp://127.0.0.1:0');
+        self::$address = stream_socket_get_name($socket, false);
+        fclose($socket);
+        self::$port = (int) explode(':', self::$address)[1];
+
+        // Messages this process saves signal the test's socket, not a real one
+        putenv('CHAT_SOCKET_PORT=' . self::$port);
+
+        self::startServer();
+
+        // Other tests' rolled-back transactions used up ids, and the socket
+        // waits out a gap in the ids once (Hub::GAP_SECONDS) before reading on
+        (new Chat(['email' => Chat::BOT_EMAIL, 'body' => 'warming up']))->send();
+        usleep((int) ((\App\ChatSocket\Hub::GAP_SECONDS + 0.5) * 1000000));
+        TestDb::get()->exec("DELETE FROM chats WHERE body = 'warming up'");
+    }
+
+    public static function tearDownAfterClass(): void
+    {
+        self::stopServer();
+        putenv('CHAT_SOCKET_PORT');
+    }
+
+    private static function startServer(): void
+    {
+        $environment = getenv() + [
+            'CHAT_SOCKET_PORT' => self::$port,
+            'CHAT_PRESENCE_GRACE_SECONDS' => self::GRACE_SECONDS,
+            'CHAT_SESSION_CHECK_SECONDS' => self::SESSION_CHECK_SECONDS,
+        ];
+        $command = [PHP_BINARY, dirname(__DIR__) . '/bin/chat-socket.php'];
+        // Its log, for when a test fails
+        $log = ['file', sys_get_temp_dir() . '/chat-socket-test.log', 'a'];
+        self::$server = proc_open($command, [1 => $log, 2 => $log], $pipes, null, $environment);
+
+        for ($tries = 0; $tries < 50; $tries++) {
+            $connection = @fsockopen('tcp://' . self::$address);
+            if ($connection) {
+                fclose($connection);
+                return;
+            }
+            usleep(100000);
+        }
+        throw new \RuntimeException('The chat socket did not start on ' . self::$address);
+    }
+
+    /**
+     * Stop it as a deploy does, with SIGTERM, and wait for it to exit
+     */
+    private static function stopServer(): void
+    {
+        if (self::$server === null) {
+            return;
+        }
+        proc_terminate(self::$server, SIGTERM);
+        for ($tries = 0; $tries < 50 && proc_get_status(self::$server)['running']; $tries++) {
+            usleep(100000);
+        }
+        proc_close(self::$server);
+        self::$server = null;
+    }
+
+    protected function setUp(): void
+    {
+        // The socket is another process, so these rows are committed, not
+        // rolled back; tearDown deletes them
+        $this->db = TestDb::get();
+        foreach (self::PEOPLE as $name) {
+            $email = "$name-" . bin2hex(random_bytes(4)) . '@socket.test';
+            $this->emails[$name] = $email;
+            $this->db->prepare("INSERT INTO users (name, email, password_hash, is_active) VALUES (?, ?, '!', TRUE)")
+                ->execute([ucfirst($name), $email]);
+            $this->db->prepare("INSERT INTO userinfo (email, ip) VALUES (?, '127.0.0.1')")->execute([$email]);
+            $user = User::findByEmail($email);
+            $this->users[$name] = $user;
+
+            $sessionId = bin2hex(random_bytes(16));
+            $this->db->prepare('INSERT INTO sessions (id, data, updated_at) VALUES (?, ?, ?)')
+                ->execute([$sessionId, 'user_id|i:' . $user->id . ';', time()]);
+            $this->sessions[$name] = $sessionId;
+        }
+    }
+
+    protected function tearDown(): void
+    {
+        foreach ($this->clients as $client) {
+            $client->close();
+        }
+        foreach (self::PEOPLE as $name) {
+            $this->db->prepare('DELETE FROM sessions WHERE id = ?')->execute([$this->sessions[$name]]);
+            // Their messages and userinfo go with them
+            $this->db->prepare('DELETE FROM users WHERE email = ?')->execute([$this->emails[$name]]);
+        }
+        // Let the socket see them go before the next test's people arrive
+        usleep(200000);
+    }
+
+    private function connect(string $name, ?string $origin = null): SocketClient
+    {
+        $client = new SocketClient(self::$address, $this->sessions[$name] ?? null, $origin);
+        $this->clients[] = $client;
+
+        return $client;
+    }
+
+    /**
+     * Connect and say hello from the newest message, as a page just opened
+     */
+    private function openPage(string $name): SocketClient
+    {
+        $client = $this->connect($name);
+        $this->assertSame(101, $client->status);
+        $client->hello(Chat::getNewestId());
+
+        return $client;
+    }
+
+    private function sendOver(SocketClient $client, string $body, ?string $to = null, ?string $clientId = null): array
+    {
+        $clientId ??= bin2hex(random_bytes(8));
+        $client->send(['type' => 'send', 'clientId' => $clientId, 'body' => $body, 'to' => $to === null ? null : (int) $this->users[$to]->id]);
+
+        return $client->waitFor('sent', 5, fn ($message) => $message['clientId'] === $clientId)
+            ?? $this->fail("No answer to sending \"$body\"");
+    }
+
+    /**
+     * The message bodies and ids in the chats messages received, in order
+     *
+     * @return array [[id, body], ...]
+     */
+    private static function chatsIn(array $messages): array
+    {
+        $chats = [];
+        foreach ($messages as $message) {
+            if ($message['type'] !== 'chats') {
+                continue;
+            }
+            preg_match_all('#data-id="(\d+)"[\s\S]*?<p class="chat__body">([^<]*)</p>#', $message['html'], $matches, PREG_SET_ORDER);
+            foreach ($matches as [, $id, $body]) {
+                $chats[] = [(int) $id, html_entity_decode($body, ENT_QUOTES)];
+            }
+        }
+
+        return $chats;
+    }
+
+    private function bodiesReceived(SocketClient $client, float $seconds): array
+    {
+        return array_column(self::chatsIn($client->collect($seconds)), 1);
+    }
+
+    public function testPrivateMessageReachesOnlyThePair()
+    {
+        $ann = $this->openPage('ann');
+        $bob = $this->openPage('bob');
+        $cat = $this->openPage('cat');
+
+        $this->sendOver($ann, 'just for bob', 'bob');
+
+        $this->assertSame(['just for bob'], $this->bodiesReceived($ann, 1));
+        $this->assertSame(['just for bob'], $this->bodiesReceived($bob, 0.5));
+        $this->assertSame([], $this->bodiesReceived($cat, 0.5));
+    }
+
+    public function testOpenRoomMessageReachesEveryone()
+    {
+        $ann = $this->openPage('ann');
+        $bob = $this->openPage('bob');
+        $cat = $this->openPage('cat');
+
+        $this->sendOver($bob, 'hello all');
+
+        foreach ([$ann, $bob, $cat] as $client) {
+            $this->assertSame(['hello all'], $this->bodiesReceived($client, 1));
+        }
+    }
+
+    public function testMessageSavedByHttpReachesTheSocket()
+    {
+        $bob = $this->openPage('bob');
+
+        // As the HTTP fallback, the chat worker or MapChat save one
+        Chat::sendFrom($this->users['ann'], 'sent by http', (int) $this->users['bob']->id);
+
+        $this->assertSame(['sent by http'], $this->bodiesReceived($bob, 1.5));
+    }
+
+    public function testSendingAgainAfterALostAnswerGivesTheFirstMessage()
+    {
+        $bob = $this->openPage('bob');
+        $before = Chat::getNewestId();
+
+        // The page sends, and the connection drops before the answer arrives
+        $lost = $this->connect('ann');
+        $lost->hello($before);
+        $lost->send(['type' => 'send', 'clientId' => 'lost-answer-1', 'body' => 'only once', 'to' => (int) $this->users['bob']->id]);
+        $lost->close();
+        usleep(300000);
+
+        // It reconnects from where it was and sends the same message again
+        $ann = $this->connect('ann');
+        $ann->hello($before);
+        $retry = $this->sendOver($ann, 'only once', 'bob', 'lost-answer-1');
+
+        $stmt = $this->db->prepare("SELECT id FROM chats WHERE client_id = 'lost-answer-1'");
+        $stmt->execute();
+        $this->assertSame([$retry['id']], array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN)));
+
+        // Each page shows it once: the catch-up and the live stream don't both send it
+        $this->assertSame(['only once'], $this->bodiesReceived($bob, 1));
+        $this->assertSame(['only once'], $this->bodiesReceived($ann, 0.5));
+    }
+
+    public function testRetryIsAnsweredEvenOverTheRateLimit()
+    {
+        $ann = $this->openPage('ann');
+        $first = $this->sendOver($ann, 'first try', null, 'retry-limit-1');
+        for ($i = 0; $i < Chat::USER_PER_MINUTE; $i++) {
+            $this->db->exec("INSERT INTO chats (email, body) VALUES ('{$this->emails['ann']}', 'filler $i')");
+        }
+
+        $this->assertSame($first['id'], $this->sendOver($ann, 'first try', null, 'retry-limit-1')['id']);
+
+        $ann->send(['type' => 'send', 'clientId' => 'retry-limit-2', 'body' => 'one too many', 'to' => null]);
+        $this->assertSame(429, $ann->waitFor('refused')['status']);
+    }
+
+    public function testCatchesUpAfterARestartInOrderAndOnce()
+    {
+        $bob = $this->openPage('bob');
+        $seen = Chat::getNewestId();
+
+        self::stopServer();
+        $this->assertSame(1012, $bob->waitForClose());
+
+        // More than a page arrives while it's down, from both people, some
+        // for others. Dated earlier, so they don't count against the rate limit
+        $insert = $this->db->prepare('INSERT INTO chats (email, to_email, body, timestamp) VALUES (?, ?, ?, NOW() - INTERVAL 5 MINUTE)');
+        for ($i = 1; $i <= Chat::HISTORY * 2 + 50; $i++) {
+            $from = $i % 2 ? 'ann' : 'cat';
+            $to = $i % 5 === 0 ? 'ann' : 'bob';
+            $toEmail = $from === $to ? null : $this->emails[$to];
+            $insert->execute([$this->emails[$from], $toEmail, "missed $i"]);
+        }
+
+        self::startServer();
+        $bob = $this->connect('bob');
+        $bob->send(['type' => 'hello', 'after' => $seen]);
+        $bob->waitFor('welcome');
+
+        // Messages keep arriving while it catches up
+        $ann = $this->connect('ann');
+        $ann->hello(Chat::getNewestId());
+        for ($i = 1; $i <= 5; $i++) {
+            $this->sendOver($ann, "during catch-up $i", 'bob');
+        }
+
+        $received = self::chatsIn($bob->collect(3));
+        $ids = array_column($received, 0);
+
+        $stmt = $this->db->prepare('SELECT id FROM chats WHERE id > ? AND (to_email IS NULL OR to_email = ? OR email = ?) ORDER BY id');
+        $stmt->execute([$seen, $this->emails['bob'], $this->emails['bob']]);
+        $expected = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+
+        $this->assertGreaterThan(Chat::HISTORY * 2, count($expected));
+        $this->assertSame($expected, $ids, 'every message once, in order');
+        $this->assertSame('during catch-up 5', end($received)[1]);
+    }
+
+    public function testConcurrentSendersArriveInOrderOnce()
+    {
+        $ann = $this->openPage('ann');
+        $cat = $this->openPage('cat');
+        $bob = $this->openPage('bob');
+
+        // Both send without waiting for answers, interleaved
+        for ($i = 1; $i <= 10; $i++) {
+            $ann->send(['type' => 'send', 'clientId' => "concurrent-ann-$i", 'body' => "ann $i", 'to' => (int) $this->users['bob']->id]);
+            $cat->send(['type' => 'send', 'clientId' => "concurrent-cat-$i", 'body' => "cat $i", 'to' => (int) $this->users['bob']->id]);
+        }
+
+        $received = self::chatsIn($bob->collect(2));
+        $ids = array_column($received, 0);
+        $sorted = $ids;
+        sort($sorted);
+
+        $this->assertCount(20, $received);
+        $this->assertSame($sorted, $ids);
+        $this->assertSame(array_values(array_unique($ids)), $ids);
+    }
+
+    public function testOlderPrivateHistoryComesStraightFromThatChat()
+    {
+        $old = Chat::sendFrom($this->users['ann'], 'old private', (int) $this->users['bob']->id)['id'];
+        for ($i = 0; $i < Chat::HISTORY + 10; $i++) {
+            (new Chat(['email' => $this->emails['cat'], 'body' => "busy room $i"]))->send();
+        }
+        $bob = $this->openPage('bob');
+
+        $bob->send(['type' => 'older', 'requestId' => 7, 'before' => Chat::getNewestId() + 1, 'conversation' => (string) $this->users['ann']->id]);
+        $older = $bob->waitFor('older', 5, fn ($message) => $message['requestId'] === 7);
+
+        $this->assertSame([[$old, 'old private']], self::chatsIn([['type' => 'chats', 'html' => $older['html']]]));
+    }
+
+    public function testReadInOneTabClearsTheOthers()
+    {
+        $ann = $this->openPage('ann');
+        $bobFirstTab = $this->openPage('bob');
+        $bobSecondTab = $this->openPage('bob');
+        $sent = $this->sendOver($ann, 'read me', 'bob');
+
+        $bobFirstTab->send(['type' => 'read', 'from' => (int) $this->users['ann']->id, 'upTo' => $sent['id']]);
+
+        $read = $bobSecondTab->waitFor('read');
+        $this->assertSame([(string) $this->users['ann']->id, $sent['id']], [$read['conversation'], $read['upTo']]);
+        $this->assertNull($ann->waitFor('read', 0.5));
+        $this->assertSame(0, (int) Chat::getConversations($this->emails['bob'], PHP_INT_MAX)[0]['unread']);
+    }
+
+    public function testTypingGoesOnlyToThePartnerAndExpires()
+    {
+        $ann = $this->openPage('ann');
+        $bob = $this->openPage('bob');
+        $cat = $this->openPage('cat');
+
+        $ann->send(['type' => 'typing', 'to' => (int) $this->users['bob']->id, 'isTyping' => true]);
+
+        $typing = $bob->waitFor('typing');
+        $this->assertSame([(int) $this->users['ann']->id, true], [$typing['from'], $typing['isTyping']]);
+        $this->assertArrayNotHasKey('body', $typing);
+        $this->assertNull($cat->waitFor('typing', 0.5));
+
+        // Nothing more from ann: it stops by itself
+        $stopped = $bob->waitFor('typing', 8);
+        $this->assertFalse($stopped['isTyping']);
+    }
+
+    public function testTypingStopsWhenTheTabCloses()
+    {
+        $ann = $this->openPage('ann');
+        $bob = $this->openPage('bob');
+        $ann->send(['type' => 'typing', 'to' => (int) $this->users['bob']->id, 'isTyping' => true]);
+        $bob->waitFor('typing');
+
+        $ann->close();
+
+        $this->assertFalse($bob->waitFor('typing', 2)['isTyping']);
+    }
+
+    public function testPersonStaysOnlineWhileAnyTabIsOpen()
+    {
+        $cat = $this->openPage('cat');
+        $annId = (int) $this->users['ann']->id;
+        $isAboutAnn = fn ($message) => (int) $message['person']['id'] === $annId;
+
+        $firstTab = $this->openPage('ann');
+        $secondTab = $this->openPage('ann');
+        $this->assertSame(1, $cat->waitFor('presence', 3, $isAboutAnn)['person']['is_online']);
+
+        $firstTab->close();
+        $this->assertNull($cat->waitFor('presence', self::GRACE_SECONDS + 1.5, $isAboutAnn), 'still online in the other tab');
+
+        $secondTab->close();
+        // A reload within the grace period wouldn't show them leaving; past it, they've gone
+        $this->assertSame(0, $cat->waitFor('presence', self::GRACE_SECONDS + 6, $isAboutAnn)['person']['is_online']);
+    }
+
+    public function testWelcomeListsWhoIsOnlineWithoutEmails()
+    {
+        $this->openPage('ann');
+        $bob = $this->connect('bob');
+        $welcome = $bob->hello(0);
+
+        $ann = array_values(array_filter($welcome['people'], fn ($person) => (int) $person['id'] === (int) $this->users['ann']->id));
+        $this->assertSame(1, $ann[0]['is_online']);
+        $this->assertStringNotContainsString('@socket.test', json_encode($welcome));
+    }
+
+    public function testLoggingOutClosesTheTab()
+    {
+        $ann = $this->openPage('ann');
+
+        $this->db->prepare('DELETE FROM sessions WHERE id = ?')->execute([$this->sessions['ann']]);
+
+        $this->assertSame(4401, $ann->waitForClose(self::SESSION_CHECK_SECONDS + 3));
+    }
+
+    public function testRefusesOtherSitesAndMissingSessions()
+    {
+        $this->assertSame(403, $this->connect('ann', 'https://evil.example')->status);
+        $this->assertSame(401, (new SocketClient(self::$address, null))->status);
+        $this->assertSame(401, (new SocketClient(self::$address, 'made-up-session-id-1234567890'))->status);
+    }
+
+    public function testClosesTabsThatSendMalformedMessages()
+    {
+        $notJson = $this->openPage('ann');
+        $notJson->sendText('not json');
+        $this->assertSame(1008, $notJson->waitForClose());
+
+        $tooBig = $this->openPage('bob');
+        $tooBig->sendText(json_encode(['type' => 'ping', 'padding' => str_repeat('x', 20000)]));
+        $this->assertSame(1009, $tooBig->waitForClose());
+
+        $beforeHello = $this->connect('cat');
+        $beforeHello->send(['type' => 'send', 'clientId' => 'early-1', 'body' => 'hi', 'to' => null]);
+        $this->assertSame(1008, $beforeHello->waitForClose());
+    }
+}

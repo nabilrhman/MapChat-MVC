@@ -215,6 +215,13 @@ class DemoChat extends \Core\Model
      */
     public static function schedule($date)
     {
+        // Worked out once per date: the chat socket asks every few seconds
+        // and for every page that connects, and it takes tens of milliseconds
+        static $schedules = [];
+        if (isset($schedules[$date])) {
+            return $schedules[$date];
+        }
+
         mt_srand(crc32($date));
 
         $scenes = static::orderScenes(require dirname(__DIR__, 2) . '/database/demo-chat.php');
@@ -257,6 +264,12 @@ class DemoChat extends \Core\Model
         }
 
         mt_srand();
+
+        // A long-running process keeps only today's and tomorrow's
+        if (count($schedules) > 2) {
+            array_shift($schedules);
+        }
+        $schedules[$date] = $messages;
 
         return $messages;
     }

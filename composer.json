@@ -6,7 +6,8 @@
         "twig/twig": "^3.0",
         "symfony/mailer": "^7.0",
         "symfony/brevo-mailer": "^7.0",
-        "symfony/http-client": "^7.0"
+        "symfony/http-client": "^7.0",
+        "amphp/websocket-server": "^4.0"
     },
     "autoload": {
         "psr-4": {

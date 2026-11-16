@@ -8,7 +8,6 @@ use Core\View;
 use App\Models\Bot;
 use App\Models\Chat;
 use App\Models\DemoChat;
-use App\Models\User;
 use App\Models\UserInfo;
 
 /**
@@ -71,13 +70,14 @@ class App extends Authenticated
 
     /**
      * Gets the page of chats before the given id, when the reader scrolls up
-     * past the oldest one shown (for AJAX)
+     * past the oldest one shown (for AJAX). With a conversation, only that
+     * tab's: "everyone" for the open room, or the other person's id
      *
      * @return void
      */
     public function getOlderAction()
     {
-        $chats = Chat::getBefore(Auth::getEmail(), (int) ($_POST['before'] ?? 0));
+        $chats = Chat::getOlder(Auth::getEmail(), $_POST['conversation'] ?? null, (int) ($_POST['before'] ?? 0));
 
         if ($chats) {
             // Older messages appear at once, without the new-message ease-in
@@ -100,49 +100,29 @@ class App extends Authenticated
     }
 
     /**
-     * Send the typed chat (for AJAX)
+     * Send the typed chat (for AJAX). The chat socket sends with the same
+     * rules (Chat::sendFrom); this is for when the socket can't connect
      *
      * @return void
      */
     public function sendAction()
     {
-        $user = Auth::getUser();
-        $body = trim($_POST['body'] ?? '');
-
-        if ($body === '') {
+        // A page from before client ids sends an empty box quietly; keep that
+        if (trim($_POST['body'] ?? '') === '') {
             return;
         }
 
-        if (mb_strlen($body) > Chat::MAX_LENGTH) {
-            $this->refuse(400, 'Messages can be up to ' . Chat::MAX_LENGTH . ' characters.');
+        $toUserId = empty($_POST['to']) ? null : (int) $_POST['to'];
+        $clientId = empty($_POST['client_id']) ? null : (string) $_POST['client_id'];
+
+        $result = Chat::sendFrom(Auth::getUser(), (string) $_POST['body'], $toUserId, $clientId);
+
+        if (isset($result['error'])) {
+            $this->refuse($result['status'], $result['error']);
             return;
         }
 
-        // Keep one person from flooding the room; guests get a lower limit
-        $limit = $user->is_guest ? Chat::GUEST_PER_MINUTE : Chat::USER_PER_MINUTE;
-        if (Chat::countRecent($user->email, 60) >= $limit) {
-            $this->refuse(429, 'You are sending messages too fast. Wait a moment and try again.');
-            return;
-        }
-
-        // A private message goes to one other person, never to yourself, and
-        // to MapChat only while it can write back
-        $toEmail = null;
-        if (!empty($_POST['to'])) {
-            $recipient = User::findByID($_POST['to']);
-
-            if (!$recipient || $recipient->id == $user->id || ($recipient->email === Chat::BOT_EMAIL && !Bot::canReply())) {
-                $this->refuse(400, 'You can\'t message this person.');
-                return;
-            }
-
-            $toEmail = $recipient->email;
-        }
-
-        $chat = new Chat(['email' => $user->email, 'to_email' => $toEmail, 'body' => $body]);
-        if ($chat->send()) {
-            Bot::heard($user->email, (int) Chat::lastId(), $toEmail, $body);
-        }
+        $this->json(['id' => $result['id']]);
     }
 
     /**

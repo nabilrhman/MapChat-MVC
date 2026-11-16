@@ -14,7 +14,7 @@ export const DIAGRAMS: Diagram[] = [
     sections: [
       {
         title: 'One request',
-        summary: 'Every page and every poll takes this path.',
+        summary: 'Every page, and every chat request without the socket, takes this path.',
         columns: 3,
         cards: [
           {
@@ -53,7 +53,7 @@ export const DIAGRAMS: Diagram[] = [
             icon: 'monitor',
             column: 0,
             title: 'The browser',
-            body: 'Shows the page, then asks for new messages every second, each a new request at the top.',
+            body: 'Shows the page, then opens the chat socket. If it can\'t, asks for new messages every second.',
           },
           {
             id: 'view',
@@ -73,6 +73,36 @@ export const DIAGRAMS: Diagram[] = [
           },
         ],
       },
+      {
+        title: 'Live chat',
+        summary: 'One WebSocket per open chat page, nothing polling.',
+        columns: 3,
+        cards: [
+          {
+            id: 'proxy',
+            icon: 'routing-2',
+            column: 0,
+            title: 'Apache /ws',
+            body: 'Passes the page\'s WebSocket to the chat socket, on the site\'s own address.',
+          },
+          {
+            id: 'hub',
+            icon: 'chat-round-dots',
+            column: 1,
+            title: 'App\\ChatSocket\\Hub',
+            isCodeTitle: true,
+            body: 'Reads new messages in id order and sends each to the pages allowed to see it.',
+          },
+          {
+            id: 'worker',
+            icon: 'clock-circle',
+            column: 2,
+            title: 'bin/chat-worker.php',
+            isCodeTitle: true,
+            body: 'Posts MapChat\'s replies and the demo people\'s lines as they come due.',
+          },
+        ],
+      },
     ],
     arrows: [
       { from: 'index', to: 'router' },
@@ -80,6 +110,9 @@ export const DIAGRAMS: Diagram[] = [
       { from: 'controller', to: 'model' },
       { from: 'model', to: 'view' },
       { from: 'view', to: 'browser' },
+      { from: 'browser', to: 'proxy' },
+      { from: 'proxy', to: 'hub' },
+      { from: 'worker', to: 'hub' },
     ],
   },
 ]

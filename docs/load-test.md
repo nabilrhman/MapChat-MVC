@@ -1,7 +1,71 @@
-# Load test: chat polling
+# Load test: chat polling, and the chat socket
 
 How many open chat tabs the local Docker stack serves, and what gives out
-first. Run on 2026-11-15.
+first. Run on 2026-11-15. The comparison of polling with the chat socket
+(WebSockets) was run on 2026-11-16 and comes first.
+
+## Polling against the chat socket: 50 private pairs (measured locally)
+
+100 guests chatting privately in 50 pairs, sending about 3 messages a second
+in all for 120 seconds, once polling as the page did (`/app/get` every
+second and right after each send, `/app/get-people` and `/app/get-locations`
+every 15 seconds) and once over the chat socket (one WebSocket per tab,
+messages pushed, no polling). Same build, same guests, same machine, one run
+right after the other. Latency is from the send to the moment the partner's
+tab had the message.
+
+**Measured on the local Docker stack only, not on Render.** Nothing here has
+been run against the live site or a staging service on Render.
+
+| | Polling | Chat socket |
+|---|---:|---:|
+| Messages sent | 339 | 357 |
+| Sender to partner, p50 | 508 ms | 11 ms |
+| Sender to partner, p95 | 968 ms | **19 ms** |
+| Sender to partner, max | 1,098 ms | 1,279 ms |
+| Missing / duplicated / reached someone outside the pair | 0 / 0 / 0 | 0 / 0 / 0 |
+| Errors (HTTP or socket) | 0 | 0 |
+| Requests a second to the server | 111 | 3.5 |
+| App container CPU, avg / max | 72.6% / 115% | **1.9%** / 17.9% |
+| MySQL container CPU, avg / max | 129% / 195% | **4.9%** / 37.5% |
+| App container memory, max | 134 MB | 186 MB |
+| Send answered, p95 (`/app/send`, or the socket's "sent") | 29 ms | 19 ms |
+| Socket connect (handshake through Apache), p50 / max | | 81 / 314 ms |
+
+What it means:
+
+- **Polling's latency is its interval.** A message waits for the partner's
+  next poll, up to a second, so p50 is about half a second and p95 nearly a
+  whole one. On the socket it arrives as soon as it's saved and read.
+- **Nearly all the work went.** 100 polling tabs made 111 requests a second,
+  each a PHP request and several MySQL queries, mostly finding nothing. On the
+  socket the server only works when something happens: CPU fell by about 97%
+  in the app and 96% in MySQL.
+- **Memory went up by about 50 MB:** the chat socket and the chat worker are
+  two more PHP processes that stay running.
+- **The socket's one slow message** (1.3 s, the max) was sent while the 100
+  tabs were still connecting; 99% of sends were answered within 93 ms.
+- Polling's numbers match the 2026-11-15 runs below at 100 tabs.
+
+Setup: the local `docker compose` stack (Apache event MPM, PHP-FPM with 20
+processes, the chat socket and chat worker in the same container; MySQL 8.4)
+on a 24-core, 30 GB Linux machine, with another copy of the stack running
+idle beside it. The load script ran on the same machine. CPU is `docker stats`
+sampled every 2 seconds; 100% is one core. The raw reports are in
+`docs/load-test-results/`.
+
+Found and fixed along the way: the first socket run took 5 s to connect 100
+tabs, because working out the demo people's day (`DemoChat::schedule`, about
+40 ms) ran several times for every tab that connected, and the socket
+process does one thing at a time. It's now worked out once a day.
+
+### Estimates for Render (not measured)
+
+Render's free plan has about a tenth of one CPU core. Polling at 100 tabs
+used about three quarters of a core here, so it would run out there; the
+socket's 2% of a core would not come near it. What a free instance does with
+many open WebSockets, and how its proxy treats idle ones (the socket pings
+every 10 s), has not been checked.
 
 **Before** (Apache prefork + mod_php): up to 100 open tabs every request
 came back fast (p95 under 50 ms). At 200 the app ran out of Apache workers,
@@ -143,6 +207,16 @@ rule.
   every poll.
 
 ## Running it again
+
+For the comparison of polling with the chat socket, steps 1 and 2 below,
+then (PORT if the stack isn't on 8080; STATS names the containers to sample):
+
+```bash
+STATS="mapchat-mvc-app-1 mapchat-mvc-db-1" python3 docs/load-test.py --pairs 100 120 cookies 3
+STATS="mapchat-mvc-app-1 mapchat-mvc-db-1" python3 docs/load-test.py --pairs --socket 100 120 cookies 3
+```
+
+For the polling steps:
 
 1. Start the stack: `docker compose up -d`
 2. Sign in N guests and keep their session cookies, one per line:

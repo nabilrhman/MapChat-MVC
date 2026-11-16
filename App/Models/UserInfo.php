@@ -306,7 +306,7 @@ class UserInfo extends \Core\Model
         $bot_online = static::botOnlineSql();
 
         $sql = 'SELECT users.id, users.name, users.avatar, users.email LIKE \'%@demo.mapchat.local\' AS is_demo,
-                       users.nickname, users.is_guest, ' . $bot_online . ' AS is_bot,
+                       users.nickname, users.is_guest, ' . static::isBotSql() . ' AS is_bot,
                        IF(users.share_location, userinfo.city, NULL) AS city,
                        IF(users.share_location, userinfo.country, NULL) AS country,
                        (userinfo.online_at > NOW() - INTERVAL :online SECOND OR ' . $demo_online . ' OR ' . $bot_online . ') AS is_online,
@@ -329,6 +329,99 @@ class UserInfo extends \Core\Model
     }
 
     /**
+     * These people as getRecentPeople lists them, with their email, for the
+     * chat socket to say who came or went. Online is the socket's to say
+     *
+     * @param array $emails
+     *
+     * @return array
+     */
+    public static function getPeople($emails)
+    {
+        if (!$emails) {
+            return [];
+        }
+
+        $db = static::getDB();
+        $list = implode(', ', array_map([$db, 'quote'], $emails));
+
+        $sql = 'SELECT users.id, users.email, users.name, users.avatar, users.email LIKE \'%@demo.mapchat.local\' AS is_demo,
+                       users.nickname, users.is_guest, ' . static::isBotSql() . ' AS is_bot,
+                       IF(users.share_location, userinfo.city, NULL) AS city,
+                       IF(users.share_location, userinfo.country, NULL) AS country,
+                       COALESCE(TIMESTAMPDIFF(MINUTE, userinfo.online_at, NOW()), 0) AS minutes_ago
+                FROM userinfo
+                JOIN users
+                ON userinfo.email = users.email
+                WHERE users.email IN (' . $list . ')';
+
+        return \App\Mention::withShownNames(static::withAvatarSrc($db->query($sql)->fetchAll(PDO::FETCH_ASSOC), 'id'));
+    }
+
+    /**
+     * Everyone the people list shows as online without the chat socket: open
+     * tabs that poll, the demo people in the room, and MapChat
+     *
+     * @return array Their emails
+     */
+    public static function getOnlineEmails()
+    {
+        $sql = 'SELECT users.email
+                FROM userinfo
+                JOIN users
+                ON userinfo.email = users.email
+                WHERE userinfo.online_at > NOW() - INTERVAL :online SECOND
+                   OR ' . static::demoOnlineSql() . '
+                   OR ' . static::botOnlineSql();
+
+        $stmt = static::getDB()->prepare($sql);
+        $stmt->bindValue(':online', static::ONLINE_SECONDS, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    }
+
+    /**
+     * Mark people with a chat socket open as online now, so the map, the
+     * people list and MapChat see them as polling tabs used to make them
+     *
+     * @param array $emails
+     *
+     * @return void
+     */
+    public static function markOnlineNow($emails)
+    {
+        if (!$emails) {
+            return;
+        }
+
+        $db = static::getDB();
+        $list = implode(', ', array_map([$db, 'quote'], $emails));
+        $db->exec("UPDATE userinfo SET online_at = NOW() WHERE email IN ($list)");
+    }
+
+    /**
+     * Mark someone whose last chat socket closed as gone, rather than online
+     * for another minute. A tab still polling marks them online again
+     *
+     * @param string $email
+     *
+     * @return void
+     */
+    public static function markGone($email)
+    {
+        $sql = 'UPDATE userinfo
+                SET online_at = NOW() - INTERVAL :online SECOND
+                WHERE email = :email AND online_at > NOW() - INTERVAL :online2 SECOND';
+
+        $stmt = static::getDB()->prepare($sql);
+        $stmt->bindValue(':email', $email, PDO::PARAM_STR);
+        $stmt->bindValue(':online', static::ONLINE_SECONDS, PDO::PARAM_INT);
+        $stmt->bindValue(':online2', static::ONLINE_SECONDS, PDO::PARAM_INT);
+        $stmt->execute();
+    }
+
+    /**
      * SQL that's true for the demo people in the room now: those in the
      * script (DemoChat::presentNow), and those talking with someone who
      * called or messaged them (Bot::talkingDemoPeople)
@@ -341,6 +434,17 @@ class UserInfo extends \Core\Model
         $emails = array_map([static::getDB(), 'quote'], $present);
 
         return $emails ? 'users.email IN (' . implode(', ', $emails) . ')' : 'FALSE';
+    }
+
+    /**
+     * SQL that's true for the MapChat account, which the list puts first
+     * whenever it's there
+     *
+     * @return string
+     */
+    protected static function isBotSql()
+    {
+        return 'users.email = ' . static::getDB()->quote(Chat::BOT_EMAIL);
     }
 
     /**

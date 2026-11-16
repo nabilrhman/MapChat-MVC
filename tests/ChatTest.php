@@ -378,4 +378,66 @@ class ChatTest extends TestCase
         $this->assertNotContains('bob', $names);
         $this->assertNotContains('cat', $names, 'never seen');
     }
+
+    private function user(string $email): \App\Models\User
+    {
+        return \App\Models\User::findByEmail($email);
+    }
+
+    public function testSendFromWithTheSameClientIdSavesOnce()
+    {
+        $first = Chat::sendFrom($this->user(self::ANN), 'once', $this->userId(self::BOB), 'client-id-1');
+        $again = Chat::sendFrom($this->user(self::ANN), 'once', $this->userId(self::BOB), 'client-id-1');
+
+        $this->assertSame($first, $again);
+        $this->assertSame(['once'], $this->bodies(Chat::getRecent(self::BOB)));
+    }
+
+    public function testSendFromKeepsClientIdsPerSender()
+    {
+        $ann = Chat::sendFrom($this->user(self::ANN), 'from ann', null, 'shared-id-1');
+        $bob = Chat::sendFrom($this->user(self::BOB), 'from bob', null, 'shared-id-1');
+
+        $this->assertNotSame($ann['id'], $bob['id']);
+    }
+
+    public function testSendFromAppliesTheChatsRules()
+    {
+        $this->assertSame(400, Chat::sendFrom($this->user(self::ANN), str_repeat('x', Chat::MAX_LENGTH + 1))['status']);
+        $this->assertSame(400, Chat::sendFrom($this->user(self::ANN), '   ')['status']);
+        $this->assertSame(400, Chat::sendFrom($this->user(self::ANN), 'to me', $this->userId(self::ANN))['status']);
+        $this->assertSame(400, Chat::sendFrom($this->user(self::ANN), 'bad id', null, 'not a valid id!')['status']);
+
+        $this->sendMany(self::ANN, Chat::USER_PER_MINUTE);
+        $this->assertSame(429, Chat::sendFrom($this->user(self::ANN), 'one too many')['status']);
+    }
+
+    public function testAfterStopsAtTheGivenId()
+    {
+        $start = $this->send(self::ANN, 'start');
+        $upTo = $this->send(self::BOB, 'included');
+        $this->send(self::BOB, 'not yet');
+
+        $this->assertSame(['included'], $this->bodies(Chat::getAfter(self::ANN, $start, $upTo)));
+    }
+
+    public function testPrivateBeforeReadsOnlyThatChat()
+    {
+        $this->send(self::ANN, 'ann to bob', self::BOB);
+        $this->send(self::BOB, 'bob to ann', self::ANN);
+        $this->send(self::CAT, 'cat to bob', self::BOB);
+        $this->send(self::ANN, 'room');
+        $this->send(self::CAT, 'cat to ann', self::ANN);
+
+        $this->assertSame(['ann to bob', 'bob to ann'], $this->bodies(Chat::getPrivateBefore(self::BOB, $this->userId(self::ANN), PHP_INT_MAX)));
+    }
+
+    public function testRoomBeforeLeavesOutPrivateMessages()
+    {
+        $this->send(self::ANN, 'room one');
+        $this->send(self::ANN, 'private', self::BOB);
+        $before = $this->send(self::BOB, 'room two');
+
+        $this->assertSame(['room one'], $this->bodies(Chat::getRoomBefore($before)));
+    }
 }

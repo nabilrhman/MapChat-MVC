@@ -1,5 +1,6 @@
-{# Looked up once for the whole page of messages #}
-{% set mention_names = mentioned_names(chats) %}
+{# Looked up once for the whole page of messages; the chat socket looks
+   them up once for everyone it sends the same messages to #}
+{% set mention_names = mention_names is defined ? mention_names : mentioned_names(chats) %}
 {% for chat in chats %}
 {# Which tab the message belongs in: "everyone", or the other person's id #}
 {% set mine = chat.user_id == current_user.id %}
