@@ -9,6 +9,7 @@ use Amp\Websocket\WebsocketClient;
 use App\Config;
 use App\Mention;
 use App\Models\Chat;
+use App\Models\User;
 use App\Models\UserInfo;
 use Core\View;
 use Revolt\EventLoop;
@@ -156,6 +157,38 @@ class Hub implements WebsocketClientHandler
         EventLoop::defer(function () {
             $this->isTailQueued = false;
             $this->safely($this->readNewMessages(...));
+        });
+    }
+
+    /**
+     * The chat worker is writing someone a private reply as MapChat or a
+     * demo person, or stopped without one (Signal::typing): pass it to that
+     * person's pages, as a page's own typing would be
+     *
+     * @param string $datagram
+     *
+     * @return void
+     */
+    public function hearWorkerTyping($datagram)
+    {
+        $typing = json_decode($datagram, true)['typing'] ?? null;
+        if (!is_string($typing['from'] ?? null) || !is_string($typing['to'] ?? null) || !is_bool($typing['isTyping'] ?? null)) {
+            return;
+        }
+        if (empty($this->tabsByEmail[$typing['to']])) {
+            return;
+        }
+
+        $this->safely(function () use ($typing) {
+            $speaker = User::findByEmail($typing['from']);
+            if (!$speaker) {
+                return;
+            }
+            foreach ($this->tabsByEmail[$typing['to']] ?? [] as $tab) {
+                if ($tab->hasSaidHello) {
+                    $tab->send(['type' => 'typing', 'from' => (int) $speaker->id, 'isTyping' => $typing['isTyping']]);
+                }
+            }
         });
     }
 

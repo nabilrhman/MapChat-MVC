@@ -69,11 +69,18 @@ if (!$signals) {
 }
 stream_set_blocking($signals, false);
 EventLoop::onReadable($signals, function () use ($signals, $hub) {
-    // Take every waiting signal; one read of the database covers them all
-    do {
-        $datagram = @stream_socket_recvfrom($signals, 16);
-    } while ($datagram !== false && $datagram !== '');
-    $hub->hearNewMessages();
+    // Take every waiting signal; one read of the database covers all the new-message ones
+    $hasNewMessages = false;
+    while (($datagram = @stream_socket_recvfrom($signals, 1024)) !== false && $datagram !== '') {
+        if ($datagram === 'm') {
+            $hasNewMessages = true;
+        } else {
+            $hub->hearWorkerTyping($datagram);
+        }
+    }
+    if ($hasNewMessages) {
+        $hub->hearNewMessages();
+    }
 });
 
 error_log("Chat socket listening on $host:$port");
