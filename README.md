@@ -45,6 +45,10 @@ https://github.com/user-attachments/assets/99c9917a-9a19-4b5e-b0e1-0ae6a7d4dc10
 
 <sub>A tour at 60fps: pins on the map, private chats with two AI characters answering for real, typing included, and tabs dragged and closed.</sub>
 
+| The chat room, with Maya's pin and local time on the map |
+|---|
+| ![The chat room with the map of who is chatting from where](docs/images/mapchat-app.png) |
+
 | Log in, or try it as a guest | Profile |
 |---|---|
 | ![Login page](docs/images/mapchat-login.jpg) | ![Profile page](docs/images/mapchat-profile.png) |
