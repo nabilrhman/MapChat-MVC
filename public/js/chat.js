@@ -10,6 +10,8 @@ const NULL_ISLAND = 'XN';
 const SCROLL_BEHAVIOR = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth';
 // How far up you scroll before the "Latest" button shows
 const SCROLLED_UP_DISTANCE = 200;
+// A little after a demo person you called comes online (Bot::COME_ONLINE_SECONDS)
+const COME_ONLINE_DELAY = 7000;
 // Closer to the bottom than this, new messages scroll into view
 const AT_BOTTOM_DISTANCE = 80;
 // Closer to the top than this, the next page of older messages loads
@@ -680,7 +682,9 @@ composerForm.addEventListener('submit', (event) => {
         .then(() => {
             messageInput.value = '';
             messageInput.dispatchEvent(new Event('input'));
-            refreshPeople();
+            // Someone you called who was away comes online a moment later
+            // (Bot::COME_ONLINE_SECONDS); look then, not on the next round
+            setTimeout(refreshPeople, COME_ONLINE_DELAY);
         })
         .catch((error) => {
             showToast(getErrorMessage(error, 'Your message could not be sent.'), 'warning');

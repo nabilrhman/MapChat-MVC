@@ -51,10 +51,10 @@ class Bot extends \Core\Model
     /** How soon MapChat answers a private message */
     const PRIVATE_SECONDS = 2;
 
-    /**
-     * How soon a demo person answers when called or messaged: long enough
-     * to be seen coming online first
-     */
+    /** How long a demo person who's away takes to come online when called or messaged */
+    const COME_ONLINE_SECONDS = 6;
+
+    /** How long a demo person takes to answer once they're online */
     const DEMO_ANSWER_SECONDS = 5;
 
     /** At most this many people answer one message that @mentions several */
@@ -150,7 +150,7 @@ class Bot extends \Core\Model
             return;
         }
         if (str_ends_with((string) $toEmail, DemoChat::DOMAIN)) {
-            static::schedule('dm', $email, $chatId, "dm:$chatId", static::DEMO_ANSWER_SECONDS, $toEmail);
+            static::schedule('dm', $email, $chatId, "dm:$chatId", static::demoAnswerDelay($toEmail), $toEmail);
             return;
         }
 
@@ -166,7 +166,7 @@ class Bot extends \Core\Model
         // Asked by name: whoever was asked answers, however busy the room is
         $asked = static::askedIn($body);
         foreach ($asked as $speaker) {
-            $delay = $speaker === Chat::BOT_EMAIL ? static::FOLLOW_UP_SECONDS : static::DEMO_ANSWER_SECONDS;
+            $delay = $speaker === Chat::BOT_EMAIL ? static::FOLLOW_UP_SECONDS : static::demoAnswerDelay($speaker);
             static::schedule('mention', $email, $chatId, "mention:$chatId:$speaker", $delay, $speaker);
         }
         if ($asked) {
@@ -742,19 +742,39 @@ class Bot extends \Core\Model
     }
 
     /**
-     * The demo people talking with someone now: from when they were called
-     * or messaged until CONVERSATION_MINUTES after their last answer, so
-     * they stay online between answers
+     * The demo people talking with someone now: from COME_ONLINE_SECONDS
+     * after they were called or messaged until CONVERSATION_MINUTES after
+     * their last answer, so they stay online between answers
      *
      * @return array Their emails
      */
     public static function talkingDemoPeople()
     {
         $stmt = static::getDB()->prepare('SELECT DISTINCT speaker FROM mapchat_jobs
-                                          WHERE speaker LIKE :demo AND (done_at IS NULL OR done_at > :since)');
-        $stmt->execute([':demo' => '%' . DemoChat::DOMAIN, ':since' => static::time(-static::CONVERSATION_MINUTES * 60)]);
+                                          WHERE speaker LIKE :demo
+                                            AND ((done_at IS NULL AND created_at <= :arrived) OR done_at > :since)');
+        $stmt->execute([
+            ':demo' => '%' . DemoChat::DOMAIN,
+            ':arrived' => static::time(-static::COME_ONLINE_SECONDS),
+            ':since' => static::time(-static::CONVERSATION_MINUTES * 60),
+        ]);
 
         return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    }
+
+    /**
+     * How soon a demo person answers: a moment to type, after a moment to
+     * come online if they're away
+     *
+     * @param string $speaker
+     *
+     * @return int Seconds
+     */
+    protected static function demoAnswerDelay($speaker)
+    {
+        $isHere = in_array($speaker, array_merge(DemoChat::presentNow(), static::talkingDemoPeople()), true);
+
+        return ($isHere ? 0 : static::COME_ONLINE_SECONDS) + static::DEMO_ANSWER_SECONDS;
     }
 
     /**

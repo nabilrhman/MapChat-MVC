@@ -171,8 +171,8 @@ function loadPeople() {
         });
 }
 
-// The list now rather than on the next round: after you message someone,
-// so whoever you called shows up online before they answer
+// The list now rather than on the next round: when whoever you messaged
+// has just come online, so they show up before they answer
 function refreshPeople() {
     clearTimeout(nextPeopleLoad);
     loadPeople();

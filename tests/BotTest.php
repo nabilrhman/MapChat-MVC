@@ -420,7 +420,7 @@ class BotTest extends TestCase
         $maya = $this->addDemoPerson('Maya Thompson', 'Toronto');
         $this->send(self::ANN, '@Maya how is Toronto today?');
 
-        $this->wait(Bot::DEMO_ANSWER_SECONDS);
+        $this->wait(Bot::COME_ONLINE_SECONDS + Bot::DEMO_ANSWER_SECONDS);
 
         $this->assertSame([[$maya, '@Ann reply 1']], $this->answers(), 'Maya answers, tagging Ann, and MapChat stays out of it');
         $this->assertStringContainsString('You are Maya Thompson', TestBot::$asked[0][0]);
@@ -432,7 +432,7 @@ class BotTest extends TestCase
     {
         $maya = $this->addDemoPerson('Maya Thompson', 'Toronto');
         $this->send(self::ANN, '@Maya hi!');
-        $this->wait(Bot::DEMO_ANSWER_SECONDS);
+        $this->wait(Bot::COME_ONLINE_SECONDS + Bot::DEMO_ANSWER_SECONDS);
         $this->send(self::ANN, 'what do you do there?');
 
         $this->wait(Bot::ROOM_COOLDOWN_SECONDS);
@@ -449,7 +449,7 @@ class BotTest extends TestCase
         $this->send($lukas, 'it was socks. forty pairs of socks');
         $this->send(self::ANN, '@Maya what parcel?');
 
-        $this->wait(Bot::DEMO_ANSWER_SECONDS);
+        $this->wait(Bot::COME_ONLINE_SECONDS + Bot::DEMO_ANSWER_SECONDS);
 
         $this->assertStringContainsString(
             "Maya (you): @Lukas any news on the mystery parcel?\nLukas: it was socks. forty pairs of socks\nAnn: @Maya what parcel?",
@@ -465,7 +465,7 @@ class BotTest extends TestCase
         $this->send(self::CAT, 'cat secret for maya', $maya);
         $this->send(self::ANN, 'ann secret for mapchat', Chat::BOT_EMAIL);
 
-        $this->wait(Bot::DEMO_ANSWER_SECONDS);
+        $this->wait(Bot::COME_ONLINE_SECONDS + Bot::DEMO_ANSWER_SECONDS);
 
         $answers = $this->db->query('SELECT email, to_email FROM chats WHERE id IN (SELECT posted_id FROM mapchat_jobs) ORDER BY id')
             ->fetchAll(PDO::FETCH_NUM);
@@ -510,19 +510,21 @@ class BotTest extends TestCase
         $this->assertStringContainsString('done chatting for now', TestBot::$asked[1][0]);
     }
 
-    public function testDemoPersonStaysOnlineWhileTalking()
+    public function testDemoPersonComesOnlineAMomentLaterAndStaysWhileTalking()
     {
         $wanjiru = $this->addDemoPerson('Wanjiru Kamau', 'Nairobi');
-        $online = fn () => array_column(\App\Models\UserInfo::getRecentPeople(), 'is_online', 'name')['Wanjiru Kamau'] ?? null;
 
         $this->send(self::ANN, 'hi wanjiru', $wanjiru);
-        $this->assertEquals(1, $online(), 'online while her answer is coming');
+        $this->assertNotContains($wanjiru, TestBot::talkingDemoPeople(), 'not the moment the message is sent');
+
+        $this->wait(Bot::COME_ONLINE_SECONDS);
+        $this->assertContains($wanjiru, TestBot::talkingDemoPeople(), 'online a moment later');
 
         $this->wait(Bot::DEMO_ANSWER_SECONDS);
-        $this->db->exec("UPDATE userinfo SET online_at = NOW() - INTERVAL 2 MINUTE WHERE email = '$wanjiru'");
-        $this->assertContains($wanjiru, Bot::talkingDemoPeople(), 'and a while after it');
+        $this->assertSame($wanjiru, $this->answers()[0][0] ?? null);
 
-        TestBot::$later += Bot::CONVERSATION_MINUTES * 60 + 1;
+        $this->wait(Bot::CONVERSATION_MINUTES * 60 + 1);
         $this->assertNotContains($wanjiru, TestBot::talkingDemoPeople(), 'until the chat goes quiet');
     }
+
 }
