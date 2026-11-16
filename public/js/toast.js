@@ -4,19 +4,20 @@ const TOAST_ICONS = {success: 'check-circle', info: 'info-circle', warning: 'dan
 const TOAST_DURATION = 4500;
 
 function getToastList() {
-    let list = document.querySelector('.toasts');
+    let list = document.getElementById('toasts');
     if (!list) {
         list = createElement('div', 'toasts');
+        list.id = 'toasts';
         document.body.append(list);
     }
     return list;
 }
 
 function showToast(text, type = 'success') {
-    const toast = createElement('div', `toast toast--${type}`);
+    const toast = createElement('div', `toast ${type}`);
     toast.setAttribute('role', 'status');
     toast.append(
-        createIcon(TOAST_ICONS[type] ?? TOAST_ICONS.info, 'toast__icon'),
+        createIcon(TOAST_ICONS[type] ?? TOAST_ICONS.info),
         createElement('span', '', text),
     );
     getToastList().append(toast);

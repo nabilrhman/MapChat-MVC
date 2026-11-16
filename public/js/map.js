@@ -127,18 +127,17 @@ const PIN_TIME_INTERVAL = 30000;
 // time with a sun or moon, as a message shows its sender's
 function createPinLabel(location) {
     const label = createElement('div', 'pin-label');
-    label.append(createElement('strong', 'pin-label__name', location.shown_name || ''));
+    label.append(createElement('strong', 'name', location.shown_name || ''));
 
     if (location.city || location.country) {
-        const place = createPlace(location.city, location.country);
-        place.classList.add('pin-label__place');
-        label.append(place);
+        label.append(createPlace(location.city, location.country));
     }
 
-    const time = createElement('span', 'pin-label__time');
+    const time = createElement('span', 'time');
+    time.dataset.part = 'pin-time';
     time.dataset.timezone = location.timezone || '';
     time.dataset.lng = location.lng;
-    time.append(createIcon('sun', 'pin-label__daylight'), createElement('span'));
+    time.append(createIcon('sun', 'daylight'), createElement('span'));
     showPinTime(time);
     label.append(time);
 
@@ -148,21 +147,22 @@ function createPinLabel(location) {
 // Without their time zone, localTimeOf (chat.js) estimates it from the longitude
 function showPinTime(time) {
     const localTime = localTimeOf(new Date(), time.dataset.timezone, parseFloat(time.dataset.lng));
-    showDaylight(time.querySelector('.pin-label__daylight'), 'pin-label__daylight', localTime.hour);
+    showDaylight(time.querySelector('svg'), localTime.hour);
     time.querySelector('span').textContent = localTime.text;
 }
 
-setInterval(() => document.querySelectorAll('.pin-label__time').forEach(showPinTime), PIN_TIME_INTERVAL);
+setInterval(() => document.querySelectorAll('[data-part="pin-time"]').forEach(showPinTime), PIN_TIME_INTERVAL);
 
 // A yellow map pin like the original marker icon. userId lets the people
 // list, and a message's city, highlight this pin
 function createPinElement(userId) {
     const pin = createElement('div', 'map-pin');
+    pin.dataset.part = 'map-pin';
     pin.dataset.userId = userId;
     // The map library labels each marker; a label needs a role to be allowed
     pin.setAttribute('role', 'img');
     // One line, so no whitespace text sits beside the icon
-    pin.innerHTML = '<svg class="map-pin__icon" width="20" height="27" viewBox="0 0 28 38" aria-hidden="true">'
+    pin.innerHTML = '<svg class="shape" width="20" height="27" viewBox="0 0 28 38" aria-hidden="true">'
         + `<path d="M14 0C6.3 0 0 6.2 0 13.9 0 24.3 14 38 14 38s14-13.7 14-24.1C28 6.2 21.7 0 14 0z" fill="${THEME.pin}"/>`
         + '<circle cx="14" cy="14" r="5" fill="#ffffff"/></svg>';
     return pin;
@@ -189,9 +189,9 @@ function minZoomToFill(tileSize) {
 // Room around the pins when zooming to fit them, so no pin ends up behind the
 // chat panel or the people list
 function getMapPadding() {
-    const chatPanel = document.querySelector('.chat-panel').getBoundingClientRect();
+    const chatPanel = document.getElementById('chat').getBoundingClientRect();
     // Zero while the people list is a closed drawer
-    const peopleWidth = document.querySelector('.people').getBoundingClientRect().width;
+    const peopleWidth = document.getElementById('people').getBoundingClientRect().width;
 
     // On phones the chat sits below the map instead of beside it
     const isChatBelowMap = chatPanel.width >= window.innerWidth * 0.9;
@@ -379,7 +379,7 @@ let openPinPopup = null;
 function addVectorPin(map, location, shouldAnimate) {
     const lngLat = lngLatOf(location);
     const label = createPinLabel(location);
-    const popupTime = label.querySelector('.pin-label__time');
+    const popupTime = label.querySelector('[data-part="pin-time"]');
     const popup = new maplibregl.Popup({closeButton: false, offset: vectorLabelOffsetsOf(PIN_LABEL_OFFSET)})
         .setDOMContent(label);
     const marker = new maplibregl.Marker({element: createPinElement(location.user_id), anchor: 'bottom'})
@@ -778,7 +778,7 @@ function addTilePin(map, location, shouldAnimate) {
                 maxZoom: Math.max(map.getZoom(), FOCUS_PIN_ZOOM),
                 duration: FOCUS_DURATION / 1000,
             });
-            showTooltip(getLabelOffset(marker.getElement().querySelector('.map-pin')));
+            showTooltip(getLabelOffset(marker.getElement().querySelector('[data-part="map-pin"]')));
         },
         // Back to the usual height, for a plain hover on the pin
         hide: () => {
@@ -790,7 +790,7 @@ function addTilePin(map, location, shouldAnimate) {
     return () => {
         pinLabelsByUserId.delete(String(location.user_id));
         marker.closeTooltip();
-        fadeOutPin(marker.getElement().querySelector('.map-pin'), () => marker.remove());
+        fadeOutPin(marker.getElement().querySelector('[data-part="map-pin"]'), () => marker.remove());
     };
 }
 

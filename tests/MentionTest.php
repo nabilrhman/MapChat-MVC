@@ -23,7 +23,7 @@ class MentionTest extends TestCase
         $html = Mention::mark('<b>hi</b> @maya and @Ann', ['Maya', 'Ann'], 'Ann');
 
         $this->assertSame(
-            '&lt;b&gt;hi&lt;/b&gt; <span class="mention">@maya</span> and <span class="mention mention--me">@Ann</span>',
+            '&lt;b&gt;hi&lt;/b&gt; <span class="mention">@maya</span> and <span class="mention me">@Ann</span>',
             $html
         );
     }
@@ -39,7 +39,7 @@ class MentionTest extends TestCase
     {
         $html = Mention::mark('hi @Tom & Jerry', ['Tom & Jerry'], 'Tom & Jerry');
 
-        $this->assertSame('hi <span class="mention mention--me">@Tom &amp; Jerry</span>', $html);
+        $this->assertSame('hi <span class="mention me">@Tom &amp; Jerry</span>', $html);
     }
 
     public function testFirstNamesCountExceptForGuests()
@@ -54,7 +54,7 @@ class MentionTest extends TestCase
     {
         $html = Mention::mark('@Maya and @Ann', ['Maya Thompson', 'Maya', 'Ann Lee', 'Ann'], 'Ann Lee');
 
-        $this->assertSame('<span class="mention">@Maya</span> and <span class="mention mention--me">@Ann</span>', $html);
+        $this->assertSame('<span class="mention">@Maya</span> and <span class="mention me">@Ann</span>', $html);
     }
 
     public function testANicknameTakesThePlaceOfTheFirstName()
@@ -75,6 +75,6 @@ class MentionTest extends TestCase
     {
         $html = Mention::mark('hi @zee', ['Zainab Ali', 'zee'], 'Zainab Ali', 'zee');
 
-        $this->assertSame('hi <span class="mention mention--me">@zee</span>', $html);
+        $this->assertSame('hi <span class="mention me">@zee</span>', $html);
     }
 }

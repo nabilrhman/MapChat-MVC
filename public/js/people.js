@@ -41,14 +41,14 @@ function getTimeAgo(person) {
 
 // Point out the person's pin on the map
 function highlightPin(userId, isHighlighted) {
-    document.querySelector(`.map-pin[data-user-id="${CSS.escape(userId)}"]`)?.classList.toggle('is-highlighted', isHighlighted);
+    document.querySelector(`[data-part="map-pin"][data-user-id="${CSS.escape(userId)}"]`)?.classList.toggle('is-highlighted', isHighlighted);
     // With its label (map.js)
     setPinLabelShown(userId, isHighlighted);
 }
 
 // Online: flag and city. Recently here: how long ago
 function createPersonDetail(person) {
-    const detail = createElement('span', 'person__detail');
+    const detail = createElement('span', 'detail');
     if (!person.isOnline) {
         detail.textContent = getTimeAgo(person);
         return detail;
@@ -64,13 +64,14 @@ function createPersonRow(person) {
     // Your own row does nothing; anyone else's opens a private chat
     const row = isMe ? createElement('div', 'person') : createButton('person');
     row.classList.toggle('is-online', person.isOnline);
-    row.classList.toggle('person--can-message', !isMe);
+    row.classList.toggle('can-message', !isMe);
+    row.dataset.part = 'person';
     row.dataset.userId = userId;
     row.title = isMe ? '' : `Chat privately with ${person.shown_name}`;
     row.dataset.tipSide = 'left'; // over the map, not the rows above
 
-    const avatarFrame = createElement('span', 'person__avatar');
-    const photo = createElement('img', 'person__photo');
+    const avatarFrame = createElement('span', 'avatar');
+    const photo = createElement('img', 'photo');
     photo.alt = '';
     photo.width = 32;
     photo.height = 32;
@@ -78,9 +79,9 @@ function createPersonRow(person) {
     photo.src = person.avatar_src;
     avatarFrame.append(photo);
 
-    const text = createElement('span', 'person__text');
+    const text = createElement('span', 'text');
     text.append(
-        createElement('span', 'person__name', person.shown_name + (isMe ? ' (you)' : '')),
+        createElement('span', 'name', person.shown_name + (isMe ? ' (you)' : '')),
         createPersonDetail(person),
     );
 
@@ -94,7 +95,7 @@ function createPersonRow(person) {
 // Where each row is now, by user id, leaving out rows on their way out
 function getRowTops(section) {
     const tops = new Map();
-    section.querySelectorAll(':scope > .person:not(.is-leaving)').forEach((row) => {
+    section.querySelectorAll(':scope > [data-part="person"]:not(.is-leaving)').forEach((row) => {
         tops.set(row.dataset.userId, row.getBoundingClientRect().top);
     });
     return tops;
@@ -104,7 +105,7 @@ function getRowTops(section) {
 // new place, so someone joining pushes the list down smoothly
 function slideToNewPlaces(section, topsBefore) {
     const shifts = new Map();
-    for (const row of section.querySelectorAll(':scope > .person:not(.is-entering, .is-leaving)')) {
+    for (const row of section.querySelectorAll(':scope > [data-part="person"]:not(.is-entering, .is-leaving)')) {
         const topBefore = topsBefore.get(row.dataset.userId);
         if (topBefore === undefined) continue;
         const shift = topBefore - row.getBoundingClientRect().top;
@@ -154,10 +155,10 @@ function createEnteringRow(person) {
 // leaving one and joining the other, so the green dot fades with the row
 function fillPeople(section, people) {
     // The loading dots, the first time
-    section.querySelectorAll(':scope > :not(.person)').forEach((element) => element.remove());
+    section.querySelectorAll(':scope > :not([data-part="person"])').forEach((element) => element.remove());
     const topsBefore = getRowTops(section);
     const oldRows = new Map();
-    section.querySelectorAll(':scope > .person:not(.is-leaving)').forEach((row) => oldRows.set(row.dataset.userId, row));
+    section.querySelectorAll(':scope > [data-part="person"]:not(.is-leaving)').forEach((row) => oldRows.set(row.dataset.userId, row));
 
     const rows = people.map((person) => {
         const content = rowContentOf(person);
@@ -179,7 +180,7 @@ function fillPeople(section, people) {
     let next = section.firstElementChild;
     const passRowsNotKept = () => {
         while (next && !keptRows.has(next)) {
-            if (next.classList.contains('person') && !next.classList.contains('is-leaving')) easeOutRow(section, next);
+            if (next.dataset.part === 'person' && !next.classList.contains('is-leaving')) easeOutRow(section, next);
             next = next.nextElementSibling;
         }
     };
@@ -204,7 +205,7 @@ function showPeople(people) {
     peopleToMention = [...onlinePeople, ...recentPeople].filter((person) => person.id !== myUserId);
 
     // The rows are replaced, so a hovered row never gets its mouseleave
-    document.querySelectorAll('.map-pin.is-highlighted').forEach((pin) => highlightPin(pin.dataset.userId, false));
+    document.querySelectorAll('[data-part="map-pin"].is-highlighted').forEach((pin) => highlightPin(pin.dataset.userId, false));
 
     peopleHandlers?.onPeopleOnline(new Set(onlinePeople.map((person) => person.id)));
 
@@ -358,7 +359,8 @@ document.getElementById('people-close').addEventListener('click', () => {
 function keepPeopleUpdated(handlers) {
     peopleHandlers = handlers;
     peoplePanel.addEventListener('click', (event) => {
-        const row = event.target.closest('.person--can-message');
+        // Anyone's row but your own is a button, which opens a private chat
+        const row = event.target.closest('button[data-part="person"]');
         if (!row) return;
 
         const person = personByRow.get(row);

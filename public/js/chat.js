@@ -40,7 +40,7 @@ let onlineUserIds = new Set();
 let newMessagesWhileScrolledUp = 0;
 
 const getConversation = (chat) => chat.dataset.conversation;
-const getChats = () => [...chatList.querySelectorAll('.chat')];
+const getChats = () => [...chatList.querySelectorAll('[data-part="message"]')];
 // The newest message on the page, in any tab, or 0
 const getNewestId = () => Number(getChats().at(-1)?.dataset.id ?? 0);
 const getDistanceFromBottom = () => chatList.scrollHeight - chatList.scrollTop - chatList.clientHeight;
@@ -76,7 +76,7 @@ chatList.addEventListener('scrollend', stopScrollingToNewest);
 // Run a change that resizes or removes tabs, then let the tabs that moved
 // slide to their new place instead of jumping
 function slideTabs(change) {
-    const tabs = [...chatTabs.querySelectorAll('.chat-tab')];
+    const tabs = [...chatTabs.querySelectorAll('[data-part="tab"]')];
     const leftsBefore = tabs.map((tab) => tab.getBoundingClientRect().left);
 
     change();
@@ -125,11 +125,11 @@ function addTabFor(chat) {
 }
 
 function getTab(conversation) {
-    return chatTabs.querySelector(`.chat-tab[data-conversation="${CSS.escape(conversation)}"]:not(.is-leaving)`);
+    return chatTabs.querySelector(`[data-part="tab"][data-conversation="${CSS.escape(conversation)}"]:not(.is-leaving)`);
 }
 
 // The name on a conversation's tab: the other person's, in a private chat
-const getTabName = (conversation) => getTab(conversation).querySelector('.chat-tab__name').textContent;
+const getTabName = (conversation) => getTab(conversation).querySelector('[data-part="tab-name"]').textContent;
 
 // Whether someone is online, by their id as a number or as the page has it
 // (a private conversation, a sender)
@@ -139,23 +139,28 @@ function addTab(conversation, name) {
     const existingTab = getTab(conversation);
     if (existingTab) return existingTab;
 
-    const tab = createElement('div', 'chat-tab');
+    const tab = createElement('div', 'tab');
+    tab.dataset.part = 'tab';
     tab.dataset.conversation = conversation;
     tab.classList.toggle('is-entering', shouldAnimateNewTabs);
 
-    const onlineDot = createElement('span', 'chat-tab__online');
+    const onlineDot = createElement('span', 'online');
+    onlineDot.dataset.part = 'tab-online';
     onlineDot.title = 'Online';
     onlineDot.hidden = !isUserOnline(conversation);
 
-    const nameLabel = createElement('span', 'chat-tab__name', name);
+    const nameLabel = createElement('span', 'name', name);
+    nameLabel.dataset.part = 'tab-name';
 
-    const unreadCount = createElement('span', 'chat-tab__unread');
+    const unreadCount = createElement('span', 'unread');
+    unreadCount.dataset.part = 'tab-unread';
     unreadCount.hidden = true;
 
-    const openButton = createButton('chat-tab__open');
+    const openButton = createButton('open');
     openButton.append(onlineDot, nameLabel, unreadCount);
 
-    const closeButton = createButton('chat-tab__close', '×');
+    const closeButton = createButton('close', '×');
+    closeButton.dataset.part = 'tab-close';
     closeButton.title = 'Close';
 
     tab.append(openButton, closeButton);
@@ -171,7 +176,7 @@ const tabOrderKey = `tabOrder:${myUserId}`;
 let tabOrder = readStoredJson(tabOrderKey, []);
 
 function saveTabOrder() {
-    tabOrder = [...chatTabs.querySelectorAll('.chat-tab:not(.is-leaving)')]
+    tabOrder = [...chatTabs.querySelectorAll('[data-part="tab"]:not(.is-leaving)')]
         .map((tab) => tab.dataset.conversation)
         .filter((conversation) => conversation !== EVERYONE);
     writeStoredJson(tabOrderKey, tabOrder);
@@ -195,7 +200,7 @@ function placeTab(tab) {
 // position, which a tab growing in already has in full (the row is its
 // offsetParent, as it's transformed)
 function keepOpenTabWhole() {
-    const tab = chatTabs.querySelector('.chat-tab.is-active:not(.is-leaving)');
+    const tab = chatTabs.querySelector('[data-part="tab"].is-active:not(.is-leaving)');
     if (!tab) return;
 
     const left = tab.offsetLeft;
@@ -216,7 +221,7 @@ function showConversation(conversation) {
     stopTyping();
     activeConversation = String(conversation);
 
-    chatTabs.querySelectorAll('.chat-tab').forEach((tab) => tab.classList.remove('is-active'));
+    chatTabs.querySelectorAll('[data-part="tab"]').forEach((tab) => tab.classList.remove('is-active'));
     const tab = getTab(activeConversation);
     tab.classList.add('is-active');
     // Also shows the tab whole (keepOpenTabWhole)
@@ -243,7 +248,7 @@ function showConversation(conversation) {
 
 function clearUnreadCount(tab) {
     slideTabs(() => {
-        const unreadCount = tab.querySelector('.chat-tab__unread');
+        const unreadCount = tab.querySelector('[data-part="tab-unread"]');
         unreadCount.hidden = true;
         unreadCount.textContent = '';
         unreadCount.classList.remove('is-mention');
@@ -251,7 +256,7 @@ function clearUnreadCount(tab) {
 }
 
 function setUnreadCount(tab, count) {
-    const unreadCount = tab.querySelector('.chat-tab__unread');
+    const unreadCount = tab.querySelector('[data-part="tab-unread"]');
     unreadCount.textContent = count;
     unreadCount.hidden = false;
 }
@@ -346,18 +351,18 @@ function showChatHeader() {
 }
 
 // Their city and time, which flip up together to show their country on
-// hover (.chat-header__flip in chat.css). Stays put without a city to flip
+// hover (.chat-header .flip in chat.css). Stays put without a city to flip
 // from, or a name for the country
 function createFlipToCountry(placeAndTime, person) {
     if (!person.city || !person.country || countryName(person.country) === person.country) return placeAndTime;
 
-    const cityLine = createElement('span', 'swap__line');
+    const cityLine = createElement('span', 'line');
     cityLine.append(...placeAndTime);
-    const countryLine = createElement('span', 'swap__line');
+    const countryLine = createElement('span', 'line');
     countryLine.append(createPlace(null, person.country));
-    const track = createElement('span', 'swap__track');
+    const track = createElement('span', 'track');
     track.append(cityLine, countryLine);
-    const flip = createElement('span', 'swap chat-header__flip');
+    const flip = createElement('span', 'swap flip');
     flip.append(track);
     return [flip];
 }
@@ -365,10 +370,10 @@ function createFlipToCountry(placeAndTime, person) {
 // Their time now, with a sun or moon, as their pin and messages show it
 function createLocalTime(person) {
     const localTime = localTimeOf(new Date(), person.timezone, parseFloat(person.lng));
-    const daylightIcon = createIcon('sun', 'chat-header__daylight');
-    showDaylight(daylightIcon, 'chat-header__daylight', localTime.hour);
+    const daylightIcon = createIcon('sun', 'daylight');
+    showDaylight(daylightIcon, localTime.hour);
 
-    const time = createElement('span', 'chat-header__time');
+    const time = createElement('span', 'time');
     time.append(daylightIcon, localTime.text);
     return time;
 }
@@ -383,8 +388,8 @@ setInterval(() => {
 function updateOnlineDots(userIds) {
     onlineUserIds = userIds;
     showChatHeader();
-    chatTabs.querySelectorAll('.chat-tab__online').forEach((dot) => {
-        const isOnline = isUserOnline(dot.closest('.chat-tab').dataset.conversation);
+    chatTabs.querySelectorAll('[data-part="tab-online"]').forEach((dot) => {
+        const isOnline = isUserOnline(dot.closest('[data-part="tab"]').dataset.conversation);
         if (isOnline === !dot.hidden) return;
 
         if (isOnline) {
@@ -400,14 +405,14 @@ function updateOnlineDots(userIds) {
 }
 
 chatTabs.addEventListener('click', (event) => {
-    const tab = event.target.closest('.chat-tab');
+    const tab = event.target.closest('[data-part="tab"]');
     if (!tab) return;
     event.preventDefault();
     if (isEndingTabDrag) return;
     // A tab of a folded chat brings the chat back up
     if (isChatFolded()) setChatFolded(false);
 
-    if (event.target.closest('.chat-tab__close')) {
+    if (event.target.closest('[data-part="tab-close"]')) {
         closeTab(tab);
     } else {
         showConversation(tab.dataset.conversation);
@@ -438,9 +443,9 @@ let isEndingTabDrag = false;
 const getRowX = (clientX) => clientX + chatTabs.scrollLeft;
 
 chatTabs.addEventListener('pointerdown', (event) => {
-    const tab = event.target.closest('.chat-tab');
+    const tab = event.target.closest('[data-part="tab"]');
     if (!tab || tab.dataset.conversation === EVERYONE || tab.classList.contains('is-leaving')) return;
-    if (event.button !== 0 || event.target.closest('.chat-tab__close')) return;
+    if (event.button !== 0 || event.target.closest('[data-part="tab-close"]')) return;
 
     tabDrag = {tab, pointerId: event.pointerId, startClientX: event.clientX, clientX: event.clientX, isDragging: false};
     if (event.pointerType === 'touch') {
@@ -588,28 +593,27 @@ function localTimeOf(date, timezone, longitude) {
 }
 
 // A daylight icon shows the sun from six in the morning to six at night,
-// and the moon otherwise, with its own --day or --night modifier
-// (iconClass--day)
-function showDaylight(icon, iconClass, hour) {
+// and the moon otherwise, coloured by its day or night class
+function showDaylight(icon, hour) {
     const isDaytime = hour >= 6 && hour < 18;
     setIcon(icon, isDaytime ? 'sun' : 'moon');
-    icon.classList.toggle(`${iconClass}--day`, isDaytime);
-    icon.classList.toggle(`${iconClass}--night`, !isDaytime);
+    icon.classList.toggle('day', isDaytime);
+    icon.classList.toggle('night', !isDaytime);
 }
 
 const getSentDate = (chat) => new Date(chat.querySelector('time').getAttribute('datetime'));
 
 function showSenderTime(chat) {
-    const senderTimeLine = chat.querySelector('.chat__sender-time');
+    const senderTimeLine = chat.querySelector('[data-part="sender-time"]');
     if (!senderTimeLine) return;
 
-    const timeInfo = chat.querySelector('.chat__time');
+    const timeInfo = chat.querySelector('[data-part="time"]');
     // Always midnight on Null Island, where the time zones meet
     const senderTime = timeInfo.dataset.country === NULL_ISLAND
         ? {text: '00:00', hour: 0}
         : localTimeOf(getSentDate(chat), timeInfo.dataset.timezone, parseFloat(timeInfo.dataset.lng));
 
-    showDaylight(senderTimeLine.querySelector('.chat__daylight'), 'chat__daylight', senderTime.hour);
+    showDaylight(senderTimeLine.querySelector('svg'), senderTime.hour);
     senderTimeLine.querySelector('span').textContent = senderTime.text;
 }
 
@@ -617,7 +621,7 @@ function showSenderTime(chat) {
 // Also names the sender's country, shown when hovering the city
 function showTimes(chats) {
     chats.forEach((chat) => {
-        chat.querySelectorAll('.chat__country').forEach((country) => {
+        chat.querySelectorAll('[data-part="country"]').forEach((country) => {
             country.textContent = countryName(country.dataset.country);
         });
 
@@ -637,7 +641,7 @@ function getDayLabel(date) {
 
 // A divider wherever the day changes in the conversation being shown
 function addDayDividers() {
-    chatList.querySelectorAll('.day-divider').forEach((divider) => divider.remove());
+    chatList.querySelectorAll('[data-part="day-divider"]').forEach((divider) => divider.remove());
 
     let lastDay = null;
     getChats()
@@ -647,7 +651,8 @@ function addDayDividers() {
             if (date.toDateString() === lastDay) return;
 
             const divider = createElement('div', 'day-divider');
-            divider.append(createElement('span', 'day-divider__label', getDayLabel(date)));
+            divider.dataset.part = 'day-divider';
+            divider.append(createElement('span', 'label', getDayLabel(date)));
             chat.before(divider);
             lastDay = date.toDateString();
         });
@@ -655,7 +660,7 @@ function addDayDividers() {
 
 // A message that @mentions you turns the count purple until you look
 function countUnread(tab, isMention) {
-    const unreadCount = tab.querySelector('.chat-tab__unread');
+    const unreadCount = tab.querySelector('[data-part="tab-unread"]');
     slideTabs(() => {
         unreadCount.classList.toggle('is-entering', unreadCount.hidden);
         if (isMention) unreadCount.classList.add('is-mention');
@@ -675,7 +680,7 @@ function placeMessages(chats) {
             chat.style.display = 'none';
         }
         if (tab && (!isInOpenTab || document.hidden)) {
-            countUnread(tab, chat.classList.contains('chat--mentions-me'));
+            countUnread(tab, 'mentionsMe' in chat.dataset);
             notifyOf(chat, showConversation);
         }
     });
@@ -693,7 +698,7 @@ document.addEventListener('visibilitychange', () => {
 
 // The city and country under a message: the text only, not the whole
 // width of its row
-const CITY = '.chat__place';
+const CITY = '[data-part="city"]';
 
 // Hovering a message's city points out its sender's pin, as the people
 // list does. mouseover and mouseout, as they reach the list from each line.
@@ -701,7 +706,7 @@ const CITY = '.chat__place';
 function onCityHover(event, isHighlighted) {
     const city = event.target.closest(CITY);
     if (!city || city.contains(event.relatedTarget)) return;
-    const senderId = city.closest('.chat').dataset.senderId;
+    const senderId = city.closest('[data-part="message"]').dataset.senderId;
     city.classList.toggle('is-on-map', pinLabelsByUserId.has(senderId));
     highlightPin(senderId, isHighlighted);
 }
@@ -714,7 +719,7 @@ chatList.addEventListener('mouseout', (event) => onCityHover(event, false));
 chatList.addEventListener('click', (event) => {
     const city = event.target.closest(CITY);
     if (!city) return;
-    const senderId = city.closest('.chat').dataset.senderId;
+    const senderId = city.closest('[data-part="message"]').dataset.senderId;
     if (isMapOpen()) {
         focusPin(senderId);
         return;
@@ -733,7 +738,7 @@ chatList.addEventListener('click', (event) => {
 });
 
 chatList.addEventListener('click', (event) => {
-    const senderName = event.target.closest('.chat__name-button');
+    const senderName = event.target.closest('[data-part="name-button"]');
     if (senderName) {
         openPrivateChat(senderName.dataset.userId, senderName.dataset.userName);
     }
@@ -901,7 +906,7 @@ function insertInOrder(olderChats) {
 
 async function loadOlderMessages(conversation) {
     const olderChats = (await fetchOlderChats(getOldestIdIn(conversation), conversation))
-        .filter((chat) => !chatList.querySelector(`.chat[data-id="${chat.dataset.id}"]`));
+        .filter((chat) => !chatList.querySelector(`[data-part="message"][data-id="${chat.dataset.id}"]`));
     hasOlderIn[conversation] = olderChats.length === pageSize;
     if (olderChats.length === 0) return;
 
@@ -914,7 +919,7 @@ async function loadOlderMessages(conversation) {
         if (getConversation(chat) !== activeConversation) chat.style.display = 'none';
     });
     insertInOrder(olderChats);
-    fadeInPhotos(olderChats.map((chat) => chat.querySelector('.chat__photo')));
+    fadeInPhotos(olderChats.map((chat) => chat.querySelector('[data-part="sender-photo"]')));
     addDayDividers();
 
     chatList.scrollTop = chatList.scrollHeight - chatList.clientHeight - distanceFromBottom;
@@ -993,7 +998,7 @@ function showNewChats(newChats, isAfterSending) {
 
     showTimes(newChats);
     chatList.append(...newChats);
-    fadeInPhotos(newChats.map((chat) => chat.querySelector('.chat__photo')));
+    fadeInPhotos(newChats.map((chat) => chat.querySelector('[data-part="sender-photo"]')));
     placeMessages(newChats);
     addDayDividers();
 
@@ -1120,7 +1125,7 @@ const partnerTypingUntil = {};
 function getPhotoSrc(userId) {
     const person = personWithId(userId);
     if (person) return person.avatar_src;
-    return chatList.querySelector(`.chat[data-sender-id="${CSS.escape(String(userId))}"] .chat__photo`)?.src ?? '';
+    return chatList.querySelector(`[data-part="message"][data-sender-id="${CSS.escape(String(userId))}"] [data-part="sender-photo"]`)?.src ?? '';
 }
 
 // While the row opens or closes, the list keeps its newest message in view,
@@ -1200,7 +1205,7 @@ const historyChats = getChats();
 // A short first page is the whole history, of every tab
 if (historyChats.length < pageSize) hasOlderIn[EVERYONE] = false;
 showTimes(historyChats);
-fadeInPhotos(chatList.querySelectorAll('.chat__photo'));
+fadeInPhotos(chatList.querySelectorAll('[data-part="sender-photo"]'));
 historyChats.forEach(addTabFor);
 // Your newest private chats, loaded or not, counting what came while you were away
 JSON.parse(chatPanel.dataset.conversations || '[]').forEach((partner) => {

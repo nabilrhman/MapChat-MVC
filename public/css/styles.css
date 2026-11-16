@@ -56,24 +56,23 @@ textarea
     translate: 0 var(--icon-nudge, 0);
 }
 
-.icon--user { --icon-bearing: 4; }
-.icon--map-point { --icon-bearing: 5; } /* its sides curve away, so it looks narrower */
-.icon--alt-arrow-down { --icon-bearing: 4.5; }
-.icon--arrow-down { --icon-bearing: 4.5; }
-.icon--sun { --icon-bearing: 1.2; }
-.icon--eye-closed { --icon-bearing: 1; }
-.icon--github { --icon-bearing: 0; }
-.icon--users-group-rounded { margin-inline-end: calc(-3em / 24); }
+.icon[data-icon="user"] { --icon-bearing: 4; }
+.icon[data-icon="map-point"] { --icon-bearing: 5; } /* its sides curve away, so it looks narrower */
+.icon[data-icon="alt-arrow-down"] { --icon-bearing: 4.5; }
+.icon[data-icon="arrow-down"] { --icon-bearing: 4.5; }
+.icon[data-icon="sun"] { --icon-bearing: 1.2; }
+.icon[data-icon="eye-closed"] { --icon-bearing: 1; }
+.icon[data-icon="github"] { --icon-bearing: 0; }
+.icon[data-icon="users-group-rounded"] { margin-inline-end: calc(-3em / 24); }
 /* A pin's round head is its middle to the eye, above the middle of its box */
-.icon--map-point { --icon-nudge: -0.04em; }
+.icon[data-icon="map-point"] { --icon-nudge: -0.04em; }
 
 /* Alone in a button, an icon keeps its whole box, so it stays centred */
-.site-header__menu-button .icon,
+.site-header .menu-button .icon,
 .password-toggle .icon,
 .map-toggle .icon,
 .chat-fold .icon,
-.chat-composer__send-icon,
-.site-footer__source .icon
+.site-footer .source .icon
 {
     margin-inline: 0;
     translate: none;

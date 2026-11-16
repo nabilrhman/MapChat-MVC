@@ -114,9 +114,15 @@ Twig 3 shows what the controller worked out; deciding happens in PHP.
 
 ### CSS
 
-BEM: a block is a component (`.person`), an element `__` (`.person__name`), a
-modifier `--` (`.chat-header__daylight--day`), a state JS toggles `is-*`.
-Selectors use classes; IDs are for JS. Motion uses `animations.css`'s easing
+Each component has one block class (`.person`, `.chat-header`), styled on
+its own and as the root of an `@scope (.person) to (.place)`; inside it, its
+parts get short plain classes (`.name`, `.photo`). The `to (…)` bound stops
+the scope at any component that can sit inside, so its `.name` isn't hit. A
+fixed variant is a plain class beside the block's (`.button.primary`,
+`.daylight.day`), a state JS toggles is `is-*`, and an icon is named by
+`data-icon`. Rules for the block itself stay outside the scope: a scoped rule
+beats an unscoped one of the same specificity wherever they meet. Selectors
+use classes; IDs are for JS. Motion uses `animations.css`'s easing
 and durations (`--ease-out`, `--dur-fast`) and animates opacity and
 transform; a band sliding open to a height it can't know animates
 `grid-template-rows` from `0fr` to `1fr`, and a colour may fade on hover.
@@ -128,10 +134,11 @@ properties (`margin-inline`, `padding-block`); `:has()` and `color-mix()`
 over extra classes and hand-mixed colours. Keyframes are kebab-case like
 classes.
 
-BEM stays, because the scripts and templates find elements by these names
-too: one unique, searchable name per part keeps a change in one place. Native
-nesting groups a rule's states and children (`&:hover`, `&.is-open`,
-`& .icon`), never builds a name (`&__name` doesn't work without Sass).
+Classes are for styling only. An element a script finds has an `id` or a
+`data-part="tab-name"`, which scripts select by; scripts set `is-*` states
+and variants (and Beer's `invalid`), and read nothing else from `class`.
+Native nesting groups a rule's states and children (`&:hover`, `&.is-open`,
+`& .icon`). `@scope` needs Chrome 118, Safari 17.4 or Firefox 146.
 
 ### Copy
 

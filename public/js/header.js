@@ -31,8 +31,8 @@ function setUpMenu(menu, button, openClass, onToggle) {
 
 function setUpMenus() {
     const menuButton = document.getElementById('menu-button');
-    setUpMenu(document.querySelector('.site-header'), menuButton, 'is-menu-open', (isOpen) => {
-        setIcon(menuButton.querySelector('.icon'), isOpen ? 'close' : 'hamburger-menu');
+    setUpMenu(document.getElementById('site-header'), menuButton, 'is-menu-open', (isOpen) => {
+        setIcon(menuButton.querySelector('svg'), isOpen ? 'close' : 'hamburger-menu');
     });
 
     setUpMenu(document.getElementById('account-menu'), document.getElementById('account-menu-button'), 'is-open');

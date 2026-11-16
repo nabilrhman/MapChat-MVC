@@ -16,22 +16,32 @@
     font-size: 13px;
 }
 
-.site-footer__source
+@scope (.site-footer) to (.copyright)
 {
-    color: #fff;
-    font-size: 16px;
+    .source
+    {
+        color: #fff;
+        font-size: 16px;
+
+        &:hover
+        {
+            text-decoration: underline;
+        }
+    }
 }
 
 /* The copyright line, here and under the login pages */
-.copyright__author
+@scope (.copyright)
 {
-    color: #ffc107;
-}
+    .author
+    {
+        color: #ffc107;
 
-.site-footer__source:hover,
-.copyright__author:hover
-{
-    text-decoration: underline;
+        &:hover
+        {
+            text-decoration: underline;
+        }
+    }
 }
 
 /* Phones leave it out (see styles.css) */

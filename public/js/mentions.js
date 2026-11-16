@@ -51,7 +51,7 @@ function setUpMentions(input, canMention, getPeople) {
 
     // The box's text drawn again behind it, with chips; the box's own text
     // is see-through so this shows, and the caret and selection stay real
-    const chips = createElement('div', 'chat-composer__chips');
+    const chips = createElement('div', 'chips');
     chips.setAttribute('aria-hidden', 'true');
     input.before(chips);
     input.classList.add('is-over-chips');
@@ -71,22 +71,22 @@ function setUpMentions(input, canMention, getPeople) {
     function closePicker() {
         picker.hidden = true;
         matches = [];
-            input.removeAttribute('aria-activedescendant');
+        input.removeAttribute('aria-activedescendant');
     }
 
     function createOption(person, index) {
-        const option = createElement('li', 'mention-picker__option');
+        const option = createElement('li', 'option');
         option.id = `mention-option-${index}`;
         option.setAttribute('role', 'option');
         option.setAttribute('aria-selected', String(index === activeIndex));
         option.classList.toggle('is-active', index === activeIndex);
 
-        const photo = createElement('img', 'mention-picker__photo');
+        const photo = createElement('img', 'photo');
         photo.alt = '';
         photo.width = 24;
         photo.height = 24;
         photo.src = person.avatar_src;
-        option.append(photo, createElement('span', 'mention-picker__name', person.shown_name));
+        option.append(photo, createElement('span', 'name', person.shown_name));
 
         // mousedown, not click, so the box keeps focus
         option.addEventListener('mousedown', (event) => {

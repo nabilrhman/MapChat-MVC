@@ -11,15 +11,15 @@
 
 <div class="auth-card">
 
-    <form action="/password/request-reset" method="post" id="formForgot" class="auth-card__form" novalidate>
+    <form action="/password/request-reset" method="post" id="formForgot" novalidate>
 
         {{ text_field({id: 'inputEmail', name: 'email', type: 'email', label: 'Email', required: true,
                        value: email ?? '', autocomplete: 'email', autofocus: true}) }}
 
-        <button type="submit" class="button button--primary button--block auth-card__button">Send reset link</button>
+        <button type="submit" class="button primary full-width action">Send reset link</button>
     </form>
 
-    <p class="auth-card__switch"><span>Remembered it?</span> <a class="auth-card__switch-link" href="/login">Log in</a></p>
+    <p class="switch-row"><span>Remembered it?</span> <a class="switch-link" href="/login">Log in</a></p>
 </div>
 
 {% endblock %}

@@ -10,36 +10,36 @@
 
 <div class="about-page">
 
-    <h1 class="about-page__title appear-down">About</h1>
-    <div class="divider about-page__divider"></div>
+    <h1 class="title appear-down">About</h1>
+    <div class="divider"></div>
 
     <section class="about-intro appear-down">
-        <img class="about-intro__logo" src="/res/logo-mapchat.svg" alt="MapChat">
-        <p class="about-intro__tagline">An open chat room on a map</p>
-        <p class="about-intro__lead">
+        <img class="logo" src="/res/logo-mapchat.svg" alt="MapChat">
+        <p class="tagline">An open chat room on a map</p>
+        <p class="lead">
             Everyone who signs in talks in one shared room.<br>
             A pin on the map shows the city each person is chatting from.
         </p>
-        <p class="about-intro__text">
+        <p class="text">
             I built it in 2018 as a university project at Boise State University. The goal was
             to understand what a web framework actually does, so instead of using one, I wrote
             my own: the router, controllers, models, views, sessions and login are all
             hand-written PHP.
         </p>
-        <p class="about-intro__text">
+        <p class="text">
             In 2026 I came back to it to bring parts of it up to date.
         </p>
-        <a href="https://github.com/nabilrhman/MapChat-MVC" class="button button--outline about-intro__button">
-            {{ icon('github', 'button__icon') }}The code is open source on GitHub
+        <a href="https://github.com/nabilrhman/MapChat-MVC" class="button outline source">
+            {{ icon('github') }}The code is open source on GitHub
         </a>
     </section>
 
     <div class="about-grid">
-        <h2 class="about-grid__heading appear-down">What you can do</h2>
+        <h2 class="heading appear-down">What you can do</h2>
 
         <section class="about-card appear-down">
-            <h3 class="about-card__title">{{ icon('chat-round-dots', 'about-card__icon') }}Chatting</h3>
-            <ul class="about-list">
+            <h3 class="title">{{ icon('chat-round-dots') }}Chatting</h3>
+            <ul class="list">
                 <li>Chat with everyone who is signed in, in one shared room.</li>
                 <li>Click someone's name to chat privately, and see when they're typing to you.</li>
                 <li>Type @ to mention someone. Mentions of you are highlighted.</li>
@@ -48,8 +48,8 @@
         </section>
 
         <section class="about-card appear-down">
-            <h3 class="about-card__title">{{ icon('map-point', 'about-card__icon') }}The map</h3>
-            <ul class="about-list">
+            <h3 class="title">{{ icon('map-point') }}The map</h3>
+            <ul class="list">
                 <li>See where each person online is chatting from, and their local time.</li>
                 <li>Where it's night is shaded.</li>
                 <li>Hide yourself from the map whenever you want.</li>
@@ -57,27 +57,27 @@
         </section>
 
         <section class="about-card appear-down">
-            <h3 class="about-card__title">{{ icon('stars-minimalistic', 'about-card__icon') }}AI in the room</h3>
-            <ul class="about-list">
+            <h3 class="title">{{ icon('stars-minimalistic') }}AI in the room</h3>
+            <ul class="list">
                 <li>MapChat, the room's AI, chats in the room or privately, and says hello when it's quiet.</li>
                 <li>Some people on the map are AI characters. Mention or message one and they answer.</li>
             </ul>
         </section>
 
         <section class="about-card appear-down">
-            <h3 class="about-card__title">{{ icon('user', 'about-card__icon') }}Your account</h3>
-            <ul class="about-list">
+            <h3 class="title">{{ icon('user') }}Your account</h3>
+            <ul class="list">
                 <li>Try it as a guest without signing up. Guest accounts disappear after 24 hours unless you keep them.</li>
                 <li>A profile with your name, an avatar and, if you like, a nickname.</li>
                 <li>Reset your password by email if you forget it.</li>
             </ul>
         </section>
 
-        <h2 class="about-grid__heading appear-down">How it's built</h2>
+        <h2 class="heading appear-down">How it's built</h2>
 
         <section class="about-card appear-down">
-            <h3 class="about-card__title">{{ icon('programming', 'about-card__icon') }}Built from scratch</h3>
-            <ul class="about-list">
+            <h3 class="title">{{ icon('programming') }}Built from scratch</h3>
+            <ul class="list">
                 <li>A model-view-controller (MVC) framework written from scratch in PHP.</li>
                 <li>MySQL, queried with prepared statements to block SQL injection.</li>
                 <li>Twig templates, which escape everything users type to block cross-site scripting.</li>
@@ -85,8 +85,8 @@
         </section>
 
         <section class="about-card appear-down">
-            <h3 class="about-card__title">{{ icon('plain', 'about-card__icon') }}Live chat</h3>
-            <ul class="about-list">
+            <h3 class="title">{{ icon('plain') }}Live chat</h3>
+            <ul class="list">
                 <li>A WebSocket for each open chat, on amphp, so messages, who's online and who's typing arrive at once.</li>
                 <li>If it can't connect, the chat checks every second instead, or every 8 seconds in a hidden tab.</li>
                 <li>Notifications by Web Push, sent from the server and shown by a service worker, so they arrive with the page closed.</li>
@@ -94,24 +94,24 @@
         </section>
 
         <section class="about-card appear-down">
-            <h3 class="about-card__title">{{ icon('map', 'about-card__icon') }}Map and AI</h3>
-            <ul class="about-list">
+            <h3 class="title">{{ icon('map') }}Map and AI</h3>
+            <ul class="list">
                 <li>MapLibre and OpenStreetMap for the map.</li>
                 <li>Groq's API to write what MapChat and the digital characters say.</li>
             </ul>
         </section>
 
         <section class="about-card appear-down">
-            <h3 class="about-card__title">{{ icon('eye', 'about-card__icon') }}Look and feel</h3>
-            <ul class="about-list">
+            <h3 class="title">{{ icon('eye') }}Look and feel</h3>
+            <ul class="list">
                 <li>The site's own CSS, with Beer CSS for the form fields, and plain JavaScript with no jQuery.</li>
                 <li>Icons from the <a href="https://www.figma.com/community/file/1166831539721848736">Solar icon set</a> by 480 Design, under <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.</li>
             </ul>
         </section>
 
-        <section class="about-card about-card--note appear-down">
-            <h2 class="about-card__title">{{ icon('info-circle', 'about-card__icon') }}Good to know</h2>
-            <ul class="about-list">
+        <section class="about-card note appear-down">
+            <h2 class="title">{{ icon('info-circle') }}Good to know</h2>
+            <ul class="list">
                 <li>Your location comes from your IP address, rounded to about a kilometre, so the map only knows roughly where you are. It never uses GPS, and you can hide your pin and city from your profile.</li>
                 <li>The IP address you log in from is stored with your account, and sent to a location service to place you on the map.</li>
                 <li>Anything you write in Everyone is visible to everyone signed in. Private chats are only shown to the two of you.</li>
