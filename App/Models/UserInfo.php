@@ -194,28 +194,31 @@ class UserInfo extends \Core\Model
     }
 
     /**
-     * Everyone's pin for the map, except people who hide from it and the
-     * MapChat bot, whose Null Island isn't a real place to chat from
+     * The pins for the map: everyone online now (as in getRecentPeople),
+     * except people who hide from it and the MapChat bot, whose Null Island
+     * isn't a real place to chat from
      *
      * @return array
      */
     public static function getAllLocations()
     {
         $sql = 'SELECT userinfo.lat, userinfo.lng, userinfo.city, userinfo.country,
-                       users.id AS user_id, users.name, users.avatar,
+                       users.id AS user_id, users.name, users.nickname, users.is_guest, users.avatar,
                        users.email LIKE \'%@demo.mapchat.local\' AS is_demo
                 FROM userinfo
                 LEFT JOIN users
                 ON userinfo.email = users.email
                 WHERE userinfo.lat IS NOT NULL AND userinfo.lng IS NOT NULL
                   AND users.share_location = 1
-                  AND users.email <> :bot_email';
+                  AND users.email <> :bot_email
+                  AND (userinfo.online_at > NOW() - INTERVAL :online SECOND OR ' . static::demoOnlineSql() . ')';
 
         $stmt = static::getDB()->prepare($sql);
         $stmt->bindValue(':bot_email', Chat::BOT_EMAIL, PDO::PARAM_STR);
+        $stmt->bindValue(':online', static::ONLINE_SECONDS, PDO::PARAM_INT);
         $stmt->execute();
 
-        return static::withAvatarSrc($stmt->fetchAll(PDO::FETCH_ASSOC), 'user_id');
+        return \App\Mention::withShownNames(static::withAvatarSrc($stmt->fetchAll(PDO::FETCH_ASSOC), 'user_id'));
     }
 
     /**
@@ -292,18 +295,21 @@ class UserInfo extends \Core\Model
     /**
      * People seen in the chat in the last day, most recent first. Guests
      * only while they're online: they're throwaway accounts, and a day of
-     * them buries everyone else
+     * them buries everyone else. MapChat is always online while it can
+     * chat back
      *
      * @return array
      */
     public static function getRecentPeople()
     {
         $demo_online = static::demoOnlineSql();
+        $bot_online = static::botOnlineSql();
 
         $sql = 'SELECT users.id, users.name, users.avatar, users.email LIKE \'%@demo.mapchat.local\' AS is_demo,
+                       users.nickname, users.is_guest, ' . $bot_online . ' AS is_bot,
                        IF(users.share_location, userinfo.city, NULL) AS city,
                        IF(users.share_location, userinfo.country, NULL) AS country,
-                       (userinfo.online_at > NOW() - INTERVAL :online SECOND OR ' . $demo_online . ') AS is_online,
+                       (userinfo.online_at > NOW() - INTERVAL :online SECOND OR ' . $demo_online . ' OR ' . $bot_online . ') AS is_online,
                        TIMESTAMPDIFF(MINUTE, userinfo.online_at, NOW()) AS minutes_ago
                 FROM userinfo
                 JOIN users
@@ -311,6 +317,7 @@ class UserInfo extends \Core\Model
                 WHERE (userinfo.online_at > NOW() - INTERVAL 1 DAY AND users.is_guest = 0)
                    OR (userinfo.online_at > NOW() - INTERVAL :guest_online SECOND AND users.is_guest = 1)
                    OR ' . $demo_online . '
+                   OR ' . $bot_online . '
                 ORDER BY userinfo.online_at DESC';
 
         $stmt = static::getDB()->prepare($sql);
@@ -318,19 +325,33 @@ class UserInfo extends \Core\Model
         $stmt->bindValue(':guest_online', static::ONLINE_SECONDS, PDO::PARAM_INT);
         $stmt->execute();
 
-        return static::withAvatarSrc($stmt->fetchAll(PDO::FETCH_ASSOC), 'id');
+        return \App\Mention::withShownNames(static::withAvatarSrc($stmt->fetchAll(PDO::FETCH_ASSOC), 'id'));
     }
 
     /**
-     * SQL that's true for the demo people in the room now (DemoChat::presentNow)
+     * SQL that's true for the demo people in the room now: those in the
+     * script (DemoChat::presentNow), and those talking with someone who
+     * called or messaged them (Bot::talkingDemoPeople)
      *
      * @return string
      */
     protected static function demoOnlineSql()
     {
-        $emails = array_map([static::getDB(), 'quote'], DemoChat::presentNow());
+        $present = array_unique(array_merge(DemoChat::presentNow(), Bot::talkingDemoPeople()));
+        $emails = array_map([static::getDB(), 'quote'], $present);
 
         return $emails ? 'users.email IN (' . implode(', ', $emails) . ')' : 'FALSE';
+    }
+
+    /**
+     * SQL that's true for the MapChat account while it can chat back, so
+     * people see there's someone to talk to
+     *
+     * @return string
+     */
+    protected static function botOnlineSql()
+    {
+        return Bot::canReply() ? 'users.email = ' . static::getDB()->quote(Chat::BOT_EMAIL) : 'FALSE';
     }
 
     /**

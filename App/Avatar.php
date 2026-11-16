@@ -26,29 +26,29 @@ class Avatar
     ];
 
     const EYES = [
-        'dots' => '<circle cx="40" cy="48" r="2.4"/><circle cx="56" cy="48" r="2.4"/>',
-        'happy' => '<path d="M36.5 48.5Q40 45 43.5 48.5M52.5 48.5Q56 45 59.5 48.5" fill="none" stroke="#1f1f1f" stroke-width="2.4" stroke-linecap="round"/>',
-        'oval' => '<ellipse cx="40" cy="48" rx="2" ry="3"/><ellipse cx="56" cy="48" rx="2" ry="3"/>',
+        'dots' => '<circle cx="40" cy="48" r="3"/><circle cx="56" cy="48" r="3"/>',
+        'happy' => '<path d="M36.5 48.5Q40 45 43.5 48.5M52.5 48.5Q56 45 59.5 48.5" fill="none" stroke="#1f1f1f" stroke-width="3.2" stroke-linecap="round"/>',
+        'oval' => '<ellipse cx="40" cy="48" rx="2.5" ry="3.6"/><ellipse cx="56" cy="48" rx="2.5" ry="3.6"/>',
     ];
 
     const BROWS = [
         'none' => '',
-        'brows' => '<path d="M36 41.5L43 40.5M53 40.5L60 41.5" fill="none" stroke="#1f1f1f" stroke-width="2.4" stroke-linecap="round"/>',
+        'brows' => '<path d="M36 41.5L43 40.5M53 40.5L60 41.5" fill="none" stroke="#1f1f1f" stroke-width="3.2" stroke-linecap="round"/>',
     ];
 
     const MOUTHS = [
-        'smile' => '<path d="M42 59Q48 64 54 59" fill="none" stroke="#1f1f1f" stroke-width="2.4" stroke-linecap="round"/>',
+        'smile' => '<path d="M42 59Q48 64 54 59" fill="none" stroke="#1f1f1f" stroke-width="3.2" stroke-linecap="round"/>',
         'open' => '<path d="M41 57.5Q48 66 55 57.5Z"/>',
-        'flat' => '<path d="M43.5 60H52.5" stroke="#1f1f1f" stroke-width="2.4" stroke-linecap="round"/>',
-        'smirk' => '<path d="M43 60Q49 63 54 58" fill="none" stroke="#1f1f1f" stroke-width="2.4" stroke-linecap="round"/>',
-        'o' => '<circle cx="48" cy="60" r="2.2"/>',
+        'flat' => '<path d="M43.5 60H52.5" stroke="#1f1f1f" stroke-width="3.2" stroke-linecap="round"/>',
+        'smirk' => '<path d="M43 60Q49 63 54 58" fill="none" stroke="#1f1f1f" stroke-width="3.2" stroke-linecap="round"/>',
+        'o' => '<circle cx="48" cy="60" r="2.8"/>',
     ];
 
     const EXTRAS = [
         'none' => '',
         'none2' => '',
         'none3' => '',
-        'glasses' => '<g fill="none" stroke="#1f1f1f" stroke-width="2.2"><circle cx="40" cy="48" r="6"/><circle cx="56" cy="48" r="6"/><path d="M46 48H50M34 47L29 45M62 47L67 45"/></g>',
+        'glasses' => '<g fill="none" stroke="#1f1f1f" stroke-width="3"><circle cx="40" cy="48" r="6"/><circle cx="56" cy="48" r="6"/><path d="M46 48H50M34 47L29 45M62 47L67 45"/></g>',
         'freckles' => '<g opacity="0.55"><circle cx="35" cy="55" r="0.9"/><circle cx="38" cy="56.5" r="0.9"/><circle cx="58" cy="56.5" r="0.9"/><circle cx="61" cy="55" r="0.9"/></g>',
         // A hole around the mouth, so the mouth drawn after it still shows
         'beard' => '<path fill-rule="evenodd" d="M28.5 50C29 63 37 70.5 48 70.5C59 70.5 67 63 67.5 50C65 56 61 57.5 57 57C54 54.5 51 55 48 55.5C45 55 42 54.5 39 57C35 57.5 31 56 28.5 50ZM48 57.5C43 57.5 40.5 59 40.5 60.5C40.5 63 44 65 48 65C52 65 55.5 63 55.5 60.5C55.5 59 53 57.5 48 57.5Z"/>',
@@ -144,11 +144,12 @@ class Avatar
         $hair = $pick(static::HAIR, 'hair');
         // Long hair falls behind the shoulders, so it's drawn first
         $is_long = $hair === static::HAIR['long'];
-        $line = 'stroke="' . static::INK . '" stroke-width="2.6"';
+        // Bold lines, so the face stays crisp at the 24-34px it's shown at
+        $line = 'stroke="' . static::INK . '" stroke-width="3.6" stroke-linejoin="round"';
 
         // Framed close on the head, so the face still reads at list size
-        return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="11 5 74 74">'
-            . '<rect x="11" y="5" width="74" height="74" fill="' . $pick(static::PASTELS, 'bg') . '"/>'
+        return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="13 8 70 70">'
+            . '<rect x="13" y="8" width="70" height="70" fill="' . $pick(static::PASTELS, 'bg') . '"/>'
             . '<g fill="' . static::INK . '">' . ($is_long ? $hair : '') . '</g>'
             . '<path d="M14 96C16 82 28 76 40 74L56 74C68 76 80 82 82 96Z" fill="#fff" ' . $line . '/>'
             . '<path d="M42 64V75Q48 80 54 75V64" fill="#fff" ' . $line . '/>'
@@ -159,7 +160,7 @@ class Avatar
             . ($is_long ? '' : $hair) . $pick(static::EYES, 'eyes') . $pick(static::BROWS, 'brows')
             . $pick(static::EXTRAS, 'extra') . $pick(static::MOUTHS, 'mouth')
             . '</g>'
-            . '<path d="M48 50Q45.5 55 49 55.5" fill="none" stroke="' . static::INK . '" stroke-width="2" stroke-linecap="round"/>'
+            . '<path d="M48 50Q45.5 55 49 55.5" fill="none" stroke="' . static::INK . '" stroke-width="2.8" stroke-linecap="round"/>'
             . '</svg>';
     }
 

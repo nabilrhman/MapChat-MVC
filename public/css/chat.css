@@ -368,6 +368,18 @@ body
     line-height: 18px;
 }
 
+/* Someone @mentioned you in a tab you're not looking at */
+.chat-tab__unread--mention
+{
+    background-color: var(--md-primary);
+    color: var(--md-on-primary);
+}
+
+.chat-tab__unread--mention::before
+{
+    content: "@ ";
+}
+
 .chat-tab__close
 {
     color: #9e9e9e;
@@ -1295,6 +1307,42 @@ body
     text-align: right;
 }
 
+/* A message that @mentions you: a lavender tint and a thin purple edge */
+.chat--mentions-me
+{
+    background-color: color-mix(in srgb, var(--md-primary-container) 55%, #fafafa);
+    box-shadow: inset 2px 0 0 var(--md-primary);
+}
+
+.chat--mentions-me:hover
+{
+    background-color: color-mix(in srgb, var(--md-primary-container) 70%, #fff);
+}
+
+/* An @mention: purple text on a faint tint, a little heavier than the
+   words around it. The weight comes from a thin outline on the letters,
+   not a bolder font, so it looks exactly the same in the message box,
+   where the text can't get any wider. A chip that wraps onto the next
+   line keeps its padding on both lines */
+.mention
+{
+    padding: 1px 3px;
+    border-radius: 4px;
+    background-color: color-mix(in srgb, var(--md-primary) var(--md-hover), transparent);
+    color: var(--md-primary);
+    font-weight: 400;
+    -webkit-text-stroke: 0.35px currentColor;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+}
+
+/* Your own name stands out with a stronger tint; the text keeps the same
+   colour, so it's no heavier than the others */
+.mention--me
+{
+    background-color: var(--md-primary-container);
+}
+
 /* Chat - ends */
 /* Message box - starts */
 .chat-composer
@@ -1337,10 +1385,50 @@ body
     transition: border-color var(--dur-fast) var(--ease-out);
 }
 
+/* With chips drawn behind it (mentions.js): the box's text is see-through
+   and the layer behind shows it. Both keep room for a scrollbar, so their
+   lines wrap at the same place */
+.chat-composer__textarea--over-chips
+{
+    position: relative;
+    background-color: transparent;
+    color: transparent;
+    caret-color: #000;
+    scrollbar-gutter: stable;
+}
+
+.chat-composer__chips
+{
+    position: absolute;
+    inset: 0;
+    box-sizing: border-box;
+    padding: 10px 12px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    background-color: #faf9fd;
+    color: #000;
+    font-size: 14px;
+    line-height: 20px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    overflow: hidden;
+    scrollbar-gutter: stable;
+    pointer-events: none;
+}
+
+/* The text can't move, so no padding here: a shadow in the chip's own
+   colour stands in for it */
+.chat-composer__chips .mention
+{
+    padding: 0;
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--md-primary) var(--md-hover), transparent);
+}
+
 /* Phones: Safari on iPhone zooms in on a field whose text is under 16px */
 @media (max-width: 700px)
 {
-    .chat-composer__textarea
+    .chat-composer__textarea,
+    .chat-composer__chips
     {
         font-size: 16px;
     }
@@ -1351,6 +1439,50 @@ body
     border: 1px solid #7e57c2;
     outline: none; /* the purple border shows focus */
     box-shadow: none;
+}
+
+/* Names to @mention, just above the message box (mentions.js). A white
+   card like the account menu's, with tighter rows */
+.mention-picker
+{
+    position: absolute;
+    left: 0;
+    bottom: calc(100% + 8px);
+    z-index: 2;
+    min-width: 180px;
+    max-width: 100%;
+    margin: 0;
+    padding: 4px 0;
+    list-style: none;
+    background-color: #fff;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+    color: #212121;
+    animation: fade-in-up var(--dur) var(--ease-out);
+}
+
+.mention-picker__option
+{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 12px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.mention-picker__option:hover,
+.mention-picker__option.is-active
+{
+    background-color: #f5f1fb;
+}
+
+.mention-picker__photo
+{
+    flex: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    object-fit: cover;
 }
 
 /* Characters left, shown only when close to the limit */

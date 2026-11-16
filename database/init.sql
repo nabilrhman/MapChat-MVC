@@ -9,6 +9,8 @@ SET NAMES utf8mb4;
 CREATE TABLE users (
   `id`                        INT          NOT NULL AUTO_INCREMENT,
   `name`                      VARCHAR(50)  NOT NULL,
+  -- Optional; shown instead of the first name, and what @mentions use
+  `nickname`                  VARCHAR(20)  NULL DEFAULT NULL,
   `email`                     VARCHAR(255) NOT NULL,
   `password_hash`             VARCHAR(255) NOT NULL,
   `password_reset_hash`       VARCHAR(64)  NULL DEFAULT NULL,
@@ -25,6 +27,7 @@ CREATE TABLE users (
   `created_at`                TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `email` (`email`),
+  UNIQUE KEY `nickname` (`nickname`),
   UNIQUE KEY `password_reset_hash` (`password_reset_hash`),
   UNIQUE KEY `activation_hash` (`activation_hash`),
   UNIQUE KEY `guest_token_hash` (`guest_token_hash`)
@@ -101,8 +104,39 @@ CREATE TABLE userinfo (
   ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4;
 
--- A built-in account that posts the welcome messages. It has no usable
--- password (the hash below matches nothing) and cannot log in.
+-- What the MapChat account is about to say (see App/Models/Bot.php)
+CREATE TABLE mapchat_jobs (
+  `id`         INT          NOT NULL AUTO_INCREMENT,
+  -- greet (a visitor to a quiet room), reply or mention (in the open room), or dm
+  `kind`       VARCHAR(10)  NOT NULL,
+  -- The person MapChat greets or answers
+  `email`      VARCHAR(255) NOT NULL,
+  -- Who answers: MapChat, or a demo person someone @mentioned
+  `speaker`    VARCHAR(255) NOT NULL DEFAULT 'bot@mapchat.local',
+  -- Their message; NULL for a greeting
+  `chat_id`    INT          NULL DEFAULT NULL,
+  -- One job per message, and one greeting per person a day (see Bot::arrived)
+  `dedupe_key` VARCHAR(300) NOT NULL,
+  `due_at`     TIMESTAMP    NOT NULL,
+  -- Set once it ran, or once it's no longer needed
+  `done_at`    TIMESTAMP    NULL DEFAULT NULL,
+  -- MapChat's message, if it posted one
+  `posted_id`  INT          NULL DEFAULT NULL,
+  `created_at` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `dedupe_key` (`dedupe_key`),
+  KEY `due` (`done_at`, `due_at`),
+  KEY `posted_id` (`posted_id`),
+  KEY `fk_j_email` (`email`),
+  CONSTRAINT `fk_j_email` FOREIGN KEY (`email`) REFERENCES users (`email`)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
+)
+  ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4;
+
+-- A built-in account that posts the welcome messages and chats back. It has
+-- no usable password (the hash below matches nothing) and cannot log in.
 INSERT INTO users (name, email, password_hash, is_active, avatar)
 VALUES ('MapChat', 'bot@mapchat.local', '!', TRUE, '/res/avatar-mapchat.svg');
 

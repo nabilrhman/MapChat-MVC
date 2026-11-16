@@ -10,6 +10,8 @@ const NULL_ISLAND = 'XN';
 const SCROLL_BEHAVIOR = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth';
 // How far up you scroll before the "Latest" button shows
 const SCROLLED_UP_DISTANCE = 200;
+// A little after a demo person you called comes online (Bot::COME_ONLINE_SECONDS)
+const COME_ONLINE_DELAY = 7000;
 // Closer to the bottom than this, new messages scroll into view
 const AT_BOTTOM_DISTANCE = 80;
 // Closer to the top than this, the next page of older messages loads
@@ -177,6 +179,7 @@ function showConversation(conversation) {
         const unreadCount = tab.querySelector('.chat-tab__unread');
         unreadCount.hidden = true;
         unreadCount.textContent = '';
+        unreadCount.classList.remove('chat-tab__unread--mention');
     });
     tab.scrollIntoView({block: 'nearest', inline: 'nearest'});
 
@@ -390,10 +393,12 @@ function addDayDividers() {
         });
 }
 
-function countUnread(tab) {
+// A message that @mentions you turns the count purple until you look
+function countUnread(tab, isMention) {
     const unreadCount = tab.querySelector('.chat-tab__unread');
     slideTabs(() => {
         unreadCount.classList.toggle('is-entering', unreadCount.hidden);
+        if (isMention) unreadCount.classList.add('chat-tab__unread--mention');
         unreadCount.textContent = (parseInt(unreadCount.textContent, 10) || 0) + 1;
         unreadCount.hidden = false;
     });
@@ -406,7 +411,7 @@ function placeMessages(chats) {
 
         if (getConversation(chat) !== activeConversation) {
             chat.style.display = 'none';
-            if (tab) countUnread(tab);
+            if (tab) countUnread(tab, chat.classList.contains('chat--mentions-me'));
         }
     });
     if (chats.some((chat) => getConversation(chat) === activeConversation)) {
@@ -616,6 +621,11 @@ function reloadIfUpdated(liveBuild) {
 function showNewChats(newChats, isAfterSending) {
     const wasAtBottom = getDistanceFromBottom() < AT_BOTTOM_DISTANCE;
 
+    // Someone the list still has as away just spoke: they're here
+    if (newChats.some((chat) => !onlineUserIds.has(Number(chat.dataset.senderId)))) {
+        refreshPeople();
+    }
+
     showTimes(newChats);
     chatList.append(...newChats);
     fadeInPhotos(newChats.map((chat) => chat.querySelector('.chat__photo')));
@@ -672,6 +682,9 @@ composerForm.addEventListener('submit', (event) => {
         .then(() => {
             messageInput.value = '';
             messageInput.dispatchEvent(new Event('input'));
+            // Someone you called who was away comes online a moment later
+            // (Bot::COME_ONLINE_SECONDS); look then, not on the next round
+            setTimeout(refreshPeople, COME_ONLINE_DELAY);
         })
         .catch((error) => {
             showToast(getErrorMessage(error, 'Your message could not be sent.'), 'warning');
@@ -681,6 +694,10 @@ composerForm.addEventListener('submit', (event) => {
             updateSendButton();
         });
 });
+
+// @ suggests names in the open room. Set up before Enter sends, so
+// choosing a name with Enter doesn't send the message too
+setUpMentions(messageInput, () => activeConversation === EVERYONE, getPeopleToMention);
 
 // Enter sends, Shift+Enter starts a new line
 messageInput.addEventListener('keydown', (event) => {
@@ -712,7 +729,7 @@ JSON.parse(chatPanel.dataset.conversations || '[]').forEach((partner) => {
     if (Number(partner.newest_id) <= (closedTabs[conversation] ?? 0)) return;
 
     forgetClosedTab(conversation);
-    const tab = addTab(conversation, partner.name);
+    const tab = addTab(conversation, partner.shown_name);
     tab.dataset.newestId = partner.newest_id;
     if (Number(partner.unread) > 0) setUnreadCount(tab, partner.unread);
 });

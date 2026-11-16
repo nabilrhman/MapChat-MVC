@@ -19,6 +19,13 @@ class Schema extends \Core\Model
      */
     const ADDED_COLUMNS = [
         ['userinfo', 'country', ['ALTER TABLE userinfo ADD COLUMN country CHAR(2) AFTER city']],
+        ['mapchat_jobs', 'speaker', [
+            'ALTER TABLE mapchat_jobs ADD COLUMN speaker VARCHAR(255) NOT NULL DEFAULT \'bot@mapchat.local\' AFTER email',
+        ]],
+        ['users', 'nickname', [
+            'ALTER TABLE users ADD COLUMN nickname VARCHAR(20) NULL DEFAULT NULL AFTER name',
+            'ALTER TABLE users ADD UNIQUE KEY nickname (nickname)',
+        ]],
         ['userinfo', 'timezone', ['ALTER TABLE userinfo ADD COLUMN timezone VARCHAR(64) AFTER country']],
         ['users', 'guest_token_hash', [
             'ALTER TABLE users ADD COLUMN guest_token_hash VARCHAR(64) NULL DEFAULT NULL AFTER is_guest',
@@ -34,6 +41,30 @@ class Schema extends \Core\Model
             'ALTER TABLE chats ADD COLUMN read_at TIMESTAMP NULL DEFAULT NULL AFTER timestamp',
             'UPDATE chats SET read_at = CURRENT_TIMESTAMP WHERE to_email IS NOT NULL',
         ]],
+    ];
+
+    /** Tables added since the first release, as in init.sql */
+    const ADDED_TABLES = [
+        'mapchat_jobs' => 'CREATE TABLE mapchat_jobs (
+            `id`         INT          NOT NULL AUTO_INCREMENT,
+            `kind`       VARCHAR(10)  NOT NULL,
+            `email`      VARCHAR(255) NOT NULL,
+            `speaker`    VARCHAR(255) NOT NULL DEFAULT \'bot@mapchat.local\',
+            `chat_id`    INT          NULL DEFAULT NULL,
+            `dedupe_key` VARCHAR(300) NOT NULL,
+            `due_at`     TIMESTAMP    NOT NULL,
+            `done_at`    TIMESTAMP    NULL DEFAULT NULL,
+            `posted_id`  INT          NULL DEFAULT NULL,
+            `created_at` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (`id`),
+            UNIQUE KEY `dedupe_key` (`dedupe_key`),
+            KEY `due` (`done_at`, `due_at`),
+            KEY `posted_id` (`posted_id`),
+            KEY `fk_j_email` (`email`),
+            CONSTRAINT `fk_j_email` FOREIGN KEY (`email`) REFERENCES users (`email`)
+              ON DELETE CASCADE
+              ON UPDATE CASCADE
+          ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4',
     ];
 
     /**
@@ -54,14 +85,21 @@ class Schema extends \Core\Model
     ];
 
     /**
-     * Add any of ADDED_COLUMNS the database is missing. Safe to run every start
+     * Add any of ADDED_TABLES and ADDED_COLUMNS the database is missing. Safe to run every start
      *
-     * @return array The columns added, as table.column
+     * @return array The tables and columns added, as table or table.column
      */
     public static function upgrade()
     {
         $db = static::getDB();
         $added = [];
+
+        foreach (static::ADDED_TABLES as $table => $sql) {
+            if (!static::hasTable($db, $table)) {
+                $db->exec($sql);
+                $added[] = $table;
+            }
+        }
 
         foreach (static::ADDED_COLUMNS as [$table, $column, $statements]) {
             if (static::hasColumn($db, $table, $column)) {
@@ -125,6 +163,22 @@ class Schema extends \Core\Model
                    SELECT email, '0.0.0.0', 0, 0, 'Null Island', 'XN' FROM users WHERE email = 'bot@mapchat.local'
                    ON DUPLICATE KEY UPDATE city = COALESCE(city, 'Null Island'), country = COALESCE(country, 'XN'),
                                            lat = COALESCE(lat, 0), lng = COALESCE(lng, 0)");
+    }
+
+    /**
+     * @param PDO $db
+     * @param string $table
+     *
+     * @return boolean
+     */
+    protected static function hasTable($db, $table)
+    {
+        $stmt = $db->prepare('SELECT COUNT(*) FROM information_schema.TABLES
+                              WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :table');
+        $stmt->bindValue(':table', $table, PDO::PARAM_STR);
+        $stmt->execute();
+
+        return $stmt->fetchColumn() > 0;
     }
 
     /**

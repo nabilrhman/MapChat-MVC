@@ -7,17 +7,6 @@ use PDO;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Gives the tests the app's own database connection
- */
-class TestDb extends \Core\Model
-{
-    public static function get(): PDO
-    {
-        return static::getDB();
-    }
-}
-
-/**
  * Who sees which messages. Each test runs in a transaction that is rolled back
  */
 class ChatTest extends TestCase
@@ -263,5 +252,17 @@ class ChatTest extends TestCase
         Chat::markRead(self::BOB, $this->userId(self::ANN), PHP_INT_MAX);
 
         $this->assertSame(['ann' => [1, $sent]], $this->conversations(self::CAT));
+    }
+
+    public function testMapShowsOnlyPeopleOnline()
+    {
+        $this->db->prepare('UPDATE userinfo SET online_at = NOW() WHERE email = ?')->execute([self::ANN]);
+        $this->db->prepare('UPDATE userinfo SET online_at = NOW() - INTERVAL 1 HOUR WHERE email = ?')->execute([self::BOB]);
+
+        $names = array_column(\App\Models\UserInfo::getAllLocations(), 'name');
+
+        $this->assertContains('ann', $names);
+        $this->assertNotContains('bob', $names);
+        $this->assertNotContains('cat', $names, 'never seen');
     }
 }

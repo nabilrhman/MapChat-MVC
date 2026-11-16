@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Auth;
 use App\Config;
 use Core\View;
+use App\Models\Bot;
 use App\Models\Chat;
 use App\Models\DemoChat;
 use App\Models\User;
@@ -25,6 +26,7 @@ class App extends Authenticated
         $this->refreshLocation();
         UserInfo::markOnline(Auth::getEmail());
         $this->catchUpDemoChat();
+        Bot::arrived(Auth::getEmail());
 
         $chats = Chat::getRecent(Auth::getEmail());
         $lastChatId = $chats ? end($chats)['id'] : 0;
@@ -56,6 +58,7 @@ class App extends Authenticated
         }
 
         $this->catchUpDemoChat();
+        Bot::runDue();
 
         $chats = Chat::getAfter(Auth::getEmail(), (int) $_POST['after']);
 
@@ -122,12 +125,13 @@ class App extends Authenticated
             return;
         }
 
-        // A private message goes to one other person, never to yourself or the bot
+        // A private message goes to one other person, never to yourself, and
+        // to MapChat only while it can write back
         $toEmail = null;
         if (!empty($_POST['to'])) {
             $recipient = User::findByID($_POST['to']);
 
-            if (!$recipient || $recipient->id == $user->id || $recipient->email === Chat::BOT_EMAIL) {
+            if (!$recipient || $recipient->id == $user->id || ($recipient->email === Chat::BOT_EMAIL && !Bot::canReply())) {
                 $this->refuse(400, 'You can\'t message this person.');
                 return;
             }
@@ -136,7 +140,9 @@ class App extends Authenticated
         }
 
         $chat = new Chat(['email' => $user->email, 'to_email' => $toEmail, 'body' => $body]);
-        $chat->send();
+        if ($chat->send()) {
+            Bot::heard($user->email, (int) Chat::lastId(), $toEmail, $body);
+        }
     }
 
     /**

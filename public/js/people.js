@@ -12,7 +12,22 @@ const myUserId = Number(document.getElementById('chat').dataset.myId);
 
 const isOnline = (person) => Number(person.is_online) === 1;
 
+// MapChat first, so there's always someone to talk to at the top, then you,
+// then everyone else
+function getListRank(person) {
+    if (Number(person.is_bot) === 1) return 0;
+    if (Number(person.id) === myUserId) return 1;
+    return 2;
+}
+
 const personByRow = new WeakMap();
+
+// Everyone in the list but you, online first, for @mentions
+let peopleToMention = [];
+
+function getPeopleToMention() {
+    return peopleToMention;
+}
 
 function getTimeAgo(minutes) {
     if (minutes < 60) return `${minutes} min ago`;
@@ -46,7 +61,7 @@ function createPersonRow(person) {
     row.classList.toggle('is-online', isOnline(person));
     row.classList.toggle('person--can-message', !isMe);
     row.dataset.userId = userId;
-    row.title = isMe ? '' : `Chat privately with ${person.name}`;
+    row.title = isMe ? '' : `Chat privately with ${person.shown_name}`;
     row.dataset.tipSide = 'left'; // over the map, not the rows above
 
     const avatarFrame = createElement('div', 'person__avatar');
@@ -57,7 +72,7 @@ function createPersonRow(person) {
 
     const text = createElement('div', 'person__text');
     text.append(
-        createElement('span', 'person__name', person.name + (isMe ? ' (you)' : '')),
+        createElement('span', 'person__name', person.shown_name + (isMe ? ' (you)' : '')),
         createPersonDetail(person),
     );
 
@@ -123,9 +138,8 @@ function showPeople(people, onPeopleOnline) {
     const onlinePeople = people.filter(isOnline);
     const recentPeople = people.filter((person) => !isOnline(person));
 
-    // You first, then everyone else by name
-    const isMeFirst = (person) => Number(Number(person.id) === myUserId);
-    onlinePeople.sort((a, b) => isMeFirst(b) - isMeFirst(a) || a.name.localeCompare(b.name));
+    onlinePeople.sort((a, b) => getListRank(a) - getListRank(b) || a.shown_name.localeCompare(b.shown_name));
+    peopleToMention = [...onlinePeople, ...recentPeople].filter((person) => Number(person.id) !== myUserId);
 
     // The rows are replaced, so a hovered row never gets its mouseleave
     document.querySelectorAll('.map-pin.is-highlighted').forEach((pin) => pin.classList.remove('is-highlighted'));
@@ -140,13 +154,28 @@ function showPeople(people, onPeopleOnline) {
     fadeInPhotos(peoplePanel.querySelectorAll('img'));
 }
 
-function loadPeople(onPeopleOnline) {
+// Set by keepPeopleUpdated
+let reportPeopleOnline = () => {};
+let nextPeopleLoad = null;
+
+function loadPeople() {
     postForm('/app/get-people', {timezone: Intl.DateTimeFormat().resolvedOptions().timeZone})
-        .then((response) => showPeople(response.data, onPeopleOnline))
+        .then((response) => showPeople(response.data, reportPeopleOnline))
         .catch(() => {
             // Try again on the next round
         })
-        .finally(() => setTimeout(() => loadPeople(onPeopleOnline), PEOPLE_INTERVAL));
+        .finally(() => {
+            // One round at a time, even after a refreshPeople()
+            clearTimeout(nextPeopleLoad);
+            nextPeopleLoad = setTimeout(loadPeople, PEOPLE_INTERVAL);
+        });
+}
+
+// The list now rather than on the next round: when whoever you messaged
+// has just come online, so they show up before they answer
+function refreshPeople() {
+    clearTimeout(nextPeopleLoad);
+    loadPeople();
 }
 
 // A drawer on narrow screens, a column that can be closed on wide ones
@@ -197,8 +226,9 @@ function keepPeopleUpdated(onPeopleOnline, onPersonChosen) {
         if (narrowScreen.matches) {
             setPeopleOpen(false);
         }
-        onPersonChosen(person.id, person.name);
+        onPersonChosen(person.id, person.shown_name);
     });
 
-    loadPeople(onPeopleOnline);
+    reportPeopleOnline = onPeopleOnline;
+    loadPeople();
 }

@@ -70,7 +70,10 @@ class Profile extends Authenticated
             }
         }
 
-        $data = ['name' => $_POST['name'] ?? '', 'email' => $email, 'password' => $password];
+        // Guests stay "Guest" and a number, so they don't get a nickname
+        $nickname = $this->user->is_guest ? '' : ($_POST['nickname'] ?? '');
+
+        $data = ['name' => $_POST['name'] ?? '', 'nickname' => $nickname, 'email' => $email, 'password' => $password];
 
         if ($this->user->updateProfile($data)) {
             Flash::clear();

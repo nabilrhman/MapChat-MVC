@@ -10,8 +10,9 @@ use App\Config;
  * and one-off chats (database/demo-chat.php) at a slow pace, in a fresh
  * order each day. There's no timer on the server (the free plan sleeps), so
  * whenever someone has the chat open, catchUp() adds the messages that are
- * due by now, with their scheduled times. Earlier days' are cleared, and the
- * day follows DEMO_TIMEZONE.
+ * due by now. Earlier days' are cleared, and the day follows DEMO_TIMEZONE.
+ * While a guest is talking with a demo person they called into the room,
+ * the story waits (Bot::storyPausedSeconds) and goes on from where it was.
  */
 class DemoChat extends \Core\Model
 {
@@ -33,6 +34,12 @@ class DemoChat extends \Core\Model
      * welcome: they talk about the map and pins it has just explained
      */
     const OPENING = ['app_map', 'app_bot'];
+
+    /**
+     * Leaves out the demo people's answers to someone who @mentioned them
+     * (Bot), which are written live, not from the day's script
+     */
+    const NOT_REPLIES = 'id NOT IN (SELECT posted_id FROM mapchat_jobs WHERE posted_id IS NOT NULL)';
 
     /** A demo person shows as online from this many minutes before they speak... */
     const ARRIVE_MINUTES = 5;
@@ -85,8 +92,10 @@ class DemoChat extends \Core\Model
         $start = gmdate('Y-m-d H:i:s', $day_start);
 
         // The welcome messages open each day, so they're never under "Yesterday".
-        // The chat is in id order, so they're added again after the older messages
-        $stmt = $db->prepare('SELECT id, body FROM chats WHERE email = :bot AND to_email IS NULL AND timestamp < :start ORDER BY id');
+        // The chat is in id order, so they're added again after the older messages.
+        // What MapChat said to people (mapchat_jobs) stays where it was said
+        $stmt = $db->prepare('SELECT id, body FROM chats WHERE email = :bot AND to_email IS NULL AND timestamp < :start
+                                AND ' . static::NOT_REPLIES . ' ORDER BY id');
         $stmt->execute([':bot' => Chat::BOT_EMAIL, ':start' => $start]);
         $remove = $db->prepare('DELETE FROM chats WHERE id = :id');
         $add = $db->prepare('INSERT INTO chats (email, body, timestamp) VALUES (:email, :body, :time)');
@@ -103,65 +112,74 @@ class DemoChat extends \Core\Model
         }
 
         $now = gmdate('Y-m-d H:i:s', static::now());
-
-        // Skip the same message if two requests catch up at once
-        $insert = $db->prepare('INSERT INTO chats (email, body, timestamp)
-                                SELECT :email, :body, :time FROM DUAL
-                                WHERE NOT EXISTS (SELECT 1 FROM chats WHERE email = :email2 AND timestamp = :time2)');
-
         $schedule = static::schedule($today);
 
-        // Clear every demo line today's schedule doesn't have: earlier days',
-        // and any left from before the conversations were rewritten. Who and
-        // when aren't enough: a rewritten day can put the same person at the
-        // same second with different words
-        $planned = array_flip(array_map(fn ($line) => $line[1] . ' ' . $line[0] . ' ' . $line[2], $schedule));
-        $stmt = $db->prepare('SELECT id, email, timestamp, body FROM chats WHERE email LIKE :demo AND to_email IS NULL');
+        // Today's lines are known by who said what, not when: a story that
+        // waited for a guest goes out later than planned. Nobody says the
+        // same thing twice in a day
+        $place = [];
+        foreach ($schedule as $i => [, $email, $body]) {
+            $place["$email $body"] = $i;
+        }
+
+        // Clear earlier days' lines and any today's plan doesn't have (the
+        // stories were rewritten), and find how far today has got
+        $stmt = $db->prepare('SELECT id, email, timestamp, body FROM chats WHERE email LIKE :demo AND to_email IS NULL AND ' . static::NOT_REPLIES);
         $stmt->execute([':demo' => '%' . static::DOMAIN]);
         $drop = $db->prepare('DELETE FROM chats WHERE id = :id');
         $rewritten = false;
+        $ahead = false;
+        $posted = -1;
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-            if (!isset($planned[$row['email'] . ' ' . $row['timestamp'] . ' ' . $row['body']])) {
+            $i = $place[$row['email'] . ' ' . $row['body']] ?? null;
+            if ($row['timestamp'] < $start || $i === null) {
                 $drop->execute([':id' => $row['id']]);
                 $rewritten = $rewritten || $row['timestamp'] >= $start;
+                continue;
             }
+            $posted = max($posted, $i);
+            $ahead = $ahead || $schedule[$i][0] > $now;
         }
 
-        $stmt = $db->prepare('SELECT MAX(timestamp) FROM chats WHERE email LIKE :demo');
-        $stmt->execute([':demo' => '%' . static::DOMAIN]);
-        $last = $stmt->fetchColumn() ?: '';
-
-        // A fast-forwarded day (DEMO_SPEED) loops, and a day rewritten part way
-        // (a deploy changed the stories) can't have its earlier lines slotted
-        // in, as the chat runs in id order; either way, start the day over
-        if ($last > $now || $rewritten) {
-            $db->prepare('DELETE FROM chats WHERE email LIKE :demo AND to_email IS NULL')
+        // A fast-forwarded day (DEMO_SPEED) loops back to its start, and a day
+        // rewritten part way (a deploy changed the stories) can't have its
+        // earlier lines slotted in, as the chat runs in id order; either way,
+        // start the day over
+        if ($ahead || $rewritten) {
+            $db->prepare('DELETE FROM chats WHERE email LIKE :demo AND to_email IS NULL AND ' . static::NOT_REPLIES)
                ->execute([':demo' => '%' . static::DOMAIN]);
-            $last = '';
+            $posted = -1;
         }
+
+        // Skip the same line if two requests catch up at once
+        $insert = $db->prepare('INSERT INTO chats (email, body, timestamp)
+                                SELECT :email, :body, :time FROM DUAL
+                                WHERE NOT EXISTS (SELECT 1 FROM chats WHERE email = :email2 AND body = :body2 AND timestamp >= :start)');
 
         $last_spoke = [];
 
-        foreach ($schedule as [$time, $email, $body]) {
+        foreach ($schedule as $i => [$time, $email, $body]) {
             if ($time > $now) {
                 break;
             }
 
             $last_spoke[$email] = $time;
 
-            if ($time > $last) {
+            if ($i > $posted) {
                 $insert->execute([
-                    ':email' => $email, ':body' => $body, ':time' => $time,
-                    ':email2' => $email, ':time2' => $time,
+                    ':email' => $email, ':body' => $body, ':time' => static::realTime($time),
+                    ':email2' => $email, ':body2' => $body, ':start' => $start,
                 ]);
             }
         }
 
-        // When they last spoke, for "Recently here"
+        // When they last spoke, for "Recently here", on the real clock. A
+        // time left in the future by an earlier fast-forwarded day is replaced
         $seen = $db->prepare('UPDATE userinfo SET online_at = :time
-                              WHERE email = :email AND (online_at IS NULL OR online_at < :time2)');
+                              WHERE email = :email AND (online_at IS NULL OR online_at < :time2 OR online_at > NOW())');
         foreach ($last_spoke as $email => $time) {
-            $seen->execute([':email' => $email, ':time' => $time, ':time2' => $time]);
+            $real = static::realTime($time);
+            $seen->execute([':email' => $email, ':time' => $real, ':time2' => $real]);
         }
     }
 
@@ -232,7 +250,7 @@ class DemoChat extends \Core\Model
         foreach ($scenes as $n => $scene) {
             foreach ($scene as $i => [$speaker, $body]) {
                 $seconds = (int) round(($minute + $offsets[$n][$i]) * 60) + mt_rand(0, 30);
-                $messages[] = [gmdate('Y-m-d H:i:s', $day_start + $seconds), $speaker . static::DOMAIN, $body];
+                $messages[] = [gmdate('Y-m-d H:i:s', $day_start + $seconds), $speaker . static::DOMAIN, static::withAddressee($body)];
             }
 
             $minute += end($offsets[$n]) + ($weights[$n] ?? 0) * $scale;
@@ -241,6 +259,45 @@ class DemoChat extends \Core\Model
         mt_srand();
 
         return $messages;
+    }
+
+    /**
+     * A line that starts by naming another demo person ("rafael how was
+     * it?") starts with an @mention of them instead, so it shows as one
+     *
+     * @param string $body
+     *
+     * @return string
+     */
+    protected static function withAddressee($body)
+    {
+        foreach (static::firstNames() as $key => $firstName) {
+            $named = '/^(?:' . preg_quote($key, '/') . '|' . preg_quote($firstName, '/') . ')(?![\p{L}\p{N}-])/iu';
+            if (preg_match($named, $body)) {
+                return preg_replace($named, '@' . $firstName, $body, 1);
+            }
+        }
+
+        return $body;
+    }
+
+    /**
+     * Each demo person's first name, by the key their lines use (the start
+     * of their email, e.g. jaewon => Jae-won)
+     *
+     * @return array
+     */
+    protected static function firstNames()
+    {
+        $stmt = static::getDB()->prepare('SELECT email, name FROM users WHERE email LIKE :demo');
+        $stmt->execute([':demo' => '%' . static::DOMAIN]);
+
+        $names = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $person) {
+            $names[strstr($person['email'], '@', true)] = explode(' ', $person['name'])[0];
+        }
+
+        return $names;
     }
 
     /**
@@ -254,22 +311,42 @@ class DemoChat extends \Core\Model
     }
 
     /**
-     * The time on the demo clock. Normally the real time; with DEMO_SPEED=60
-     * a real second is a demo minute, so a whole day plays in 24 minutes, on
-     * repeat
+     * The time on the demo clock: the real time, held back by however long
+     * the story has waited today. With DEMO_SPEED=60 a real second is a demo
+     * minute, so a whole day plays in 24 minutes, on repeat
      *
      * @return int Unix time
      */
     protected static function now()
     {
-        $speed = (float) Config::get('DEMO_SPEED', 1);
-        if ($speed <= 1) {
-            return time();
-        }
-
+        $speed = max(1, (float) Config::get('DEMO_SPEED', 1));
         $day_start = static::dayStart(static::today());
 
-        return $day_start + (int) (fmod(time() * $speed, 86400));
+        // The real time the story has had to run: all of it, less its waits
+        $ran = time() - Bot::storyPausedSeconds($day_start);
+
+        if ($speed == 1) {
+            return $ran;
+        }
+
+        return $day_start + (int) fmod($ran * $speed, 86400);
+    }
+
+    /**
+     * When a moment on the demo clock happens on the real clock: later by
+     * however long the story has waited, and with DEMO_SPEED, a demo minute
+     * ago was a real second ago (the demo clock can run hours ahead)
+     *
+     * @param string $time UTC, Y-m-d H:i:s, on the demo clock
+     *
+     * @return string UTC, Y-m-d H:i:s
+     */
+    protected static function realTime($time)
+    {
+        $demoSecondsAgo = static::now() - strtotime($time . ' UTC');
+        $realSecondsAgo = (int) round($demoSecondsAgo / max(1, (float) Config::get('DEMO_SPEED', 1)));
+
+        return gmdate('Y-m-d H:i:s', time() - $realSecondsAgo);
     }
 
     /**

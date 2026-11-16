@@ -36,3 +36,6 @@ services:
       # Must use the verified domain, e.g. MapChat <no-reply@mail.swiftsolve.net>
       - key: MAIL_FROM
         sync: false
+      # Lets MapChat and the demo people chat back (free key at console.groq.com)
+      - key: GROQ_API_KEY
+        sync: false

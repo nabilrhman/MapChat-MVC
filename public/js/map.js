@@ -87,7 +87,7 @@ function themeLayer(layer) {
 // Shown when hovering a pin: the name, then the flag and city
 function createPinLabel(location) {
     const label = createElement('div', 'pin-label');
-    label.append(createElement('strong', 'pin-label__name', location.name || ''));
+    label.append(createElement('strong', 'pin-label__name', location.shown_name || ''));
 
     if (location.city) {
         const place = createElement('span', 'pin-label__place');
@@ -179,7 +179,7 @@ async function loadLocations() {
 }
 
 // Everything a pin shows; when it changes, the pin is drawn again
-const getPinContent = (location) => [location.lat, location.lng, location.name, location.city, location.country].join('|');
+const getPinContent = (location) => [location.lat, location.lng, location.shown_name, location.city, location.country].join('|');
 
 // Fetches the pins now and on every round after, adding new people, dropping
 // those gone or hidden, and moving anyone whose place changed. The map only
