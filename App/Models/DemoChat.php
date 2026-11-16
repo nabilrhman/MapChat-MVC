@@ -215,11 +215,14 @@ class DemoChat extends \Core\Model
      */
     public static function schedule($date)
     {
-        // Worked out once per date: the chat socket asks every few seconds
-        // and for every page that connects, and it takes tens of milliseconds
+        // Worked out once per date and set of names: the chat socket asks
+        // every few seconds and for every page that connects. The names are
+        // part of it, as lines that name someone tag them (withAddressee)
         static $schedules = [];
-        if (isset($schedules[$date])) {
-            return $schedules[$date];
+        $firstNames = static::firstNames();
+        $key = $date . ' ' . json_encode($firstNames);
+        if (isset($schedules[$key])) {
+            return $schedules[$key];
         }
 
         mt_srand(crc32($date));
@@ -257,7 +260,7 @@ class DemoChat extends \Core\Model
         foreach ($scenes as $n => $scene) {
             foreach ($scene as $i => [$speaker, $body]) {
                 $seconds = (int) round(($minute + $offsets[$n][$i]) * 60) + mt_rand(0, 30);
-                $messages[] = [gmdate('Y-m-d H:i:s', $day_start + $seconds), $speaker . static::DOMAIN, static::withAddressee($body)];
+                $messages[] = [gmdate('Y-m-d H:i:s', $day_start + $seconds), $speaker . static::DOMAIN, static::withAddressee($body, $firstNames)];
             }
 
             $minute += end($offsets[$n]) + ($weights[$n] ?? 0) * $scale;
@@ -269,7 +272,7 @@ class DemoChat extends \Core\Model
         if (count($schedules) > 2) {
             array_shift($schedules);
         }
-        $schedules[$date] = $messages;
+        $schedules[$key] = $messages;
 
         return $messages;
     }
@@ -279,12 +282,13 @@ class DemoChat extends \Core\Model
      * it?") starts with an @mention of them instead, so it shows as one
      *
      * @param string $body
+     * @param array|null $firstNames From firstNames(), when the caller has them already
      *
      * @return string
      */
-    protected static function withAddressee($body)
+    protected static function withAddressee($body, $firstNames = null)
     {
-        foreach (static::firstNames() as $key => $firstName) {
+        foreach ($firstNames ?? static::firstNames() as $key => $firstName) {
             $named = '/^(?:' . preg_quote($key, '/') . '|' . preg_quote($firstName, '/') . ')(?![\p{L}\p{N}-])/iu';
             if (preg_match($named, $body)) {
                 return preg_replace($named, '@' . $firstName, $body, 1);

@@ -12,6 +12,9 @@ class TestDemoChat extends DemoChat
 {
     public static int $demoNow = 0;
 
+    /** Stamp lines on the demo clock rather than the real one (see the catch-up test) */
+    public static bool $isStampedOnDemoClock = false;
+
     public static function seenAt(string $time): string
     {
         return static::realTime($time);
@@ -36,6 +39,11 @@ class TestDemoChat extends DemoChat
     {
         return static::$demoNow;
     }
+
+    protected static function realTime($time)
+    {
+        return static::$isStampedOnDemoClock ? $time : parent::realTime($time);
+    }
 }
 
 /**
@@ -46,6 +54,7 @@ class DemoChatTest extends TestCase
     protected function tearDown(): void
     {
         putenv('DEMO_SPEED');
+        TestDemoChat::$isStampedOnDemoClock = false;
     }
 
     public function testRealTimeIsTheDemoTimeAtNormalSpeed()
@@ -111,6 +120,11 @@ class DemoChatTest extends TestCase
 
     public function testCatchUpGoesOnFromWhereTheStoryIs()
     {
+        // The demo clock is moved to a line of today's plan, which is ahead
+        // of the real clock early in the demo day. Stamped on the real clock,
+        // the lines would land in yesterday and not count as posted today
+        TestDemoChat::$isStampedOnDemoClock = true;
+
         $db = TestDb::get();
         $db->beginTransaction();
         try {
