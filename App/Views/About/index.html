@@ -35,31 +35,72 @@
     </section>
 
     <div class="about-grid">
+        <h2 class="about-grid__heading appear-down">What you can do</h2>
+
         <section class="about-card appear-down">
-            <h2 class="about-card__title">{{ icon('chat-round-dots', 'about-card__icon') }}What you can do</h2>
+            <h3 class="about-card__title">{{ icon('chat-round-dots', 'about-card__icon') }}Chatting</h3>
             <ul class="about-list">
                 <li>Chat with everyone who is signed in, in one shared room.</li>
-                <li>Click someone's name to chat with them privately, and see when they're typing to you.</li>
-                <li>Type @ to mention someone in the room. Mentions of you are highlighted.</li>
-                <li>Chat with MapChat, the room's AI, in the room or privately. It says hello when the room is quiet.</li>
-                <li>Talk with the regulars on the map. They're digital characters, written by AI: mention one, or message them, and they answer.</li>
-                <li>Try it as a guest without signing up. Guest accounts disappear after 24 hours unless you keep them.</li>
-                <li>See on the map which city each person online is chatting from.</li>
-                <li>Hide yourself from the map whenever you want.</li>
-                <li>Set up a profile with your name, an avatar and, if you like, a nickname to go by.</li>
-                <li>Reset your password by email if you forget it.</li>
+                <li>Click someone's name to chat privately, and see when they're typing to you.</li>
+                <li>Type @ to mention someone. Mentions of you are highlighted.</li>
             </ul>
         </section>
 
         <section class="about-card appear-down">
-            <h2 class="about-card__title">{{ icon('programming', 'about-card__icon') }}How it's built</h2>
+            <h3 class="about-card__title">{{ icon('stars-minimalistic', 'about-card__icon') }}AI in the room</h3>
+            <ul class="about-list">
+                <li>MapChat, the room's AI, chats in the room or privately, and says hello when it's quiet.</li>
+                <li>The regulars on the map are digital characters, written by AI. Mention one, or message them, and they answer.</li>
+            </ul>
+        </section>
+
+        <section class="about-card appear-down">
+            <h3 class="about-card__title">{{ icon('map-point', 'about-card__icon') }}The map</h3>
+            <ul class="about-list">
+                <li>See which city each person online is chatting from.</li>
+                <li>Hide yourself from the map whenever you want.</li>
+            </ul>
+        </section>
+
+        <section class="about-card appear-down">
+            <h3 class="about-card__title">{{ icon('user', 'about-card__icon') }}Your account</h3>
+            <ul class="about-list">
+                <li>Try it as a guest without signing up. Guest accounts disappear after 24 hours unless you keep them.</li>
+                <li>A profile with your name, an avatar and, if you like, a nickname.</li>
+                <li>Reset your password by email if you forget it.</li>
+            </ul>
+        </section>
+
+        <h2 class="about-grid__heading appear-down">How it's built</h2>
+
+        <section class="about-card appear-down">
+            <h3 class="about-card__title">{{ icon('programming', 'about-card__icon') }}Built from scratch</h3>
             <ul class="about-list">
                 <li>A model-view-controller (MVC) framework written from scratch in PHP.</li>
-                <li>MySQL for users and messages, queried with prepared statements to block SQL injection.</li>
+                <li>MySQL, queried with prepared statements to block SQL injection.</li>
                 <li>Twig templates, which escape everything users type to block cross-site scripting.</li>
-                <li>A WebSocket for each open chat, served by a PHP process of its own on amphp, so new messages, who's online and who's typing arrive the moment they happen. Without it, the chat falls back to asking every second.</li>
-                <li>Groq's API to write what MapChat and the digital characters say.</li>
+            </ul>
+        </section>
+
+        <section class="about-card appear-down">
+            <h3 class="about-card__title">{{ icon('plain', 'about-card__icon') }}Live chat</h3>
+            <ul class="about-list">
+                <li>A WebSocket for each open chat, on amphp, so messages, who's online and who's typing arrive at once.</li>
+                <li>Without it, the chat falls back to asking every second.</li>
+            </ul>
+        </section>
+
+        <section class="about-card appear-down">
+            <h3 class="about-card__title">{{ icon('map', 'about-card__icon') }}Map and AI</h3>
+            <ul class="about-list">
                 <li>MapLibre and OpenStreetMap for the map.</li>
+                <li>Groq's API to write what MapChat and the digital characters say.</li>
+            </ul>
+        </section>
+
+        <section class="about-card appear-down">
+            <h3 class="about-card__title">{{ icon('eye', 'about-card__icon') }}Look and feel</h3>
+            <ul class="about-list">
                 <li>The site's own CSS, with Beer CSS for the form fields, and plain JavaScript with no jQuery.</li>
                 <li>Icons from the <a href="https://www.figma.com/community/file/1166831539721848736">Solar icon set</a> by 480 Design, under <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.</li>
             </ul>
