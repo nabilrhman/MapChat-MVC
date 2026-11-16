@@ -161,21 +161,47 @@ body
 /* "Latest" / "3 new messages": a pill at the bottom centre of the messages
    while you read further up */
 /* Under the last message, above the box: the other person in a private
-   chat is writing to you. Their face and the three dots, as chat apps show */
+   chat is writing to you. Their face and the three dots, as chat apps show.
+   It opens to its height while it fades and slides up, and closes the same
+   way down, so the messages above move with it instead of jumping. A grid
+   row, as a height can't ease to "auto" */
 .typing-row
 {
-    display: flex;
+    display: grid;
     flex: none;
+    grid-template-rows: 0fr;
+    opacity: 0;
+    translate: 0 8px;
+    visibility: hidden;
+    background-color: #fafafa;
+    transition: grid-template-rows var(--dur) var(--ease-in),
+                opacity var(--dur) var(--ease-in),
+                translate var(--dur) var(--ease-in),
+                visibility 0s var(--dur);
+}
+
+.typing-row.is-shown
+{
+    grid-template-rows: 1fr;
+    opacity: 1;
+    translate: 0 0;
+    visibility: visible;
+    transition-timing-function: var(--ease-out);
+    transition-delay: 0s;
+}
+
+.typing-row__clip
+{
+    min-height: 0;
+    overflow: hidden;
+}
+
+.typing-row__content
+{
+    display: flex;
     align-items: center;
     gap: 10px;
     padding: 8px 16px;
-    background-color: #fafafa;
-    animation: fade-in-up var(--dur) var(--ease-out);
-}
-
-.typing-row[hidden]
-{
-    display: none;
 }
 
 .typing-row__photo
@@ -189,6 +215,12 @@ body
 {
     color: var(--md-primary);
     animation: none; /* shows at once; the row eases in */
+}
+
+/* No need to keep the dots going while nobody's typing */
+.typing-row:not(.is-shown) .loading-dots__dot
+{
+    animation-play-state: paused;
 }
 
 /* For screen readers only */

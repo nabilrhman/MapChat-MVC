@@ -62,10 +62,14 @@
         </div>
 
         {# While the other person in a private chat is writing to you (chat.js) #}
-        <div class="typing-row" id="typing-row" aria-live="polite" hidden>
-            <img class="typing-row__photo" id="typing-row-photo" alt="">
-            <span class="typing-row__dots loading-dots" aria-hidden="true"><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span></span>
-            <span class="typing-row__label" id="typing-row-label"></span>
+        <div class="typing-row" id="typing-row" aria-live="polite">
+            <div class="typing-row__clip">
+                <div class="typing-row__content">
+                    <img class="typing-row__photo" id="typing-row-photo" alt="">
+                    <span class="typing-row__dots loading-dots" aria-hidden="true"><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span></span>
+                    <span class="typing-row__label" id="typing-row-label"></span>
+                </div>
+            </div>
         </div>
 
         {# Shows when you've scrolled up; counts messages that came in meanwhile #}
