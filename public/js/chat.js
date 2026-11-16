@@ -542,17 +542,48 @@ function changeJumpLabel(text) {
 
 function updateJumpButton() {
     const isScrolledUp = !isScrollingToNewest && getDistanceFromBottom() > SCROLLED_UP_DISTANCE;
-    if (!isScrolledUp) newMessagesWhileScrolledUp = 0;
+    if (!isScrolledUp) {
+        newMessagesWhileScrolledUp = 0;
+        hideJumpButton();
+        return;
+    }
 
     const text = getJumpLabelText();
-    jumpButton.hidden = !isScrolledUp;
+    const wasHidden = jumpButton.hidden || jumpButton.classList.contains('is-leaving');
+    jumpButton.classList.remove('is-leaving');
+    jumpButton.hidden = false;
 
-    if (!isScrolledUp || jumpLabel.textContent === text) {
+    if (wasHidden || jumpLabel.textContent === text) {
         jumpLabel.textContent = text;
         jumpButton.style.width = '';
         return;
     }
     changeJumpLabel(text);
+}
+
+// Eases out down where it is, as it eased in. Its label stays as it was
+// while it goes, so the pill doesn't change width on the way out
+function hideJumpButton() {
+    if (jumpButton.hidden || jumpButton.classList.contains('is-leaving')) return;
+
+    const finishHiding = () => {
+        // Shown again meanwhile
+        if (!jumpButton.classList.contains('is-leaving')) return;
+        jumpButton.classList.remove('is-leaving');
+        jumpButton.hidden = true;
+        jumpLabel.textContent = getJumpLabelText();
+        jumpButton.style.width = '';
+    };
+
+    jumpButton.classList.add('is-leaving');
+    jumpButton.addEventListener('animationend', function onLeft(event) {
+        // Not the label's own animation
+        if (event.target !== jumpButton) return;
+        jumpButton.removeEventListener('animationend', onLeft);
+        finishHiding();
+    });
+    // A hidden page doesn't run animations
+    setTimeout(finishHiding, 500);
 }
 
 chatList.addEventListener('scroll', updateJumpButton);

@@ -254,7 +254,9 @@ body
     box-shadow: var(--md-elevation-3);
     overflow: hidden;
     white-space: nowrap;
-    transform: translateX(-50%);
+    /* translate, not transform: fade-in-up animates transform, which would
+       drop the centring while it runs and slide the button in from the right */
+    translate: -50% 0;
     cursor: pointer;
     transition: width var(--dur) var(--ease-out);
     animation: fade-in-up var(--dur) var(--ease-out);
@@ -269,6 +271,22 @@ body
 .jump-latest[hidden]
 {
     display: none;
+}
+
+/* Back at the newest messages: it sinks and fades, the way it came */
+.jump-latest.is-leaving
+{
+    animation: jump-latest-out var(--dur-fast) var(--ease-in) forwards;
+    pointer-events: none;
+}
+
+@keyframes jump-latest-out
+{
+    to
+    {
+        opacity: 0;
+        transform: translateY(6px);
+    }
 }
 
 .jump-latest:hover
