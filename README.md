@@ -219,9 +219,11 @@ against their own database, `mapchat_test`, which is rebuilt from
 docker compose run --rm --build test
 ```
 
-With the app running, `python3 tests/a11y.py` checks every page for
-accessibility problems with axe-core, at desktop and phone widths, in
-headless Google Chrome.
+With the app running, `npm install` once and then `npm run a11y` checks
+every page for accessibility problems with axe-core, before and after signing
+in, at desktop and phone widths, in Playwright using the Chrome installed on
+the machine (`tests/browser/`). It draws on the GPU; `MAPCHAT_GPU=0` turns
+that off.
 
 ### Settings
 
@@ -285,7 +287,7 @@ database/        init.sql (schema and welcome messages), demo.sql (optional
                  demo-voices.php (how each of them writes, for the AI),
                  migrate.php (brings an older database up to date, run when
                  the container starts)
-tests/           PHPUnit tests
+tests/           PHPUnit tests; tests/browser/ the Playwright checks (npm run a11y)
 docs/images/     The video, screenshots and diagram in this README
 docs/diagrams/   Draws the diagram: node docs/diagrams/draw.ts
 docs/video/      Records the tour at the top: python3 docs/video/record.py

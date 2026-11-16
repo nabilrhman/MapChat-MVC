@@ -32,9 +32,9 @@
 </button>
 
 <!-- Opens the people list on screens too narrow to show it beside the map -->
-<button class="people-toggle" id="people-toggle" type="button" aria-label="Who's online"
+<button class="people-toggle" id="people-toggle" type="button" title="Who's online"
         aria-controls="people" aria-expanded="false">
-    {{ icon('users-group-rounded', 'people-toggle__icon') }}<span id="people-toggle-count">0</span>
+    {{ icon('users-group-rounded', 'people-toggle__icon') }}<span id="people-toggle-count">0</span><span class="visually-hidden"> online</span>
 </button>
 
 {# What chat.js needs from the server #}

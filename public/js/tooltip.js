@@ -42,7 +42,8 @@ function setUpTooltips() {
     if (!window.matchMedia('(hover: hover)').matches) return;
 
     const tooltip = createElement('div', 'tooltip');
-    tooltip.setAttribute('role', 'tooltip');
+    // It repeats the label moveTitleToTip gave the element, which screen readers read there
+    tooltip.setAttribute('aria-hidden', 'true');
     document.body.append(tooltip);
 
     let tipTarget = null;

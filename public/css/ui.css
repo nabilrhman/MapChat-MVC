@@ -536,3 +536,14 @@ h4
     opacity: 1;
     transform: none;
 }
+
+/* Read by screen readers, not shown: the rest of a label whose visible part is a number or an icon */
+.visually-hidden
+{
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
