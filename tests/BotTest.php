@@ -480,4 +480,22 @@ class BotTest extends TestCase
         $this->assertStringNotContainsString('cat secret', $mayaToAnn[1]);
         $this->assertStringNotContainsString('mapchat', $mayaToAnn[1]);
     }
+
+    public function testStoryWaitsWhileGuestsTalkWithDemoPeople()
+    {
+        $maya = $this->addDemoPerson('Maya Thompson', 'Toronto');
+        $add = $this->db->prepare("INSERT INTO mapchat_jobs (kind, email, speaker, dedupe_key, due_at, created_at, done_at)
+                                   VALUES ('reply', ?, ?, ?, ?, ?, ?)");
+        $at = fn ($seconds) => $seconds === null ? null : gmdate('Y-m-d H:i:s', time() + $seconds);
+        foreach ([[-1000, -997], [-800, -797], [-100, null]] as $i => [$created, $done]) {
+            $add->execute([self::ANN, $maya, "test:$i", $at($created), $at($created), $at($done)]);
+        }
+        // MapChat's own conversations don't hold the story
+        $add->execute([self::ANN, Chat::BOT_EMAIL, 'test:mapchat', $at(-5000), $at(-5000), $at(-4997)]);
+
+        // Two overlapping talks, each quiet CONVERSATION_MINUTES after the
+        // last answer, then one still waiting for its answer
+        $quiet = Bot::CONVERSATION_MINUTES * 60;
+        $this->assertEqualsWithDelta((-797 + $quiet) - (-1000) + 100, Bot::storyPausedSeconds(time() - 86400), 2);
+    }
 }

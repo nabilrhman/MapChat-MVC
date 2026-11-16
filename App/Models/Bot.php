@@ -701,6 +701,44 @@ class Bot extends \Core\Model
     }
 
     /**
+     * How long the demo story has waited since the given time: from each
+     * time a guest called a demo person into a room conversation until it
+     * went quiet, CONVERSATION_MINUTES after their last answer. Times that
+     * overlap count once
+     *
+     * @param int $since Unix time, the start of the demo day
+     *
+     * @return int Seconds
+     */
+    public static function storyPausedSeconds($since)
+    {
+        $stmt = static::getDB()->prepare('SELECT created_at, done_at FROM mapchat_jobs
+                                          WHERE kind IN (\'mention\', \'reply\') AND speaker LIKE :demo AND created_at >= :since
+                                          ORDER BY created_at');
+        $stmt->execute([':demo' => '%' . DemoChat::DOMAIN, ':since' => gmdate('Y-m-d H:i:s', $since)]);
+
+        $now = static::now();
+        $waited = 0;
+        $from = null;
+        $until = null;
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $job) {
+            $start = strtotime($job['created_at'] . ' UTC');
+            // Still to answer: waiting until now
+            $end = $job['done_at'] ? strtotime($job['done_at'] . ' UTC') + static::CONVERSATION_MINUTES * 60 : $now;
+            $end = min($end, $now);
+
+            if ($from !== null && $start <= $until) {
+                $until = max($until, $end);
+                continue;
+            }
+            $waited += $from === null ? 0 : $until - $from;
+            [$from, $until] = [$start, $end];
+        }
+
+        return $waited + ($from === null ? 0 : max(0, $until - $from));
+    }
+
+    /**
      * A real person: not MapChat and not one of the demo people
      *
      * @param string $email

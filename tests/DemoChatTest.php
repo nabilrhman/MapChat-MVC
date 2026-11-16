@@ -22,6 +22,16 @@ class TestDemoChat extends DemoChat
         return static::withAddressee($body);
     }
 
+    public static function catchUpNow(): void
+    {
+        static::catchUpLocked(TestDb::get());
+    }
+
+    public static function todayStart(): int
+    {
+        return static::dayStart(static::today());
+    }
+
     protected static function now()
     {
         return static::$demoNow;
@@ -40,7 +50,11 @@ class DemoChatTest extends TestCase
 
     public function testRealTimeIsTheDemoTimeAtNormalSpeed()
     {
-        $this->assertSame('2026-11-16 04:30:00', TestDemoChat::seenAt('2026-11-16 04:30:00'));
+        // No pause: the demo clock is the real one
+        TestDemoChat::$demoNow = time();
+        $line = gmdate('Y-m-d H:i:s', time() - 600);
+
+        $this->assertSame($line, TestDemoChat::seenAt($line));
     }
 
     public function testFastDayIsSeenOnTheRealClock()
@@ -70,6 +84,57 @@ class DemoChatTest extends TestCase
             $this->assertSame('@Jae-won is the kimchi ready?', TestDemoChat::addressed('jaewon is the kimchi ready?'));
             $this->assertSame('tried surfing with rafael', TestDemoChat::addressed('tried surfing with rafael'));
             $this->assertSame('rafaela says hi', TestDemoChat::addressed('rafaela says hi'));
+        } finally {
+            $db->rollBack();
+        }
+    }
+
+    /**
+     * Today's demo bodies in the chat, in the order they went out
+     */
+    private function postedToday(): array
+    {
+        $stmt = TestDb::get()->prepare("SELECT body FROM chats WHERE email LIKE '%@demo.mapchat.local' AND timestamp >= ? ORDER BY id");
+        $stmt->execute([gmdate('Y-m-d H:i:s', TestDemoChat::todayStart())]);
+
+        return $stmt->fetchAll(\PDO::FETCH_COLUMN);
+    }
+
+    /**
+     * Run a catch-up with the demo clock at the given line of today's plan
+     */
+    private function catchUpTo(array $schedule, int $line): void
+    {
+        TestDemoChat::$demoNow = strtotime($schedule[$line][0] . ' UTC');
+        TestDemoChat::catchUpNow();
+    }
+
+    public function testCatchUpGoesOnFromWhereTheStoryIs()
+    {
+        $db = TestDb::get();
+        $db->beginTransaction();
+        try {
+            $schedule = TestDemoChat::schedule(TestDemoChat::today());
+            foreach (array_unique(array_column($schedule, 1)) as $email) {
+                $db->prepare("INSERT INTO users (name, email, password_hash, is_active) VALUES (?, ?, '!', TRUE)")
+                    ->execute([ucfirst(strtok($email, '@')), $email]);
+            }
+            $schedule = TestDemoChat::schedule(TestDemoChat::today()); // now with the people's names, for @tags
+            $bodies = array_column($schedule, 2);
+
+            // The same words from an earlier day don't count as said today
+            $db->prepare("INSERT INTO chats (email, body, timestamp) VALUES (?, ?, ?)")
+                ->execute([$schedule[0][1], $schedule[0][2], gmdate('Y-m-d H:i:s', TestDemoChat::todayStart() - 3600)]);
+
+            $this->catchUpTo($schedule, 20);
+            $this->assertSame(array_slice($bodies, 0, 21), $this->postedToday());
+
+            $this->catchUpTo($schedule, 20);
+            $this->assertSame(array_slice($bodies, 0, 21), $this->postedToday(), 'nothing twice');
+
+            // However late the story got, it goes on from the next line
+            $this->catchUpTo($schedule, 30);
+            $this->assertSame(array_slice($bodies, 0, 31), $this->postedToday());
         } finally {
             $db->rollBack();
         }
