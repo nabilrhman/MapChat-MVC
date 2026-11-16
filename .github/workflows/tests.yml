@@ -1,0 +1,15 @@
+# Runs the PHPUnit tests, as locally, on every push to master and every PR
+name: Tests
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run the tests
+        run: docker compose run --rm --build test

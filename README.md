@@ -12,6 +12,7 @@ I wrote from scratch in PHP.
 [![MySQL](https://img.shields.io/badge/MySQL-8.4-512da8?logo=mysql&logoColor=white&labelColor=1e0839)](database/init.sql)
 [![Docker](https://img.shields.io/badge/Docker-ready-512da8?logo=docker&logoColor=white&labelColor=1e0839)](Dockerfile)
 [![License](https://img.shields.io/badge/license-MIT-512da8?labelColor=1e0839)](LICENSE)
+[![Tests](https://img.shields.io/github/actions/workflow/status/nabilrhman/MapChat-MVC/tests.yml?branch=master&label=tests&logo=githubactions&logoColor=white&labelColor=1e0839)](https://github.com/nabilrhman/MapChat-MVC/actions/workflows/tests.yml)
 
 **[Live demo](https://mapchat.swiftsolve.net)** &nbsp;·&nbsp;
 **[Run it locally](#run-it-locally)** &nbsp;·&nbsp;

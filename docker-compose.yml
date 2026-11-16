@@ -62,8 +62,10 @@ services:
       - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
       - ./database/demo.sql:/docker-entrypoint-initdb.d/02-demo.sql:ro
       - db-data:/var/lib/mysql
+    # Over TCP: on first start MySQL runs a setup server on its socket only,
+    # which would pass a socket ping before the real server takes connections
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-pmapchat"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-pmapchat"]
       interval: 3s
       retries: 30
 
