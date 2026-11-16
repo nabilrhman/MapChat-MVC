@@ -59,39 +59,20 @@ https://github.com/user-attachments/assets/06384a18-cd12-4e27-8cf0-530ab2463569
 
 ## Features
 
-- One shared chat room for everyone who is signed in. New messages show up
-  the moment they're sent, over a WebSocket.
-- Private chats: click someone's name to talk to just them, in a tab of its
-  own, with a count of the messages you haven't seen yet. Reading them in one
-  browser tab clears the count in your others, and "Typing..." shows while
-  the other person is writing to you.
-- Who's online updates as people come and go, on the list and on the map.
-- MapChat, the room's AI, and the AI characters on the map: see
+- One open chat room for everyone signed in, live over a WebSocket.
+- Private chats in tabs of their own, with unread counts and "Typing...".
+- @mentions: type @ to pick someone; mentions show as chips.
+- A map with a pin for each person online, at city level, never an exact
+  location, with their local time and a sun or moon.
+- Hover someone, or a message's city, to point out their pin; click the city
+  to fly the map to it. The night side of the world is shaded.
+- Anyone can hide their pin and city from the map.
+- MapChat, the room's AI, and AI characters who chat back: see
   [AI chat](#ai-chat).
-- @mentions in the room: type @ to pick someone. Mentions show as chips, your
-  own stand out, and a mention in a tab you're not looking at turns its count
-  purple.
-- Names show as first names. Signed-up people can pick a nickname, which shows
-  instead and is what others @mention them by. Guests stay "Guest 1234".
-- A map with a pin for each person online, placed by their IP address at
-  roughly city level. Nobody's exact location is ever shown. A pin's label
-  shows their city and local time, with a sun or moon; hovering someone in
-  the list or a message's city points their pin out, and clicking the city
-  brings it to the middle of the map.
-- The side of the world where it's night is shaded, and it moves with the
-  sun.
-- Anyone can hide their pin and city from the map in their profile.
-- On phones the map starts hidden to give the chat the room. A button shows
-  it above the chat, and the chat can then fold down to its tabs to give the
-  map the whole screen.
-- Visitors can try it as a guest without signing up. Guest accounts and their
-  messages are deleted after 24 hours, unless the guest sets an email and
-  password in their profile to keep the account.
-- Accounts with email activation and password reset. Without email configured,
-  new accounts are active straight away.
-- Profiles with a name and an avatar.
-- Limits that keep one person from flooding the room: messages are at most 500
-  characters, and each person can send 30 a minute (10 for guests).
+- Try it as a guest without signing up; guest accounts last 24 hours unless
+  kept.
+- Accounts with email activation, password reset, nicknames and avatars.
+- Works on phones, where the map folds away to give the chat the room.
 
 ## AI chat
 
@@ -102,36 +83,24 @@ the characters only follow their script.
 **MapChat**, the room's own account, pinned on Null Island:
 
 - Says hello when someone walks into a quiet room, once a day per person.
-- Answers someone nobody else answered: at once if nobody else is online,
-  otherwise after giving others 45 seconds.
-- Keeps a conversation going without being @mentioned, and steps back as soon
-  as people talk to each other. An @MapChat always gets an answer.
+- Answers someone nobody else answered, giving others 45 seconds first.
+- Keeps a conversation going, and steps back when people talk to each other.
+  An @MapChat always gets an answer.
 - Answers private messages.
 
 **The characters**, the nine people on the map, are AI too. Through
 the day they play out stories from `database/demo-chat.php`, and:
 
-- @mention one in the room, or message them privately, and they answer in
-  character, coming online first if they were away.
-- While a guest talks with one in the room, the story waits, and goes on from
-  where it was once that conversation goes quiet.
-- Asked whether they're real, they say they're MapChat's digital characters,
-  written by AI.
+- @mention one, or message them privately, and they answer in character,
+  remembering what's happened in their stories so far.
+- While a guest talks with one, the story waits for them.
+- Asked whether they're real, they say they're AI.
 
-Both of them:
-
-- Tag who they're answering (MapChat when other messages came in between, the
-  characters always), keep replies short, and stop asking questions once
-  someone's done chatting.
-- Read only what they need: a room reply reads the room's recent messages, a
-  private reply only that one private chat. That text is sent to Groq,
-  which [says](https://console.groq.com/docs/your-data) it doesn't train on
-  what's sent to its API.
-- Wait their turn as jobs in `mapchat_jobs`, which the chat worker
-  (`bin/chat-worker.php`) runs as they come due, each checked against the room
-  again just before it posts.
-
-The code is in `App/Models/Bot.php`.
+Both keep replies short, tag who they're answering, and stop asking
+questions once someone's done chatting. A room reply reads only the room's
+recent messages, and a private reply only that chat. That text is sent to
+Groq, which [says](https://console.groq.com/docs/your-data) it doesn't train
+on what's sent to its API. The code is in `App/Models/Bot.php`.
 
 ## How it's built
 
@@ -168,49 +137,14 @@ The code is in `App/Models/Bot.php`.
 
 ## Live chat
 
-Each open chat page keeps one WebSocket to `/ws`, on the site's own address.
-Everything the chat does goes over it: new messages, sending, older pages,
-read marks, typing, and who's online. Nothing polls while it's connected.
+Each open chat page keeps one WebSocket, served by a PHP process of its own on
+[amphp](https://amphp.org) in the same container as the site. New messages,
+typing and who's online arrive the moment they happen, nothing is lost or
+shown twice across reconnects and deploys, and if the socket can't connect the
+page falls back to checking every second over HTTP.
 
-- **One reader for everyone.** The chat socket (`bin/chat-socket.php`,
-  `App/ChatSocket/`) reads new messages from MySQL in id order and sends each
-  to the pages allowed to see it: the open room's to everyone, a private one
-  only to its sender's and recipient's pages. Every process that saves a
-  message (PHP-FPM, the worker, the socket itself) signals it over local UDP,
-  so it's read at once; without a signal it's read within half a second.
-- **Sending.** A page sends each message with an id it made, and the server
-  answers once the message is in the database. If the answer is lost, the page
-  sends it again with the same id after reconnecting, and gets back the first
-  message instead of a second copy (a unique key on `chats.client_id`).
-- **Reconnecting.** A page says which message it has last whenever it
-  connects, and is caught up from MySQL from there, a page of 100 at a time,
-  before new messages go straight to it. So a dropped network, a restart or a
-  deploy loses nothing, and each message shows once and in order. A page that
-  can't keep up is cut and catches up the same way.
-- **Falling back.** If the socket can't connect twice in a row, the page goes
-  back to asking every second over HTTP, and keeps trying the socket; once it
-  connects, polling stops. Both ways resume from the same last message.
-- **Who's online.** Someone is online while any of their tabs has a socket
-  open, and for 10 seconds after their last one closes, so a reload or a brief
-  drop doesn't show them leaving. The socket pings each page every 10 seconds
-  and drops one that misses three.
-- **Typing.** "Typing..." goes only to the other person in a private chat,
-  never the text, at most every 2 seconds, and stops after 6 without a key, on
-  sending, on switching chats, or when the tab closes.
-- **Who's let in.** Only pages from the site itself (checked by Origin), with
-  a logged-in session cookie, as the HTTP chat. Every action is the session's
-  user's, checked again by the server, and logging out (or a guest account
-  expiring) closes the socket within 15 seconds. Messages over 16 KB, anything
-  but JSON text, and floods are refused.
-
-The container's main process (`docker/start.sh`) starts PHP-FPM and Apache at
-once, brings the database up to date (`database/migrate.php`), then starts
-the chat socket and the chat worker, and starts either again a second after
-it stops. On SIGTERM, a deploy or a restart, the socket closes every page's
-socket with "restarting" and the pages reconnect to the new container within
-a few seconds, at random, so they don't all arrive at once. The chat worker
-does what each poll used to set off: MapChat's due replies every second, and
-the demo people's due lines every minute.
+How it works, from sending and reconnecting to who's let in, is in
+[docs/live-chat.md](docs/live-chat.md).
 
 ## Run it locally
 
@@ -223,13 +157,10 @@ docker compose up --build
 
 Open http://localhost:8080 and either sign up or press **Try it as a guest**.
 
-Nine made-up people around the world, from `database/demo.sql`, keep the chat
-and the map from looking empty. Through the day they post a few running stories
-and short chats from `database/demo-chat.php`, slowly and in a new order each
-day, though each day opens with them talking about the map right after the
-MapChat welcome; their messages from earlier days are cleared. Their accounts can't be
-logged into. To start with an empty room instead, remove the `demo.sql` line
-from `docker-compose.yml`.
+Nine made-up people around the world (`database/demo.sql`) keep the chat and
+the map from looking empty, playing out the day's stories from
+`database/demo-chat.php`. To start with an empty room instead, remove the
+`demo.sql` line from `docker-compose.yml`.
 
 With a Groq key (free at console.groq.com) as `GROQ_API_KEY` in `.env`,
 MapChat and the demo people chat back; see [AI chat](#ai-chat).
@@ -302,23 +233,18 @@ MySQL-compatible service.
    `CLOUDINARY_CLOUD_NAME` / `CLOUDINARY_UPLOAD_PRESET` for avatar uploads,
    and `GROQ_API_KEY` for MapChat and the demo people to chat back.
 
-The chat socket runs in the same container as the site, so it needs no
-service, port or address of its own: Render's HTTPS address carries
-`wss://…/ws` to Apache, which passes it on. It's one process for one
-container; more than one instance would need the instances to share new
-messages with each other, which it doesn't do.
+The chat socket needs no service of its own: Render's HTTPS address carries
+`wss://…/ws` to it. It runs as one instance; see
+[docs/live-chat.md](docs/live-chat.md).
 
 Free Render services sleep after 15 minutes without visitors, so the first visit
 after a quiet spell takes about a minute. To prevent that, the `Keep awake` GitHub
 Actions workflow requests `/health.txt` every 10 minutes. A service that never
 sleeps uses about 744 of the 750 free hours Render gives each workspace a month.
 
-A database made before later features (private messages, local times,
-countries, nicknames, MapChat's replies, the live chat's `chats.client_id` and
-`pair` index) is brought up to date by the container itself when it starts
-(`database/migrate.php`, which adds the `mapchat_jobs` table and any missing
-columns and indexes, one change per statement, as TiDB needs). The oldest of
-them, to add by hand:
+An older database is brought up to date by the container when it starts
+(`database/migrate.php`). The oldest changes, from before that, are added by
+hand:
 
 ```sql
 ALTER TABLE chats
@@ -355,6 +281,7 @@ tests/           PHPUnit tests
 docs/images/     The video, screenshots and diagram in this README
 docs/diagrams/   Draws the diagram: node docs/diagrams/draw.ts
 docs/video/      Records the tour at the top: python3 docs/video/record.py
+docs/live-chat.md How the live chat works
 docs/load-test.* The load test and its report, with raw results in docs/load-test-results/
 ```
 
