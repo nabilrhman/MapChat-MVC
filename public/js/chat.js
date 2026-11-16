@@ -83,6 +83,7 @@ function slideTabs(change) {
     const leftsBefore = tabs.map((tab) => tab.getBoundingClientRect().left);
 
     change();
+    keepOpenTabWhole();
 
     const shiftedTabs = [];
     tabs.forEach((tab, index) => {
@@ -171,26 +172,27 @@ function addTab(conversation, name) {
     return tab;
 }
 
-// Scroll the tab row, and nothing else, so the whole tab shows. scrollIntoView
-// also scrolled the page, and measured a new tab while it was still growing
-// in; its layout box is already full size
-function scrollTabIntoView(tab, behavior = SCROLL_BEHAVIOR) {
-    const left = tab.offsetParent === chatTabs ? tab.offsetLeft : tab.offsetLeft - chatTabs.offsetLeft;
-    const right = left + tab.offsetWidth;
+// The open tab is always shown whole, close button and all, however the
+// tabs before it grew (an unread count) or went. Only the tab row scrolls,
+// at once; slideTabs glides the tabs from where they were. By layout
+// position, which a tab growing in already has in full (the row is its
+// offsetParent, as it's transformed)
+function keepOpenTabWhole() {
+    const tab = chatTabs.querySelector('.chat-tab.is-active:not(.is-leaving)');
+    if (!tab) return;
 
+    const left = tab.offsetLeft;
+    const right = left + tab.offsetWidth;
     if (left < chatTabs.scrollLeft) {
-        chatTabs.scrollTo({left, behavior});
+        chatTabs.scrollLeft = left;
     } else if (right > chatTabs.scrollLeft + chatTabs.clientWidth) {
-        chatTabs.scrollTo({left: right - chatTabs.clientWidth, behavior});
+        chatTabs.scrollLeft = right - chatTabs.clientWidth;
     }
 }
 
-// The open tab stays whole when the row gets narrower (a smaller window,
-// the people list opening beside it)
-new ResizeObserver(() => {
-    const activeTab = chatTabs.querySelector('.chat-tab.is-active');
-    if (activeTab) scrollTabIntoView(activeTab, 'instant');
-}).observe(chatTabs);
+// And when the row itself gets narrower (a smaller window, the people
+// list opening beside it)
+new ResizeObserver(keepOpenTabWhole).observe(chatTabs);
 
 function showConversation(conversation) {
     // Switching chats stops "typing" in the one you leave
@@ -200,8 +202,8 @@ function showConversation(conversation) {
     chatTabs.querySelectorAll('.chat-tab').forEach((tab) => tab.classList.remove('is-active'));
     const tab = getTab(activeConversation);
     tab.classList.add('is-active');
+    // Also shows the tab whole (keepOpenTabWhole)
     clearUnreadCount(tab);
-    scrollTabIntoView(tab);
 
     getChats().forEach((chat) => {
         chat.style.display = getConversation(chat) === activeConversation ? '' : 'none';
