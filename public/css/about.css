@@ -151,6 +151,15 @@
     font-size: var(--icon-size);
 }
 
+/* Every icon in the same 20/24-wide column, centred in it, whatever its own
+   blank sides (--icon-bearing): so each title starts at the same place, and
+   the dots below sit under the icon's middle. Two classes, to win over
+   .icon--map-point and the like in styles.css */
+.about-card__title .about-card__icon
+{
+    margin-inline: calc(var(--icon-size) * -2 / 24);
+}
+
 /* A small purple dot before each point, right under the middle of the
    heading's icon, with the text lined up under the heading's words. The
    icon is drawn 20/24 of its size wide, its blank sides taken back (.icon) */
