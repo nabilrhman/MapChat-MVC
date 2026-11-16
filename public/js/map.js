@@ -289,7 +289,7 @@ const pinLabelsByUserId = new Map();
 
 // Clicking a message's city zooms in at least this far, to the region around the pin
 const FOCUS_PIN_ZOOM = 4;
-// ...in this long, starting gently, speeding up, then settling into place
+// ...in this long; the vector map starts gently, speeds up, then settles
 const FOCUS_DURATION = 800;
 const easeInOut = (progress) => (progress < 0.5 ? 4 * progress ** 3 : 1 - (-2 * progress + 2) ** 3 / 2);
 // Set once the map has its pins; a pin asked for before then is focused once it does
@@ -592,45 +592,6 @@ function createThemedTileLayer() {
     });
 }
 
-// Leaflet's own flyTo only slows down at the end, so it lurches off. This
-// moves the map frame by frame on easeInOut instead, the way flyTo itself
-// does in Leaflet 1.9.4: _moveStart, _move each frame, _moveEnd, and each
-// frame kept in _flyToFrame, so whatever stops a flight stops this too (a
-// drag, a zoom, the next city clicked) instead of two moves fighting and
-// leaving tiles unloaded. What's eased is where the pin is on screen, which
-// the eye follows: easing the centre and zoom instead makes the pin crawl,
-// then race, as zooming in magnifies the distance
-function easeTileMapTo(map, latLng, zoom, padding) {
-    const size = map.getSize();
-    // The pin ends in the middle of the part the panels leave showing
-    const endPoint = L.point(
-        padding.left + (size.x - padding.left - padding.right) / 2,
-        padding.top + (size.y - padding.top - padding.bottom) / 2,
-    );
-    const startPoint = map.latLngToContainerPoint(latLng);
-    const startZoom = map.getZoom();
-    const startTime = performance.now();
-
-    // The centre that puts the pin at this point at this zoom
-    const getCenter = (point, frameZoom) => map.unproject(map.project(latLng, frameZoom).subtract(point.subtract(size.divideBy(2))), frameZoom);
-
-    map._stop();
-    map._moveStart(true, false);
-    const moveFrame = (now) => {
-        const progress = Math.min(1, (now - startTime) / FOCUS_DURATION);
-        if (progress === 1) {
-            map._move(getCenter(endPoint, zoom), zoom)._moveEnd(true);
-            return;
-        }
-        const eased = easeInOut(progress);
-        const frameZoom = startZoom + (zoom - startZoom) * eased;
-        const point = startPoint.add(endPoint.subtract(startPoint).multiplyBy(eased));
-        map._move(getCenter(point, frameZoom), frameZoom, {flyTo: true});
-        map._flyToFrame = requestAnimationFrame(moveFrame);
-    };
-    map._flyToFrame = requestAnimationFrame(moveFrame);
-}
-
 // Credits beside the people list (see chat.css); the tiles add theirs to it.
 // On phones it's an "i" that opens on tap, like MapLibre's
 function addTileCredits(map) {
@@ -663,8 +624,19 @@ function addTilePin(map, location, shouldAnimate) {
     };
     pinLabelsByUserId.set(String(location.user_id), {
         show: showTooltip,
+        // Leaflet's own flight, which keeps its tiles in step; it slows into
+        // place but doesn't ease off. Driving it frame by frame for that
+        // left tiles unloaded or drawn off to the side. A bounds of one point,
+        // as only fitting bounds takes the map's padding here
         focus: () => {
-            easeTileMapTo(map, getLatLng(location), Math.max(map.getZoom(), FOCUS_PIN_ZOOM), getMapPadding());
+            const latLng = getLatLng(location);
+            const padding = getMapPadding();
+            map.flyToBounds([latLng, latLng], {
+                paddingTopLeft: [padding.left, padding.top],
+                paddingBottomRight: [padding.right, padding.bottom],
+                maxZoom: Math.max(map.getZoom(), FOCUS_PIN_ZOOM),
+                duration: FOCUS_DURATION / 1000,
+            });
             showTooltip(getLabelOffset(marker.getElement().querySelector('.map-pin')));
         },
         // Back to the usual height, for a plain hover on the pin
