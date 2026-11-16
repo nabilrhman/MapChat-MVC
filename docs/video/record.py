@@ -34,15 +34,14 @@ FPS = 60
 # A frame unchanged for longer than this is shown for only this long
 LONGEST_STILL = 1.0
 
-# The pointer: a classic arrow, and a pointing hand over anything
-# clickable. It presses in on a click, sends out a soft ring, and is put
-# back where the last page left it
+# The pointer: a rounded arrow, and a pointing hand over anything
+# clickable. It's put back where the last page left it
 CURSOR_JS = """
 (() => {
-    const ARROW = '<svg width="24" height="30" viewBox="0 0 24 30"><path d="M4.5 3.2v19.6c0 .9 1 1.3 1.7.7l4.3-4.1 3.1 7.1c.3.6 1 .9 1.6.6l2.1-.9c.6-.3.9-1 .6-1.6l-3-6.9h6c.9 0 1.4-1.1.7-1.7L6.2 2.5c-.7-.6-1.7-.1-1.7.7z" fill="#16131f" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/></svg>';
+    const ARROW = '<svg width="26" height="30" viewBox="0 0 26 30"><path d="M5.6 4.4c-.9-.4-1.8.5-1.4 1.4l7.4 18.2c.4 1 1.8.9 2.1-.1l2.2-6.7c.1-.4.4-.7.8-.8l6.7-2.2c1-.3 1.1-1.7.1-2.1z" fill="#1b1530" stroke="#fff" stroke-width="2.2" stroke-linejoin="round"/></svg>';
     const HAND = '<svg width="26" height="30" viewBox="0 0 26 30"><path d="M9.2 14.5V4.6a2 2 0 0 1 4 0v8.2-1.6a2 2 0 0 1 4 0v2.2-.9a2 2 0 0 1 4 0v6.8c0 5.3-3.4 9-8.4 9h-.8c-3.2 0-5.4-1.3-7.2-4.2l-3-5a2 2 0 0 1 3.2-2.4l3 3.2z" fill="#fff" stroke="#16131f" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/><path d="M13.2 13v4.8M17.2 13.5v4.3" stroke="#16131f" stroke-width="1.4" stroke-linecap="round"/></svg>';
     // Where each one's tip is in its box
-    const TIPS = {arrow: [4.5, 3], hand: [11.2, 2.6]};
+    const TIPS = {arrow: [5, 4], hand: [11.2, 2.6]};
     const start = window.name.startsWith('cursor:') ? window.name.slice(7).split(',').map(Number) : [720, 450];
     function make() {
         const cursor = document.createElement('div');
@@ -71,14 +70,16 @@ CURSOR_JS = """
             show(getComputedStyle(event.target).cursor === 'pointer' ? 'hand' : 'arrow');
             place(event.clientX, event.clientY);
         }, true);
+        // A click presses the pointer in a little and sends a thin purple
+        // ring out from its tip, with a faint white edge so it shows on the map
         document.addEventListener('mousedown', (event) => {
-            inner.style.transform = 'scale(.85)';
-            setTimeout(() => { inner.style.transform = ''; }, 140);
+            inner.style.transform = 'scale(.84)';
+            setTimeout(() => { inner.style.transform = ''; }, 150);
             const ring = document.createElement('div');
-            ring.style.cssText = `position:fixed;left:${event.clientX - 20}px;top:${event.clientY - 20}px;width:40px;height:40px;border-radius:50%;background:rgba(103,58,183,.22);border:2px solid rgba(103,58,183,.55);z-index:2147483646;pointer-events:none;transition:transform .5s cubic-bezier(.2,.7,.3,1),opacity .5s ease-out;transform:scale(.2)`;
+            ring.style.cssText = `position:fixed;left:${event.clientX - 22}px;top:${event.clientY - 22}px;width:44px;height:44px;box-sizing:border-box;border-radius:50%;border:2px solid rgba(103,58,183,.9);box-shadow:0 0 0 1px rgba(255,255,255,.8);z-index:2147483646;pointer-events:none;transition:transform .45s cubic-bezier(.2,.7,.3,1),opacity .45s ease-out;transform:scale(.23)`;
             document.documentElement.appendChild(ring);
             requestAnimationFrame(() => requestAnimationFrame(() => { ring.style.transform = 'scale(1)'; ring.style.opacity = '0'; }));
-            setTimeout(() => ring.remove(), 650);
+            setTimeout(() => ring.remove(), 600);
         }, true);
     }
     if (document.documentElement) make(); else document.addEventListener('DOMContentLoaded', make);
