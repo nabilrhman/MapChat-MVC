@@ -41,7 +41,9 @@ In 2026 I came back to it to bring parts of it up to date, and I'm still at it.
 sleeps when nobody visits; a GitHub Actions workflow visits it every 10 minutes
 so it stays awake.
 
-![The chat room with the map of who is chatting from where](docs/images/mapchat-app.png)
+https://github.com/user-attachments/assets/d312ad92-d16d-4f82-b536-26b906ce4991
+
+<sub>A tour at 60fps: the map and its pins, an @mention, a private chat, and real replies from the AI characters. Also in <a href="docs/images/mapchat-tour.mp4">docs/images/mapchat-tour.mp4</a>.</sub>
 
 | Log in, or try it as a guest | Profile |
 |---|---|
@@ -346,8 +348,9 @@ database/        init.sql (schema and welcome messages), demo.sql (optional
                  migrate.php (adds columns an older database is missing, run
                  when the container starts)
 tests/           PHPUnit tests
-docs/images/     The screenshots and diagram in this README
+docs/images/     The video, screenshots and diagram in this README
 docs/diagrams/   Draws the diagram: node docs/diagrams/draw.ts
+docs/video/      Records the tour at the top: python3 docs/video/record.py
 docs/load-test.* The load test and its report, with raw results in docs/load-test-results/
 ```
 
