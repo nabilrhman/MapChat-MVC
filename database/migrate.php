@@ -1,8 +1,11 @@
 <?php
 
 /**
- * Adds columns an older database is missing. The container runs this alongside
- * Apache when it starts: php database/migrate.php
+ * Brings an older database up to date with init.sql (App\Models\Schema::upgrade):
+ * adds the tables, columns and indexes it's missing, gives the demo people
+ * their country and time zone, drops their old picture files and puts the
+ * bot on the map. The container runs this alongside Apache when it starts:
+ * php database/migrate.php
  */
 require dirname(__DIR__) . '/vendor/autoload.php';
 

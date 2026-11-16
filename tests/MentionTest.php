@@ -12,10 +12,10 @@ class MentionTest extends TestCase
 {
     public function testFindsTheWholeNameInAnyCase()
     {
-        $this->assertTrue(Mention::has('hey @mapchat, where are you?', 'MapChat'));
-        $this->assertTrue(Mention::has('@Maya Thompson hi', 'Maya Thompson'));
-        $this->assertFalse(Mention::has('@MapChatty hi', 'MapChat'));
-        $this->assertFalse(Mention::has('MapChat hi', 'MapChat'));
+        $this->assertTrue(Mention::isMentionedIn('hey @mapchat, where are you?', 'MapChat'));
+        $this->assertTrue(Mention::isMentionedIn('@Maya Thompson hi', 'Maya Thompson'));
+        $this->assertFalse(Mention::isMentionedIn('@MapChatty hi', 'MapChat'));
+        $this->assertFalse(Mention::isMentionedIn('MapChat hi', 'MapChat'));
     }
 
     public function testMarksMentionsAsChipsAndEscapesTheRest()
@@ -44,10 +44,10 @@ class MentionTest extends TestCase
 
     public function testFirstNamesCountExceptForGuests()
     {
-        $this->assertTrue(Mention::has('hi @maya!', 'Maya Thompson'));
-        $this->assertTrue(Mention::has('hi @Maya Thompson', 'Maya Thompson'));
-        $this->assertFalse(Mention::has('hi @Guest', 'Guest 2189', null, true));
-        $this->assertTrue(Mention::has('hi @guest 2189', 'Guest 2189', null, true));
+        $this->assertTrue(Mention::isMentionedIn('hi @maya!', 'Maya Thompson'));
+        $this->assertTrue(Mention::isMentionedIn('hi @Maya Thompson', 'Maya Thompson'));
+        $this->assertFalse(Mention::isMentionedIn('hi @Guest', 'Guest 2189', null, true));
+        $this->assertTrue(Mention::isMentionedIn('hi @guest 2189', 'Guest 2189', null, true));
     }
 
     public function testMarksTheReadersFirstNameAsTheirs()
@@ -59,16 +59,16 @@ class MentionTest extends TestCase
 
     public function testANicknameTakesThePlaceOfTheFirstName()
     {
-        $this->assertSame('zee', Mention::handle('Zainab Ali', 'zee'));
-        $this->assertTrue(Mention::has('hi @Zee', 'Zainab Ali', 'zee'));
-        $this->assertTrue(Mention::has('hi @Zainab Ali', 'Zainab Ali', 'zee'));
-        $this->assertFalse(Mention::has('hi @Zainab', 'Zainab Ali', 'zee'));
+        $this->assertSame('zee', Mention::shownName('Zainab Ali', 'zee'));
+        $this->assertTrue(Mention::isMentionedIn('hi @Zee', 'Zainab Ali', 'zee'));
+        $this->assertTrue(Mention::isMentionedIn('hi @Zainab Ali', 'Zainab Ali', 'zee'));
+        $this->assertFalse(Mention::isMentionedIn('hi @Zainab', 'Zainab Ali', 'zee'));
     }
 
     public function testGuestsKeepTheirGuestName()
     {
-        $this->assertSame('Guest 2189', Mention::handle('Guest 2189', 'sunny', true));
-        $this->assertFalse(Mention::has('hi @sunny', 'Guest 2189', 'sunny', true));
+        $this->assertSame('Guest 2189', Mention::shownName('Guest 2189', 'sunny', true));
+        $this->assertFalse(Mention::isMentionedIn('hi @sunny', 'Guest 2189', 'sunny', true));
     }
 
     public function testMarksTheReadersNicknameAsTheirs()

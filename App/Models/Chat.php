@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use PDO;
+use App\ChatSocket\Signal;
+use App\Mention;
 
 /**
  * Chat messages: the open room and private messages
@@ -21,7 +23,7 @@ class Chat extends \Core\Model
     /** Most messages sent to the page at once: when it opens, checks for new ones or asks for older ones */
     const HISTORY = 100;
 
-    // Private chats the page opens a tab for, however busy the room has been
+    /** Private chats the page opens a tab for, however busy the room has been */
     const CONVERSATIONS = 20;
 
     /** The MapChat account: the welcome messages, and it chats back (Bot) */
@@ -31,14 +33,19 @@ class Chat extends \Core\Model
     const CLIENT_ID_PATTERN = '/^[A-Za-z0-9-]{8,36}$/';
 
     /**
-     * How many messages this person sent in the last few seconds
-     *
-     * @param string $email
-     * @param int $seconds
-     *
-     * @return int
+     * The messages a viewer may see, each kind read from its own index, so
+     * other people's private messages are never scanned past: the open
+     * room, to them, and from them
      */
-    public static function countRecent($email, $seconds)
+    const VISIBLE_TO_VIEWER = ['to_email IS NULL', 'to_email = :viewer', 'email = :viewer AND to_email IS NOT NULL'];
+
+    /** One private chat's messages, either way */
+    const BETWEEN_VIEWER_AND_PARTNER = ['to_email = :viewer AND email = :partner', 'to_email = :partner AND email = :viewer'];
+
+    /**
+     * How many messages this person sent in the last few seconds
+     */
+    public static function countRecent(string $email, int $seconds): int
     {
         $sql = 'SELECT COUNT(*) FROM chats
                 WHERE email = :email
@@ -58,14 +65,12 @@ class Chat extends \Core\Model
      * Sending with the same client id again gives back the message saved the
      * first time, so a page that lost the reply can safely try again
      *
-     * @param User $sender
-     * @param string $body
      * @param int|null $toUserId The recipient's id, or null for the open room
      * @param string|null $clientId The sending page's id for this message
      *
-     * @return array ['id' => the message's id], or ['status' => HTTP status, 'error' => shown to the sender]
+     * @return array{id: int}|array{status: int, error: string} The message's id, or an HTTP status and what to show the sender
      */
-    public static function sendFrom($sender, $body, $toUserId = null, $clientId = null)
+    public static function sendFrom(User $sender, string $body, ?int $toUserId = null, ?string $clientId = null): array
     {
         if ($clientId !== null && !preg_match(static::CLIENT_ID_PATTERN, $clientId)) {
             return ['status' => 400, 'error' => 'Your message could not be sent.'];
@@ -98,16 +103,15 @@ class Chat extends \Core\Model
         if ($toUserId !== null) {
             $recipient = User::findByID($toUserId);
 
-            if (!$recipient || $recipient->id == $sender->id || ($recipient->email === static::BOT_EMAIL && !Bot::canReply())) {
+            if (!$recipient || $recipient->id === $sender->id || ($recipient->email === static::BOT_EMAIL && !Bot::canReply())) {
                 return ['status' => 400, 'error' => 'You can\'t message this person.'];
             }
 
             $toEmail = $recipient->email;
         }
 
-        $chat = new static(['email' => $sender->email, 'to_email' => $toEmail, 'body' => $body, 'client_id' => $clientId]);
         try {
-            $chat->send();
+            $id = static::save($sender->email, $toEmail, $body, $clientId);
         } catch (\PDOException $e) {
             // The same message sent twice at once, from two tries: the other one saved it
             $savedId = $clientId === null ? null : static::findSent($sender->email, $clientId);
@@ -117,8 +121,7 @@ class Chat extends \Core\Model
             throw $e;
         }
 
-        $id = (int) static::lastId();
-        Bot::heard($sender->email, $id, $toEmail, $body);
+        Bot::onMessage($sender->email, $id, $toEmail, $body);
 
         return ['id' => $id];
     }
@@ -126,12 +129,9 @@ class Chat extends \Core\Model
     /**
      * The message a person already sent with this client id, if any
      *
-     * @param string $email
-     * @param string $clientId
-     *
      * @return int|null Its id
      */
-    protected static function findSent($email, $clientId)
+    protected static function findSent(string $email, string $clientId): ?int
     {
         $stmt = static::getDB()->prepare('SELECT id FROM chats WHERE email = :email AND client_id = :client_id');
         $stmt->bindValue(':email', $email, PDO::PARAM_STR);
@@ -144,44 +144,29 @@ class Chat extends \Core\Model
     }
 
     /**
-     * Save the message
+     * Save a message as it is, without the room's rules (sendFrom has
+     * those), and tell the chat socket
      *
-     * @return boolean  True if the message was saved
+     * @param string|null $toEmail The recipient, or null for the open room
+     * @param string|null $clientId The sending page's id for this message
+     *
+     * @return int The message's id
      */
-    public function send()
+    public static function save(string $email, ?string $toEmail, string $body, ?string $clientId = null): int
     {
-        // Only named when there is one, so a page sending before the
-        // column is added (database/migrate.php) still works
-        $hasClientId = isset($this->client_id);
-
         // Stored as typed; Twig escapes it when the chat is shown
-        $sql = 'INSERT INTO chats (email, to_email, body' . ($hasClientId ? ', client_id' : '') . ')
-                    VALUES (:email, :to_email, :body' . ($hasClientId ? ', :client_id' : '') . ')';
+        $db = static::getDB();
+        $stmt = $db->prepare('INSERT INTO chats (email, to_email, body, client_id) VALUES (:email, :to_email, :body, :client_id)');
+        $stmt->bindValue(':email', $email, PDO::PARAM_STR);
+        $stmt->bindValue(':to_email', $toEmail, PDO::PARAM_STR);
+        $stmt->bindValue(':body', $body, PDO::PARAM_STR);
+        $stmt->bindValue(':client_id', $clientId, PDO::PARAM_STR);
+        $stmt->execute();
 
-        $stmt = static::getDB()->prepare($sql);
-        $stmt->bindValue(':body', $this->body, PDO::PARAM_STR);
-        $stmt->bindValue(':email', $this->email, PDO::PARAM_STR);
-        $stmt->bindValue(':to_email', $this->to_email ?? null, PDO::PARAM_STR);
-        if ($hasClientId) {
-            $stmt->bindValue(':client_id', $this->client_id, PDO::PARAM_STR);
-        }
+        $id = (int) $db->lastInsertId();
+        Signal::newMessages();
 
-        $isSaved = $stmt->execute();
-        if ($isSaved) {
-            \App\ChatSocket\Signal::newMessages();
-        }
-
-        return $isSaved;
-    }
-
-    /**
-     * The id of the message this request saved last
-     *
-     * @return string
-     */
-    public static function lastId()
-    {
-        return static::getDB()->lastInsertId();
+        return $id;
     }
 
     /**
@@ -189,24 +174,11 @@ class Chat extends \Core\Model
      *
      * @param string $viewer The viewer's email
      *
-     * @return array
+     * @return array[] Message rows, as selectSql gives them
      */
-    public static function getRecent($viewer)
+    public static function getRecent(string $viewer): array
     {
-        // Each kind of message is read from its own index, so other people's
-        // private messages are never scanned past
-        $limit = ' ORDER BY id DESC LIMIT ' . static::HISTORY;
-        $sql = static::selectSql() . '
-                JOIN (
-                    (SELECT id FROM chats WHERE to_email IS NULL' . $limit . ')
-                    UNION ALL
-                    (SELECT id FROM chats WHERE to_email = :viewer' . $limit . ')
-                    UNION ALL
-                    (SELECT id FROM chats WHERE email = :viewer AND to_email IS NOT NULL' . $limit . ')
-                   ' . $limit . '
-                ) AS recent
-                ON recent.id = chats.id
-                ORDER BY chats.id';
+        $sql = static::pageSql(static::VISIBLE_TO_VIEWER, '', 'DESC');
 
         $stmt = static::getDB()->prepare($sql);
         $stmt->bindValue(':viewer', $viewer, PDO::PARAM_STR);
@@ -221,11 +193,11 @@ class Chat extends \Core\Model
      * not hold those messages: a busy room pushes them out of the newest page
      *
      * @param string $viewer The viewer's email
-     * @param int $upToId The page's newest message; the chat's polling brings later ones
+     * @param int $upToId The page's newest message; the chat brings later ones
      *
-     * @return array
+     * @return array[] Each with user_id, name, nickname, is_guest, newest_id, unread and shown_name
      */
-    public static function getConversations($viewer, $upToId)
+    public static function getConversations(string $viewer, int $upToId): array
     {
         $sql = 'SELECT users.id AS user_id, users.name, users.nickname, users.is_guest,
                        MAX(private.id) AS newest_id, SUM(private.is_unread) AS unread
@@ -247,7 +219,7 @@ class Chat extends \Core\Model
         $stmt->bindValue(':up_to_id', $upToId, PDO::PARAM_INT);
         $stmt->execute();
 
-        return \App\Mention::withShownNames($stmt->fetchAll(PDO::FETCH_ASSOC));
+        return Mention::withShownNames($stmt->fetchAll(PDO::FETCH_ASSOC));
     }
 
     /**
@@ -255,12 +227,8 @@ class Chat extends \Core\Model
      * given id. Ones that came later stay unread
      *
      * @param string $viewer The viewer's email
-     * @param int $senderId
-     * @param int $upToId
-     *
-     * @return void
      */
-    public static function markRead($viewer, $senderId, $upToId)
+    public static function markRead(string $viewer, int $senderId, int $upToId): void
     {
         $sql = 'UPDATE chats
                 JOIN users
@@ -280,28 +248,15 @@ class Chat extends \Core\Model
      * Messages the viewer may see that came after the given id, up to a page
      *
      * @param string $viewer The viewer's email
-     * @param int $afterId
      * @param int $upToId The newest id to include; the chat socket stops where its own reading has got to
      *
-     * @return array
+     * @return array[] Message rows, oldest first
      */
-    public static function getAfter($viewer, $afterId, $upToId = PHP_INT_MAX)
+    public static function getAfter(string $viewer, int $afterId, int $upToId = PHP_INT_MAX): array
     {
-        // Read from each kind's own index, as in getRecent. Filtering every
-        // newer message instead made an idle viewer's poll reread all of
-        // other people's private messages each second
-        $after = ' AND id > :after_id AND id <= :up_to_id ORDER BY id LIMIT ' . static::HISTORY;
-        $sql = static::selectSql() . '
-                JOIN (
-                    (SELECT id FROM chats WHERE to_email IS NULL' . $after . ')
-                    UNION ALL
-                    (SELECT id FROM chats WHERE to_email = :viewer' . $after . ')
-                    UNION ALL
-                    (SELECT id FROM chats WHERE email = :viewer AND to_email IS NOT NULL' . $after . ')
-                    ORDER BY id LIMIT ' . static::HISTORY . '
-                ) AS newer
-                ON newer.id = chats.id
-                ORDER BY chats.id';
+        // Filtering every newer message instead made an idle viewer's poll
+        // reread all of other people's private messages each second
+        $sql = static::pageSql(static::VISIBLE_TO_VIEWER, ' AND id > :after_id AND id <= :up_to_id', 'ASC');
 
         $stmt = static::getDB()->prepare($sql);
         $stmt->bindValue(':viewer', $viewer, PDO::PARAM_STR);
@@ -313,24 +268,22 @@ class Chat extends \Core\Model
     }
 
     /**
-     * The page of messages the viewer may see just before the given id,
-     * oldest first
+     * The page of messages the viewer may see just before the given id
      *
      * @param string $viewer The viewer's email
-     * @param int $beforeId
      *
-     * @return array
+     * @return array[] Message rows, oldest first
      */
-    public static function getBefore($viewer, $beforeId)
+    public static function getBefore(string $viewer, int $beforeId): array
     {
-        $sql = static::visibleSql() . ' AND chats.id < :before_id ORDER BY chats.id DESC LIMIT ' . static::HISTORY;
+        $sql = static::pageSql(static::VISIBLE_TO_VIEWER, ' AND id < :before_id', 'DESC');
 
         $stmt = static::getDB()->prepare($sql);
         $stmt->bindValue(':viewer', $viewer, PDO::PARAM_STR);
         $stmt->bindValue(':before_id', $beforeId, PDO::PARAM_INT);
         $stmt->execute();
 
-        return array_reverse($stmt->fetchAll(PDO::FETCH_ASSOC));
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     /**
@@ -339,16 +292,15 @@ class Chat extends \Core\Model
      *
      * @param string $viewer The viewer's email
      * @param string|null $conversation "everyone", the other person's id, or null
-     * @param int $beforeId
      *
-     * @return array
+     * @return array[] Message rows, oldest first
      */
-    public static function getOlder($viewer, $conversation, $beforeId)
+    public static function getOlder(string $viewer, ?string $conversation, int $beforeId): array
     {
         if ($conversation === 'everyone') {
             return static::getRoomBefore($beforeId);
         }
-        if ($conversation !== null && ctype_digit((string) $conversation)) {
+        if ($conversation !== null && ctype_digit($conversation)) {
             return static::getPrivateBefore($viewer, (int) $conversation, $beforeId);
         }
 
@@ -356,22 +308,13 @@ class Chat extends \Core\Model
     }
 
     /**
-     * The page of open-room messages just before the given id, oldest first
+     * The page of open-room messages just before the given id
      *
-     * @param int $beforeId
-     *
-     * @return array
+     * @return array[] Message rows, oldest first
      */
-    public static function getRoomBefore($beforeId)
+    public static function getRoomBefore(int $beforeId): array
     {
-        $sql = static::selectSql() . '
-                JOIN (
-                    SELECT id FROM chats WHERE to_email IS NULL AND id < :before_id ORDER BY id DESC LIMIT ' . static::HISTORY . '
-                ) AS page
-                ON page.id = chats.id
-                ORDER BY chats.id';
-
-        $stmt = static::getDB()->prepare($sql);
+        $stmt = static::getDB()->prepare(static::pageSql(['to_email IS NULL'], ' AND id < :before_id', 'DESC'));
         $stmt->bindValue(':before_id', $beforeId, PDO::PARAM_INT);
         $stmt->execute();
 
@@ -380,34 +323,22 @@ class Chat extends \Core\Model
 
     /**
      * The page of the viewer's private chat with one person just before the
-     * given id, oldest first. Read straight from that chat's index, so a busy
-     * room in between costs nothing
+     * given id. Read straight from that chat's index, so a busy room in
+     * between costs nothing
      *
      * @param string $viewer The viewer's email
      * @param int $partnerId The other person's id
-     * @param int $beforeId
      *
-     * @return array
+     * @return array[] Message rows, oldest first
      */
-    public static function getPrivateBefore($viewer, $partnerId, $beforeId)
+    public static function getPrivateBefore(string $viewer, int $partnerId, int $beforeId): array
     {
         $partner = User::findByID($partnerId);
         if (!$partner) {
             return [];
         }
 
-        $before = ' AND id < :before_id ORDER BY id DESC LIMIT ' . static::HISTORY;
-        $sql = static::selectSql() . '
-                JOIN (
-                    (SELECT id FROM chats WHERE to_email = :viewer AND email = :partner' . $before . ')
-                    UNION ALL
-                    (SELECT id FROM chats WHERE to_email = :partner AND email = :viewer' . $before . ')
-                    ORDER BY id DESC LIMIT ' . static::HISTORY . '
-                ) AS page
-                ON page.id = chats.id
-                ORDER BY chats.id';
-
-        $stmt = static::getDB()->prepare($sql);
+        $stmt = static::getDB()->prepare(static::pageSql(static::BETWEEN_VIEWER_AND_PARTNER, ' AND id < :before_id', 'DESC'));
         $stmt->bindValue(':viewer', $viewer, PDO::PARAM_STR);
         $stmt->bindValue(':partner', $partner->email, PDO::PARAM_STR);
         $stmt->bindValue(':before_id', $beforeId, PDO::PARAM_INT);
@@ -418,76 +349,74 @@ class Chat extends \Core\Model
 
     /**
      * The ids of the messages after the given one, whoever they're for. The
-     * chat socket reads on from here and sends each to whoever may see it
-     *
-     * @param int $afterId
-     * @param int $limit
+     * chat socket and worker read on from here (NewMessageReader)
      *
      * @return int[]
      */
-    public static function getIdsAfter($afterId, $limit)
+    public static function getIdsAfter(int $afterId, int $limit): array
     {
-        $stmt = static::getDB()->prepare('SELECT id FROM chats WHERE id > :after_id ORDER BY id LIMIT ' . (int) $limit);
+        $stmt = static::getDB()->prepare('SELECT id FROM chats WHERE id > :after_id ORDER BY id LIMIT ' . $limit);
         $stmt->bindValue(':after_id', $afterId, PDO::PARAM_INT);
         $stmt->execute();
 
-        return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+        return array_map(intval(...), $stmt->fetchAll(PDO::FETCH_COLUMN));
     }
 
     /**
      * The newest message's id, or 0 in an empty room
-     *
-     * @return int
      */
-    public static function getNewestId()
+    public static function getNewestId(): int
     {
         return (int) static::getDB()->query('SELECT COALESCE(MAX(id), 0) FROM chats')->fetchColumn();
     }
 
     /**
-     * These messages with their sender and recipient, oldest first
+     * These messages with their sender and recipient
      *
+     * @return array[] Message rows, oldest first
      * @param int[] $ids
-     *
-     * @return array
      */
-    public static function getByIds($ids)
+    public static function getByIds(array $ids): array
     {
         if (!$ids) {
             return [];
         }
 
-        $list = implode(', ', array_map('intval', $ids));
-        $stmt = static::getDB()->query(static::selectSql() . " WHERE chats.id IN ($list) ORDER BY chats.id");
+        [$idList, $idParams] = static::inList('id', $ids);
+        $stmt = static::getDB()->prepare(static::selectSql() . " WHERE chats.id IN $idList ORDER BY chats.id");
+        $stmt->execute($idParams);
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     /**
-     * The query for messages the viewer may see: the open room and their own
-     * private ones
+     * The query for one page of messages, oldest first: up to HISTORY ids of
+     * each kind, read from that kind's own index, then the HISTORY nearest
+     * of all of them
      *
-     * @return string
+     * @param string[] $kinds SQL for each kind of message, e.g. VISIBLE_TO_VIEWER
+     * @param string $condition SQL added to each kind's, e.g. ' AND id < :before_id'
+     * @param string $direction ASC for the page just after a point, DESC for the newest or just before
      */
-    protected static function visibleSql()
+    protected static function pageSql(array $kinds, string $condition, string $direction): string
     {
+        $order = " ORDER BY id $direction LIMIT " . static::HISTORY;
+        $selects = array_map(fn ($kind) => "(SELECT id FROM chats WHERE $kind$condition$order)", $kinds);
+
         return static::selectSql() . '
-                WHERE (chats.to_email IS NULL OR chats.to_email = :viewer OR chats.email = :viewer)';
+                JOIN (' . implode(' UNION ALL ', $selects) . $order . ') AS page
+                ON page.id = chats.id
+                ORDER BY chats.id';
     }
 
     /**
      * The query for each message with its sender and recipient, without a filter
-     *
-     * @return string
      */
-    protected static function selectSql()
+    protected static function selectSql(): string
     {
         return 'SELECT chats.id, chats.body, chats.timestamp, chats.to_email, users.id AS user_id, users.name, users.email, users.avatar,
-                       users.email LIKE \'%@demo.mapchat.local\' AS is_demo, users.nickname, users.is_guest,
-                       IF(users.share_location, userinfo.city, NULL) AS city,
-                       IF(users.share_location, userinfo.country, NULL) AS country,
-                       IF(users.share_location, userinfo.lng, NULL) AS lng,
-                       IF(users.share_location, userinfo.timezone, NULL) AS timezone,
+                       ' . DemoChat::isDemoSql() . ' AS is_demo, users.nickname, users.is_guest,
+                       ' . UserInfo::sharedPlaceSql() . ',
                        recipients.id AS to_user_id, recipients.name AS to_name,
                        recipients.nickname AS to_nickname, recipients.is_guest AS to_is_guest
                 FROM chats

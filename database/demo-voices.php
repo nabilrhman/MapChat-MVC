@@ -5,7 +5,7 @@
  * the replies Bot writes for them sound like them. By the start of their
  * email, like the lines there. Only how they talk, never what happens in
  * their stories: that comes from the lines already posted (DemoChat::
- * storiesSoFar), so nobody gives away a story before it gets there.
+ * storiesSoFar), so nobody gives away a story before it gets there
  */
 return [
     'aiko' => 'Gentle and easily delighted by small, specific details. Short, soft lines, a little whimsical, quick to cheer others on and to tease kindly.',
