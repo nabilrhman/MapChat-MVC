@@ -188,7 +188,7 @@ class ChatSocketTest extends TestCase
             if ($message['type'] !== 'chats') {
                 continue;
             }
-            preg_match_all('#data-id="(\d+)"[\s\S]*?<p class="chat__body">([^<]*)</p>#', $message['html'], $matches, PREG_SET_ORDER);
+            preg_match_all('#data-id="(\d+)"[\s\S]*?<p class="body" data-part="message-body">([^<]*)</p>#', $message['html'], $matches, PREG_SET_ORDER);
             foreach ($matches as [, $id, $body]) {
                 $chats[] = [(int) $id, html_entity_decode($body, ENT_QUOTES)];
             }

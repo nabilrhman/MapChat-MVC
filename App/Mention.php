@@ -84,7 +84,7 @@ class Mention
         return preg_replace_callback(
             static::pattern(array_map($escape, $names)),
             function ($match) use ($readerNames) {
-                $class = in_array(mb_strtolower($match[1]), $readerNames, true) ? 'mention mention--me' : 'mention';
+                $class = in_array(mb_strtolower($match[1]), $readerNames, true) ? 'mention me' : 'mention';
                 return '<span class="' . $class . '">' . $match[0] . '</span>';
             },
             $html

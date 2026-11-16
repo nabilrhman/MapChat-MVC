@@ -21,15 +21,15 @@
 
 <body>
 <main class="auth-page">
-    <div class="auth-page__center">
-        <a href="/" class="auth-page__logo pop-in hover-grow" aria-label="MapChat"></a>
-        <h1 class="auth-page__title">{% block heading %}{% endblock %}</h1>
-        <p class="auth-page__subtitle">{% block subheading %}{% endblock %}</p>
+    <div class="center">
+        <a href="/" class="logo pop-in hover-grow" aria-label="MapChat"></a>
+        <h1 class="title">{% block heading %}{% endblock %}</h1>
+        <p class="subtitle">{% block subheading %}{% endblock %}</p>
 
         {# One-time messages ("Check your email…") as a bar above the card #}
         {% for message in flash_messages() %}
-        <div class="auth-notice auth-notice--{{ message.type }}" role="status">
-            {{ icon({success: 'check-circle', warning: 'danger-circle'}[message.type] ?? 'info-circle', 'auth-notice__icon') }}
+        <div class="auth-notice {{ message.type }}" role="status">
+            {{ icon({success: 'check-circle', warning: 'danger-circle'}[message.type] ?? 'info-circle') }}
             <span>{{ message.body }}</span>
         </div>
         {% endfor %}
@@ -37,7 +37,7 @@
         {% block body %}{% endblock %}
     </div>
 
-    <footer class="auth-page__footer">
+    <footer class="footer">
         {{ include('_copyright.html', with_context = false) }}
     </footer>
 </main>

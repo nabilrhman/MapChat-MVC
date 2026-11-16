@@ -12,17 +12,17 @@
 <div class="auth-card">
 
     {# The button is inside the form, so clicking it submits #}
-    <form method="post" id="formPassword" action="/password/reset-password" class="auth-card__form" novalidate>
+    <form method="post" id="formPassword" action="/password/reset-password" novalidate>
 
         <input type="hidden" name="token" value="{{ token }}"/>
 
         {{ text_field({id: 'inputPassword', name: 'password', type: 'password', label: 'New password', required: true, minlength: 6,
                        autocomplete: 'new-password', autofocus: true, hint: '6+ characters, a letter and a number'}, user.errors.password ?? []) }}
 
-        <button type="submit" class="button button--primary button--block auth-card__button">Set new password</button>
+        <button type="submit" class="button primary full-width action">Set new password</button>
     </form>
 
-    <p class="auth-card__switch"><span>Remembered it?</span> <a class="auth-card__switch-link" href="/login">Log in</a></p>
+    <p class="switch-row"><span>Remembered it?</span> <a class="switch-link" href="/login">Log in</a></p>
 </div>
 
 {% endblock %}

@@ -1,6 +1,6 @@
 // Eye button inside password fields: shows or hides what was typed
 document.addEventListener('click', (event) => {
-    const toggle = event.target.closest('.password-toggle');
+    const toggle = event.target.closest('[data-part="password-toggle"]');
     if (!toggle) return;
 
     const input = toggle.parentElement.querySelector('input');
@@ -8,6 +8,6 @@ document.addEventListener('click', (event) => {
 
     input.type = willShowPassword ? 'text' : 'password';
     input.focus();
-    setIcon(toggle.querySelector('.icon'), willShowPassword ? 'eye-closed' : 'eye');
+    setIcon(toggle.querySelector('svg'), willShowPassword ? 'eye-closed' : 'eye');
     toggle.setAttribute('aria-label', willShowPassword ? 'Hide password' : 'Show password');
 });

@@ -13,15 +13,15 @@
 
 <section class="profile-page">
 
-    <h1 class="profile-page__title appear-down">Profile</h1>
-    <div class="divider profile-page__divider"></div>
+    <h1 class="title appear-down">Profile</h1>
+    <div class="divider"></div>
 
     {% if user.is_guest %}
     <div class="guest-banner appear-down">
-        {{ icon('clock-circle', 'guest-banner__icon') }}
-        <strong class="guest-banner__title">Guest account</strong>
-        <span class="guest-banner__note">Deleted in {{ user.guestHoursLeft() }} h along with your messages.</span>
-        <button type="button" class="button button--primary button--small guest-banner__button" id="keep-account">Keep my account</button>
+        {{ icon('clock-circle') }}
+        <strong class="title">Guest account</strong>
+        <span class="note">Deleted in {{ user.guestHoursLeft() }} h along with your messages.</span>
+        <button type="button" class="button primary small keep" id="keep-account">Keep my account</button>
     </div>
     {% endif %}
 
@@ -31,28 +31,28 @@
           data-guest="{{ user.is_guest ? 'true' : 'false' }}" novalidate>
 
         {# Each card shows its details, and Edit turns them into fields with Cancel and Save #}
-        <section class="settings-card" id="card-profile">
-            <div class="settings-card__head">
-                <h2 class="settings-card__title">Profile</h2>
-                <button type="button" class="button button--quiet button--small settings-card__edit-button">Edit</button>
+        <section class="settings-card" id="card-profile" data-part="settings-card">
+            <div class="head">
+                <h2 class="title">Profile</h2>
+                <button type="button" class="button quiet small edit-button" data-part="edit">Edit</button>
             </div>
 
             {# The photo saves as soon as it's uploaded or removed, apart from Save #}
             <div class="profile-photo">
-                <div class="profile-photo__frame" id="photo-frame">
-                    <img class="profile-photo__image" id="avatar" alt="Your photo"
+                <div class="frame" id="photo-frame">
+                    <img class="image" id="avatar" alt="Your photo"
                          src="{{ avatar_src(user.id, user.name, user.avatar) }}"
                          data-default-src="{{ default_avatar|e('html_attr') }}"/>
-                    <span class="loading-dots profile-photo__dots" role="status" aria-label="Uploading"><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span></span>
+                    <span class="loading-dots dots" role="status" aria-label="Uploading"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
                 </div>
                 <div>
                     {# Without the site's own Cloudinary settings there's nowhere to upload to; removing still works #}
                     {% if are_photo_uploads_on %}
-                    <label for="file-upload" class="button button--quiet button--small profile-photo__button">
-                        {{ icon('camera', 'button__icon') }}Change photo
+                    <label for="file-upload" class="button quiet small change">
+                        {{ icon('camera') }}Change photo
                     </label>
                     {% endif %}
-                    <button type="button" class="link-button link-button--danger" id="remove-photo"
+                    <button type="button" class="link-button danger" id="remove-photo"
                             {% if user.avatar is empty %}hidden{% endif %}>Remove</button>
                     {% if are_photo_uploads_on %}
                     <p class="field-hint">JPG, PNG or GIF</p>
@@ -65,16 +65,16 @@
                 </div>
             </div>
 
-            <dl class="settings-card__view">
-                <dt class="settings-card__label">Name</dt>
-                <dd class="settings-card__value">{{ user.name }}</dd>
+            <dl class="view">
+                <dt class="term">Name</dt>
+                <dd class="value">{{ user.name }}</dd>
                 {% if not user.is_guest %}
-                <dt class="settings-card__label">Nickname</dt>
-                <dd class="settings-card__value">{{ user.nickname ?: 'Not set' }}</dd>
+                <dt class="term">Nickname</dt>
+                <dd class="value">{{ user.nickname ?: 'Not set' }}</dd>
                 {% endif %}
             </dl>
 
-            <div class="settings-card__edit">
+            <div class="edit" data-part="fields">
                 {{ text_field({id: 'inputName', name: 'name', label: 'Name', required: true, value: user.name, autocomplete: 'name'}) }}
                 {# Guests stay "Guest" and a number #}
                 {% if not user.is_guest %}
@@ -83,27 +83,27 @@
                 {% endif %}
             </div>
 
-            <div class="settings-card__actions settings-card__edit">
-                <button type="button" class="link-button settings-card__cancel">Cancel</button>
-                <button type="submit" class="button button--primary button--small">Save</button>
+            <div class="actions edit">
+                <button type="button" class="link-button" data-part="cancel">Cancel</button>
+                <button type="submit" class="button primary small">Save</button>
             </div>
         </section>
 
-        <section class="settings-card" id="card-account">
-            <div class="settings-card__head">
-                <h2 class="settings-card__title">Account</h2>
-                <button type="button" class="button button--quiet button--small settings-card__edit-button">Edit</button>
+        <section class="settings-card" id="card-account" data-part="settings-card">
+            <div class="head">
+                <h2 class="title">Account</h2>
+                <button type="button" class="button quiet small edit-button" data-part="edit">Edit</button>
             </div>
 
-            <dl class="settings-card__view">
-                <dt class="settings-card__label">Email</dt>
-                <dd class="settings-card__value">{{ user.is_guest ? 'Not set' : user.email }}</dd>
-                <dt class="settings-card__label">Password</dt>
-                <dd class="settings-card__value">{{ user.is_guest ? 'Not set' : '••••••••' }}</dd>
+            <dl class="view">
+                <dt class="term">Email</dt>
+                <dd class="value">{{ user.is_guest ? 'Not set' : user.email }}</dd>
+                <dt class="term">Password</dt>
+                <dd class="value">{{ user.is_guest ? 'Not set' : '••••••••' }}</dd>
             </dl>
 
             {# A guest's placeholder email isn't shown; they type their own to keep the account #}
-            <div class="settings-card__edit">
+            <div class="edit" data-part="fields">
                 {{ text_field({id: 'inputEmail', name: 'email', type: 'email', label: 'Email', required: not user.is_guest,
                                value: user.is_guest ? '' : user.email, autocomplete: 'email'}) }}
 
@@ -120,36 +120,36 @@
                 {% endif %}
             </div>
 
-            <div class="settings-card__actions settings-card__edit">
-                <button type="button" class="link-button settings-card__cancel">Cancel</button>
-                <button type="submit" class="button button--primary button--small">Save</button>
+            <div class="actions edit">
+                <button type="button" class="link-button" data-part="cancel">Cancel</button>
+                <button type="submit" class="button primary small">Save</button>
             </div>
         </section>
 
     </form>
 
     <section class="settings-card appear-down">
-        <div class="settings-card__head">
-            <h2 class="settings-card__title">Privacy</h2>
+        <div class="head">
+            <h2 class="title">Privacy</h2>
         </div>
 
         <div class="privacy-setting">
             <div>
-                <label class="privacy-setting__name" for="share-location">Show me on the map</label>
+                <label class="name" for="share-location">Show me on the map</label>
                 {% if place and place.city %}
                 <p class="field-hint place-note" id="profile-place">
-                    <span class="place-note__shown">
+                    <span class="when-shown">
                         Others see you in
-                        <span class="place-note__place">
+                        <span class="city">
                             {%- if place.country %}<span class="fi fi-{{ place.country|lower }}"></span>{% endif -%}
                             {{ place.city -}}
                         </span>
                     </span>
-                    <span class="place-note__hidden">Your pin and city are hidden from everyone</span>
+                    <span class="when-hidden">Your pin and city are hidden from everyone</span>
                 </p>
                 {% endif %}
             </div>
-            <div class="beer privacy-setting__switch">
+            <div class="beer control">
                 <label class="switch">
                     <input type="checkbox" id="share-location" {% if user.share_location %}checked{% endif %}>
                     <span></span>
@@ -160,16 +160,16 @@
 
     {# Per browser, so profile.js sets it from what this browser allows #}
     <section class="settings-card appear-down">
-        <div class="settings-card__head">
-            <h2 class="settings-card__title">Notifications</h2>
+        <div class="head">
+            <h2 class="title">Notifications</h2>
         </div>
 
         <div class="privacy-setting">
             <div>
-                <label class="privacy-setting__name" for="notifications">Private messages and mentions</label>
+                <label class="name" for="notifications">Private messages and mentions</label>
                 <p class="field-hint" id="notifications-hint">On this browser, when MapChat is open in a tab</p>
             </div>
-            <div class="beer privacy-setting__switch">
+            <div class="beer control">
                 <label class="switch">
                     <input type="checkbox" id="notifications">
                     <span></span>

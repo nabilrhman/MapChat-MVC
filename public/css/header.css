@@ -25,74 +25,77 @@
     border-bottom: 4px solid #ffd54f; /* the yellow line is the only edge, on every page; pale, so the loading bar shows on it */
 }
 
-.site-header__logo
+@scope (.site-header) to (.account-menu)
 {
-    display: block;
-    flex: none;
-    width: 170px;
-    height: 52px; /* the logo's own proportions at this width */
-    background-image: url("../res/logo-mapchat-white.svg");
-    background-repeat: no-repeat;
-    background-size: contain;
-    /* The wordmark's "p" hangs below the line; nudge it up so the letters,
-       not the whole box, sit level with the menu */
-    margin-top: -7px;
-    /* 24px in, level with the GitHub icon in the footer below */
-    margin-left: 4px;
-    /* The logo is a picture; its text is only for screen readers */
-    text-indent: -9999px;
-    overflow: hidden;
-}
+    .logo
+    {
+        display: block;
+        flex: none;
+        width: 170px;
+        height: 52px; /* the logo's own proportions at this width */
+        background-image: url("../res/logo-mapchat-white.svg");
+        background-repeat: no-repeat;
+        background-size: contain;
+        /* The wordmark's "p" hangs below the line; nudge it up so the letters,
+           not the whole box, sit level with the menu */
+        margin-top: -7px;
+        /* 24px in, level with the GitHub icon in the footer below */
+        margin-left: 4px;
+        /* The logo is a picture; its text is only for screen readers */
+        text-indent: -9999px;
+        overflow: hidden;
+    }
 
-/* The links */
+    /* The links */
 
-.site-header__nav
-{
-    display: flex;
-    flex-direction: row-reverse; /* links are written right-to-left in the markup */
-    align-items: center;
-}
+    .nav
+    {
+        display: flex;
+        flex-direction: row-reverse; /* links are written right-to-left in the markup */
+        align-items: center;
+    }
 
-.site-header__link
-{
-    position: relative;
-    z-index: 0;
-    margin-inline: 10px;
-    padding: 10px;
-    color: #fff;
-    font-weight: 600;
-    text-decoration: none;
-    cursor: pointer;
-}
+    .link
+    {
+        position: relative;
+        z-index: 0;
+        margin-inline: 10px;
+        padding: 10px;
+        color: #fff;
+        font-weight: 600;
+        text-decoration: none;
+        cursor: pointer;
 
-/* A darker background that grows in from the right on hover */
-.site-header__link::before
-{
-    content: '';
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    background: var(--link-hover);
-    transform: scaleX(0);
-    transform-origin: right;
-    transition: transform var(--dur) var(--ease-out);
-}
+        /* A darker background that grows in from the right on hover */
+        &::before
+        {
+            content: '';
+            position: absolute;
+            inset: 0;
+            z-index: -1;
+            background: var(--link-hover);
+            transform: scaleX(0);
+            transform-origin: right;
+            transition: transform var(--dur) var(--ease-out);
+        }
 
-.site-header__link:hover::before
-{
-    transform: scaleX(1);
-}
+        &:hover::before
+        {
+            transform: scaleX(1);
+        }
 
-/* The page being shown keeps the darker background a link gets on hover */
-.site-header__link.is-current::before
-{
-    transform: scaleX(1);
-}
+        /* The page being shown keeps the darker background a link gets on hover */
+        &.is-current::before
+        {
+            transform: scaleX(1);
+        }
+    }
 
-/* The menu button only shows on phones */
-.site-header__menu-button
-{
-    display: none;
+    /* The menu button only shows on phones */
+    .menu-button
+    {
+        display: none;
+    }
 }
 
 /* Phones: a shorter header; the links fold into a menu that drops down
@@ -104,70 +107,73 @@
         padding-inline: 12px 4px;
     }
 
-    .site-header__logo
+    @scope (.site-header) to (.account-menu)
     {
-        width: 124px;
-        height: 38px;
-        margin-top: -6px;
-        margin-left: 0;
-    }
+        .logo
+        {
+            width: 124px;
+            height: 38px;
+            margin-top: -6px;
+            margin-left: 0;
+        }
 
-    .site-header__menu-button
-    {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 44px;
-        height: 44px;
-        margin-left: auto;
-        padding: 0;
-        border: none;
-        border-radius: 4px;
-        background: none;
-        color: #fff;
-        cursor: pointer;
-    }
+        .menu-button
+        {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            margin-left: auto;
+            padding: 0;
+            border: none;
+            border-radius: 4px;
+            background: none;
+            color: #fff;
+            cursor: pointer;
 
-    .site-header__menu-button .icon
-    {
-        font-size: 24px;
-    }
+            & .icon
+            {
+                font-size: 24px;
+            }
 
-    .site-header__menu-button:focus
-    {
-        background: none;
-    }
+            &:focus
+            {
+                background: none;
+            }
 
-    .site-header__menu-button:focus-visible
-    {
-        outline: none;
-        box-shadow: 0 0 0 3px var(--focus-ring-on-purple);
-    }
+            &:focus-visible
+            {
+                outline: none;
+                box-shadow: 0 0 0 3px var(--focus-ring-on-purple);
+            }
+        }
 
-    .site-header__nav
-    {
-        display: none;
-        position: absolute;
-        top: calc(100% + 4px); /* under the yellow line, which is the header's border */
-        inset-inline: 0;
-        flex-direction: column-reverse; /* the markup lists them right-to-left */
-        align-items: stretch;
-        background-color: var(--md-primary);
-        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25);
-    }
+        .nav
+        {
+            display: none;
+            position: absolute;
+            top: calc(100% + 4px); /* under the yellow line, which is the header's border */
+            inset-inline: 0;
+            flex-direction: column-reverse; /* the markup lists them right-to-left */
+            align-items: stretch;
+            background-color: var(--md-primary);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25);
+        }
 
-    .is-menu-open .site-header__nav
-    {
-        display: flex;
-        animation: fade-in-down var(--dur) var(--ease-out);
-    }
+        :scope.is-menu-open .nav
+        {
+            display: flex;
+            animation: fade-in-down var(--dur) var(--ease-out);
+        }
 
-    .site-header__link
-    {
-        margin: 0;
-        padding: 14px 20px;
-        border-top: 1px solid var(--menu-row-line);
-        font-size: 14px;
+        .link
+        {
+            margin: 0;
+            padding: 14px 20px;
+            border-top: 1px solid var(--menu-row-line);
+            font-size: 14px;
+        }
     }
 }
 
@@ -180,159 +186,161 @@
     margin-left: 10px;
 }
 
-.account-menu__button
+@scope (.account-menu)
 {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    height: 44px;
-    padding: 0 15px 0 5px; /* 15px after the chevron's drawing (.icon takes back its blank sides) */
-    border: none;
-    border-radius: 22px;
-    background: none;
-    color: #fff;
-    font: inherit;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background-color var(--dur-fast) var(--ease-out);
-}
+    .toggle
+    {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        height: 44px;
+        padding: 0 15px 0 5px; /* 15px after the chevron's drawing (.icon takes back its blank sides) */
+        border: none;
+        border-radius: 22px;
+        background: none;
+        color: #fff;
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background-color var(--dur-fast) var(--ease-out);
 
-.account-menu__button:hover,
-.account-menu__button.is-current,
-.account-menu.is-open .account-menu__button
-{
-    background-color: var(--link-hover); /* the links' hover colour */
-}
+        &:focus-visible
+        {
+            outline: none;
+            box-shadow: 0 0 0 3px var(--focus-ring-on-purple);
+        }
+    }
 
-.account-menu__button:focus-visible
-{
-    outline: none;
-    box-shadow: 0 0 0 3px var(--focus-ring-on-purple);
-}
+    .toggle:hover,
+    .toggle.is-current,
+    :scope.is-open .toggle
+    {
+        background-color: var(--link-hover); /* the links' hover colour */
+    }
 
-.account-menu__avatar
-{
-    flex: none;
-    width: 34px;
-    height: 34px;
-    border-radius: 50%;
-    object-fit: cover;
-}
+    .avatar
+    {
+        flex: none;
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        object-fit: cover;
 
-.account-menu__avatar--large
-{
-    width: 40px;
-    height: 40px;
-}
+        &.large
+        {
+            width: 40px;
+            height: 40px;
+        }
+    }
 
-.account-menu__name
-{
-    max-width: 140px;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-}
+    .name
+    {
+        max-width: 140px;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+    }
 
-/* 10px from the name to the chevron's drawing; the button's gap is 8px.
-   Two classes, to win over .icon in styles.css, which loads later */
-.account-menu__button .account-menu__chevron
-{
-    --icon-nudge: -1px; /* to the middle of the name's capitals */
-    margin-left: calc(2px - var(--icon-bearing) * 1em / 24);
-    font-size: 16px;
-    transition: transform var(--dur) var(--ease-out);
-}
+    /* 10px from the name to the chevron's drawing; the button's gap is 8px */
+    .toggle .chevron
+    {
+        --icon-nudge: -1px; /* to the middle of the name's capitals */
+        margin-left: calc(2px - var(--icon-bearing) * 1em / 24);
+        font-size: 16px;
+        transition: transform var(--dur) var(--ease-out);
+    }
 
-.account-menu.is-open .account-menu__chevron
-{
-    transform: rotate(180deg);
-}
+    :scope.is-open .chevron
+    {
+        transform: rotate(180deg);
+    }
 
-/* The dropdown: a white card under the header, against the right edge */
-.account-menu__list
-{
-    display: none;
-    position: absolute;
-    top: calc(100% + 14px);
-    right: 0;
-    min-width: 240px;
-    padding: 8px 0;
-    background-color: #fff;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
-    color: var(--menu-text);
-}
+    /* The dropdown: a white card under the header, against the right edge */
+    .list
+    {
+        display: none;
+        position: absolute;
+        top: calc(100% + 14px);
+        right: 0;
+        min-width: 240px;
+        padding: 8px 0;
+        background-color: #fff;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+        color: var(--menu-text);
+    }
 
-.account-menu.is-open .account-menu__list
-{
-    display: block;
-    animation: fade-in-down var(--dur) var(--ease-out);
-}
+    :scope.is-open .list
+    {
+        display: block;
+        animation: fade-in-down var(--dur) var(--ease-out);
+    }
 
-.account-menu__who
-{
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 8px 16px 12px;
-    margin-bottom: 8px;
-    border-bottom: 1px solid #ede7f6;
-}
+    .who
+    {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 8px 16px 12px;
+        margin-bottom: 8px;
+        border-bottom: 1px solid #ede7f6;
+    }
 
-.account-menu__who-name
-{
-    display: block;
-    font-weight: 600;
-}
+    .who-name
+    {
+        display: block;
+        font-weight: 600;
+    }
 
-.account-menu__who-detail
-{
-    display: block;
-    max-width: 170px;
-    overflow: hidden;
-    color: #757575;
-    font-size: 13px;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-}
+    .who-detail
+    {
+        display: block;
+        max-width: 170px;
+        overflow: hidden;
+        color: #757575;
+        font-size: 13px;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+    }
 
-.account-menu__item
-{
-    display: flex;
-    align-items: center;
-    gap: 6px; /* 8px or so to the drawing, past the icon's blank side */
-    padding: 10px 16px;
-    color: var(--menu-text);
-    font-size: 14px;
-    text-decoration: none;
-}
+    .item
+    {
+        display: flex;
+        align-items: center;
+        gap: 6px; /* 8px or so to the drawing, past the icon's blank side */
+        padding: 10px 16px;
+        color: var(--menu-text);
+        font-size: 14px;
+        text-decoration: none;
+    }
 
-/* Log out is a form button; make it look like the links */
-.account-menu__item--button
-{
-    width: 100%;
-    border: 0;
-    background: none;
-    font-family: inherit;
-    text-align: left;
-    cursor: pointer;
-}
+    /* Log out is a form button; make it look like the links */
+    .log-out
+    {
+        width: 100%;
+        border: 0;
+        background: none;
+        font-family: inherit;
+        text-align: left;
+        cursor: pointer;
+    }
 
-/* Menu items' words line up in one column, so each icon keeps its whole
-   box (the gap is the item's) rather than losing its blank sides as icons
-   beside text do. Two classes, to win over .icon in styles.css */
-.account-menu__item .account-menu__icon
-{
-    margin-inline: 0;
-    color: var(--md-primary);
-    font-size: 20px;
-}
+    /* Menu items' words line up in one column, so each icon keeps its whole
+       box (the gap is the item's) rather than losing its blank sides as icons
+       beside text do */
+    .item .icon
+    {
+        margin-inline: 0;
+        color: var(--md-primary);
+        font-size: 20px;
+    }
 
-.account-menu__item:hover,
-.account-menu__item:focus-visible,
-.account-menu__item.is-current
-{
-    outline: none;
-    background-color: #f5f1fb;
+    .item:hover,
+    .item:focus-visible,
+    .item.is-current
+    {
+        outline: none;
+        background-color: #f5f1fb;
+    }
 }
 
 /* Phones: inside the menu that drops from the hamburger, the account comes
@@ -345,60 +353,63 @@
         margin: 0;
     }
 
-    .account-menu__button
+    @scope (.account-menu)
     {
-        display: none;
-    }
+        .toggle
+        {
+            display: none;
+        }
 
-    .account-menu__list
-    {
-        display: block;
-        position: static;
-        min-width: 0;
-        padding: 0;
-        background: none;
-        box-shadow: none;
-        color: #fff;
-    }
+        .list
+        {
+            display: block;
+            position: static;
+            min-width: 0;
+            padding: 0;
+            background: none;
+            box-shadow: none;
+            color: #fff;
+        }
 
-    .account-menu.is-open .account-menu__list
-    {
-        animation: none;
-    }
+        :scope.is-open .list
+        {
+            animation: none;
+        }
 
-    .account-menu__who
-    {
-        margin: 0;
-        padding: 14px 20px;
-        border-bottom: none;
-        background-color: rgba(18, 0, 94, 0.2);
-    }
+        .who
+        {
+            margin: 0;
+            padding: 14px 20px;
+            border-bottom: none;
+            background-color: rgba(18, 0, 94, 0.2);
+        }
 
-    .account-menu__who-detail
-    {
-        max-width: none;
-        color: rgba(255, 255, 255, 0.7);
-    }
+        .who-detail
+        {
+            max-width: none;
+            color: rgba(255, 255, 255, 0.7);
+        }
 
-    .account-menu__item
-    {
-        padding: 14px 20px;
-        border-top: 1px solid var(--menu-row-line);
-        color: #fff;
-        font-size: 14px;
-        font-weight: 600;
-        text-transform: uppercase;
-    }
+        .item
+        {
+            padding: 14px 20px;
+            border-top: 1px solid var(--menu-row-line);
+            color: #fff;
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
 
-    .account-menu__item .account-menu__icon
-    {
-        color: rgba(255, 255, 255, 0.85);
-    }
+        .item .icon
+        {
+            color: rgba(255, 255, 255, 0.85);
+        }
 
-    .account-menu__item:hover,
-    .account-menu__item:focus-visible,
-    .account-menu__item.is-current
-    {
-        background-color: var(--link-hover);
+        .item:hover,
+        .item:focus-visible,
+        .item.is-current
+        {
+            background-color: var(--link-hover);
+        }
     }
 }

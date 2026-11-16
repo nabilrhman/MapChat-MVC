@@ -139,8 +139,8 @@ async function requiredCentreOf(element: Locator): Promise<Point> {
 
 /** The tour itself, step by step, while the screencast saves each frame */
 async function tour(page: Page, person: Person, startScreencast: () => Promise<void>, stopScreencast: () => Promise<void>): Promise<void> {
-    const onlinePerson = (name: string) => page.locator('.person', {hasText: name}).first();
-    const chatTab = (name: string) => page.locator('.chat-tab', {hasText: name}).first();
+    const onlinePerson = (name: string) => page.locator('[data-part="person"]', {hasText: name}).first();
+    const chatTab = (name: string) => page.locator('[data-part="tab"]', {hasText: name}).first();
     const composer = page.locator('#textarea-send');
 
     /** Waits until the map has drawn all its tiles; a blank map isn't a tour */
@@ -157,7 +157,7 @@ async function tour(page: Page, person: Person, startScreencast: () => Promise<v
      */
     const openChat = async (where: (name: string) => Locator, name: string) => {
         const isChatOpen = () => page.evaluate(
-            (name) => document.querySelector('.chat-tab.is-active, .chat-tab[aria-selected=true]')?.textContent.includes(name) ?? false,
+            (name) => document.querySelector('[data-part="tab"].is-active')?.textContent.includes(name) ?? false,
             name,
         );
         for (let attempt = 0; attempt < 3; attempt++) {
@@ -172,8 +172,8 @@ async function tour(page: Page, person: Person, startScreencast: () => Promise<v
     };
 
     /** How many messages from them are on the page, in any conversation */
-    const messagesFrom = (name: string) => page.locator('.chat')
-        .filter({has: page.locator('.chat__name', {hasText: new RegExp(`^${name}`, 'i')})})
+    const messagesFrom = (name: string) => page.locator('[data-part="message"]')
+        .filter({has: page.locator('[data-part="sender-name"]', {hasText: new RegExp(`^${name}`, 'i')})})
         .count();
 
     const waitForReply = async (name: string, before: number, seconds = 45) => {
@@ -210,7 +210,7 @@ async function tour(page: Page, person: Person, startScreencast: () => Promise<v
     await waitSeconds(1.8);
 
     // A message's city does the same, and a click brings the pin to the middle
-    const cityLine = page.locator('.chat__location > span').filter({hasNotText: /Toronto|Mountain View/}).last();
+    const cityLine = page.locator('[data-part="city"]').filter({hasNotText: /Toronto|Mountain View/}).last();
     const city = await centreOf(cityLine);
     if (city) {
         await person.moveTo(city);
@@ -229,7 +229,7 @@ async function tour(page: Page, person: Person, startScreencast: () => Promise<v
     await person.type('@Luk');
     await waitSeconds(0.8);
     // Lukas picked from the @ list with the pointer, so its hover shows
-    const lukasOption = page.locator('.mention-picker__option', {hasText: 'Lukas'}).first();
+    const lukasOption = page.locator('#mention-picker [role="option"]', {hasText: 'Lukas'}).first();
     if (await waitFor(async () => await lukasOption.count() > 0, 3)) {
         await person.moveTo(await requiredCentreOf(lukasOption));
         await waitSeconds(0.7);
@@ -287,11 +287,11 @@ async function tour(page: Page, person: Person, startScreencast: () => Promise<v
     await person.drag(await requiredCentreOf(chatTab('Rafael')), await requiredCentreOf(chatTab('Maya')));
     await waitSeconds(1.2);
     // Rafael's ×, measured again on arrival as the tabs settle after the drag
-    const closeRafael = chatTab('Rafael').locator('.chat-tab__close');
+    const closeRafael = chatTab('Rafael').locator('[data-part="tab-close"]');
     await person.moveTo(await requiredCentreOf(closeRafael));
     await waitSeconds(0.6);
     await person.click(await requiredCentreOf(closeRafael));
-    const rafaelTabStaying = page.locator('.chat-tab:not(.is-leaving)', {hasText: 'Rafael'});
+    const rafaelTabStaying = page.locator('[data-part="tab"]:not(.is-leaving)', {hasText: 'Rafael'});
     await waitFor(async () => await rafaelTabStaying.count() === 0, 3);
     // Then away, down into the chat, so the pointer isn't left over Maya's
     // × as her tab slides into the gap

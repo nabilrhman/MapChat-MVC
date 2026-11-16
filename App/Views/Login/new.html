@@ -11,35 +11,35 @@
 
 <div class="auth-card">
 
-    <form action="/login/create" method="post" class="auth-card__form">
+    <form action="/login/create" method="post">
 
         {{ text_field({id: 'inputEmail', name: 'email', type: 'email', label: 'Email', required: true,
                        value: email ?? '', autocomplete: 'email', autofocus: true}) }}
 
         {{ text_field({id: 'inputPassword', name: 'password', type: 'password', label: 'Password', required: true,
                        autocomplete: 'current-password'}) }}
-        <a href="/password/forgot" class="auth-card__forgot">Forgot password?</a>
+        <a href="/password/forgot" class="forgot">Forgot password?</a>
 
-        <div class="beer auth-card__remember">
+        <div class="beer remember">
             <label class="checkbox">
                 <input type="checkbox" name="remember_me" {% if remember_me ?? false %}checked{% endif %}/>
-                <span class="auth-card__remember-label">Remember me</span>
+                <span class="remember-text">Remember me</span>
             </label>
         </div>
 
-        <button type="submit" class="button button--primary button--block auth-card__button">Log in</button>
+        <button type="submit" class="button primary full-width action">Log in</button>
     </form>
 
-    <div class="auth-card__divider"><span class="auth-card__divider-label">or</span></div>
+    <div class="or"><span class="or-label">or</span></div>
 
-    <form action="/login/guest" method="post" id="guestForm" class="auth-card__form">
-        <button type="submit" class="button button--outline button--block auth-card__button">
-            <span class="button__label">Try it as a guest</span>
-            <span class="loading-dots button__dots" aria-hidden="true"><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span><span class="loading-dots__dot"></span></span>
+    <form action="/login/guest" method="post" id="guestForm">
+        <button type="submit" class="button outline full-width action">
+            <span class="label">Try it as a guest</span>
+            <span class="loading-dots dots" aria-hidden="true"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
         </button>
     </form>
 
-    <p class="auth-card__switch"><span>New to MapChat?</span> <a class="auth-card__switch-link" href="/signup/new">Create an account</a></p>
+    <p class="switch-row"><span>New to MapChat?</span> <a class="switch-link" href="/signup/new">Create an account</a></p>
 </div>
 
 {% endblock %}
