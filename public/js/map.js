@@ -593,11 +593,13 @@ function createThemedTileLayer() {
 }
 
 // Leaflet's own flyTo only slows down at the end, so it lurches off. This
-// moves the map frame by frame on easeInOut instead, through the steps flyTo
-// itself takes in Leaflet 1.9.4 (_moveStart, _move, _moveEnd). What's eased
-// is where the pin is on screen, which the eye follows: easing the centre and
-// zoom instead makes the pin crawl, then race, as zooming in magnifies the
-// distance. Dragging the map lets go of it
+// moves the map frame by frame on easeInOut instead, the way flyTo itself
+// does in Leaflet 1.9.4: _moveStart, _move each frame, _moveEnd, and each
+// frame kept in _flyToFrame, so whatever stops a flight stops this too (a
+// drag, a zoom, the next city clicked) instead of two moves fighting and
+// leaving tiles unloaded. What's eased is where the pin is on screen, which
+// the eye follows: easing the centre and zoom instead makes the pin crawl,
+// then race, as zooming in magnifies the distance
 function easeTileMapTo(map, latLng, zoom, padding) {
     const size = map.getSize();
     // The pin ends in the middle of the part the panels leave showing
@@ -608,10 +610,6 @@ function easeTileMapTo(map, latLng, zoom, padding) {
     const startPoint = map.latLngToContainerPoint(latLng);
     const startZoom = map.getZoom();
     const startTime = performance.now();
-    let isLetGo = false;
-    map.once('dragstart', () => {
-        isLetGo = true;
-    });
 
     // The centre that puts the pin at this point at this zoom
     const getCenter = (point, frameZoom) => map.unproject(map.project(latLng, frameZoom).subtract(point.subtract(size.divideBy(2))), frameZoom);
@@ -619,7 +617,6 @@ function easeTileMapTo(map, latLng, zoom, padding) {
     map._stop();
     map._moveStart(true, false);
     const moveFrame = (now) => {
-        if (isLetGo) return;
         const progress = Math.min(1, (now - startTime) / FOCUS_DURATION);
         if (progress === 1) {
             map._move(getCenter(endPoint, zoom), zoom)._moveEnd(true);
@@ -629,9 +626,9 @@ function easeTileMapTo(map, latLng, zoom, padding) {
         const frameZoom = startZoom + (zoom - startZoom) * eased;
         const point = startPoint.add(endPoint.subtract(startPoint).multiplyBy(eased));
         map._move(getCenter(point, frameZoom), frameZoom, {flyTo: true});
-        requestAnimationFrame(moveFrame);
+        map._flyToFrame = requestAnimationFrame(moveFrame);
     };
-    requestAnimationFrame(moveFrame);
+    map._flyToFrame = requestAnimationFrame(moveFrame);
 }
 
 // Credits beside the people list (see chat.css); the tiles add theirs to it.
