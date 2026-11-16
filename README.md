@@ -60,22 +60,24 @@ https://github.com/user-attachments/assets/06384a18-cd12-4e27-8cf0-530ab2463569
 ## Features
 
 - One open chat room for everyone signed in, live over a WebSocket.
+  Messages are up to 500 characters, at most 30 a minute, or 10 for a guest.
 - Private chats in tabs of their own, with unread counts and "Typing...".
   Each opens with a header showing who you're talking to, and their city and
   local time.
 - @mentions: type @ to pick someone; mentions show as chips.
 - Notifications for private messages and @mentions, even with MapChat closed
-  (Web Push). Turn them on from the chat or your profile; they're per
-  browser.
-- A map with a pin for each person online, at city level, never an exact
-  location, with their local time and a sun or moon.
+  (Web Push). Turn them on from the chat or your profile. They're per
+  browser, and logging out turns them off there.
+- A map with a pin for each person online, placed from their IP address and
+  rounded to about a kilometre, never from GPS, with their local time and a
+  sun or moon.
 - Hover someone, or a message's city, to point out their pin; click the city
   to fly the map to it. The night side of the world is shaded.
 - Anyone can hide their pin and city from the map.
 - MapChat, the room's AI, and AI characters who chat back: see
   [AI chat](#ai-chat).
-- Try it as a guest without signing up; guest accounts last 24 hours unless
-  kept.
+- Try it as a guest without signing up. A guest account lasts 24 hours
+  unless kept, then it's logged out and deleted.
 - Accounts with email activation, password reset, nicknames and avatars.
 - Works on phones, where the map folds away to give the chat the room.
 
@@ -85,7 +87,8 @@ Two kinds of AI share the room, and Groq's chat API (`openai/gpt-oss-120b` by
 default) writes what both say. Without `GROQ_API_KEY`, MapChat only greets and
 the characters only follow their script.
 
-**MapChat**, the room's own account, pinned on Null Island:
+**MapChat**, the room's own account. It has no pin on the map, and the
+people list places it on Null Island:
 
 - Says hello when someone walks into a quiet room, once a day per person.
 - Answers someone nobody else answered, giving others 45 seconds first.
@@ -116,6 +119,9 @@ on what's sent to its API. The code is in `App/Models/Bot.php`.
 - **Database:** MySQL, queried with prepared statements to block SQL injection.
 - **Views:** Twig 3 templates, which escape everything users type to block
   cross-site scripting.
+- **Requests:** a form, a request from a page or the chat socket that changes
+  anything must say it comes from the site itself (its Origin or Referer),
+  which blocks cross-site request forgery.
 - **Front end:** the site's own CSS, in Material 3's colours and states
   (generated from MapChat's purple) with square corners, and Beer CSS for
   the form fields, scoped so it styles nothing else. Plain JavaScript with no
@@ -136,8 +142,10 @@ on what's sent to its API. The code is in `App/Models/Bot.php`.
   needed for either.
 - **AI replies:** Groq's chat API, run by the chat worker; see
   [AI chat](#ai-chat).
-- **Location:** looked up from the visitor's IP address with ipapi.co, or
-  ipstack when `IPSTACK_API_KEY` is set.
+- **Location:** looked up from the IP address someone logs in from, which is
+  kept with their account. ipstack is tried first when `IPSTACK_API_KEY` is
+  set, then ipapi.co, ipwho.is and GeoJS. The place is stored and shown
+  rounded to two decimal places, about a kilometre.
 - **Email:** Symfony Mailer, sending through any SMTP provider or Brevo's API.
 - **Sessions:** stored in MySQL rather than files, so restarting or waking up
   the container doesn't log anyone out.
@@ -151,7 +159,8 @@ Each open chat page keeps one WebSocket, served by a PHP process of its own on
 [amphp](https://amphp.org) in the same container as the site. New messages,
 typing and who's online arrive the moment they happen, nothing is lost or
 shown twice across reconnects and deploys, and if the socket can't connect the
-page falls back to checking every second over HTTP.
+page falls back to checking every second over HTTP, or every 8 seconds in a
+hidden tab.
 
 How it works, from sending and reconnecting to who's let in, is in
 [docs/live-chat.md](docs/live-chat.md).
@@ -247,10 +256,14 @@ creating the database to the optional email, avatar and AI settings, are in
 ```
 Core/            The framework: router, base controller and model, views, icons, errors
 App/Controllers/ One class per page or action
-App/Models/      Database access for users, chats and locations, and Bot:
-                 when MapChat and the demo people answer, and what they read
-App/Mention.php  @mentions, and how each person's name is shown
-App/Push.php     Web Push: whose browsers each new message goes to, and sending it
+App/Models/      Database access for users, chats, locations, push subscriptions
+                 and remembered logins; Bot: when MapChat and the demo people
+                 answer, and what they read; DemoChat: the demo people's day;
+                 Schema: bringing an older database up to date
+App/*.php        Config (settings), Auth (who's logged in), Mail, Token, Flash
+                 (one-time messages), Avatar (drawn faces), Mention (@mentions,
+                 and how each person's name is shown), Push (Web Push: whose
+                 browsers each new message goes to, and sending it)
 App/ChatSocket/  The live chat: who's let in (Handshake), and what each page
                  gets (Hub)
 bin/             chat-socket.php and chat-worker.php, run by docker/start.sh
@@ -261,8 +274,9 @@ public/          Web root: index.php, CSS, JavaScript (messages.js talks to the
                  Push notifications), images and icons.svg
 database/        init.sql (schema and welcome messages), demo.sql (optional
                  sample people), demo-chat.php (what they say each day),
-                 migrate.php (adds columns an older database is missing, run
-                 when the container starts)
+                 demo-voices.php (how each of them writes, for the AI),
+                 migrate.php (brings an older database up to date, run when
+                 the container starts)
 tests/           PHPUnit tests
 docs/images/     The video, screenshots and diagram in this README
 docs/diagrams/   Draws the diagram: node docs/diagrams/draw.ts
@@ -270,6 +284,7 @@ docs/video/      Records the tour at the top: python3 docs/video/record.py
 docs/live-chat.md How the live chat works
 docs/deploy.md   How to deploy it for free
 docs/load-test.* The load test and its report, with raw results in docs/load-test-results/
+AGENTS.md        The coding rules, for people and AI agents alike
 ```
 
 ## Author
