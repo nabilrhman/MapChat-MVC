@@ -12,7 +12,10 @@
  * notifications offer closed, pins pointed out from the online list and a
  * message's city, an @mention in Everyone that Lukas answers, then a private
  * chat with Maya, one with Rafael while Maya's answer comes in, back to Maya,
- * a tab dragged into another place and closed, and the profile.
+ * a tab dragged into another place and closed, and the profile, scrolled to
+ * its bottom. Each emoji in a message is picked from the emoji menu, and one
+ * message to Rafael is voice typed: Chrome plays docs/video/voice-line.wav as
+ * the microphone (npm run voice-line makes it), and Whisper writes it out.
  * The pointer moves and types like a person (person.ts). Headless Chrome
  * draws no pointer, so the page gets one, a hand over anything clickable
  * (pointer.ts).
@@ -42,7 +45,7 @@
  * (set it when recording from a git worktree), MAPCHAT_GPU and
  * MAPCHAT_CHROME_FLAGS are in chrome.ts
  */
-import {appendFileSync, mkdtempSync, rmSync} from 'node:fs';
+import {appendFileSync, existsSync, mkdtempSync, rmSync} from 'node:fs';
 import {createServer} from 'node:http';
 import type {AddressInfo} from 'node:net';
 import {tmpdir} from 'node:os';
@@ -54,6 +57,7 @@ import {
 } from './chrome.ts';
 import {Person, type Point, SeededRandom, waitSeconds} from './person.ts';
 import {drawPointer, readThemeCursors} from './pointer.ts';
+import {VOICE_LINE_FILE} from './voice-line.ts';
 import {receiveBinaryMessages} from './websocket.ts';
 
 /** The guest the tour signs in as: their session cookie and email */
@@ -81,6 +85,10 @@ const SEED = 7;
 const MOTION_GAP_SECONDS = 0.1;
 
 let isWorkerPaused = false;
+// When the tab's recording started and the voice line began playing into the
+// mic, by this script's clock (ms), so the voice can be put back in the video
+let recordingStartedAt = 0;
+let voiceStartedAt: number | null = null;
 
 /** Pauses the chat worker, so the demo people don't talk over the tour */
 async function pauseWorker(): Promise<void> {
@@ -162,6 +170,92 @@ async function motionFps(video: string): Promise<number> {
     const gaps = times.slice(1).map((time, i) => time - times[i]).filter((gap) => gap > 0 && gap < MOTION_GAP_SECONDS);
     const seconds = gaps.reduce((total, gap) => total + gap, 0);
     return seconds ? gaps.length / seconds : 0;
+}
+
+// An emoji: a pictograph, with the variation selector some carry (✈️)
+const EMOJI = /(\p{Extended_Pictographic}\uFE0F?)/u;
+
+/** Puts the caret at the end of the message box, wherever a click left it */
+async function caretToEnd(composer: Locator): Promise<void> {
+    await composer.evaluate((textarea: HTMLTextAreaElement) => {
+        textarea.focus();
+        textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+    });
+}
+
+/**
+ * Picks an emoji from the emoji menu as a person would: opens it, scrolls to
+ * the emoji, clicks it, then clicks back into the box, which closes the menu
+ */
+async function pickEmoji(page: Page, person: Person, composer: Locator, emoji: string): Promise<void> {
+    await person.click(await requiredCentreOf(page.locator('#emoji-toggle')));
+    const option = page.locator('#emoji-picker [data-part="emoji"]').filter({hasText: new RegExp(`^${emoji}$`, 'u')}).first();
+    if (!await waitFor(async () => await option.isVisible(), 3)) {
+        throw new Error(`${emoji} isn't in the emoji menu`);
+    }
+    await waitSeconds(0.5);
+    await option.evaluate((button) => button.scrollIntoView({block: 'nearest', behavior: 'smooth'}));
+    await waitSeconds(0.8);
+    await person.moveTo(await requiredCentreOf(option));
+    await waitSeconds(0.4);
+    await person.click(await requiredCentreOf(option));
+    await waitSeconds(0.5);
+    await person.click(await requiredCentreOf(composer));
+    await caretToEnd(composer);
+}
+
+/** Types a message, picking each emoji in it from the emoji menu */
+async function writeMessage(page: Page, person: Person, composer: Locator, message: string): Promise<void> {
+    for (const part of message.split(EMOJI)) {
+        if (EMOJI.test(part)) {
+            await pickEmoji(page, person, composer, part);
+        } else if (part) {
+            await person.type(part);
+        }
+    }
+}
+
+/** How long the voice line runs, in seconds */
+async function voiceLineSeconds(): Promise<number> {
+    const {stdout} = await run('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', VOICE_LINE_FILE]);
+    return Number(stdout.trim());
+}
+
+/**
+ * Says a message with voice typing: the mic is pressed, the voice line plays
+ * into it while its wave moves, Stop (Send, while it listens) is pressed, and
+ * once Whisper has written it into the box, it's sent
+ */
+async function speakMessage(page: Page, person: Person, composer: Locator): Promise<void> {
+    const mic = page.locator('#voice-button');
+    await person.moveTo(await requiredCentreOf(mic));
+    await waitSeconds(0.4);
+    await person.click(await requiredCentreOf(mic));
+    // The fake mic plays the line from when the click opens it
+    voiceStartedAt = performance.now();
+    if (!await waitFor(async () => await mic.getAttribute('aria-pressed') === 'true', 5)) {
+        throw new Error("The mic didn't start listening");
+    }
+    await waitSeconds(await voiceLineSeconds() + 0.5);
+
+    const stop = page.locator('#button-send');
+    await person.moveTo(await requiredCentreOf(stop));
+    await waitSeconds(0.3);
+    await person.click(await requiredCentreOf(stop));
+    if (!await waitFor(async () => (await composer.inputValue()).trim() !== '', 30)) {
+        throw new Error("Whisper didn't write the voice line into the box");
+    }
+    await waitSeconds(1.5);
+    await person.pressEnter();
+}
+
+/** Scrolls the page down to its bottom with the mouse wheel, a notch at a time */
+async function scrollToBottom(page: Page): Promise<void> {
+    const distance = await page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight - window.scrollY);
+    for (let scrolled = 0; scrolled < distance; scrolled += 100) {
+        await page.mouse.wheel(0, 100);
+        await waitSeconds(0.12);
+    }
 }
 
 /** The middle of an element, or null when it isn't on the page */
@@ -263,12 +357,28 @@ async function tour(page: Page, person: Person, guest: Guest, startCapture: () =
     }
     const cityLine = page.locator('[data-part="city"]').nth(pinnedCityIndex);
     await cityLine.scrollIntoViewIfNeeded();
+    // The room's list can still scroll to its newest message, which once
+    // slid the city away under the pointer, so the click missed it
+    const isCityStill = async () => {
+        const before = await requiredCentreOf(cityLine);
+        await waitSeconds(0.4);
+        const after = await requiredCentreOf(cityLine);
+        return before.y === after.y;
+    };
+    await waitFor(isCityStill, 10);
+    await person.moveTo(await requiredCentreOf(cityLine));
+    await waitSeconds(1.3);
     const city = await requiredCentreOf(cityLine);
     await person.moveTo(city);
-    await waitSeconds(1.3);
+    const firstPinAt = () => page.locator('[data-part="map-pin"]').first().boundingBox();
+    const pinBeforeClick = await firstPinAt();
     await person.click(city);
     await waitSeconds(1.2);
     await waitForMap();
+    const pinAfterClick = await firstPinAt();
+    if (pinBeforeClick?.x === pinAfterClick?.x && pinBeforeClick?.y === pinAfterClick?.y) {
+        throw new Error("The city click didn't move the map");
+    }
     await waitSeconds(1);
 
     // In Everyone: @ brings up who's online, and Lukas answers in the room,
@@ -293,11 +403,8 @@ async function tour(page: Page, person: Person, guest: Guest, startCapture: () =
     }
     await waitSeconds(0.4);
     // Typing goes on after the mention, wherever the click left the caret
-    await composer.evaluate((textarea: HTMLTextAreaElement) => {
-        textarea.focus();
-        textarea.setSelectionRange(textarea.value.length, textarea.value.length);
-    });
-    await person.type("how's berlin this morning? ☕");
+    await caretToEnd(composer);
+    await writeMessage(page, person, composer, "how's berlin this morning? ☕");
     await waitSeconds(0.5);
     await person.pressEnter();
     await waitForReply('Lukas', fromLukas, 45);
@@ -308,7 +415,7 @@ async function tour(page: Page, person: Person, guest: Guest, startCapture: () =
     await waitSeconds(1);
     let fromMaya = await messagesFrom('Maya');
     await person.click(await requiredCentreOf(composer));
-    await person.type('hey maya! still up in toronto? 🌙');
+    await writeMessage(page, person, composer, 'hey maya! still up in toronto? 🌙');
     await waitSeconds(0.4);
     await person.pressEnter();
     await waitSeconds(1.5);
@@ -318,12 +425,15 @@ async function tour(page: Page, person: Person, guest: Guest, startCapture: () =
     await waitSeconds(1);
     const fromRafael = await messagesFrom('Rafael');
     await person.click(await requiredCentreOf(composer));
-    await person.type("hey rafael! i'm visiting lisbon soon, any tips? ✈️");
+    await writeMessage(page, person, composer, "hey rafael! i'm visiting lisbon soon, any tips? ✈️");
     await waitSeconds(0.4);
     await person.pressEnter();
     // His "typing", then his answer
     await waitForReply('Rafael', fromRafael);
     await waitSeconds(3.5);
+    // And a question back, by voice
+    await speakMessage(page, person, composer);
+    await waitSeconds(2);
 
     // Back to Maya, to read her answer and write back
     await waitForReply('Maya', fromMaya, 20);
@@ -331,7 +441,8 @@ async function tour(page: Page, person: Person, guest: Guest, startCapture: () =
     await waitSeconds(3);
     fromMaya = await messagesFrom('Maya');
     await person.click(await requiredCentreOf(composer));
-    await person.type('haha same, night owls unite 🦉');
+    // ✨, as the emoji menu has no owl
+    await writeMessage(page, person, composer, 'haha same, night owls unite ✨');
     await waitSeconds(0.4);
     await person.pressEnter();
     await waitForReply('Maya', fromMaya);
@@ -366,6 +477,9 @@ async function tour(page: Page, person: Person, guest: Guest, startCapture: () =
         await person.moveTo(pinSwitch);
         await waitSeconds(1.5);
     }
+    // Then down to the bottom of the profile, where it can be deleted
+    await scrollToBottom(page);
+    await waitSeconds(2);
 
     await stopCapture();
     await waitSeconds(0.3);
@@ -380,18 +494,58 @@ async function encoderFlags(): Promise<string[]> {
     return ['-c:v', 'libx264', '-preset', 'slow', '-crf', '26'];
 }
 
+// Repeated frames dropped, the same way for working out times and for the video
+const DROP_REPEATS = 'mpdecimate';
+
+/** When each frame that survives DROP_REPEATS shows in the recording, in seconds */
+async function keptFrameTimes(recording: string): Promise<number[]> {
+    const {stderr} = await run('ffmpeg', ['-hide_banner', '-i', recording, '-vf', `${DROP_REPEATS},showinfo`, '-f', 'null', '-'], {maxBuffer: 256 * 1024 * 1024});
+    return [...stderr.matchAll(/pts_time:([\d.]+)/g)].map((match) => Number(match[1]));
+}
+
+/**
+ * Where a moment in the recording falls in the video, once each gap between
+ * kept frames is capped at LONGEST_STILL_SECONDS, as encode cuts them
+ *
+ * @param seconds The moment, in the recording's own time
+ */
+function videoTimeOf(seconds: number, keptTimes: number[]): number {
+    let videoTime = 0;
+    for (let i = 1; i < keptTimes.length && keptTimes[i] <= seconds; i++) {
+        videoTime += Math.min(keptTimes[i] - keptTimes[i - 1], LONGEST_STILL_SECONDS);
+    }
+    const lastKept = [...keptTimes].reverse().find((time) => time <= seconds) ?? 0;
+    return videoTime + Math.min(seconds - lastKept, LONGEST_STILL_SECONDS);
+}
+
 /**
  * The recording made into the video: repeated frames dropped, any stretch
  * where nothing moves cut to LONGEST_STILL_SECONDS (each gap between frames
- * capped, by setpts against the frame before), then 60fps on the GPU
+ * capped, by setpts against the frame before), then 60fps on the GPU. The
+ * voice line is laid in where it played into the mic, the video's only sound
  */
 async function encode(recording: string): Promise<void> {
     const capGaps = `setpts='if(eq(N,0),0,PREV_OUTPTS+min(PTS-PREV_INPTS,${LONGEST_STILL_SECONDS}/TB))'`;
+    const video = `[0:v]${DROP_REPEATS},${capGaps},fps=${FPS},format=yuv420p[video]`;
+    if (voiceStartedAt === null) {
+        await run('ffmpeg', [
+            '-hide_banner', '-loglevel', 'error', '-y', '-i', recording,
+            '-filter_complex', video, '-map', '[video]', ...await encoderFlags(),
+            '-an', '-movflags', '+faststart', OUT,
+        ]);
+        return;
+    }
+
+    const voiceInRecording = (voiceStartedAt - recordingStartedAt) / 1000;
+    const voiceInVideo = videoTimeOf(voiceInRecording, await keptFrameTimes(recording));
+    const voice = `[1:a]adelay=${Math.round(voiceInVideo * 1000)}:all=1,apad[voice]`;
     await run('ffmpeg', [
-        '-hide_banner', '-loglevel', 'error', '-y', '-i', recording,
-        '-vf', `mpdecimate,${capGaps},fps=${FPS},format=yuv420p`, ...await encoderFlags(),
-        '-an', '-movflags', '+faststart', OUT,
+        '-hide_banner', '-loglevel', 'error', '-y', '-i', recording, '-i', VOICE_LINE_FILE,
+        '-filter_complex', `${video};${voice}`, '-map', '[video]', '-map', '[voice]',
+        ...await encoderFlags(), '-c:a', 'aac', '-b:a', '128k', '-shortest',
+        '-movflags', '+faststart', OUT,
     ]);
+    console.log(`The voice line plays at ${voiceInVideo.toFixed(2)} s in the video`);
 }
 
 /**
@@ -415,6 +569,7 @@ async function startRecording(context: BrowserContext, recording: string): Promi
         receiver.close();
         throw new Error(`The tab's recording didn't start: ${started?.error}`);
     }
+    recordingStartedAt = performance.now();
 
     return async () => {
         await extension.evaluate(() => self.stopRecording());
@@ -424,6 +579,9 @@ async function startRecording(context: BrowserContext, recording: string): Promi
 }
 
 async function main(): Promise<void> {
+    if (!existsSync(VOICE_LINE_FILE)) {
+        throw new Error(`No ${VOICE_LINE_FILE} for the voice typing: run npm run voice-line, or save a WAV of your own voice there`);
+    }
     const workDir = mkdtempSync(join(tmpdir(), 'mapchat-tour-'));
     const recording = join(workDir, 'tour.webm');
     // Sessions live in the database, so a guest's outlasts the app starting again
@@ -447,7 +605,12 @@ async function main(): Promise<void> {
     const jobs = new JobRunner();
     try {
         // The handlers above close it and let the worker go
-        context = await launchWithExtension(CAPTURE_EXTENSION, {width: WIDTH, height: HEIGHT, scale: SCALE}, {handlesSignals: true});
+        // The voice line plays once as the microphone, from when the mic opens
+        // it. The permission is granted below, not by --use-fake-ui-for-media-stream,
+        // which stops the tab's capture finding its source
+        const fakeMicrophone = ['--use-fake-device-for-media-stream', `--use-file-for-fake-audio-capture=${VOICE_LINE_FILE}%noloop`];
+        context = await launchWithExtension(CAPTURE_EXTENSION, {width: WIDTH, height: HEIGHT, scale: SCALE}, {handlesSignals: true, extraFlags: fakeMicrophone});
+        await context.grantPermissions(['microphone'], {origin: URL});
         await context.addInitScript(drawPointer, readThemeCursors(SCALE));
         const page = context.pages()[0] ?? await context.newPage();
         await printRenderer(page);

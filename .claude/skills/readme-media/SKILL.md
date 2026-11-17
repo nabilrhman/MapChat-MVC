@@ -42,8 +42,15 @@ as if hovered, nothing half-loaded.
 
 ## 2. Tour
 
-Once, if it's missing: `npx playwright install chromium`. The tour runs in
-Playwright's Chromium, as branded Chrome won't load the capture extension.
+Once, if they're missing:
+
+- `npx playwright install chromium`: the tour runs in Playwright's Chromium,
+  as branded Chrome won't load the capture extension.
+- `docs/video/voice-line.wav`, the line the tour says into the voice-typing
+  mic: `npm run voice-line` makes it with Groq's Orpheus text to speech,
+  once its terms are accepted for the Groq org (the user's to do, at the
+  link the script's header gives), or the user records one. The tour stops
+  early without it.
 
 Run `npm run tour` in the background: it signs in its own guest, pauses the
 chat worker while it records real Groq replies, and takes a few minutes.
@@ -63,9 +70,13 @@ Done when:
   `ffmpeg -ss <second> -i docs/images/mapchat-tour.mp4 -frames:v 1 …`,
   stacked into a grid) show every step doing what it's there to show: the
   login page with Continue with Google, the hovered person's pin pointed
-  out, the clicked city's pin flown to the middle of the map, Lukas's answer
-  arriving, the private chats' replies, the tab moved and closed, the
-  profile. A frame that only looks current isn't enough: a city click once
+  out, the clicked city's pin flown to the middle of the map, the whole @
+  list then Lukas, each emoji picked from the emoji menu, Lukas's answer
+  arriving, the private chats' replies, the question to Rafael voice typed
+  (the wave moving, "Typing it out", then the words in the box and sent),
+  the tab moved and closed, the profile scrolled to its bottom;
+- the voice line is heard while the mic's wave moves: the script prints
+  where it lays the line, and the frames there show the wave. A frame that only looks current isn't enough: a city click once
   landed on MapChat's Null Island, which has no pin, so the map never moved.
 
 ## 3. The video the README plays

@@ -6,7 +6,8 @@
   "scripts": {
     "a11y": "playwright test --config tests/browser/playwright.config.ts",
     "tour": "node docs/video/record.ts",
-    "screenshots": "node docs/video/screenshots.ts"
+    "screenshots": "node docs/video/screenshots.ts",
+    "voice-line": "node docs/video/voice-line.ts"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",
