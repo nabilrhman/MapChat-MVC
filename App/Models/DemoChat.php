@@ -13,13 +13,10 @@ use App\Config;
  * every minute, and so do chat pages on the HTTP fallback. Earlier days'
  * are cleared, and the day follows DEMO_TIMEZONE. While a guest is talking
  * with a demo person they called into the room, the story waits
- * (Bot::storyPausedSeconds) and goes on from where it was
+ * (storyPausedSeconds) and goes on from where it was
  */
 class DemoChat extends \Core\Model
 {
-    /** The demo people's email addresses end with this */
-    const DOMAIN = '@demo.mapchat.local';
-
     /** The demo day starts at midnight here unless DEMO_TIMEZONE says otherwise */
     const TIMEZONE = 'America/Toronto';
 
@@ -53,24 +50,6 @@ class DemoChat extends \Core\Model
 
     /** Catching up more often than this does nothing new for a slow conversation, in seconds */
     const CATCH_UP_SECONDS = 60;
-
-    /**
-     * Whether this email is one of the demo people's
-     */
-    public static function isDemoEmail(string $email): bool
-    {
-        return str_ends_with($email, static::DOMAIN);
-    }
-
-    /**
-     * SQL that's true for the demo people
-     *
-     * @param string $column The column holding each row's email
-     */
-    public static function isDemoSql(string $column = 'users.email'): string
-    {
-        return "$column LIKE '%" . static::DOMAIN . "'";
-    }
 
     /**
      * Whether it's time to catch up again, CATCH_UP_SECONDS after the last
@@ -174,12 +153,11 @@ class DemoChat extends \Core\Model
         // waited for a guest goes out later than planned. Nobody says the
         // same thing twice in a day
         $lineNumbers = [];
-        foreach ($schedule as $i => [, $email, $body]) {
+        foreach ($schedule as $i => ['email' => $email, 'body' => $body]) {
             $lineNumbers["$email $body"] = $i;
         }
 
-        $stmt = $db->prepare('SELECT id, email, timestamp, body FROM chats
-                              WHERE ' . static::isDemoSql('email') . ' AND to_email IS NULL AND ' . static::NOT_REPLIES);
+        $stmt = $db->prepare('SELECT id, email, timestamp, body FROM chats WHERE ' . static::scriptLinesSql());
         $stmt->execute();
 
         $isRewritten = false;
@@ -193,11 +171,11 @@ class DemoChat extends \Core\Model
                 continue;
             }
             $postedUpTo = max($postedUpTo, $i);
-            $isAhead = $isAhead || $schedule[$i][0] > $now;
+            $isAhead = $isAhead || $schedule[$i]['time'] > $now;
         }
 
         if ($isAhead || $isRewritten) {
-            $db->exec('DELETE FROM chats WHERE ' . static::isDemoSql('email') . ' AND to_email IS NULL AND ' . static::NOT_REPLIES);
+            $db->exec('DELETE FROM chats WHERE ' . static::scriptLinesSql());
             return -1;
         }
 
@@ -223,7 +201,7 @@ class DemoChat extends \Core\Model
                                 WHERE NOT EXISTS (SELECT 1 FROM chats WHERE email = :email2 AND body = :body2 AND timestamp >= :start)');
 
         $lastSpokeAt = [];
-        foreach ($schedule as $i => [$time, $email, $body]) {
+        foreach ($schedule as $i => ['time' => $time, 'email' => $email, 'body' => $body]) {
             if ($time > $now) {
                 break;
             }
@@ -272,6 +250,58 @@ class DemoChat extends \Core\Model
     }
 
     /**
+     * SQL that's true for the day's script in the open room: the demo
+     * people's lines, less their live answers (NOT_REPLIES)
+     */
+    protected static function scriptLinesSql(): string
+    {
+        return Characters::isDemoSql('email') . ' AND to_email IS NULL AND ' . static::NOT_REPLIES;
+    }
+
+    /**
+     * How long the story has waited since the given time: from each time a
+     * guest called a demo person into a room conversation (Bot) until it
+     * went quiet, Bot::CONVERSATION_MINUTES after their last answer. Times
+     * that overlap count once
+     *
+     * @param int $since Unix time, the start of the demo day
+     *
+     * @return int Seconds
+     */
+    public static function storyPausedSeconds(int $since): int
+    {
+        $stmt = static::getDB()->prepare('SELECT created_at, done_at FROM mapchat_jobs
+                                          WHERE kind IN (:mention, :reply) AND ' . Characters::isDemoSql('speaker') . ' AND created_at >= :since
+                                          ORDER BY created_at');
+        $stmt->execute([
+            ':mention' => BotJobKind::Mention->value,
+            ':reply' => BotJobKind::Reply->value,
+            ':since' => gmdate('Y-m-d H:i:s', $since),
+        ]);
+
+        // The real clock: now() is the demo clock, worked out from this
+        $now = time();
+        $waited = 0;
+        $from = null;
+        $until = null;
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $job) {
+            $start = strtotime($job['created_at'] . ' UTC');
+            // Still to answer: waiting until now
+            $end = $job['done_at'] ? strtotime($job['done_at'] . ' UTC') + Bot::CONVERSATION_MINUTES * 60 : $now;
+            $end = min($end, $now);
+
+            if ($from !== null && $start <= $until) {
+                $until = max($until, $end);
+                continue;
+            }
+            $waited += $from === null ? 0 : $until - $from;
+            [$from, $until] = [$start, $end];
+        }
+
+        return $waited + ($from === null ? 0 : max(0, $until - $from));
+    }
+
+    /**
      * The demo people who are in the room right now: those about to speak,
      * speaking, or who spoke a little while ago
      *
@@ -282,7 +312,7 @@ class DemoChat extends \Core\Model
         $now = static::now();
         $present = [];
 
-        foreach (static::schedule(static::today()) as [$time, $email]) {
+        foreach (static::schedule(static::today()) as ['time' => $time, 'email' => $email]) {
             $at = strtotime($time . ' UTC');
 
             if ($now >= $at - static::ARRIVE_MINUTES * 60 && $now <= $at + static::LINGER_MINUTES * 60) {
@@ -301,7 +331,7 @@ class DemoChat extends \Core\Model
      *
      * @param string $email The demo person
      *
-     * @return array<array{lines: array<array{string, string, string}>, isOver: bool}> Oldest first; each line is [name, email, body]
+     * @return array<array{lines: array<array{name: string, email: string, body: string}>, isOver: bool}> Oldest first
      */
     public static function storiesSoFar(string $email): array
     {
@@ -312,12 +342,12 @@ class DemoChat extends \Core\Model
         $storyOf = [];
         foreach ($stories as $name => $scenes) {
             foreach (array_merge(...$scenes) as [$speaker, $body]) {
-                $storyOf[$speaker . static::DOMAIN . ' ' . static::withAddressee($body, $firstNames)] = $name;
+                $storyOf[$speaker . Characters::DEMO_DOMAIN . ' ' . static::withAddressee($body, $firstNames)] = $name;
             }
         }
 
-        $stmt = static::getDB()->prepare('SELECT email, body FROM chats WHERE ' . static::isDemoSql('email') . ' AND to_email IS NULL
-                                            AND timestamp >= :start AND ' . static::NOT_REPLIES . ' ORDER BY id');
+        $stmt = static::getDB()->prepare('SELECT email, body FROM chats WHERE ' . static::scriptLinesSql() . '
+                                            AND timestamp >= :start ORDER BY id');
         $stmt->execute([':start' => gmdate('Y-m-d H:i:s', static::dayStart(static::today()))]);
 
         $posted = [];
@@ -325,16 +355,16 @@ class DemoChat extends \Core\Model
             $story = $storyOf[$line['email'] . ' ' . $line['body']] ?? null;
             if ($story !== null) {
                 $key = strstr($line['email'], '@', true);
-                $posted[$story][] = [$firstNames[$key] ?? $key, $line['email'], $line['body']];
+                $posted[$story][] = ['name' => $firstNames[$key] ?? $key, 'email' => $line['email'], 'body' => $line['body']];
             }
         }
 
         // Theirs: the ones they've spoken in so far. The array keeps the order
         // stories started in; the latest few are kept
-        $theirs = array_filter($posted, fn ($lines) => in_array($email, array_column($lines, 1), true));
+        $theirs = array_filter($posted, fn (array $lines): bool => in_array($email, array_column($lines, 'email'), true));
         $theirs = array_slice($theirs, -static::MOST_STORIES, null, true);
 
-        return array_values(array_map(fn ($lines, $story) => [
+        return array_values(array_map(fn (array $lines, string $story): array => [
             'lines' => $lines,
             'isOver' => count($lines) >= count(array_merge(...$stories[$story])),
         ], $theirs, array_keys($theirs)));
@@ -346,7 +376,7 @@ class DemoChat extends \Core\Model
      *
      * @param string $date Y-m-d
      *
-     * @return array<array{string, string, string}> Each [UTC time as Y-m-d H:i:s, email, body]
+     * @return array<array{time: string, email: string, body: string}> Each line, its time UTC as Y-m-d H:i:s
      */
     public static function schedule(string $date): array
     {
@@ -384,9 +414,9 @@ class DemoChat extends \Core\Model
         $dayMinutes = (static::dayStart($nextDay) - $dayStart) / 60;
 
         $start = mt_rand(5, 20);
-        $busy = array_sum(array_map(fn ($lines) => end($lines), $offsets));
+        $busy = array_sum(array_map(fn (array $lines): float => end($lines), $offsets));
         $free = $dayMinutes - 30 - $start - $busy;
-        $weights = array_map(fn () => mt_rand(60, 140), array_slice($scenes, 1));
+        $weights = array_map(fn (): int => mt_rand(60, 140), array_slice($scenes, 1));
         $scale = $free / max(1, array_sum($weights));
 
         $minute = $start;
@@ -395,7 +425,11 @@ class DemoChat extends \Core\Model
         foreach ($scenes as $n => $scene) {
             foreach ($scene as $i => [$speaker, $body]) {
                 $seconds = (int) round(($minute + $offsets[$n][$i]) * 60) + mt_rand(0, 30);
-                $messages[] = [gmdate('Y-m-d H:i:s', $dayStart + $seconds), $speaker . static::DOMAIN, static::withAddressee($body, $firstNames)];
+                $messages[] = [
+                    'time' => gmdate('Y-m-d H:i:s', $dayStart + $seconds),
+                    'email' => $speaker . Characters::DEMO_DOMAIN,
+                    'body' => static::withAddressee($body, $firstNames),
+                ];
             }
 
             $minute += end($offsets[$n]) + ($weights[$n] ?? 0) * $scale;
@@ -438,7 +472,7 @@ class DemoChat extends \Core\Model
      */
     protected static function firstNames(): array
     {
-        $stmt = static::getDB()->query('SELECT email, name FROM users WHERE ' . static::isDemoSql('email'));
+        $stmt = static::getDB()->query('SELECT email, name FROM users WHERE ' . Characters::isDemoSql('email'));
 
         $names = [];
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $person) {
@@ -476,7 +510,7 @@ class DemoChat extends \Core\Model
         $dayStart = static::dayStart(static::today());
 
         // The real time the story has had to run: all of it, less its waits
-        $ran = time() - Bot::storyPausedSeconds($dayStart);
+        $ran = time() - static::storyPausedSeconds($dayStart);
 
         if (static::speed() == 1) {
             return $ran;

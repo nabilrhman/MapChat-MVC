@@ -20,8 +20,7 @@ class NicknameTest extends TestCase
         $this->db->beginTransaction();
 
         foreach (['ann@test.local' => 'Ann Lee', 'bob@test.local' => 'Bob Ray'] as $email => $name) {
-            $this->db->prepare("INSERT INTO users (name, email, password_hash, is_active) VALUES (?, ?, '!', TRUE)")
-                ->execute([$name, $email]);
+            TestDb::createUser($name, $email);
         }
     }
 
@@ -49,13 +48,13 @@ class NicknameTest extends TestCase
         return User::findByEmail($email)->nickname;
     }
 
-    public function testSavesANickname()
+    public function testSavesANickname(): void
     {
         $this->assertSame([], $this->saveNickname('ann@test.local', 'annie')->errors ?? []);
         $this->assertSame('annie', $this->nicknameOf('ann@test.local'));
     }
 
-    public function testEmptyMeansNone()
+    public function testABlankNicknameClearsTheSavedOne(): void
     {
         $this->saveNickname('ann@test.local', 'annie');
         $this->saveNickname('ann@test.local', '  ');
@@ -63,7 +62,7 @@ class NicknameTest extends TestCase
         $this->assertNull($this->nicknameOf('ann@test.local'));
     }
 
-    public function testMustBeOneShortWord()
+    public function testMustBeOneShortWord(): void
     {
         foreach (['a', 'ann lee', 'way_too_long_for_a_nickname', 'ann!'] as $nickname) {
             $this->assertNotEmpty($this->saveNickname('ann@test.local', $nickname)->errors ?? [], $nickname);
@@ -71,7 +70,7 @@ class NicknameTest extends TestCase
         $this->assertNull($this->nicknameOf('ann@test.local'));
     }
 
-    public function testCantTakeSomeoneElsesOrMapChats()
+    public function testCantTakeSomeoneElsesOrMapChats(): void
     {
         $this->saveNickname('bob@test.local', 'Rocket');
 

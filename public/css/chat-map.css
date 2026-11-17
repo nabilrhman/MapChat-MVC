@@ -1,0 +1,228 @@
+/* The map behind the chat (map.js), MapLibre's or Leaflet's, with its
+   pins, their labels, and the libraries' own parts restyled */
+
+.map,
+.map.maplibregl-map /* maplibre-gl.css loads later and makes it position: relative */
+{
+    /* Between the header and the footer, so neither covers it (or its credits) */
+    position: fixed;
+    inset: var(--header-height) 0 var(--footer-height);
+    z-index: 0; /* keep the map's layers below the chat panel */
+    background: var(--map-blank);
+    overflow: hidden;
+    /* Hidden until it has moved to the pins and drawn them (map.js) */
+    opacity: 0;
+    transition: opacity var(--dur-slow) var(--ease-out);
+
+    &.is-shown
+    {
+        opacity: 1;
+    }
+}
+
+/* Dots over the part of the map not under the panels, until the map is
+   drawn with its pins */
+.map-loading
+{
+    position: fixed;
+    /* Between the chat panel and the people list */
+    inset-block: var(--header-height) var(--footer-height);
+    inset-inline: var(--chat-width) var(--people-width);
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    transition: opacity var(--dur) var(--ease-out), visibility 0s linear var(--dur);
+
+    /* Hidden once faded, so the dots stop animating */
+    &.is-done
+    {
+        opacity: 0;
+        visibility: hidden;
+    }
+}
+
+/* Pin tooltip: the name, the flag and city, then their local time, centred
+   over the pin. The place inside is createPlace's (dom.js) */
+.pin-label
+{
+    text-align: center;
+}
+
+@scope (.pin-label) to (.place > *)
+{
+    .name
+    {
+        display: block;
+        color: var(--text-strong);
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    /* Under the name: the flag and place, then the time */
+    .place,
+    .time
+    {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--icon-gap);
+        margin-block-start: 2px;
+        color: var(--text-soft);
+        font-size: 11px; /* same as the messages' times */
+    }
+
+    /* Sun or moon, as on a message's sender time */
+    .daylight
+    {
+        font-size: 13px;
+
+        &.day
+        {
+            color: var(--daylight-day);
+        }
+
+        &.night
+        {
+            color: var(--daylight-night);
+        }
+    }
+}
+
+/* The map libraries set their own Helvetica; use the page's font like everything else */
+.map.leaflet-container,
+.map.maplibregl-map
+{
+    font-family: inherit;
+}
+
+.map-pin
+{
+    cursor: default; /* hovering shows the name; clicking does nothing */
+}
+
+/* Name shown when hovering a pin, like the old Google info window. Three
+   classes, to beat maplibre-gl.css's corner rules, which load later */
+.map .maplibregl-popup .maplibregl-popup-content
+{
+    font-family: inherit;
+    padding: 8px 12px;
+    border-radius: 2px;
+    box-shadow: 0 2px 7px 1px var(--deep-shadow);
+}
+
+@scope (.map-pin)
+{
+    /* Pins that come or go after the first load grow from their point */
+    :scope.is-entering .shape
+    {
+        animation: grow-in var(--dur) var(--ease-out) backwards;
+    }
+
+    :scope.is-leaving .shape
+    {
+        animation: shrink-out var(--dur-fast) var(--ease-in) forwards;
+    }
+
+    /* The pin of the person hovered in the list, or whose message's city is */
+    .shape
+    {
+        transition: transform var(--dur-fast) var(--ease-out);
+        transform-origin: bottom center;
+    }
+
+    :scope.is-highlighted .shape
+    {
+        transform: scale(1.35);
+    }
+}
+
+/* Leaflet's credit as MapLibre draws its own, at every width: a
+   see-through round "i" that opens into a white box (icon from
+   maplibre-gl.css). Leaflet's own rule is loaded later, hence the longer
+   selectors. Its colours and 12px text are MapLibre's box's, written out
+   to match it; its sides are physical, as the libraries pin it to the
+   bottom right corner */
+.leaflet-container .leaflet-bottom .leaflet-control-attribution
+{
+    min-height: 20px;
+    margin: 0 8px 8px 0;
+    padding: 2px 28px 2px 8px;
+    border-radius: 12px;
+    background: white url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' fill-rule='evenodd' viewBox='0 0 20 20'%3E%3Cpath d='M4 10a6 6 0 1 0 12 0 6 6 0 1 0-12 0m5-3a1 1 0 1 0 2 0 1 1 0 1 0-2 0m0 3a1 1 0 1 1 2 0v3a1 1 0 1 1-2 0'/%3E%3C/svg%3E") no-repeat right center / 24px;
+    color: black;
+    font-size: 12px;
+    line-height: 20px;
+    cursor: pointer;
+
+    /* Closed: only the "i" */
+    &:not(.is-open)
+    {
+        width: 24px;
+        height: 24px;
+        min-height: 0;
+        padding: 0;
+        background-color: color-mix(in srgb, white 50%, transparent);
+        background-position: center;
+        font-size: 0;
+    }
+}
+
+/* Fallback map: overlap tiles by a pixel so no hairline seams show.
+   !important: Leaflet sets each tile's size in its style attribute */
+.map .leaflet-tile
+{
+    width: 257px !important;
+    height: 257px !important;
+}
+
+/* Behind tiles still loading, and beyond the edge of the world, show water
+   rather than grey, the sea's colour in the tiles, so a tile arriving
+   doesn't show as a block of another purple */
+.map.leaflet-container
+{
+    background: var(--map-water);
+}
+
+/* Tablets: the people list slides over the map, so the dots use its room too */
+@media (max-width: 1100px)
+{
+    .map-loading
+    {
+        inset-inline-end: 0;
+    }
+}
+
+@media (max-width: 700px)
+{
+    /* Over the part of the map the sheet leaves showing. Clipped, so with
+       the sheet all the way up (and the map not loading) none spill out */
+    .map-loading
+    {
+        inset-inline-start: 0;
+        inset-block-end: auto;
+        height: var(--sheet-top);
+        overflow: clip;
+    }
+
+    /* The map's credits sit just above the sheet, small, and ride with it,
+       moved rather than placed so the slide only animates translate. The
+       map libraries' CSS loads later and sets bottom: 0, hence .map */
+    .map .maplibregl-ctrl-bottom-right,
+    .map .leaflet-bottom.leaflet-right
+    {
+        inset-block-start: 0;
+        inset-block-end: auto;
+        translate: 0 var(--sheet-top);
+        transform: translateY(-100%);
+        transition: translate var(--dur-slow) var(--ease-out);
+    }
+
+    /* While a finger holds the sheet, they follow it without lag */
+    .is-sheet-dragging .map .maplibregl-ctrl-bottom-right,
+    .is-sheet-dragging .map .leaflet-bottom.leaflet-right
+    {
+        transition: none;
+    }
+}

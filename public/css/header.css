@@ -3,10 +3,22 @@
 
 :root
 {
-    --link-hover: rgba(18, 0, 94, 0.3); /* a link's darker background */
-    --menu-row-line: rgba(255, 255, 255, 0.12); /* between the phone menu's rows */
-    --focus-ring-on-purple: rgba(255, 255, 255, 0.4);
-    --menu-text: #212121;
+    --header-height: 95px; /* the pages leave room for it */
+    --header-shade: #12005e; /* the deep purple a link darkens with */
+    --link-hover: color-mix(in srgb, var(--header-shade) 30%, transparent); /* a link's darker background */
+    --menu-row-line: color-mix(in srgb, var(--md-on-primary) 12%, transparent); /* between the phone menu's rows */
+    --focus-ring-on-purple: color-mix(in srgb, var(--md-on-primary) 40%, transparent);
+    --menu-text: var(--text-strong);
+    --menu-shadow: rgba(0, 0, 0, 0.25); /* under the phone menu */
+}
+
+/* Phones: a shorter header */
+@media (max-width: 700px)
+{
+    :root
+    {
+        --header-height: 61px;
+    }
 }
 
 .site-header
@@ -16,13 +28,13 @@
     inset-inline: 0;
     z-index: 110;
     box-sizing: border-box;
-    height: var(--header-height); /* see styles.css */
+    height: var(--header-height);
     padding-inline: 20px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     background-color: var(--md-primary);
-    border-bottom: 4px solid #ffc107; /* the yellow line is the only edge, on every page; the loading bar runs along it in deep orange */
+    border-block-end: 4px solid var(--brand-yellow); /* the yellow line is the only edge, on every page; the loading bar runs along it in deep orange */
 }
 
 @scope (.site-header) to (.account-menu)
@@ -38,9 +50,9 @@
         background-size: contain;
         /* The wordmark's "p" hangs below the line; nudge it up so the letters,
            not the whole box, sit level with the menu */
-        margin-top: -7px;
+        margin-block-start: -7px;
         /* 24px in, level with the GitHub icon in the footer below */
-        margin-left: 4px;
+        margin-inline-start: 4px;
         /* The logo is a picture; its text is only for screen readers */
         text-indent: -9999px;
         overflow: hidden;
@@ -61,7 +73,7 @@
         z-index: 0;
         margin-inline: 10px;
         padding: 10px;
-        color: #fff;
+        color: var(--md-on-primary);
         font-weight: 600;
         text-decoration: none;
         cursor: pointer;
@@ -75,7 +87,7 @@
             z-index: -1;
             background: var(--link-hover);
             transform: scaleX(0);
-            transform-origin: right;
+            transform-origin: right; /* physical: a transform has no inline end */
             transition: transform var(--dur) var(--ease-out);
         }
 
@@ -113,8 +125,8 @@
         {
             width: 124px;
             height: 38px;
-            margin-top: -6px;
-            margin-left: 0;
+            margin-block-start: -6px;
+            margin-inline-start: 0;
         }
 
         .menu-button
@@ -124,12 +136,12 @@
             justify-content: center;
             width: 44px;
             height: 44px;
-            margin-left: auto;
+            margin-inline-start: auto;
             padding: 0;
             border: none;
             border-radius: 4px;
             background: none;
-            color: #fff;
+            color: var(--md-on-primary);
             cursor: pointer;
 
             &:focus
@@ -181,12 +193,12 @@
         {
             display: none;
             position: absolute;
-            top: calc(100% + 4px); /* under the yellow line, which is the header's border */
+            inset-block-start: calc(100% + 4px); /* under the yellow line, which is the header's border */
             inset-inline: 0;
             flex-direction: column-reverse; /* the markup lists them right-to-left */
             align-items: stretch;
             background-color: var(--md-primary);
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25);
+            box-shadow: 0 6px 12px var(--menu-shadow);
         }
 
         :scope.is-menu-open .nav
@@ -199,7 +211,7 @@
         {
             margin: 0;
             padding: 14px 20px;
-            border-top: 1px solid var(--menu-row-line);
+            border-block-start: 1px solid var(--menu-row-line);
             font-size: 14px;
         }
     }
@@ -211,7 +223,7 @@
 .account-menu
 {
     position: relative;
-    margin-left: 10px;
+    margin-inline-start: 10px;
 }
 
 @scope (.account-menu)
@@ -226,7 +238,7 @@
         border: none;
         border-radius: 22px;
         background: none;
-        color: #fff;
+        color: var(--md-on-primary);
         font: inherit;
         font-weight: 600;
         cursor: pointer;
@@ -274,7 +286,7 @@
     .toggle .chevron
     {
         --icon-nudge: -1px; /* to the middle of the name's capitals */
-        margin-left: calc(2px - var(--icon-bearing) * 1em / 24);
+        margin-inline-start: calc(2px - var(--icon-bearing) * 1em / 24);
         font-size: 16px;
         transition: transform var(--dur) var(--ease-out);
     }
@@ -289,12 +301,12 @@
     {
         display: none;
         position: absolute;
-        top: calc(100% + 14px);
-        right: 0;
+        inset-block-start: calc(100% + 14px);
+        inset-inline-end: 0;
         min-width: 240px;
         padding: 8px 0;
-        background-color: #fff;
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+        background-color: var(--md-surface-container-lowest);
+        box-shadow: 0 6px 20px var(--raised-shadow);
         color: var(--menu-text);
     }
 
@@ -310,8 +322,8 @@
         align-items: center;
         gap: 12px;
         padding: 8px 16px 12px;
-        margin-bottom: 8px;
-        border-bottom: 1px solid #ede7f6;
+        margin-block-end: 8px;
+        border-block-end: 1px solid var(--lavender);
     }
 
     .who-name
@@ -325,7 +337,7 @@
         display: block;
         max-width: 170px;
         overflow: hidden;
-        color: #757575;
+        color: var(--text-soft);
         font-size: 13px;
         white-space: nowrap;
         text-overflow: ellipsis;
@@ -340,6 +352,14 @@
         color: var(--menu-text);
         font-size: 14px;
         text-decoration: none;
+
+        &:hover,
+        &:focus-visible,
+        &.is-current
+        {
+            outline: none;
+            background-color: var(--lavender-tint);
+        }
     }
 
     /* Log out is a form button; make it look like the links */
@@ -349,7 +369,7 @@
         border: 0;
         background: none;
         font-family: inherit;
-        text-align: left;
+        text-align: start;
         cursor: pointer;
     }
 
@@ -361,14 +381,6 @@
         margin-inline: 0;
         color: var(--md-primary);
         font-size: 20px;
-    }
-
-    .item:hover,
-    .item:focus-visible,
-    .item.is-current
-    {
-        outline: none;
-        background-color: #f5f1fb;
     }
 }
 
@@ -397,7 +409,7 @@
             padding: 0;
             background: none;
             box-shadow: none;
-            color: #fff;
+            color: var(--md-on-primary);
         }
 
         :scope.is-open .list
@@ -409,36 +421,36 @@
         {
             margin: 0;
             padding: 14px 20px;
-            border-bottom: none;
-            background-color: rgba(18, 0, 94, 0.2);
+            border-block-end: none;
+            background-color: color-mix(in srgb, var(--header-shade) 20%, transparent);
         }
 
         .who-detail
         {
             max-width: none;
-            color: rgba(255, 255, 255, 0.7);
+            color: var(--on-dark-muted);
         }
 
         .item
         {
             padding: 14px 20px;
-            border-top: 1px solid var(--menu-row-line);
-            color: #fff;
+            border-block-start: 1px solid var(--menu-row-line);
+            color: var(--md-on-primary);
             font-size: 14px;
             font-weight: 600;
             text-transform: uppercase;
+
+            &:hover,
+            &:focus-visible,
+            &.is-current
+            {
+                background-color: var(--link-hover);
+            }
         }
 
         .item .icon
         {
-            color: rgba(255, 255, 255, 0.85);
-        }
-
-        .item:hover,
-        .item:focus-visible,
-        .item.is-current
-        {
-            background-color: var(--link-hover);
+            color: var(--on-dark-text);
         }
     }
 }

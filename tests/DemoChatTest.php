@@ -75,7 +75,7 @@ class DemoChatTest extends TestCase
         TestDemoChat::$isStampedOnDemoClock = false;
     }
 
-    public function testRealTimeIsTheDemoTimeAtNormalSpeed()
+    public function testRealTimeIsTheDemoTimeAtNormalSpeed(): void
     {
         // No pause: the demo clock is the real one
         TestDemoChat::$demoNow = time();
@@ -84,7 +84,7 @@ class DemoChatTest extends TestCase
         $this->assertSame($line, TestDemoChat::seenAt($line));
     }
 
-    public function testFastDayIsSeenOnTheRealClock()
+    public function testFastDayIsSeenOnTheRealClock(): void
     {
         putenv('DEMO_SPEED=60');
         // The demo clock is hours ahead; a line 30 demo minutes ago was 30 real seconds ago
@@ -96,14 +96,13 @@ class DemoChatTest extends TestCase
         $this->assertEqualsWithDelta(time() - 30, $seen, 2);
     }
 
-    public function testLinesThatNameSomeoneTagThem()
+    public function testLinesThatNameSomeoneTagThem(): void
     {
         $db = TestDb::get();
         $db->beginTransaction();
         try {
             foreach (['Rafael Costa' => 'rafael', 'Jae-won Park' => 'jaewon'] as $name => $key) {
-                $db->prepare("INSERT INTO users (name, email, password_hash, is_active) VALUES (?, ?, '!', TRUE)")
-                    ->execute([$name, "$key@demo.mapchat.local"]);
+                TestDb::createUser($name, "$key@demo.mapchat.local");
             }
 
             $this->assertSame('@Rafael how was it?', TestDemoChat::addressed('rafael how was it?'));
@@ -132,11 +131,11 @@ class DemoChatTest extends TestCase
      */
     private function catchUpTo(array $schedule, int $line): void
     {
-        TestDemoChat::$demoNow = strtotime($schedule[$line][0] . ' UTC');
+        TestDemoChat::$demoNow = strtotime($schedule[$line]['time'] . ' UTC');
         TestDemoChat::catchUpNow();
     }
 
-    public function testCatchUpGoesOnFromWhereTheStoryIs()
+    public function testCatchUpGoesOnFromWhereTheStoryIs(): void
     {
         // The demo clock is moved to a line of today's plan, which is ahead
         // of the real clock early in the demo day. Stamped on the real clock,
@@ -147,16 +146,15 @@ class DemoChatTest extends TestCase
         $db->beginTransaction();
         try {
             $schedule = TestDemoChat::schedule(TestDemoChat::today());
-            foreach (array_unique(array_column($schedule, 1)) as $email) {
-                $db->prepare("INSERT INTO users (name, email, password_hash, is_active) VALUES (?, ?, '!', TRUE)")
-                    ->execute([ucfirst(strtok($email, '@')), $email]);
+            foreach (array_unique(array_column($schedule, 'email')) as $email) {
+                TestDb::createUser(ucfirst(strtok($email, '@')), $email);
             }
             $schedule = TestDemoChat::schedule(TestDemoChat::today()); // now with the people's names, for @tags
-            $bodies = array_column($schedule, 2);
+            $bodies = array_column($schedule, 'body');
 
             // The same words from an earlier day don't count as said today
             $db->prepare("INSERT INTO chats (email, body, timestamp) VALUES (?, ?, ?)")
-                ->execute([$schedule[0][1], $schedule[0][2], gmdate('Y-m-d H:i:s', TestDemoChat::todayStart() - 3600)]);
+                ->execute([$schedule[0]['email'], $schedule[0]['body'], gmdate('Y-m-d H:i:s', TestDemoChat::todayStart() - 3600)]);
 
             $this->catchUpTo($schedule, 20);
             $this->assertSame(array_slice($bodies, 0, 21), $this->postedToday());

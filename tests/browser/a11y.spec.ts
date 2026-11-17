@@ -33,7 +33,7 @@ test('pages before signing in have no accessibility problems', async ({page}) =>
 
 test('pages for a signed-in guest have no accessibility problems', async ({page}) => {
     await page.goto('/login');
-    await page.locator('#guestForm button').click();
+    await page.locator('#guest-form button').click();
     await page.waitForURL('**/app');
 
     for (const path of SIGNED_IN_PAGES) {

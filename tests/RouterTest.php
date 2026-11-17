@@ -126,14 +126,14 @@ namespace Tests {
             $this->fail("$method $url was dispatched");
         }
 
-        public function testRunsTheExactActionTheRouteNames()
+        public function testRunsTheExactActionTheRouteNames(): void
         {
             $this->router->dispatch('GET', '/probe/list');
 
             $this->assertSame(['list'], $this->actionsRun());
         }
 
-        public function testRunsTheActionThatMatchesTheMethod()
+        public function testRunsTheActionThatMatchesTheMethod(): void
         {
             $_SERVER['REQUEST_METHOD'] = 'POST';
             $this->router->dispatch('POST', '/item/7/edit');
@@ -143,7 +143,7 @@ namespace Tests {
             $this->assertSame(['save', 'show'], $this->actionsRun());
         }
 
-        public function testAliasesRunTheSameAction()
+        public function testAliasesRunTheSameAction(): void
         {
             $this->router->dispatch('GET', '/probe');
             $this->router->dispatch('GET', '/probe/list');
@@ -151,35 +151,35 @@ namespace Tests {
             $this->assertSame(['list', 'list'], $this->actionsRun());
         }
 
-        public function testHomePage()
+        public function testTheRootPathRunsItsOwnRoute(): void
         {
             $this->router->dispatch('GET', '/');
 
             $this->assertSame(['show'], $this->actionsRun());
         }
 
-        public function testRouteVariablesReachTheController()
+        public function testRouteVariablesReachTheController(): void
         {
             $this->router->dispatch('GET', '/item/42');
 
             $this->assertSame([['show', ['id' => '42']]], $this->actionCalls());
         }
 
-        public function testVariableOutsideItsPatternIs404()
+        public function testVariableOutsideItsPatternIs404(): void
         {
             $this->assertDispatchFails(404, 'GET', '/item/abc');
             $this->assertDispatchFails(404, 'GET', '/item/42/x');
             $this->assertDispatchFails(404, 'GET', '/item/');
         }
 
-        public function testIgnoresCase()
+        public function testAPathMatchesInAnyLetterCase(): void
         {
             $this->router->dispatch('GET', '/PROBE/LIST');
 
             $this->assertSame(['list'], $this->actionsRun());
         }
 
-        public function testQueryStringIsNotPartOfThePath()
+        public function testQueryStringIsNotPartOfThePath(): void
         {
             $this->router->dispatch('GET', '/probe/list?page=1&sort=name');
             $this->router->dispatch('GET', '/?page=1');
@@ -189,19 +189,19 @@ namespace Tests {
             $this->assertSame(['id' => '42'], $this->actionCalls()[2][1]);
         }
 
-        public function testQueryStringCantCompleteAPath()
+        public function testQueryStringCantCompleteAPath(): void
         {
             $this->assertDispatchFails(404, 'GET', '/probe/li?st');
             $this->assertDispatchFails(404, 'GET', '/item?/42');
         }
 
-        public function testUnknownPathIs404()
+        public function testUnknownPathIs404(): void
         {
             $this->assertDispatchFails(404, 'GET', '/a/b/c');
             $this->assertDispatchFails(404, 'POST', '/a/b/c');
         }
 
-        public function testWrongMethodIs405WithTheAllowedMethods()
+        public function testWrongMethodIs405WithTheAllowedMethods(): void
         {
             $e = $this->assertDispatchFails(405, 'GET', '/probe/save');
             $this->assertInstanceOf(MethodNotAllowed::class, $e);
@@ -214,21 +214,21 @@ namespace Tests {
             $this->assertSame(['GET', 'POST', 'HEAD'], $e->allowed);
         }
 
-        public function testHeadRunsTheGetAction()
+        public function testHeadRunsTheGetAction(): void
         {
             $this->router->dispatch('HEAD', '/probe/list');
 
             $this->assertSame(['list'], $this->actionsRun());
         }
 
-        public function testHeadOnAPostRouteIs405()
+        public function testHeadOnAPostRouteIs405(): void
         {
             $e = $this->assertDispatchFails(405, 'HEAD', '/probe/save');
 
             $this->assertSame(['POST'], $e->allowed);
         }
 
-        public function testUnregisteredActionCantBeReachedByUrl()
+        public function testUnregisteredActionCantBeReachedByUrl(): void
         {
             // The old {controller}/{action} route turned these into secretAction
             foreach (['/probe/secret', '/probe/secret-action', '/test/probe/secret', '/probe/before', '/probe/run-action'] as $url) {
@@ -239,7 +239,7 @@ namespace Tests {
             $this->assertSame([], Probe::$calls);
         }
 
-        public function testFiltersRunAroundTheAction()
+        public function testFiltersRunAroundTheAction(): void
         {
             $this->router->dispatch('GET', '/probe/list');
 
@@ -251,7 +251,7 @@ namespace Tests {
             unset($_SERVER['HTTP_HOST'], $_SERVER['HTTP_ORIGIN']);
         }
 
-        public function testBeforeFilterCanStopTheAction()
+        public function testBeforeFilterCanStopTheAction(): void
         {
             Probe::$beforeResult = false;
 

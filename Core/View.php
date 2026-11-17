@@ -8,7 +8,7 @@ use App\Config;
 use App\Flash;
 use App\Google;
 use App\Mention;
-use App\Models\Bot;
+use App\PersonName;
 use App\Push;
 use Twig\Environment;
 use Twig\Loader\FilesystemLoader;
@@ -64,20 +64,27 @@ class View
         // @mentions in the open room, as chips (see App\Mention)
         $twig->addFunction(new TwigFunction('shown_name', Mention::shownName(...)));
         $twig->addFunction(new TwigFunction('mentioned_names', Mention::namesIn(...)));
-        $twig->addFunction(new TwigFunction('mentions', Mention::isMentionedIn(...)));
-        $twig->addFunction(new TwigFunction('mark_mentions', Mention::mark(...), ['is_safe' => ['html']]));
+        $twig->addFunction(new TwigFunction('mark_mentions', static::htmlWithMentionChips(...), ['is_safe' => ['html']]));
         $twig->addGlobal('app_url', Config::appUrl());
         $twig->addGlobal('csp_nonce', ContentSecurityPolicy::nonce());
-        $twig->addGlobal('mapchat_can_reply', Bot::canReply());
         // For marking the current page in the header
         $twig->addGlobal('current_path', parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH));
-        $twig->addGlobal('cloudinary_cloud_name', Config::cloudinaryCloudName());
-        $twig->addGlobal('cloudinary_upload_preset', Config::cloudinaryUploadPreset());
-        // Empty while Web Push isn't set up, so pages don't offer it (see App\Push)
         // The login page offers Google only when the site has a client for it
         $twig->addGlobal('is_google_sign_in_on', Google::isEnabled());
+        // Empty while Web Push isn't set up, so pages don't offer it (see App\Push)
         $twig->addGlobal('push_public_key', Push::isEnabled() ? Push::publicKey() : '');
 
         return $twig;
+    }
+
+    /**
+     * Mention::htmlWithChips, for templates, which have the reader's names
+     * as separate values
+     *
+     * @param string[] $names From Mention::namesIn
+     */
+    protected static function htmlWithMentionChips(string $text, array $names, string $readerName, ?string $readerNickname, bool $readerIsGuest): string
+    {
+        return Mention::htmlWithChips($text, $names, new PersonName($readerName, $readerNickname, $readerIsGuest));
     }
 }

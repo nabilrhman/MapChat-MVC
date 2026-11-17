@@ -44,7 +44,7 @@ class Error
         $code = $exception->getCode() === 404 ? 404 : 500;
         http_response_code($code);
 
-        if (Config::flag('SHOW_ERRORS')) {
+        if (Config::isOn('SHOW_ERRORS')) {
             echo "<h1>Fatal error</h1>";
             echo "<p>Uncaught exception: '" . get_class($exception) . "'</p>";
             echo "<p>Message: '" . htmlspecialchars($exception->getMessage()) . "'</p>";

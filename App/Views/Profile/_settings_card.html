@@ -1,0 +1,32 @@
+{# The parts every card on the profile page repeats #}
+
+{# The card's title, with Edit when its details can be changed. Edit turns
+   the details into fields with Cancel and Save (profile.js) #}
+{% macro card_head(title, is_editable = false) %}
+{% types {title: 'string', is_editable: 'bool'} %}
+<div class="head">
+    <h2 class="title">{{ title }}</h2>
+    {% if is_editable %}
+    <button type="button" class="button quiet small edit-button" data-part="edit">Edit</button>
+    {% endif %}
+</div>
+{% endmacro %}
+
+{# Under an editable card's fields, while they're open #}
+{% macro edit_actions() %}
+<div class="actions edit">
+    <button type="button" class="link-button" data-part="cancel">Cancel</button>
+    <button type="submit" class="button primary small" data-part="save">Save</button>
+</div>
+{% endmacro %}
+
+{# An on/off switch; its label sits beside it, in the setting's text #}
+{% macro switch(input_id, is_on = false) %}
+{% types {input_id: 'string', is_on: 'bool'} %}
+<div class="beer control">
+    <label class="switch">
+        <input type="checkbox" id="{{ input_id }}"{% if is_on %} checked{% endif %}>
+        <span></span>
+    </label>
+</div>
+{% endmacro %}

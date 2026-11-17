@@ -1,8 +1,10 @@
 {# The site's header: the logo, and links that fold into a menu on phones.
    The link to the page being shown is marked, e.g. /profile/... for PROFILE #}
+{% types {current_user: '?App\\Models\\User', current_path: 'string'} %}
 {% macro link(href, label, section) %}
-{% set here = current_path starts with section %}
-<a href="{{ href }}" class="link{{ here ? ' is-current' }}"{{ here ? ' aria-current="page"' }}>{{ label }}</a>
+{% types {href: 'string', label: 'string', section: 'string'} %}
+{% set is_current = current_path starts with section %}
+<a href="{{ href }}" class="link{{ is_current ? ' is-current' }}"{{ is_current ? ' aria-current="page"' }}>{{ label }}</a>
 {% endmacro %}
 {% from _self import link %}
 <header class="site-header" id="site-header">
@@ -25,9 +27,9 @@
 
         {% if current_user %}
         {# Your avatar and name; opens Profile and Log out #}
-        {% set on_profile = current_path starts with '/profile' %}
+        {% set is_on_profile = current_path starts with '/profile' %}
         <div class="account-menu" id="account-menu">
-            <button type="button" class="toggle{{ on_profile ? ' is-current' }}" id="account-menu-button"
+            <button type="button" class="toggle{{ is_on_profile ? ' is-current' }}" id="account-menu-button"
                     aria-controls="account-menu-list" aria-expanded="false" aria-haspopup="true">
                 <img class="avatar" src="{{ avatar_src(current_user.id, current_user.name, current_user.avatar) }}" alt="">
                 <span class="name">{{ shown_name(current_user.name, current_user.nickname, current_user.is_guest) }}</span>
@@ -41,10 +43,10 @@
                         <span class="who-detail">{{ current_user.is_guest ? 'Guest account' : current_user.email }}</span>
                     </span>
                 </div>
-                <a href="/profile/show" class="item{{ on_profile ? ' is-current' }}"{{ on_profile ? ' aria-current="page"' }}>
+                <a href="/profile/show" class="item{{ is_on_profile ? ' is-current' }}"{{ is_on_profile ? ' aria-current="page"' }}>
                     {{ icon('user') }}Profile
                 </a>
-                <form method="post" action="/logout">
+                <form method="post" action="/logout" id="logout-form">
                     <button type="submit" class="item log-out">
                         {{ icon('exit') }}Log out
                     </button>

@@ -66,6 +66,6 @@ class PushSubscription extends \Core\Model
                 JOIN users
                 ON push_subscriptions.email = users.email';
 
-        return static::getDB()->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+        return static::typedRows(static::getDB()->query($sql)->fetchAll(PDO::FETCH_ASSOC), boolColumns: ['is_guest']);
     }
 }

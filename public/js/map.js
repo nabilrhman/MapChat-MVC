@@ -130,30 +130,27 @@ const PIN_TIME_INTERVAL = 30000;
 
 // Shown when hovering a pin: the name, the flag and city, then their local
 // time with a sun or moon, as a message shows its sender's
-function createPinLabel(location) {
+function createPinLabel(personLocation) {
     const label = createElement('div', 'pin-label');
-    label.append(createElement('strong', 'name', location.shown_name || ''));
+    label.append(createElement('strong', 'name', personLocation.shown_name ?? ''));
 
-    if (location.city || location.country) {
-        label.append(createPlace(location.city, location.country));
+    if (personLocation.city || personLocation.country) {
+        label.append(createPlace(personLocation.city, personLocation.country));
     }
 
     const time = createElement('span', 'time');
     time.dataset.part = 'pin-time';
-    time.dataset.timezone = location.timezone || '';
-    time.dataset.lng = location.lng;
-    time.append(createIcon('sun', 'daylight'), createElement('span'));
+    time.dataset.timezone = personLocation.timezone ?? '';
+    time.dataset.lng = personLocation.lng;
     showPinTime(time);
     label.append(time);
 
     return label;
 }
 
-// Without their time zone, localTimeOf (chat.js) estimates it from the longitude
+// Without their time zone, localTimeOf (dom.js) estimates it from the longitude
 function showPinTime(time) {
-    const localTime = localTimeOf(new Date(), time.dataset.timezone, parseFloat(time.dataset.lng));
-    showDaylight(time.querySelector('svg'), localTime.hour);
-    time.querySelector('span').textContent = localTime.text;
+    showLocalTime(time, localTimeOf(new Date(), time.dataset.timezone, parseFloat(time.dataset.lng)));
 }
 
 setInterval(() => document.querySelectorAll('[data-part="pin-time"]').forEach(showPinTime), PIN_TIME_INTERVAL);
@@ -179,8 +176,8 @@ function fadeOutPin(pin, removePin) {
     pin.addEventListener('animationend', removePin, {once: true});
 }
 
-const lngLatOf = (location) => [parseFloat(location.lng), parseFloat(location.lat)];
-const latLngOf = (location) => [parseFloat(location.lat), parseFloat(location.lng)];
+const lngLatOf = (personLocation) => [parseFloat(personLocation.lng), parseFloat(personLocation.lat)];
+const latLngOf = (personLocation) => [parseFloat(personLocation.lat), parseFloat(personLocation.lng)];
 
 /* Fitting the map */
 
@@ -253,7 +250,7 @@ async function loadLocations() {
 }
 
 // Everything a pin shows; when it changes, the pin is drawn again
-const pinContentOf = (location) => [location.lat, location.lng, location.shown_name, location.city, location.country, location.timezone].join('|');
+const pinContentOf = (personLocation) => [personLocation.lat, personLocation.lng, personLocation.shown_name, personLocation.city, personLocation.country, personLocation.timezone].join('|');
 
 // What the rest of the page asks of the pins (refreshPinsSoon, focusPin)
 // and the map's own rounds share
@@ -271,7 +268,7 @@ const pins = {
 // (refreshPinsSoon), or every round on the HTTP fallback. Adds new people,
 // drops those gone or hidden, and moves anyone whose place changed. The map only
 // zooms to the pins the first time, so it never jumps while someone looks at
-// it. Pins after the first round ease in. addPin(location, shouldAnimate)
+// it. Pins after the first round ease in. addPin(personLocation, shouldAnimate)
 // returns a function that removes the pin
 function keepPinsUpdated(addPin, fitPins) {
     const pinsByUserId = new Map();
@@ -280,14 +277,14 @@ function keepPinsUpdated(addPin, fitPins) {
     function updatePins(locations) {
         const shownUserIds = new Set();
 
-        locations.forEach((location) => {
-            const content = pinContentOf(location);
-            const pin = pinsByUserId.get(location.user_id);
-            shownUserIds.add(location.user_id);
+        locations.forEach((personLocation) => {
+            const content = pinContentOf(personLocation);
+            const pin = pinsByUserId.get(personLocation.user_id);
+            shownUserIds.add(personLocation.user_id);
 
             if (pin?.content === content) return;
             pin?.removePin();
-            pinsByUserId.set(location.user_id, {content, removePin: addPin(location, !isFirstRound)});
+            pinsByUserId.set(personLocation.user_id, {content, removePin: addPin(personLocation, !isFirstRound)});
         });
 
         pinsByUserId.forEach((pin, userId) => {
@@ -315,7 +312,7 @@ function keepPinsUpdated(addPin, fitPins) {
         }
         showMapOnce();
         clearTimeout(pins.nextRefreshTimer);
-        if (!isChatSocketLive()) pins.nextRefreshTimer = setTimeout(refreshPins, PINS_INTERVAL);
+        if (!isSocketLive) pins.nextRefreshTimer = setTimeout(refreshPins, PINS_INTERVAL);
     }
 
     pins.refresh = refreshPins;
@@ -395,13 +392,13 @@ function setPinLabelShown(userId, isShown) {
 let openPinPopup = null;
 
 // Adds a MapLibre pin; returns a function that removes it
-function addVectorPin(map, location, shouldAnimate) {
-    const lngLat = lngLatOf(location);
-    const label = createPinLabel(location);
+function addVectorPin(map, personLocation, shouldAnimate) {
+    const lngLat = lngLatOf(personLocation);
+    const label = createPinLabel(personLocation);
     const popupTime = label.querySelector('[data-part="pin-time"]');
     const popup = new maplibregl.Popup({closeButton: false, offset: vectorLabelOffsetsOf(PIN_LABEL_OFFSET)})
         .setDOMContent(label);
-    const marker = new maplibregl.Marker({element: createPinElement(location.user_id), anchor: 'bottom'})
+    const marker = new maplibregl.Marker({element: createPinElement(personLocation.user_id), anchor: 'bottom'})
         .setLngLat(lngLat)
         .addTo(map);
 
@@ -426,7 +423,7 @@ function addVectorPin(map, location, shouldAnimate) {
         showLabel();
     });
 
-    pinLabelsByUserId.set(String(location.user_id), {
+    pinLabelsByUserId.set(String(personLocation.user_id), {
         show: showLabel,
         hide: () => popup.remove(),
         focus: () => {
@@ -444,7 +441,7 @@ function addVectorPin(map, location, shouldAnimate) {
     });
 
     return () => {
-        pinLabelsByUserId.delete(String(location.user_id));
+        pinLabelsByUserId.delete(String(personLocation.user_id));
         popup.remove();
         fadeOutPin(pin, () => marker.remove());
     };
@@ -452,7 +449,7 @@ function addVectorPin(map, location, shouldAnimate) {
 
 function fitVectorPins(map, locations) {
     const bounds = new maplibregl.LngLatBounds();
-    locations.forEach((location) => bounds.extend(lngLatOf(location)));
+    locations.forEach((personLocation) => bounds.extend(lngLatOf(personLocation)));
 
     const padding = getMapPadding();
     if (locations.length === 1) {
@@ -462,10 +459,11 @@ function fitVectorPins(map, locations) {
     }
 }
 
-// Credits as a small (i) beside the people list (see chat.css)
+// Credits as a small (i) beside the people list (see chat-map.css)
 function addVectorCredits(map) {
     map.addControl(new maplibregl.AttributionControl({compact: true}), 'bottom-right');
-    // No tooltip on the (i): it explains itself. The aria-label stays for screen readers
+    // No tooltip on the (i): it explains itself. The aria-label stays for screen readers.
+    // MapLibre makes the credits' markup, so its own classes are the only way to find them
     map.getContainer().querySelector('.maplibregl-ctrl-attrib-button').removeAttribute('title');
 
     // MapLibre opens them at first; close them once the map is drawn
@@ -589,7 +587,7 @@ async function initializeVectorMap() {
     map.on('load', () => {
         addNightShade(map);
         keepPinsUpdated(
-            (location, shouldAnimate) => addVectorPin(map, location, shouldAnimate),
+            (personLocation, shouldAnimate) => addVectorPin(map, personLocation, shouldAnimate),
             (locations) => fitVectorPins(map, locations),
         );
     });
@@ -715,16 +713,17 @@ function createThemedTileLayer() {
             canvas.height = 256;
             const tile = new Image();
             tile.crossOrigin = 'anonymous';
-            tile.onload = () => {
+            tile.onload = async () => {
                 if (worker) {
                     const id = nextTileId++;
                     waitingTiles.set(id, {canvas, done});
-                    createImageBitmap(tile)
-                        .then((bitmap) => worker.postMessage({id, tile: bitmap}, [bitmap]))
-                        .catch((error) => {
-                            waitingTiles.delete(id);
-                            done(error, canvas);
-                        });
+                    try {
+                        const bitmap = await createImageBitmap(tile);
+                        worker.postMessage({id, tile: bitmap}, [bitmap]);
+                    } catch (error) {
+                        waitingTiles.delete(id);
+                        done(error, canvas);
+                    }
                     return;
                 }
                 const context = canvas.getContext('2d', {willReadFrequently: true});
@@ -745,7 +744,7 @@ function createThemedTileLayer() {
     });
 }
 
-// Credits beside the people list (see chat.css); the tiles add theirs to it.
+// Credits beside the people list (see chat-map.css); the tiles add theirs to it.
 // It's an "i" that opens on a click, like MapLibre's
 function addTileCredits(map) {
     map.attributionControl = L.control.attribution({position: 'bottomright', prefix: false}).addTo(map);
@@ -767,13 +766,13 @@ function leafletPaddingOf(padding) {
 }
 
 // Adds a Leaflet pin; returns a function that removes it
-function addTilePin(map, location, shouldAnimate) {
-    const pin = createPinElement(location.user_id);
+function addTilePin(map, personLocation, shouldAnimate) {
+    const pin = createPinElement(personLocation.user_id);
     pin.classList.toggle('is-entering', shouldAnimate);
     const icon = L.divIcon({className: '', html: pin.outerHTML, iconSize: [20, PIN_HEIGHT], iconAnchor: [10, PIN_HEIGHT]});
-    const marker = L.marker(latLngOf(location), {icon})
+    const marker = L.marker(latLngOf(personLocation), {icon})
         // Made each time it opens, so the time is now's
-        .bindTooltip(() => createPinLabel(location), {direction: 'top', offset: [0, -PIN_LABEL_OFFSET]})
+        .bindTooltip(() => createPinLabel(personLocation), {direction: 'top', offset: [0, -PIN_LABEL_OFFSET]})
         .addTo(map);
 
     const setTooltipOffset = (offset) => {
@@ -783,14 +782,14 @@ function addTilePin(map, location, shouldAnimate) {
         setTooltipOffset(offset);
         marker.openTooltip();
     };
-    pinLabelsByUserId.set(String(location.user_id), {
+    pinLabelsByUserId.set(String(personLocation.user_id), {
         show: showTooltip,
         // Leaflet's own flight, which keeps its tiles in step; it slows into
         // place but doesn't ease off. Driving it frame by frame for that
         // left tiles unloaded or drawn off to the side. A bounds of one point,
         // as only fitting bounds takes the map's padding here
         focus: () => {
-            const latLng = latLngOf(location);
+            const latLng = latLngOf(personLocation);
             map.flyToBounds([latLng, latLng], {
                 ...leafletPaddingOf(getMapPadding()),
                 maxZoom: Math.max(map.getZoom(), FOCUS_PIN_ZOOM),
@@ -806,7 +805,7 @@ function addTilePin(map, location, shouldAnimate) {
     });
 
     return () => {
-        pinLabelsByUserId.delete(String(location.user_id));
+        pinLabelsByUserId.delete(String(personLocation.user_id));
         marker.closeTooltip();
         fadeOutPin(marker.getElement().querySelector('[data-part="map-pin"]'), () => marker.remove());
     };
@@ -865,7 +864,7 @@ async function initializeTileMap() {
     createThemedTileLayer().addTo(map);
 
     keepPinsUpdated(
-        (location, shouldAnimate) => addTilePin(map, location, shouldAnimate),
+        (personLocation, shouldAnimate) => addTilePin(map, personLocation, shouldAnimate),
         (locations) => fitTilePins(map, locations),
     );
 }

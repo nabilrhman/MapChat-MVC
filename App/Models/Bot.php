@@ -6,6 +6,7 @@ use PDO;
 use App\ChatSocket\Signal;
 use App\Groq;
 use App\Mention;
+use App\PersonName;
 
 /**
  * The MapChat account chats back: it greets a visitor who walks into a quiet
@@ -92,7 +93,7 @@ class Bot extends \Core\Model
      */
     public static function onArrival(string $email): void
     {
-        if (!static::isPerson($email) || !static::isQuiet($email) || static::wasGreetedLately($email)) {
+        if (!Characters::isPerson($email) || !static::isQuiet($email) || static::wasGreetedLately($email)) {
             return;
         }
 
@@ -113,7 +114,7 @@ class Bot extends \Core\Model
     public static function onMessage(string $email, int $chatId, ?string $toEmail, string $body): void
     {
         // MapChat's own messages and the demo people's never start a job
-        if (!static::isPerson($email)) {
+        if (!Characters::isPerson($email)) {
             return;
         }
 
@@ -123,7 +124,7 @@ class Bot extends \Core\Model
             static::schedule(BotJobKind::PrivateReply, $email, $chatId, "dm:$chatId", static::PRIVATE_SECONDS, $toEmail);
             return;
         }
-        if ($toEmail !== null && DemoChat::isDemoEmail($toEmail)) {
+        if ($toEmail !== null && Characters::isDemo($toEmail)) {
             static::schedule(BotJobKind::PrivateReply, $email, $chatId, "dm:$chatId", static::demoAnswerDelay($toEmail), $toEmail);
             return;
         }
@@ -134,7 +135,7 @@ class Bot extends \Core\Model
         // They spoke first: answer that rather than greet them as well
         static::getDB()->prepare('UPDATE mapchat_jobs SET done_at = :now
                                   WHERE kind = :greeting AND email = :email AND done_at IS NULL')
-            ->execute([':now' => static::time(), ':greeting' => BotJobKind::Greeting->value, ':email' => $email]);
+            ->execute([':now' => static::databaseTime(), ':greeting' => BotJobKind::Greeting->value, ':email' => $email]);
 
         // Asked by name: whoever was asked answers, however busy the room is
         $asked = static::askedIn($body);
@@ -177,7 +178,7 @@ class Bot extends \Core\Model
             }
 
             $stmt = $db->prepare('SELECT * FROM mapchat_jobs WHERE done_at IS NULL AND due_at <= :now ORDER BY due_at, id');
-            $stmt->execute([':now' => static::time()]);
+            $stmt->execute([':now' => static::databaseTime()]);
 
             foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
                 static::run(BotJob::fromRow($row));
@@ -224,7 +225,7 @@ class Bot extends \Core\Model
         }
 
         if (static::needsTag($job)) {
-            $body = static::tag($job->email, $body);
+            $body = static::withMentionOf($job->email, $body);
         }
         static::post($job, static::fitLength($body), null);
     }
@@ -267,7 +268,7 @@ class Bot extends \Core\Model
 
         // Due again once typed; runDue keeps "typing" showing till then
         static::getDB()->prepare('UPDATE mapchat_jobs SET reply = :reply, due_at = :due, done_at = NULL WHERE id = :id')
-            ->execute([':reply' => $body, ':due' => static::time($typingLeft), ':id' => $job->id]);
+            ->execute([':reply' => $body, ':due' => static::databaseTime($typingLeft), ':id' => $job->id]);
     }
 
     /**
@@ -276,7 +277,7 @@ class Bot extends \Core\Model
     protected static function setDue(BotJob $job, int $seconds): void
     {
         static::getDB()->prepare('UPDATE mapchat_jobs SET due_at = :due WHERE id = :id')
-            ->execute([':due' => static::time($seconds), ':id' => $job->id]);
+            ->execute([':due' => static::databaseTime($seconds), ':id' => $job->id]);
     }
 
     /**
@@ -304,7 +305,7 @@ class Bot extends \Core\Model
     protected static function claim(BotJob $job): bool
     {
         $stmt = static::getDB()->prepare('UPDATE mapchat_jobs SET done_at = :now WHERE id = :id AND done_at IS NULL');
-        $stmt->execute([':now' => static::time(), ':id' => $job->id]);
+        $stmt->execute([':now' => static::databaseTime(), ':id' => $job->id]);
 
         return $stmt->rowCount() > 0;
     }
@@ -335,7 +336,7 @@ class Bot extends \Core\Model
             return null;
         }
 
-        $person = static::person($job->email);
+        $person = static::getPerson($job->email);
         if (!$person) {
             return null;
         }
@@ -358,7 +359,7 @@ class Bot extends \Core\Model
     protected static function publicReply(BotJob $job): ?string
     {
         $wasAsked = $job->kind === BotJobKind::Mention;
-        if (static::hasNewerJob($job) || (!$wasAsked && static::someoneAnswered($job->email, $job->chatId))) {
+        if (static::hasNewerJob($job) || (!$wasAsked && static::hasSomeoneAnswered($job->email, $job->chatId))) {
             return null;
         }
 
@@ -398,7 +399,7 @@ class Bot extends \Core\Model
      */
     protected static function instructionsFor(BotJob $job): string
     {
-        $speakerPerson = $job->speaker === Chat::BOT_EMAIL ? null : static::person($job->speaker);
+        $speakerPerson = $job->speaker === Chat::BOT_EMAIL ? null : static::getPerson($job->speaker);
 
         return BotInstructions::forSpeaker($job->speaker, $speakerPerson ?: null);
     }
@@ -421,25 +422,25 @@ class Bot extends \Core\Model
      *
      * @param string $speaker Who's answering
      *
-     * @return array<array{name: string, nickname: ?string, is_guest: string, email: string, body: string}>
+     * @return array<array{name: string, nickname: ?string, is_guest: bool, email: string, body: string}>
      */
     protected static function roomHistory(int $upToId, string $speaker): array
     {
-        $script = $speaker === Chat::BOT_EMAIL ? static::notDemoSql() : '';
+        $script = $speaker === Chat::BOT_EMAIL ? Characters::notDemoSql() : '';
         $stmt = static::getDB()->prepare('SELECT users.name, users.nickname, users.is_guest, chats.email, chats.body FROM chats
                                           JOIN users ON chats.email = users.email
                                           WHERE chats.to_email IS NULL AND chats.id <= :id' . $script . '
                                           ORDER BY chats.id DESC LIMIT ' . static::CONTEXT_MESSAGES);
         $stmt->execute([':id' => $upToId]);
 
-        return array_reverse($stmt->fetchAll(PDO::FETCH_ASSOC));
+        return array_reverse(static::typedRows($stmt->fetchAll(PDO::FETCH_ASSOC), boolColumns: ['is_guest']));
     }
 
     /**
      * One person's private chat with the speaker (MapChat or a demo person)
      * up to this message, oldest first
      *
-     * @return array<array{name: string, nickname: ?string, is_guest: string, email: string, body: string}>
+     * @return array<array{name: string, nickname: ?string, is_guest: bool, email: string, body: string}>
      */
     protected static function privateHistory(string $email, string $speaker, int $upToId): array
     {
@@ -454,14 +455,14 @@ class Bot extends \Core\Model
             ':speaker2' => $speaker, ':person2' => $email, ':id' => $upToId,
         ]);
 
-        return array_reverse($stmt->fetchAll(PDO::FETCH_ASSOC));
+        return array_reverse(static::typedRows($stmt->fetchAll(PDO::FETCH_ASSOC), boolColumns: ['is_guest']));
     }
 
     /**
      * The reply the writer gives, from the chat as a transcript with the
      * speaker's own lines marked "(you)", tidied (tidy)
      *
-     * @param array<array{name: string, nickname: ?string, is_guest: string, email: string, body: string}> $messages Oldest first
+     * @param array<array{name: string, nickname: ?string, is_guest: bool, email: string, body: string}> $messages Oldest first
      * @param string $speaker Who's answering
      *
      * @return string|null Null when nothing could be written
@@ -472,8 +473,8 @@ class Bot extends \Core\Model
             return null;
         }
 
-        $lines = array_map(function ($message) use ($speaker) {
-            $name = Mention::shownName($message['name'], $message['nickname'], (bool) $message['is_guest']);
+        $lines = array_map(function (array $message) use ($speaker): string {
+            $name = PersonName::fromRow($message)->shown();
             return $name . ($message['email'] === $speaker ? ' (you)' : '') . ': ' . $message['body'];
         }, $messages);
 
@@ -502,7 +503,7 @@ class Bot extends \Core\Model
                                   VALUES (:kind, :email, :speaker, :chat_id, :key, :due, :now)')
             ->execute([
                 ':kind' => $kind->value, ':email' => $email, ':speaker' => $speaker, ':chat_id' => $chatId, ':key' => $key,
-                ':due' => static::time($delay), ':now' => static::time(),
+                ':due' => static::databaseTime($delay), ':now' => static::databaseTime(),
             ]);
     }
 
@@ -514,11 +515,11 @@ class Bot extends \Core\Model
      */
     protected static function askedIn(string $body): array
     {
-        $asked = Mention::isMentionedIn($body, static::NAME) ? [Chat::BOT_EMAIL] : [];
+        $asked = Mention::isMentionedIn($body, new PersonName(static::NAME)) ? [Chat::BOT_EMAIL] : [];
 
-        $stmt = static::getDB()->query('SELECT email, name, nickname FROM users WHERE ' . DemoChat::isDemoSql('email'));
+        $stmt = static::getDB()->query('SELECT email, name, nickname FROM users WHERE ' . Characters::isDemoSql('email'));
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $demoPerson) {
-            if (Mention::isMentionedIn($body, $demoPerson['name'], $demoPerson['nickname'])) {
+            if (Mention::isMentionedIn($body, new PersonName($demoPerson['name'], $demoPerson['nickname']))) {
                 $asked[] = $demoPerson['email'];
             }
         }
@@ -536,7 +537,7 @@ class Bot extends \Core\Model
         $stmt->execute([
             ':greeting' => BotJobKind::Greeting->value,
             ':email' => $email,
-            ':since' => static::time(-static::GREET_COOLDOWN_HOURS * 3600),
+            ':since' => static::databaseTime(-static::GREET_COOLDOWN_HOURS * 3600),
         ]);
 
         return $stmt->fetchColumn() > 0;
@@ -555,16 +556,16 @@ class Bot extends \Core\Model
     {
         $last = static::lastRoomPost();
 
-        if (!$last || $last['email'] !== $email || $last['done_at'] < static::time(-static::CONVERSATION_MINUTES * 60)) {
+        if (!$last || $last['email'] !== $email || $last['done_at'] < static::databaseTime(-static::CONVERSATION_MINUTES * 60)) {
             return null;
         }
 
         $stmt = static::getDB()->prepare('SELECT COUNT(*) FROM chats
                                           WHERE to_email IS NULL AND id > :after AND id < :before AND email <> :email'
-                                          . static::peopleOnlySql());
+                                          . Characters::peopleOnlySql());
         $stmt->execute([':after' => $last['posted_id'], ':before' => $chatId, ':email' => $email]);
 
-        return $stmt->fetchColumn() == 0 ? $last['speaker'] : null;
+        return (int) $stmt->fetchColumn() === 0 ? $last['speaker'] : null;
     }
 
     /**
@@ -576,14 +577,14 @@ class Bot extends \Core\Model
     {
         $stmt = static::getDB()->prepare('SELECT COUNT(*) FROM chats
                                           WHERE to_email IS NULL AND email <> :email AND timestamp > :since AND id < :before_id'
-                                          . static::peopleOnlySql());
+                                          . Characters::peopleOnlySql());
         $stmt->execute([
             ':email' => $email,
-            ':since' => static::time(-static::QUIET_MINUTES * 60),
+            ':since' => static::databaseTime(-static::QUIET_MINUTES * 60),
             ':before_id' => $beforeId ?? PHP_INT_MAX,
         ]);
 
-        return $stmt->fetchColumn() == 0;
+        return (int) $stmt->fetchColumn() === 0;
     }
 
     /**
@@ -593,8 +594,8 @@ class Bot extends \Core\Model
     {
         $stmt = static::getDB()->prepare('SELECT COUNT(*) FROM userinfo
                                           WHERE email <> :email AND online_at > :since'
-                                          . static::peopleOnlySql('userinfo.email'));
-        $stmt->execute([':email' => $email, ':since' => static::time(-UserInfo::ONLINE_SECONDS)]);
+                                          . Characters::peopleOnlySql('userinfo.email'));
+        $stmt->execute([':email' => $email, ':since' => static::databaseTime(-UserInfo::ONLINE_SECONDS)]);
 
         return $stmt->fetchColumn() > 0;
     }
@@ -602,11 +603,11 @@ class Bot extends \Core\Model
     /**
      * Whether another person spoke in the open room after this message
      */
-    protected static function someoneAnswered(string $email, int $chatId): bool
+    protected static function hasSomeoneAnswered(string $email, int $chatId): bool
     {
         $stmt = static::getDB()->prepare('SELECT COUNT(*) FROM chats
                                           WHERE to_email IS NULL AND id > :id AND email <> :email'
-                                          . static::peopleOnlySql());
+                                          . Characters::peopleOnlySql());
         $stmt->execute([':id' => $chatId, ':email' => $email]);
 
         return $stmt->fetchColumn() > 0;
@@ -645,7 +646,7 @@ class Bot extends \Core\Model
      * The job behind the latest answer in the open room, MapChat's or a
      * demo person's
      *
-     * @return array{email: string, speaker: string, posted_id: string, done_at: string}|null Who it was to, who said it, and when
+     * @return array{email: string, speaker: string, posted_id: int, done_at: string}|null Who it was to, who said it, and when
      */
     protected static function lastRoomPost(): ?array
     {
@@ -653,8 +654,9 @@ class Bot extends \Core\Model
                                           WHERE kind <> :private AND posted_id IS NOT NULL
                                           ORDER BY posted_id DESC LIMIT 1');
         $stmt->execute([':private' => BotJobKind::PrivateReply->value]);
+        $rows = static::typedRows($stmt->fetchAll(PDO::FETCH_ASSOC), intColumns: ['posted_id']);
 
-        return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        return $rows[0] ?? null;
     }
 
     /**
@@ -667,11 +669,11 @@ class Bot extends \Core\Model
     public static function talkingDemoPeople(): array
     {
         $stmt = static::getDB()->prepare('SELECT DISTINCT speaker FROM mapchat_jobs
-                                          WHERE ' . DemoChat::isDemoSql('speaker') . '
+                                          WHERE ' . Characters::isDemoSql('speaker') . '
                                             AND ((done_at IS NULL AND created_at <= :arrived) OR done_at > :since)');
         $stmt->execute([
-            ':arrived' => static::time(-static::COME_ONLINE_SECONDS),
-            ':since' => static::time(-static::CONVERSATION_MINUTES * 60),
+            ':arrived' => static::databaseTime(-static::COME_ONLINE_SECONDS),
+            ':since' => static::databaseTime(-static::CONVERSATION_MINUTES * 60),
         ]);
 
         return $stmt->fetchAll(PDO::FETCH_COLUMN);
@@ -691,98 +693,29 @@ class Bot extends \Core\Model
     }
 
     /**
-     * How long the demo story has waited since the given time: from each
-     * time a guest called a demo person into a room conversation until it
-     * went quiet, CONVERSATION_MINUTES after their last answer. Times that
-     * overlap count once
-     *
-     * @param int $since Unix time, the start of the demo day
-     *
-     * @return int Seconds
-     */
-    public static function storyPausedSeconds(int $since): int
-    {
-        $stmt = static::getDB()->prepare('SELECT created_at, done_at FROM mapchat_jobs
-                                          WHERE kind IN (:mention, :reply) AND ' . DemoChat::isDemoSql('speaker') . ' AND created_at >= :since
-                                          ORDER BY created_at');
-        $stmt->execute([
-            ':mention' => BotJobKind::Mention->value,
-            ':reply' => BotJobKind::Reply->value,
-            ':since' => gmdate('Y-m-d H:i:s', $since),
-        ]);
-
-        $now = static::now();
-        $waited = 0;
-        $from = null;
-        $until = null;
-        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $job) {
-            $start = strtotime($job['created_at'] . ' UTC');
-            // Still to answer: waiting until now
-            $end = $job['done_at'] ? strtotime($job['done_at'] . ' UTC') + static::CONVERSATION_MINUTES * 60 : $now;
-            $end = min($end, $now);
-
-            if ($from !== null && $start <= $until) {
-                $until = max($until, $end);
-                continue;
-            }
-            $waited += $from === null ? 0 : $until - $from;
-            [$from, $until] = [$start, $end];
-        }
-
-        return $waited + ($from === null ? 0 : max(0, $until - $from));
-    }
-
-    /**
-     * Whether this is a real person: not MapChat and not one of the demo people
-     */
-    protected static function isPerson(string $email): bool
-    {
-        return $email !== Chat::BOT_EMAIL && !DemoChat::isDemoEmail($email);
-    }
-
-    /**
-     * Leaves MapChat and the demo people out of a query
-     *
-     * @param string $column The column holding each row's email
-     */
-    protected static function peopleOnlySql(string $column = 'chats.email'): string
-    {
-        return " AND $column <> '" . Chat::BOT_EMAIL . "'" . static::notDemoSql($column);
-    }
-
-    /**
-     * Leaves the demo people out of a query
-     *
-     * @param string $column The column holding each row's email
-     */
-    protected static function notDemoSql(string $column = 'chats.email'): string
-    {
-        return ' AND NOT ' . DemoChat::isDemoSql($column);
-    }
-
-    /**
-     * How someone is shown and @mentioned (Mention::shownName), or "them"
+     * How someone is shown and @mentioned (PersonName::shown), or "them"
      */
     protected static function shownNameOf(string $email): string
     {
-        $person = static::person($email);
+        $person = static::getPerson($email);
 
-        return $person ? Mention::shownName($person['name'], $person['nickname'], (bool) $person['is_guest']) : 'them';
+        return $person ? PersonName::fromRow($person)->shown() : 'them';
     }
 
     /**
      * Name, nickname, whether they're a guest, and, if they share it, city
      *
-     * @return array{name: string, nickname: ?string, is_guest: string, city: ?string}|null
+     * @return array{name: string, nickname: ?string, is_guest: bool, city: ?string}|null
      */
-    protected static function person(string $email): ?array
+    protected static function getPerson(string $email): ?array
     {
         $stmt = static::getDB()->prepare('SELECT users.name, users.nickname, users.is_guest, IF(users.share_location, userinfo.city, NULL) AS city
                                           FROM users LEFT JOIN userinfo ON users.email = userinfo.email
                                           WHERE users.email = :email');
         $stmt->execute([':email' => $email]);
+        $rows = static::typedRows($stmt->fetchAll(PDO::FETCH_ASSOC), boolColumns: ['is_guest']);
 
-        return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        return $rows[0] ?? null;
     }
 
     /**
@@ -801,19 +734,19 @@ class Bot extends \Core\Model
      * The message starting with an @mention of the person it's for, unless
      * it already mentions them
      */
-    protected static function tag(string $email, string $body): string
+    protected static function withMentionOf(string $email, string $body): string
     {
-        $person = static::person($email);
+        $person = static::getPerson($email);
         if (!$person) {
             return $body;
         }
 
-        $isGuest = (bool) $person['is_guest'];
-        if (Mention::isMentionedIn($body, $person['name'], $person['nickname'], $isGuest)) {
+        $name = PersonName::fromRow($person);
+        if (Mention::isMentionedIn($body, $name)) {
             return $body;
         }
 
-        return '@' . Mention::shownName($person['name'], $person['nickname'], $isGuest) . ' ' . $body;
+        return '@' . $name->shown() . ' ' . $body;
     }
 
     /**
@@ -849,8 +782,8 @@ class Bot extends \Core\Model
      *
      * @return string UTC, Y-m-d H:i:s
      */
-    protected static function time(int $seconds = 0): string
+    protected static function databaseTime(int $secondsFromNow = 0): string
     {
-        return gmdate('Y-m-d H:i:s', static::now() + $seconds);
+        return gmdate('Y-m-d H:i:s', static::now() + $secondsFromNow);
     }
 }

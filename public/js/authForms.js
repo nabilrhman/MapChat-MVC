@@ -7,15 +7,15 @@ const PASSWORD_CHECKS = [
 ];
 
 const AUTH_FORM_CHECKS = {
-    formSignup: {
+    'signup-form': {
         name: [FIELD_CHECKS.required()],
         email: [FIELD_CHECKS.required(), FIELD_CHECKS.email, FIELD_CHECKS.emailIsFree()],
         password: PASSWORD_CHECKS,
     },
-    formForgot: {
+    'forgot-form': {
         email: [FIELD_CHECKS.required(), FIELD_CHECKS.email],
     },
-    formPassword: {
+    'reset-password-form': {
         password: PASSWORD_CHECKS,
     },
 };

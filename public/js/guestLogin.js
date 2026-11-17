@@ -2,8 +2,8 @@
 // while it's made
 
 // Making a guest account and finding its location takes a few seconds
-const guestForm = document.getElementById('guestForm');
-const guestButton = guestForm.querySelector('button');
+const guestForm = document.getElementById('guest-form');
+const guestButton = document.getElementById('guest-button');
 
 guestForm.addEventListener('submit', (event) => {
     if (guestButton.classList.contains('is-loading')) {

@@ -3,14 +3,15 @@
 const TOAST_ICONS = {success: 'check-circle', info: 'info-circle', warning: 'danger-circle'};
 const TOAST_DURATION = 4500;
 
-function getToastList() {
-    let list = document.getElementById('toasts');
-    if (!list) {
-        list = createElement('div', 'toasts');
-        list.id = 'toasts';
-        document.body.append(list);
+// The corner's list of toasts, added to the page with the first one
+function addToastListIfMissing() {
+    let toastList = document.getElementById('toasts');
+    if (!toastList) {
+        toastList = createElement('div', 'toasts');
+        toastList.id = 'toasts';
+        document.body.append(toastList);
     }
-    return list;
+    return toastList;
 }
 
 function showToast(text, type = 'success') {
@@ -20,7 +21,7 @@ function showToast(text, type = 'success') {
         createIcon(TOAST_ICONS[type] ?? TOAST_ICONS.info),
         createElement('span', '', text),
     );
-    getToastList().append(toast);
+    addToastListIfMissing().append(toast);
 
     const closeToast = () => removeWithAnimation(toast, 'is-leaving');
     toast.addEventListener('click', closeToast, {once: true});

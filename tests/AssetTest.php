@@ -24,14 +24,14 @@ class AssetTest extends TestCase
         }
     }
 
-    public function testVersionIsTheFilesContentHash()
+    public function testVersionIsTheFilesContentHash(): void
     {
         $file = dirname(__DIR__) . '/public/css/ui.css';
 
         $this->assertSame('/css/ui.css?v=' . hash_file('crc32b', $file), Asset::url('/css/ui.css'));
     }
 
-    public function testChangedFileGetsANewLink()
+    public function testChangedFileGetsANewLink(): void
     {
         // Two paths for one file: Asset remembers each path's link for the
         // rest of the request, as a page asks for the same file only once
@@ -44,7 +44,7 @@ class AssetTest extends TestCase
         $this->assertNotSame(substr($before, -8), substr($after, -8));
     }
 
-    public function testMissingFileKeepsItsPlainLink()
+    public function testMissingFileKeepsItsPlainLink(): void
     {
         $this->assertSame('/css/no-such-file.css', Asset::url('/css/no-such-file.css'));
     }

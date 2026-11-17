@@ -112,7 +112,7 @@ class Tab
     {
         $this->moveCursorTo($lastReadId);
         $this->isLive = true;
-        $this->send(['type' => 'live']);
+        $this->send(['type' => MessageToPage::Live]);
     }
 
     /**

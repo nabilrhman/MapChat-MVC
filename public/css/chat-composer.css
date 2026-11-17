@@ -1,0 +1,516 @@
+/* The message box under the messages (base_chat.html), with its tools,
+   and the emoji and @mention pickers that float above it */
+
+.chat-composer
+{
+    padding: 10px 16px; /* same side padding as the messages above */
+    background-color: var(--md-surface-container-lowest);
+    border-block-start: 1px solid var(--line);
+    position: relative;
+    z-index: 1; /* its shadow falls over the messages, as the header's does */
+    box-shadow: 0 -2px 6px var(--edge-shadow);
+}
+
+@scope (.chat-composer) to (.mention-picker, .emoji-picker)
+{
+    /* One bordered box around the text and its tools; purple while you type.
+       One row while the text fits: emoji, text, mic, Send. Once it wraps
+       (chat.js), the text takes the whole width and the tools go under it */
+    .field
+    {
+        --input-padding: 5px 6px 5px 0; /* the grid's gap is the space after the emoji */
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto auto;
+        grid-template-areas: "emoji box voice send";
+        align-items: center;
+        column-gap: 6px;
+        padding: 5px 6px;
+        border: 1px solid var(--composer-line);
+        border-radius: 4px;
+        background-color: var(--composer-surface);
+        transition: border-color var(--dur-fast) var(--ease-out);
+
+        &:focus-within
+        {
+            border-color: var(--purple-soft);
+        }
+
+        &.is-multiline
+        {
+            --input-padding: 6px 6px 6px 0; /* room above and below, and between the text and its scrollbar */
+            grid-template-areas:
+                "box box box box"
+                "emoji . voice send";
+            row-gap: 6px; /* between the text and the buttons under it */
+            padding-block: 0 6px;
+        }
+    }
+
+    .box
+    {
+        grid-area: box;
+        position: relative;
+    }
+
+    /* While a voice message is written out (voice.js): the dots where the
+       words will go, on the first line, in the placeholder's place */
+    .dots
+    {
+        position: absolute;
+        inset-block-start: 0;
+        inset-inline-start: 0;
+        height: 32px; /* the box's one line */
+        align-items: center;
+    }
+
+    /* A scoped display would beat [hidden] */
+    .dots[hidden]
+    {
+        display: none;
+    }
+
+    .box:has(.dots:not([hidden])) .input::placeholder
+    {
+        color: transparent;
+    }
+
+    /* For screen readers only */
+    .label
+    {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+    }
+
+    /* A field that grows with the text up to five lines, then scrolls. Its
+       border stays, see-through, so the mention chips line up with its text */
+    .input
+    {
+        display: block;
+        box-sizing: border-box;
+        width: 100%;
+        height: 32px; /* one line; typing grows it (chat.js) */
+        min-height: 0;
+        max-height: 120px;
+        margin: 0;
+        padding: var(--input-padding);
+        border: 1px solid transparent;
+        border-radius: 4px;
+        background-color: var(--composer-surface);
+        line-height: 20px;
+        font-size: 13px; /* the messages' size, so what you type looks as it will when sent */
+        resize: none;
+        /* Scrolls only when full (chat.js): below that, a scaled screen's
+           rounding left a sliver to scroll and a needless scrollbar */
+        overflow-y: hidden;
+        overflow-wrap: anywhere;
+        box-shadow: none;
+
+        &.is-full
+        {
+            overflow-y: auto;
+        }
+
+        &:focus
+        {
+            border-color: transparent;
+            outline: none; /* the field's purple border shows focus */
+            box-shadow: none;
+        }
+
+        /* With chips drawn behind it (mentions.js): the box's text is
+           see-through and the layer behind shows it. Both keep room for a
+           scrollbar, so their lines wrap at the same place. The caret keeps
+           the field's own text colour, the browser's FieldText */
+        &.is-over-chips
+        {
+            position: relative;
+            background-color: transparent;
+            color: transparent;
+            caret-color: FieldText;
+            scrollbar-gutter: stable;
+
+            /* Its own colour: Firefox draws the hint in the box's text colour, which is
+               transparent here, so the hint vanished there */
+            &::placeholder
+            {
+                color: var(--md-outline);
+                opacity: 1;
+            }
+        }
+    }
+
+    .chips
+    {
+        position: absolute;
+        inset: 0;
+        box-sizing: border-box;
+        padding: var(--input-padding);
+        border: 1px solid transparent;
+        border-radius: 4px;
+        background-color: var(--composer-surface);
+        color: FieldText; /* the text in the box above it */
+        font-size: 13px;
+        line-height: 20px;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        overflow: hidden;
+        scrollbar-gutter: stable;
+        pointer-events: none;
+    }
+
+
+    /* The text can't move, so no padding here: a shadow in the chip's own
+       colour stands in for it */
+    .chips .mention
+    {
+        padding: 0;
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--md-primary) var(--md-hover), transparent);
+    }
+
+    /* Phones: Safari on iPhone zooms in on a field whose text is under 16px.
+       Four lines at most before it scrolls, as a phone has less room: 20px
+       lines, the wrapped box's 6px above and below, and its border */
+    @media (max-width: 700px)
+    {
+        .input,
+        .chips
+        {
+            font-size: 16px;
+        }
+
+        .input
+        {
+            max-height: 94px;
+        }
+    }
+
+    /* Characters left, shown only when close to the limit */
+    .count
+    {
+        position: absolute;
+        inset-inline-end: 14px;
+        inset-block-start: -28px;
+        font-size: 11px;
+        color: var(--text-faint);
+
+        &.is-near-limit
+        {
+            color: var(--danger);
+        }
+    }
+
+    /* Its buttons sit in the field's own grid, so they can share the text's row */
+    .tools
+    {
+        display: contents;
+    }
+
+
+    .emoji-toggle { grid-area: emoji; }
+    .voice { grid-area: voice; }
+    .send { grid-area: send; }
+
+    .emoji-toggle,
+    .voice
+    {
+        width: 30px;
+        height: 30px;
+        padding: 0;
+        border: none;
+        border-radius: 4px; /* square, as Send and the other buttons are */
+        background-color: transparent;
+        color: var(--md-on-surface-variant);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background-color var(--dur-fast) var(--ease-out),
+                    color var(--dur-fast) var(--ease-out);
+
+        /* MapChat's purple hover, as on the @mention chips */
+        &:hover,
+        &.is-open
+        {
+            background-color: color-mix(in srgb, var(--md-primary) var(--md-hover), transparent);
+            color: var(--md-primary);
+        }
+
+        & .icon
+        {
+            font-size: 16px;
+        }
+    }
+
+    /* Hidden where the browser can't listen (voice.js); a scoped display
+       would beat [hidden] */
+    .voice[hidden]
+    {
+        display: none;
+    }
+
+    .voice
+    {
+        position: relative;
+
+        /* Listening: the mic turns into a purple wave, as on an iPhone's
+           Dynamic Island, with no square behind it */
+        &.is-listening,
+        &.is-listening:hover
+        {
+            background-color: transparent;
+            color: var(--md-primary);
+            cursor: default; /* only Send stops it */
+        }
+
+        /* With no square behind it, the wave sits a little nearer Stop */
+        &.is-listening
+        {
+            margin-inline-end: -2px;
+        }
+
+        &.is-listening .icon
+        {
+            display: none;
+        }
+
+        /* voice.js sizes it to fit the bars, up to the mic icon's 16px height */
+        & .wave
+        {
+            display: none;
+            height: 16px;
+        }
+
+        &.is-listening .wave
+        {
+            display: block;
+            animation: fade-in var(--dur) var(--ease-out);
+        }
+
+        /* Waiting for the words: the mic breathes */
+        &.is-transcribing
+        {
+            cursor: progress;
+        }
+
+        &.is-transcribing .icon
+        {
+            animation: transcribing-breath 1s var(--ease-in-out) infinite alternate;
+        }
+    }
+
+    .send
+    {
+        flex: none;
+        width: 30px;
+        height: 30px; /* the mic's size, beside it */
+        padding: 0;
+        border: none;
+        border-radius: 4px;
+        background-color: var(--md-primary);
+        color: var(--md-on-primary);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background-color var(--dur-fast) var(--ease-out);
+
+        &:hover:not(:disabled)
+        {
+            background-color: color-mix(in srgb, var(--md-on-primary) var(--md-hover), var(--md-primary));
+        }
+
+        /* Material 3's disabled look, as on the other buttons */
+        &:disabled
+        {
+            background-color: color-mix(in srgb, var(--md-on-surface) 12%, transparent);
+            color: color-mix(in srgb, var(--md-on-surface) 38%, transparent);
+            cursor: default;
+        }
+    }
+
+    /* While the mic records, Send is its stop button (voice.js): a stop
+       square in the plane's place */
+    .send .icon[data-icon="stop"],
+    .tools:has(.voice.is-listening) .send .icon[data-icon="plain"]
+    {
+        display: none;
+    }
+
+    .tools:has(.voice.is-listening) .send .icon[data-icon="stop"]
+    {
+        display: block;
+        translate: none; /* a square's weight sits in its middle */
+        animation: fade-in var(--dur-fast) var(--ease-out);
+    }
+
+    /* Heroicons' plane is level in its box, but its point is on the right
+       and its weight on the left, so it's moved 1px right to look centred */
+    .send .icon
+    {
+        translate: 1px 0;
+        font-size: 14px;
+        line-height: 1;
+        -webkit-font-smoothing: antialiased;
+    }
+}
+
+@keyframes transcribing-breath
+{
+    from { opacity: 1; }
+    to { opacity: 0.35; }
+}
+
+/* The emoji grid, floating over the messages above the box (emojiPicker.js) */
+.emoji-picker
+{
+    position: absolute;
+    inset-inline-start: 16px;
+    inset-block-end: calc(100% - 4px);
+    z-index: 2;
+    box-sizing: border-box;
+    width: min(288px, calc(100% - 32px));
+    background-color: var(--md-surface-container-lowest);
+    box-shadow: 0 6px 20px var(--raised-shadow);
+    animation: fade-in-up var(--dur) var(--ease-out);
+}
+
+@scope (.emoji-picker)
+{
+    /* Its name and a close button, staying put while the emoji scroll */
+    .top
+    {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        /* The X sits as far in as the title; the room under them is where
+           the emoji scroll out of sight, so none is cut off against the title */
+        padding: 6px 7px 6px 12px;
+    }
+
+    .title
+    {
+        margin: 0;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-strong);
+    }
+
+    .close
+    {
+        width: 24px;
+        height: 24px;
+        padding: 0;
+        border: none;
+        border-radius: 4px;
+        background-color: transparent;
+        color: var(--md-on-surface-variant);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background-color var(--dur-fast) var(--ease-out),
+                    color var(--dur-fast) var(--ease-out);
+
+        &:hover
+        {
+            background-color: color-mix(in srgb, var(--md-primary) var(--md-hover), transparent);
+            color: var(--md-primary);
+        }
+
+        & .icon
+        {
+            font-size: 14px;
+        }
+    }
+
+    .groups
+    {
+        max-height: 180px; /* about 220px with its top bar */
+        overflow-y: auto;
+        padding: 0 8px 8px;
+    }
+
+    .heading
+    {
+        margin: 4px 4px 2px;
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text-faint);
+    }
+
+    .grid
+    {
+        display: grid;
+        grid-template-columns: repeat(8, 1fr);
+    }
+
+    .emoji
+    {
+        aspect-ratio: 1;
+        padding: 0;
+        border: none;
+        border-radius: 4px;
+        background-color: transparent;
+        font-size: 20px;
+        line-height: 1;
+        cursor: pointer;
+        transition: background-color var(--dur-fast) var(--ease-out);
+
+        &:hover,
+        &:focus-visible
+        {
+            background-color: var(--lavender-tint);
+        }
+    }
+}
+
+/* Floats above the box where the emoji grid does: over the composer's top
+   padding, 6px clear of the box's border */
+.mention-picker
+{
+    position: absolute;
+    inset-inline-start: 16px;
+    inset-block-end: calc(100% - 4px);
+    z-index: 2;
+    min-width: 180px;
+    max-width: calc(100% - 32px); /* within the box's own edges */
+    margin: 0;
+    padding: 4px 0;
+    list-style: none;
+    background-color: var(--md-surface-container-lowest);
+    box-shadow: 0 6px 20px var(--raised-shadow);
+    color: var(--text-strong);
+    animation: fade-in-up var(--dur) var(--ease-out);
+}
+
+@scope (.mention-picker)
+{
+    .option
+    {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 6px 12px;
+        font-size: 14px;
+        cursor: pointer;
+
+        &:hover,
+        &.is-active
+        {
+            background-color: var(--lavender-tint);
+        }
+    }
+
+    .photo
+    {
+        flex: none;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+}

@@ -28,7 +28,7 @@ class Mail
      */
     public static function send(string $to, string $subject, string $text, string $html): bool
     {
-        if (!Config::mailEnabled()) {
+        if (!Config::isMailEnabled()) {
             return false;
         }
 

@@ -17,7 +17,7 @@ class PhotoUploadSettingsTest extends TestCase
         putenv('CLOUDINARY_UPLOAD_PRESET');
     }
 
-    public function testWithoutCloudinarySettingsThereIsNoAccountAndUploadsAreOff()
+    public function testWithoutCloudinarySettingsThereIsNoAccountAndUploadsAreOff(): void
     {
         putenv('CLOUDINARY_CLOUD_NAME');
         putenv('CLOUDINARY_UPLOAD_PRESET');
@@ -27,7 +27,7 @@ class PhotoUploadSettingsTest extends TestCase
         $this->assertFalse(Config::arePhotoUploadsOn());
     }
 
-    public function testUploadsNeedBothTheCloudNameAndThePreset()
+    public function testUploadsNeedBothTheCloudNameAndThePreset(): void
     {
         putenv('CLOUDINARY_CLOUD_NAME=my-cloud');
         $this->assertFalse(Config::arePhotoUploadsOn(), 'cloud name only');

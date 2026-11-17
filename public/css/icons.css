@@ -1,0 +1,53 @@
+/* Icons from public/icons.svg (Core\Icon), and the one flag flag-icons
+   lacks */
+
+/* Sized by font-size and drawn in the text colour, as the icon font was.
+   Beside text, the space between them is --icon-gap, from the drawing
+   itself: each glyph's blank sides (--icon-bearing, in 24ths of the icon)
+   are taken back. The gap grows faster than the text: 6px beside 12px text,
+   8px beside 14px. It's in em, so it's set as the gap of the icon and
+   text's container. --icon-nudge moves a glyph that looks low up to the
+   middle of the capitals */
+:root
+{
+    --icon-gap: calc(1em - 6px);
+}
+
+.icon
+{
+    --icon-bearing: 2;
+    width: 1em;
+    height: 1em;
+    flex-shrink: 0;
+    margin-inline: calc(var(--icon-bearing) * -1em / 24);
+    fill: currentColor;
+    vertical-align: -0.125em;
+    translate: 0 var(--icon-nudge, 0);
+}
+
+.icon[data-icon="user"] { --icon-bearing: 4; }
+.icon[data-icon="map-point"] { --icon-bearing: 5; } /* its sides curve away, so it looks narrower */
+.icon[data-icon="alt-arrow-down"] { --icon-bearing: 4; }
+.icon[data-icon="arrow-down"] { --icon-bearing: 4; }
+.icon[data-icon="eye-closed"] { --icon-bearing: 1.5; }
+.icon[data-icon="users-group-rounded"] { --icon-bearing: 1.5; }
+.icon[data-icon="github"] { --icon-bearing: 0; }
+/* A pin's round head is its middle to the eye, above the middle of its box */
+.icon[data-icon="map-point"] { --icon-nudge: -0.04em; }
+
+/* Alone in a button, an icon keeps its whole box, so it stays centred */
+.password-toggle .icon,
+.site-footer .source .icon
+{
+    margin-inline: 0;
+    translate: none;
+}
+
+/* Flag of Null Island (XN), the MapChat bot's made-up country at 0°, 0°;
+   flag-icons has none. The equator and prime meridian meet at our dot. Its
+   colours are written out: a data: image can't read custom properties */
+.fi-xn
+{
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 480'%3E%3Crect width='640' height='480' fill='%237fc8ec'/%3E%3Cpath d='M0 240H640M320 0V480' stroke='%23fff' stroke-width='28'/%3E%3Ccircle cx='320' cy='240' r='70' fill='%23ffc107'/%3E%3Ccircle cx='320' cy='240' r='36' fill='%23512da8'/%3E%3C/svg%3E");
+}
+

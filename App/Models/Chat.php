@@ -42,6 +42,12 @@ class Chat extends \Core\Model
     /** One private chat's messages, either way */
     const BETWEEN_VIEWER_AND_PARTNER = ['to_email = :viewer AND email = :partner', 'to_email = :partner AND email = :viewer'];
 
+    /** The columns of a message row (selectSql) that are ids, cast to int as rows come in */
+    const INT_COLUMNS = ['id', 'user_id', 'to_user_id'];
+
+    /** The columns of a message row that are yes or no, cast to bool as rows come in */
+    const BOOL_COLUMNS = ['is_demo', 'is_guest', 'to_is_guest'];
+
     /**
      * How many messages this person sent in the last few seconds
      */
@@ -68,33 +74,33 @@ class Chat extends \Core\Model
      * @param int|null $toUserId The recipient's id, or null for the open room
      * @param string|null $clientId The sending page's id for this message
      *
-     * @return array{id: int}|array{status: int, error: string} The message's id, or an HTTP status and what to show the sender
+     * @return SendResult The message's id, or an HTTP status and what to show the sender
      */
-    public static function sendFrom(User $sender, string $body, ?int $toUserId = null, ?string $clientId = null): array
+    public static function sendFrom(User $sender, string $body, ?int $toUserId = null, ?string $clientId = null): SendResult
     {
         if ($clientId !== null && !preg_match(static::CLIENT_ID_PATTERN, $clientId)) {
-            return ['status' => 400, 'error' => 'Your message could not be sent.'];
+            return SendResult::refused(400, 'Your message could not be sent.');
         }
 
         // Before the limits: the first try may be what used them up
         $savedId = $clientId === null ? null : static::findSent($sender->email, $clientId);
         if ($savedId !== null) {
-            return ['id' => $savedId];
+            return SendResult::sent($savedId);
         }
 
         $body = trim($body);
         if ($body === '') {
-            return ['status' => 400, 'error' => 'Type a message first.'];
+            return SendResult::refused(400, 'Type a message first.');
         }
 
         if (mb_strlen($body) > static::MAX_LENGTH) {
-            return ['status' => 400, 'error' => 'Messages can be up to ' . static::MAX_LENGTH . ' characters.'];
+            return SendResult::refused(400, 'Messages can be up to ' . static::MAX_LENGTH . ' characters.');
         }
 
         // Keep one person from flooding the room; guests get a lower limit
         $limit = $sender->is_guest ? static::GUEST_PER_MINUTE : static::USER_PER_MINUTE;
         if (static::countRecent($sender->email, 60) >= $limit) {
-            return ['status' => 429, 'error' => 'You are sending messages too fast. Wait a moment and try again.'];
+            return SendResult::refused(429, 'You are sending messages too fast. Wait a moment and try again.');
         }
 
         // A private message goes to one other person, never to yourself, and
@@ -104,7 +110,7 @@ class Chat extends \Core\Model
             $recipient = User::findByID($toUserId);
 
             if (!$recipient || $recipient->id === $sender->id || ($recipient->email === static::BOT_EMAIL && !Bot::canReply())) {
-                return ['status' => 400, 'error' => 'You can\'t message this person.'];
+                return SendResult::refused(400, 'You can\'t message this person.');
             }
 
             $toEmail = $recipient->email;
@@ -116,14 +122,14 @@ class Chat extends \Core\Model
             // The same message sent twice at once, from two tries: the other one saved it
             $savedId = $clientId === null ? null : static::findSent($sender->email, $clientId);
             if ($savedId !== null) {
-                return ['id' => $savedId];
+                return SendResult::sent($savedId);
             }
             throw $e;
         }
 
         Bot::onMessage($sender->email, $id, $toEmail, $body);
 
-        return ['id' => $id];
+        return SendResult::sent($id);
     }
 
     /**
@@ -184,7 +190,7 @@ class Chat extends \Core\Model
         $stmt->bindValue(':viewer', $viewer, PDO::PARAM_STR);
         $stmt->execute();
 
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return static::typedMessageRows($stmt->fetchAll(PDO::FETCH_ASSOC));
     }
 
     /**
@@ -219,7 +225,13 @@ class Chat extends \Core\Model
         $stmt->bindValue(':up_to_id', $upToId, PDO::PARAM_INT);
         $stmt->execute();
 
-        return Mention::withShownNames($stmt->fetchAll(PDO::FETCH_ASSOC));
+        $conversations = static::typedRows(
+            $stmt->fetchAll(PDO::FETCH_ASSOC),
+            intColumns: ['user_id', 'newest_id', 'unread'],
+            boolColumns: ['is_guest']
+        );
+
+        return Mention::withShownNames($conversations);
     }
 
     /**
@@ -264,7 +276,7 @@ class Chat extends \Core\Model
         $stmt->bindValue(':up_to_id', $upToId, PDO::PARAM_INT);
         $stmt->execute();
 
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return static::typedMessageRows($stmt->fetchAll(PDO::FETCH_ASSOC));
     }
 
     /**
@@ -283,7 +295,7 @@ class Chat extends \Core\Model
         $stmt->bindValue(':before_id', $beforeId, PDO::PARAM_INT);
         $stmt->execute();
 
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return static::typedMessageRows($stmt->fetchAll(PDO::FETCH_ASSOC));
     }
 
     /**
@@ -291,20 +303,20 @@ class Chat extends \Core\Model
      * before tabs loaded their own) all the viewer may see
      *
      * @param string $viewer The viewer's email
-     * @param string|null $conversation "everyone", the other person's id, or null
+     * @param Conversation|null $conversation The tab's, or null for all the viewer may see
      *
      * @return array[] Message rows, oldest first
      */
-    public static function getOlder(string $viewer, ?string $conversation, int $beforeId): array
+    public static function getOlder(string $viewer, ?Conversation $conversation, int $beforeId): array
     {
-        if ($conversation === 'everyone') {
+        if ($conversation === null) {
+            return static::getBefore($viewer, $beforeId);
+        }
+        if ($conversation->isRoom()) {
             return static::getRoomBefore($beforeId);
         }
-        if ($conversation !== null && ctype_digit($conversation)) {
-            return static::getPrivateBefore($viewer, (int) $conversation, $beforeId);
-        }
 
-        return static::getBefore($viewer, $beforeId);
+        return static::getPrivateBefore($viewer, $conversation->partnerId, $beforeId);
     }
 
     /**
@@ -318,7 +330,7 @@ class Chat extends \Core\Model
         $stmt->bindValue(':before_id', $beforeId, PDO::PARAM_INT);
         $stmt->execute();
 
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return static::typedMessageRows($stmt->fetchAll(PDO::FETCH_ASSOC));
     }
 
     /**
@@ -344,7 +356,7 @@ class Chat extends \Core\Model
         $stmt->bindValue(':before_id', $beforeId, PDO::PARAM_INT);
         $stmt->execute();
 
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return static::typedMessageRows($stmt->fetchAll(PDO::FETCH_ASSOC));
     }
 
     /**
@@ -373,8 +385,9 @@ class Chat extends \Core\Model
     /**
      * These messages with their sender and recipient
      *
-     * @return array[] Message rows, oldest first
      * @param int[] $ids
+     *
+     * @return array[] Message rows, oldest first
      */
     public static function getByIds(array $ids): array
     {
@@ -386,7 +399,7 @@ class Chat extends \Core\Model
         $stmt = static::getDB()->prepare(static::selectSql() . " WHERE chats.id IN $idList ORDER BY chats.id");
         $stmt->execute($idParams);
 
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return static::typedMessageRows($stmt->fetchAll(PDO::FETCH_ASSOC));
     }
 
     /**
@@ -401,7 +414,7 @@ class Chat extends \Core\Model
     protected static function pageSql(array $kinds, string $condition, string $direction): string
     {
         $order = " ORDER BY id $direction LIMIT " . static::HISTORY;
-        $selects = array_map(fn ($kind) => "(SELECT id FROM chats WHERE $kind$condition$order)", $kinds);
+        $selects = array_map(fn (string $kind): string => "(SELECT id FROM chats WHERE $kind$condition$order)", $kinds);
 
         return static::selectSql() . '
                 JOIN (' . implode(' UNION ALL ', $selects) . $order . ') AS page
@@ -410,12 +423,25 @@ class Chat extends \Core\Model
     }
 
     /**
+     * Message rows as selectSql gives them, with ids as int and flags as
+     * bool (INT_COLUMNS, BOOL_COLUMNS)
+     *
+     * @param array[] $rows
+     *
+     * @return array[]
+     */
+    protected static function typedMessageRows(array $rows): array
+    {
+        return static::typedRows($rows, static::INT_COLUMNS, static::BOOL_COLUMNS);
+    }
+
+    /**
      * The query for each message with its sender and recipient, without a filter
      */
     protected static function selectSql(): string
     {
         return 'SELECT chats.id, chats.body, chats.timestamp, chats.to_email, users.id AS user_id, users.name, users.email, users.avatar,
-                       ' . DemoChat::isDemoSql() . ' AS is_demo, users.nickname, users.is_guest,
+                       ' . Characters::isDemoSql() . ' AS is_demo, users.nickname, users.is_guest,
                        ' . UserInfo::sharedPlaceSql() . ',
                        recipients.id AS to_user_id, recipients.name AS to_name,
                        recipients.nickname AS to_nickname, recipients.is_guest AS to_is_guest

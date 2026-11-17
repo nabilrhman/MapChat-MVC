@@ -23,7 +23,7 @@ class SameOriginTest extends TestCase
         $this->appUrlBefore === false ? putenv('APP_URL') : putenv('APP_URL=' . $this->appUrlBefore);
     }
 
-    public function testAPageOnTheAddressTheRequestCameToIsThisSites()
+    public function testAPageOnTheAddressTheRequestCameToIsThisSites(): void
     {
         $this->assertTrue(SameOrigin::isFromThisSite('http://localhost:8080', 'localhost:8080', false));
         $this->assertTrue(SameOrigin::isFromThisSite('https://mapchat.test', 'mapchat.test', true));
@@ -31,7 +31,7 @@ class SameOriginTest extends TestCase
         $this->assertTrue(SameOrigin::isFromThisSite('http://localhost:8080/app?x=1', 'localhost:8080', false), 'a Referer');
     }
 
-    public function testAnotherPortSchemeOrHostIsNot()
+    public function testAnotherPortSchemeOrHostIsNot(): void
     {
         $this->assertFalse(SameOrigin::isFromThisSite('http://localhost:9999', 'localhost:8080', false));
         $this->assertFalse(SameOrigin::isFromThisSite('http://mapchat.test', 'mapchat.test', true));
@@ -39,7 +39,7 @@ class SameOriginTest extends TestCase
         $this->assertFalse(SameOrigin::isFromThisSite('https://evil.example', 'mapchat.test', true));
     }
 
-    public function testNoOriginIsNotThisSites()
+    public function testNoOriginIsNotThisSites(): void
     {
         $this->assertFalse(SameOrigin::isFromThisSite(null, 'localhost:8080', false));
         $this->assertFalse(SameOrigin::isFromThisSite('', 'localhost:8080', false));
@@ -47,7 +47,7 @@ class SameOriginTest extends TestCase
         $this->assertFalse(SameOrigin::isFromThisSite('http://localhost:8080', null, false));
     }
 
-    public function testAppUrlsOriginIsThisSitesWhateverTheHost()
+    public function testAppUrlsOriginIsThisSitesWhateverTheHost(): void
     {
         putenv('APP_URL=https://mapchat.example.com/');
 

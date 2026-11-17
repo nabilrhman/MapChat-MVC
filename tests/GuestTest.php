@@ -45,7 +45,7 @@ class GuestTest extends TestCase
         return User::findByEmail($email);
     }
 
-    public function testHoursLeftCountFromTheSameTimeAsTheDeletion()
+    public function testHoursLeftCountFromTheSameTimeAsTheDeletion(): void
     {
         // The database's times are UTC; PHP's own time zone mustn't move them
         date_default_timezone_set('America/Toronto');
@@ -55,7 +55,7 @@ class GuestTest extends TestCase
         $this->assertEqualsWithDelta(time() + 1.5 * 3600, $guest->guestExpiresAt(), 5);
     }
 
-    public function testAGuestWhoseDayIsUpIsLoggedOut()
+    public function testAGuestWhoseDayIsUpIsLoggedOut(): void
     {
         $expired = $this->guestMadeHoursAgo(User::GUEST_LIFETIME_HOURS + 0.1);
         $fresh = $this->guestMadeHoursAgo(1);
@@ -70,7 +70,7 @@ class GuestTest extends TestCase
         $this->assertSame($fresh->id, Auth::getUser()?->id);
     }
 
-    public function testTheChatSocketLetsAnExpiredGuestsSessionGo()
+    public function testTheChatSocketLetsAnExpiredGuestsSessionGo(): void
     {
         $expired = $this->guestMadeHoursAgo(User::GUEST_LIFETIME_HOURS + 0.1);
         $fresh = $this->guestMadeHoursAgo(1);
@@ -87,7 +87,7 @@ class GuestTest extends TestCase
         $this->assertSame(['fresh-session-12345678901'], $stillLoggedIn);
     }
 
-    public function testExpiredGuestsAreDeletedAndOthersKept()
+    public function testExpiredGuestsAreDeletedAndOthersKept(): void
     {
         $expired = $this->guestMadeHoursAgo(User::GUEST_LIFETIME_HOURS + 0.1);
         $fresh = $this->guestMadeHoursAgo(1);
@@ -98,7 +98,7 @@ class GuestTest extends TestCase
         $this->assertNotNull(User::findByID($fresh->id));
     }
 
-    public function testAReturningGuestGetsTheirAccountOnlyWithinTheirDay()
+    public function testAReturningGuestGetsTheirAccountOnlyWithinTheirDay(): void
     {
         $guest = User::createGuest();
 

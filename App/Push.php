@@ -2,6 +2,7 @@
 
 namespace App;
 
+use App\Models\Conversation;
 use App\Models\PushSubscription;
 use Minishlink\WebPush\Subscription;
 use Minishlink\WebPush\WebPush;
@@ -96,7 +97,7 @@ class Push
      */
     public static function recipientsOf(array $chat, array $subscriptions): array
     {
-        return array_values(array_filter($subscriptions, function ($subscription) use ($chat) {
+        return array_values(array_filter($subscriptions, function (array $subscription) use ($chat): bool {
             if ($subscription['email'] === $chat['email']) {
                 return false;
             }
@@ -104,36 +105,36 @@ class Push
                 return $subscription['email'] === $chat['to_email'];
             }
 
-            return Mention::isMentionedIn($chat['body'], $subscription['name'], $subscription['nickname'], (bool) $subscription['is_guest']);
+            return Mention::isMentionedIn($chat['body'], PersonName::fromRow($subscription));
         }));
     }
 
     /**
      * What public/sw.js shows for a message
      *
-     * @param array $chat As Chat::getByIds gives it
+     * @param array $chat As Chat::getByIds gives it, with ids and flags cast
      * @param array $subscription Whose browser it's for
      *
      * @return array{title: string, body: string, icon: string, tag: string, conversation: string, name: string}
      */
     public static function payloadOf(array $chat, array $subscription): array
     {
-        $name = Mention::shownName($chat['name'], $chat['nickname'], (bool) $chat['is_guest']);
+        $name = PersonName::fromRow($chat)->shown();
         $isPrivate = $chat['to_email'] !== null;
         $body = $chat['body'];
         if (mb_strlen($body) > static::BODY_LENGTH) {
             $body = mb_substr($body, 0, static::BODY_LENGTH - 1) . '…';
         }
-        // A private chat is the sender's tab, as the page names them
-        $conversation = $isPrivate ? (string) $chat['user_id'] : 'everyone';
+        // A private chat is the sender's tab
+        $conversation = $isPrivate ? Conversation::with($chat['user_id']) : Conversation::room();
 
         return [
             'title' => $isPrivate ? $name : "$name mentioned you",
             'body' => $body,
-            'icon' => Avatar::src((int) $chat['user_id'], $chat['name'], $chat['avatar'], (bool) $chat['is_demo']),
+            'icon' => Avatar::src($chat['user_id'], $chat['name'], $chat['avatar'], $chat['is_demo']),
             // One per chat: a newer message replaces the last one
-            'tag' => "chat-$conversation",
-            'conversation' => $conversation,
+            'tag' => 'chat-' . $conversation->pageName(),
+            'conversation' => $conversation->pageName(),
             'name' => $name,
         ];
     }

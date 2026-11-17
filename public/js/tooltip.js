@@ -27,9 +27,11 @@ function moveTitleToTip(element) {
 }
 
 // Where the thing's text actually is: a name spans its whole row, but
-// the tooltip should sit over the name itself
+// the tooltip should sit over the name itself. Only for plain text: with an
+// icon or a photo inside, the tooltip sits over the whole thing
 function textBoxOf(element) {
-    if (element.textContent.trim() && !element.querySelector('img, i, svg')) {
+    const isPlainText = element.childElementCount === 0 && element.textContent.trim() !== '';
+    if (isPlainText) {
         const range = document.createRange();
         range.selectNodeContents(element);
         const rect = range.getBoundingClientRect();

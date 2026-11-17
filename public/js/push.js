@@ -5,7 +5,7 @@
 
 // This browser is subscribed to Web Push
 const PUSH_ON_KEY = 'pushOn';
-const pushPublicKey = document.querySelector('meta[name="push-public-key"]')?.content || '';
+const pushPublicKey = document.querySelector('meta[name="push-public-key"]')?.content ?? '';
 
 const isPushSupported = () => pushPublicKey !== '' && 'serviceWorker' in navigator && 'PushManager' in window;
 

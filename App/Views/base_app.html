@@ -4,6 +4,7 @@
 {% types {
     current_user: '?App\\Models\\User',
     push_public_key: 'string',
+    csp_nonce: 'string',
 } -%}
 <!DOCTYPE html>
 <html lang="en" data-icons="{{ asset('/icons.svg') }}">
@@ -27,7 +28,7 @@
     <link rel="stylesheet" href="{{ asset('/css/header.css') }}" />
     <link rel="stylesheet" href="{{ asset('/css/footer.css') }}" />
 
-    <link rel="stylesheet" href="{{ asset('/css/styles.css') }}" />
+    <link rel="stylesheet" href="{{ asset('/css/icons.css') }}" />
     <link rel="stylesheet" href="{{ asset('/css/ui.css') }}" />
 
     {% block head %}{% endblock %}

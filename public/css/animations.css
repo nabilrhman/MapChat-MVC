@@ -83,13 +83,12 @@
     view-transition-name: site-footer;
 }
 
+/* Motion helpers: classes that only move things, named for the motion, so
+   pages outside any one component (About, Privacy, the error pages, the
+   logos) share one entrance and one hover rather than each writing its own */
+
 /* Page content as it loads. backwards, not both, so a hover can still move
    the element afterwards */
-.appear
-{
-    animation: fade-in var(--dur-slow) var(--ease-out) backwards;
-}
-
 .appear-down
 {
     animation: fade-in-down var(--dur-slow) var(--ease-out) backwards;
@@ -105,12 +104,12 @@
 .hover-grow
 {
     transition: transform var(--dur) var(--ease-out);
-}
 
-.hover-grow:hover,
-.hover-grow:focus
-{
-    transform: scale(1.05);
+    &:hover,
+    &:focus
+    {
+        transform: scale(1.05);
+    }
 }
 
 /* A count that rolls like an odometer (countTo in dom.js): the new number
@@ -180,7 +179,8 @@
 }
 
 /* Movement off for people who ask for less; the loading dots and the
-   loading bar keep moving, as they're the only sign something is happening */
+   loading bar keep moving, as they're the only sign something is happening.
+   !important, to beat every component's own timings at once */
 @media (prefers-reduced-motion: reduce)
 {
     *:not(.loading-dots .dot):not(.loading-bar),

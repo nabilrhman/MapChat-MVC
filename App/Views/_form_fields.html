@@ -7,7 +7,7 @@
 {% set type = field.type ?? 'text' %}
 <div class="beer form-field"{% if field.box_id is defined %} id="{{ field.box_id }}"{% endif %}{% if field.hidden ?? false %} hidden{% endif %}>
     <div class="field label border{{ problems ? ' invalid' }}" data-part="field">
-        <input type="{{ type }}" id="{{ field.id }}" name="{{ field.name }}" value="{{ field.value ?? '' }}"
+        <input type="{{ type }}" id="{{ field.id }}" name="{{ field.name }}" value="{{ field.value ?? '' }}" data-part="field-input"
                placeholder=" " autocomplete="{{ field.autocomplete }}"
                {%- if type == 'password' %} class="password"{% endif %}
                {%- if field.required ?? false %} required{% endif %}

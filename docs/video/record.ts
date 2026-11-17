@@ -324,7 +324,7 @@ async function tour(page: Page, person: Person, guest: Guest, startCapture: () =
     await waitSeconds(2.5);
     await startCapture();
     await waitSeconds(1.2);
-    await person.moveTo(await requiredCentreOf(page.locator('#guestForm button')));
+    await person.moveTo(await requiredCentreOf(page.locator('#guest-form button')));
     await waitSeconds(1);
 
     // Signed in: the room, the map and who's online

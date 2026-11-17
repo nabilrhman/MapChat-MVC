@@ -56,7 +56,7 @@ class MailTest extends TestCase
     }
 
     #[DataProvider('brokenDsns')]
-    public function testABrokenDsnFailsQuietlyAndKeepsTheSecretOutOfTheLog(string $dsn)
+    public function testABrokenDsnFailsQuietlyAndKeepsTheSecretOutOfTheLog(string $dsn): void
     {
         $this->assertFalse($this->send($dsn));
 
@@ -65,7 +65,7 @@ class MailTest extends TestCase
         $this->assertStringNotContainsString('s3cret', $logged);
     }
 
-    public function testAWorkingDsnStillSends()
+    public function testAWorkingDsnStillSends(): void
     {
         $this->assertTrue($this->send('null://null'));
         $this->assertSame('', file_get_contents($this->log));

@@ -1,6 +1,12 @@
-/* The global basics every page builds on, which materialize.css used to give.
-   Beer CSS only styles inside .beer (its scoped build). In the lowest layer
-   (see _beer.html), so inside .beer Beer's own rules beat these */
+/* The global basics every page builds on, which materialize.css used to give:
+   the colour tokens, the page's font and colours, and the scroll bars.
+   Beer CSS only styles inside .beer (its scoped build). The element rules
+   sit in the lowest layer (see _beer.html), so inside .beer Beer's own rules
+   beat them.
+
+   Phones are 700px wide or less: every file's @media (max-width: 700px)
+   is that breakpoint, written out as CSS has no named media queries yet,
+   and dom.js's phoneScreen matches it */
 
 @layer base
 {
@@ -36,10 +42,44 @@
         --md-elevation-1: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px 1px rgba(0, 0, 0, 0.15);
         --md-elevation-2: 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 6px 2px rgba(0, 0, 0, 0.15);
         --md-elevation-3: 0 1px 3px rgba(0, 0, 0, 0.3), 0 4px 8px 3px rgba(0, 0, 0, 0.15);
+        --raised-shadow: rgba(0, 0, 0, 0.2); /* menus, pickers and a dragged tab */
 
         /* How much of a button's text colour tints it on hover and press */
         --md-hover: 8%;
         --md-pressed: 12%;
+
+        /* MapChat's own colours beside the roles */
+        --brand-yellow: #ffc107; /* the line under the header and over the login card, and the author's name */
+        --lavender: #ede7f6; /* the chat's tab strip, hovered rows, a photo loading */
+        --lavender-hover: #e1d7f2;
+        --lavender-tint: #f5f1fb; /* a hovered menu row */
+        --lavender-line: #d1c4e9; /* focus rings, unread counts, the scroll bars */
+        --lavender-line-hover: #b39ddb;
+        --line: #e0e0e0; /* grey rules */
+        --link: #039be5;
+
+        /* Greys for text */
+        --text-strong: #212121;
+        --text-dark: #424242;
+        --text-muted: #616161;
+        --text-soft: #757575;
+        --text-faint: #737373; /* the lightest grey small text can be and still read (4.5:1 on the cards) */
+        --text-label: #9e9e9e;
+
+        /* White text on the purple or another dark ground, quieter */
+        --on-dark-text: color-mix(in srgb, var(--md-on-primary) 85%, transparent);
+        --on-dark-muted: color-mix(in srgb, var(--md-on-primary) 70%, transparent);
+
+        /* Done and take-care notices: a tonal box on light ground, or an icon
+           on the dark snackbar */
+        --success: #2e7d32;
+        --success-container: #e8f5e9;
+        --on-success-container: #1b5e20;
+        --success-on-dark: #a5d6a7;
+        --warning: #ef6c00;
+        --warning-container: #fff3e0;
+        --on-warning-container: #8a3c00;
+        --warning-on-dark: #ffb74d;
     }
 
     html
@@ -57,21 +97,16 @@
         box-sizing: inherit;
     }
 
-    body
-    {
-        margin: 0;
-    }
-
     a
     {
-        color: #039be5;
+        color: var(--link);
         text-decoration: none;
         -webkit-tap-highlight-color: transparent;
     }
 
     ul
     {
-        padding-left: 0;
+        padding-inline-start: 0;
         list-style-type: none;
     }
 
@@ -100,7 +135,7 @@
     label
     {
         font-size: 0.8rem;
-        color: #9e9e9e;
+        color: var(--text-label);
     }
 
     /* A thin grey rule under page titles */
@@ -108,7 +143,7 @@
     {
         height: 1px;
         overflow: hidden;
-        background-color: #e0e0e0;
+        background-color: var(--line);
     }
 }
 
@@ -117,4 +152,85 @@
 [hidden]
 {
     display: none;
+}
+
+/* The one body rule; the chat and login pages add only their own. One font
+   everywhere, at the body text size (see ui.css). Explicit page colours, so
+   a dark browser theme can't turn the page black behind the dark text: set
+   on body, the browser paints them across the whole window */
+body
+{
+    margin: 0;
+    background-color: var(--md-surface);
+    color: var(--md-on-surface);
+    font-family: 'Montserrat', sans-serif;
+    font-size: 14px;
+}
+
+/* Browsers give fields and buttons the system font, which beats inheriting
+   from body; make them use the page's font instead */
+button,
+input,
+select,
+textarea
+{
+    font-family: inherit;
+}
+
+/* Scroll bars: thin, lavender and round-ended everywhere, darker over their
+   area, and thicker under the mouse. They float short of their panel's ends.
+   Chrome ignores the ::-webkit-scrollbar rules once scrollbar-width is set,
+   so the standard properties are only for browsers without them (Firefox) */
+@supports not selector(::-webkit-scrollbar)
+{
+    *
+    {
+        scrollbar-width: thin;
+        scrollbar-color: var(--lavender-line) transparent;
+    }
+}
+
+::-webkit-scrollbar
+{
+    width: 8px;
+    height: 8px;
+    background: transparent;
+}
+
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner
+{
+    background: transparent;
+}
+
+::-webkit-scrollbar-track:vertical
+{
+    margin-block: 6px;
+}
+
+::-webkit-scrollbar-track:horizontal
+{
+    margin-inline: 6px;
+}
+
+/* Drawn 4px wide in its 8px slot, the clear border making up the rest, so
+   it can grow to 6px on hover without moving anything. Browsers can't
+   animate a scrollbar, so the step is kept small */
+::-webkit-scrollbar-thumb
+{
+    border: 2px solid transparent;
+    border-radius: 4px;
+    background: var(--lavender-line) padding-box;
+}
+
+/* Written out: nesting can't hang :hover on a pseudo-element */
+::-webkit-scrollbar-thumb:hover,
+::-webkit-scrollbar-thumb:active
+{
+    border-width: 1px;
+}
+
+:hover::-webkit-scrollbar-thumb
+{
+    background-color: var(--lavender-line-hover);
 }

@@ -9,6 +9,7 @@ use App\Token;
 use App\Mail;
 use Core\View;
 use App\Config;
+use App\PersonName;
 
 /**
  * A person's account: signing up, logging in, their profile, and the
@@ -86,7 +87,7 @@ class User extends \Core\Model
         $stmt->bindValue(':activation_hash', $token->getHash(), PDO::PARAM_STR);
         // Without email there is no way to send an activation link, so
         // accounts start active
-        $stmt->bindValue(':is_active', !Config::mailEnabled(), PDO::PARAM_BOOL);
+        $stmt->bindValue(':is_active', !Config::isMailEnabled(), PDO::PARAM_BOOL);
         $stmt->execute();
 
         $this->id = (int) $db->lastInsertId();
@@ -362,10 +363,10 @@ class User extends \Core\Model
     }
 
     /**
-     * The people "@" and their name or shown name (Mention::shownName)
+     * The people "@" and their name or shown name (PersonName::shown)
      * appears for in the text
      *
-     * @return array<array{name: string, nickname: ?string, is_guest: string}>
+     * @return PersonName[]
      */
     public static function mentionedIn(string $text): array
     {
@@ -381,8 +382,9 @@ class User extends \Core\Model
         $stmt->bindValue(':text2', $text, PDO::PARAM_STR);
         $stmt->bindValue(':text3', $text, PDO::PARAM_STR);
         $stmt->execute();
+        $people = static::typedRows($stmt->fetchAll(PDO::FETCH_ASSOC), boolColumns: ['is_guest']);
 
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return array_map(PersonName::fromRow(...), $people);
     }
 
     /**

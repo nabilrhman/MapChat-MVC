@@ -36,6 +36,12 @@ class UserInfo extends \Core\Model
         'timezone' => 'userinfo.timezone',
     ];
 
+    /** The columns of a people row that are numbers, cast to int as rows come in */
+    const PERSON_INT_COLUMNS = ['id', 'minutes_ago'];
+
+    /** The columns of a people row that are yes or no, cast to bool as rows come in */
+    const PERSON_BOOL_COLUMNS = ['is_demo', 'is_guest', 'is_bot', 'is_online'];
+
     /**
      * Save a user's IP and look up where it is
      */
@@ -101,11 +107,18 @@ class UserInfo extends \Core\Model
     }
 
     /**
-     * The visitor's IP: Cloudflare's header, which visitors can't fake, else
-     * the last X-Forwarded-For entry (the first is whatever the visitor sent)
+     * The visitor's IP. Through the host's proxy, it's Cloudflare's header,
+     * else the last X-Forwarded-For entry (the first is whatever the visitor
+     * sent); from anywhere else, the connection's own address
      */
     public static function getRealIP(): string
     {
+        $connectedIp = $_SERVER['REMOTE_ADDR'] ?? '';
+        // Anyone can send these headers; only the proxy's are worth reading
+        if (!static::isProxyAddress($connectedIp)) {
+            return $connectedIp;
+        }
+
         if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
             return trim($_SERVER['HTTP_CF_CONNECTING_IP']);
         }
@@ -115,7 +128,20 @@ class UserInfo extends \Core\Model
             return trim(end($forwarded));
         }
 
-        return $_SERVER['REMOTE_ADDR'] ?? '';
+        return $connectedIp;
+    }
+
+    /**
+     * Whether a connection came from a private or reserved address: Render's
+     * proxy in front of the container, or Docker's locally. A visitor on the
+     * internet can't connect from one
+     */
+    protected static function isProxyAddress(string $ip): bool
+    {
+        $isIp = filter_var($ip, FILTER_VALIDATE_IP) !== false;
+        $isPublic = filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) !== false;
+
+        return $isIp && !$isPublic;
     }
 
     /**
@@ -226,7 +252,7 @@ class UserInfo extends \Core\Model
                        ROUND(userinfo.lng, ' . static::PIN_DECIMALS . ') AS lng,
                        userinfo.city, userinfo.country, userinfo.timezone,
                        users.id AS user_id, users.name, users.nickname, users.is_guest, users.avatar,
-                       ' . DemoChat::isDemoSql() . ' AS is_demo
+                       ' . Characters::isDemoSql() . ' AS is_demo
                 FROM userinfo
                 LEFT JOIN users
                 ON userinfo.email = users.email
@@ -237,8 +263,9 @@ class UserInfo extends \Core\Model
 
         $stmt = static::getDB()->prepare($sql);
         $stmt->execute([':bot_email' => Chat::BOT_EMAIL, ':online' => static::ONLINE_SECONDS] + $demoParams);
+        $pins = static::typedRows($stmt->fetchAll(PDO::FETCH_ASSOC), ['user_id'], ['is_demo', 'is_guest']);
 
-        return Mention::withShownNames(static::withAvatarSrc($stmt->fetchAll(PDO::FETCH_ASSOC), 'user_id'));
+        return Mention::withShownNames(static::withAvatarSrc($pins, 'user_id'));
     }
 
     /**
@@ -331,7 +358,9 @@ class UserInfo extends \Core\Model
         $stmt = static::getDB()->prepare($sql);
         $stmt->execute([':online' => static::ONLINE_SECONDS, ':guest_online' => static::ONLINE_SECONDS] + $demoParams);
 
-        return static::withNames(static::stripEmails($stmt->fetchAll(PDO::FETCH_ASSOC)));
+        $people = static::typedRows($stmt->fetchAll(PDO::FETCH_ASSOC), static::PERSON_INT_COLUMNS, static::PERSON_BOOL_COLUMNS);
+
+        return static::withNames(static::stripEmails($people));
     }
 
     /**
@@ -357,8 +386,9 @@ class UserInfo extends \Core\Model
 
         $stmt = static::getDB()->prepare($sql);
         $stmt->execute($emailParams);
+        $people = static::typedRows($stmt->fetchAll(PDO::FETCH_ASSOC), static::PERSON_INT_COLUMNS, static::PERSON_BOOL_COLUMNS);
 
-        return static::withNames($stmt->fetchAll(PDO::FETCH_ASSOC));
+        return static::withNames($people);
     }
 
     /**
@@ -366,7 +396,7 @@ class UserInfo extends \Core\Model
      */
     protected static function personColumnsSql(): string
     {
-        return 'users.id, users.email, users.name, users.avatar, ' . DemoChat::isDemoSql() . ' AS is_demo,
+        return 'users.id, users.email, users.name, users.avatar, ' . Characters::isDemoSql() . ' AS is_demo,
                 users.nickname, users.is_guest, users.email = ' . static::getDB()->quote(Chat::BOT_EMAIL) . ' AS is_bot, '
                 . static::sharedPlaceSql();
     }
@@ -380,7 +410,7 @@ class UserInfo extends \Core\Model
      */
     protected static function stripEmails(array $people): array
     {
-        return array_map(function ($person) {
+        return array_map(function (array $person): array {
             unset($person['email']);
             return $person;
         }, $people);
@@ -482,7 +512,7 @@ class UserInfo extends \Core\Model
     /**
      * Add each person's avatar image address (see Avatar::src)
      *
-     * @param array[] $people Rows with a name, an avatar, is_demo and an id
+     * @param array[] $people Rows with a name, an avatar, is_demo and an id, cast where they were fetched
      * @param string $idColumn Which column holds the user's id
      *
      * @return array[]
@@ -490,7 +520,7 @@ class UserInfo extends \Core\Model
     protected static function withAvatarSrc(array $people, string $idColumn): array
     {
         foreach ($people as &$person) {
-            $person['avatar_src'] = Avatar::src((int) $person[$idColumn], $person['name'], $person['avatar'], (bool) $person['is_demo']);
+            $person['avatar_src'] = Avatar::src($person[$idColumn], $person['name'], $person['avatar'], $person['is_demo']);
         }
 
         return $people;

@@ -1,6 +1,22 @@
 {% extends "base_app.html" %}
+{# The profile page: cards for your details and account, the map and
+   notification switches, and deleting the profile (Profile::showAction) #}
 {% from '_form_fields.html' import text_field %}
-{% types {user: '\\App\\Models\\User', place: 'array|null', default_avatar: 'string', are_photo_uploads_on: 'bool'} %}
+{% from '_loading_dots.html' import loading_dots %}
+{% from 'Profile/_settings_card.html' import card_head, edit_actions, switch %}
+{% types {
+    user: '\\App\\Models\\User',
+    place: 'array|null',
+    default_avatar: 'string',
+    are_photo_uploads_on: 'bool',
+    cloudinary_cloud_name: '?string',
+    cloudinary_upload_preset: '?string',
+    guest_time_left: 'string',
+    shown_password: 'string',
+    password_field: 'array',
+    asks_for_current_password: 'bool',
+    csp_nonce: 'string',
+} %}
 
 {% block title %}Profile{% endblock %}
 
@@ -20,22 +36,19 @@
     <div class="guest-banner appear-down">
         {{ icon('clock-circle') }}
         <strong class="title">Guest account</strong>
-        <span class="note">Deleted in {{ user.guestHoursLeft() }} h along with your messages.</span>
+        <span class="note">Deleted in {{ guest_time_left }}, along with your messages.</span>
         <button type="button" class="button primary small keep" id="keep-account">Keep my account</button>
     </div>
     {% endif %}
 
     {# What profile.js needs from the server #}
-    <form action="/profile/update" method="post" id="formProfile" class="appear-down"
+    <form action="/profile/update" method="post" id="profile-form" class="appear-down"
           data-user-id="{{ user.id|e('html_attr') }}"
           data-guest="{{ user.is_guest ? 'true' : 'false' }}" novalidate>
 
         {# Each card shows its details, and Edit turns them into fields with Cancel and Save #}
         <section class="settings-card" id="card-profile" data-part="settings-card">
-            <div class="head">
-                <h2 class="title">Profile</h2>
-                <button type="button" class="button quiet small edit-button" data-part="edit">Edit</button>
-            </div>
+            {{ card_head('Profile', is_editable = true) }}
 
             {# The photo saves as soon as it's uploaded or removed, apart from Save #}
             <div class="profile-photo">
@@ -43,7 +56,7 @@
                     <img class="image" id="avatar" alt="Your photo"
                          src="{{ avatar_src(user.id, user.name, user.avatar) }}"
                          data-default-src="{{ default_avatar|e('html_attr') }}"/>
-                    <span class="loading-dots dots" role="status" aria-label="Uploading"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+                    {{ loading_dots({class: 'dots', label: 'Uploading'}) }}
                 </div>
                 <div>
                     {# Without the site's own Cloudinary settings there's nowhere to upload to; removing still works #}
@@ -58,12 +71,12 @@
                                 {% if user.avatar is empty %}hidden{% endif %}>Remove</button>
                     </div>
                     {% if are_photo_uploads_on %}
-                    <p class="field-hint" id="photo-hint">JPG, PNG or GIF</p>
+                    <p class="field-hint" id="photo-hint">Use a JPG, PNG or GIF image.</p>
                     <input id="file-upload" type="file" accept="image/png,image/gif,image/jpeg" hidden
                            data-cloud-name="{{ cloudinary_cloud_name|e('html_attr') }}"
                            data-upload-preset="{{ cloudinary_upload_preset|e('html_attr') }}">
                     {% else %}
-                    <p class="field-hint">Photo uploads aren't set up on this site</p>
+                    <p class="field-hint">Photo uploads aren't set up on this site.</p>
                     {% endif %}
                 </div>
             </div>
@@ -78,67 +91,50 @@
             </dl>
 
             <div class="edit" data-part="fields">
-                {{ text_field({id: 'inputName', name: 'name', label: 'Name', required: true, value: user.name, autocomplete: 'name'}) }}
+                {{ text_field({id: 'name-input', name: 'name', label: 'Name', required: true, value: user.name, autocomplete: 'name'}) }}
                 {# Guests stay "Guest" and a number #}
                 {% if not user.is_guest %}
-                {{ text_field({id: 'inputNickname', name: 'nickname', label: 'Nickname (optional)', value: user.nickname,
-                               autocomplete: 'nickname', hint: 'Shown instead of your first name. People @mention you by it'}) }}
+                {{ text_field({id: 'nickname-input', name: 'nickname', label: 'Nickname (optional)', value: user.nickname,
+                               autocomplete: 'nickname', hint: 'Shown instead of your first name, and people @mention you by it.'}) }}
                 {% endif %}
             </div>
 
-            <div class="actions edit">
-                <button type="button" class="link-button" data-part="cancel">Cancel</button>
-                <button type="submit" class="button primary small">Save</button>
-            </div>
+            {{ edit_actions() }}
         </section>
 
         <section class="settings-card" id="card-account" data-part="settings-card">
-            <div class="head">
-                <h2 class="title">Account</h2>
-                <button type="button" class="button quiet small edit-button" data-part="edit">Edit</button>
-            </div>
+            {{ card_head('Account', is_editable = true) }}
 
             <dl class="view">
                 <dt class="term">Email</dt>
                 <dd class="value">{{ user.is_guest ? 'Not set' : user.email }}</dd>
                 <dt class="term">Password</dt>
-                <dd class="value">{{ user.is_guest or not user.hasPassword() ? 'Not set' : '••••••••' }}</dd>
+                <dd class="value">{{ shown_password }}</dd>
             </dl>
 
             {# A guest's placeholder email isn't shown; they type their own to keep the account #}
             <div class="edit" data-part="fields">
-                {{ text_field({id: 'inputEmail', name: 'email', type: 'email', label: 'Email', required: not user.is_guest,
+                {{ text_field({id: 'email-input', name: 'email', type: 'email', label: 'Email', required: not user.is_guest,
                                value: user.is_guest ? '' : user.email, autocomplete: 'email'}) }}
 
-                {% if user.is_guest %}
-                {{ text_field({id: 'inputPassword', name: 'password', type: 'password', label: 'Password', autocomplete: 'new-password',
-                               minlength: 6, hint: '6+ characters, a letter and a number, to keep your account'}) }}
-                {% elseif not user.hasPassword() %}
-                {# Made by signing in with Google, so there's no current password to ask for #}
-                {{ text_field({id: 'inputPassword', name: 'password', type: 'password', label: 'Password', autocomplete: 'new-password',
-                               minlength: 6, hint: 'Set one to log in with your email too.'}) }}
-                {% else %}
-                {{ text_field({id: 'inputPassword', name: 'password', type: 'password', label: 'New password', autocomplete: 'new-password',
-                               minlength: 6, hint: 'Leave blank to keep your current password.'}) }}
+                {# What the field asks for depends on whether the account has a password yet (Profile::passwordField) #}
+                {{ text_field({id: 'password-input', name: 'password', type: 'password', label: password_field.label,
+                               autocomplete: 'new-password', minlength: 6, hint: password_field.hint}) }}
 
-                {{ text_field({id: 'inputCurrentPassword', name: 'current_password', type: 'password', label: 'Current password',
+                {% if asks_for_current_password %}
+                {{ text_field({id: 'current-password-input', name: 'current_password', type: 'password', label: 'Current password',
                                autocomplete: 'current-password', hint: 'Needed to change your email or password.',
                                box_id: 'current-password', hidden: true}) }}
                 {% endif %}
             </div>
 
-            <div class="actions edit">
-                <button type="button" class="link-button" data-part="cancel">Cancel</button>
-                <button type="submit" class="button primary small">Save</button>
-            </div>
+            {{ edit_actions() }}
         </section>
 
     </form>
 
     <section class="settings-card appear-down">
-        <div class="head">
-            <h2 class="title">Privacy</h2>
-        </div>
+        {{ card_head('Privacy') }}
 
         <div class="privacy-setting">
             <div>
@@ -156,40 +152,26 @@
                 </p>
                 {% endif %}
             </div>
-            <div class="beer control">
-                <label class="switch">
-                    <input type="checkbox" id="share-location" {% if user.share_location %}checked{% endif %}>
-                    <span></span>
-                </label>
-            </div>
+            {{ switch('share-location', is_on = user.share_location) }}
         </div>
     </section>
 
     {# Per browser, so profile.js sets it from what this browser allows #}
     <section class="settings-card appear-down">
-        <div class="head">
-            <h2 class="title">Notifications</h2>
-        </div>
+        {{ card_head('Notifications') }}
 
         <div class="privacy-setting">
             <div>
                 <label class="name" for="notifications">Private messages and mentions</label>
                 <p class="field-hint" id="notifications-hint">On this browser, when MapChat is open in a tab</p>
             </div>
-            <div class="beer control">
-                <label class="switch">
-                    <input type="checkbox" id="notifications">
-                    <span></span>
-                </label>
-            </div>
+            {{ switch('notifications') }}
         </div>
     </section>
 
     {# The button opens the dialog below, which asks first (profile.js) #}
     <section class="settings-card appear-down">
-        <div class="head">
-            <h2 class="title">Delete profile</h2>
-        </div>
+        {{ card_head('Delete profile') }}
 
         <div class="privacy-setting">
             <p class="field-hint">Deletes your profile, your messages and your place for good.</p>
@@ -199,12 +181,12 @@
 
     {# Cancel closes it without sending; Delete posts the form #}
     <dialog class="delete-dialog" id="delete-profile-dialog" aria-labelledby="delete-profile-title">
-        <form action="/profile/delete" method="post">
+        <form action="/profile/delete" method="post" id="delete-profile-form">
             <h2 class="title" id="delete-profile-title">Delete your profile?</h2>
             <p class="note">Your messages, private chats and place on the map go with it. This can't be undone.</p>
             {# A guest's password is random, and an account made with Google has none #}
             {% if user.hasKnownPassword() %}
-            {{ text_field({id: 'inputDeletePassword', name: 'current_password', type: 'password', label: 'Your password',
+            {{ text_field({id: 'delete-password-input', name: 'current_password', type: 'password', label: 'Your password',
                            required: true, autocomplete: 'current-password'}) }}
             {% endif %}
             <div class="actions">

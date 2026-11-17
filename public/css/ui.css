@@ -2,15 +2,16 @@
    so they look the same everywhere: Material 3's colours and states (see the
    tokens in base.css), with square corners and normal case */
 
-/* One type scale, the same sizes the chat uses: 12 hints, 13 labels and small
-   text, 14 body text, 17 card titles, 28 page titles. The root size stays
+/* One type scale, the same sizes the chat uses: 11 times, places, tags and
+   tooltips, 13 names, tabs, labels, hints and small text, 14 body text (on
+   body, in base.css), 17 card titles, 28 page titles. The root size stays
    fixed at any window width, so nothing drifts */
-html
+:root
 {
-    font-size: 14px;
+    --card-title-size: 17px; /* Profile's and About's cards */
 }
 
-body
+html
 {
     font-size: 14px;
 }
@@ -54,6 +55,12 @@ h4
     {
         outline: none;
         box-shadow: 0 0 0 3px var(--md-inverse-primary);
+    }
+
+    /* Its action is under way: dots in place of its label, same size */
+    &.is-loading
+    {
+        pointer-events: none;
     }
 }
 
@@ -217,8 +224,8 @@ h4
 {
     margin: 6px 0 0;
     color: var(--md-outline);
-    font-size: 12px;
-    text-align: left;
+    font-size: 13px;
+    text-align: start;
 }
 
 /* Eye button inside password fields (see passwordToggle.js). all: unset
@@ -227,8 +234,8 @@ h4
 {
     all: unset;
     position: absolute;
-    top: 11px;
-    right: 8px;
+    inset-block-start: 11px;
+    inset-inline-end: 8px;
     z-index: 2; /* above Beer's input */
     color: var(--md-on-surface-variant);
     font-size: 20px;
@@ -258,7 +265,7 @@ h4
 {
     p
     {
-        margin-bottom: 28px;
+        margin-block-end: 28px;
     }
 }
 
@@ -272,12 +279,7 @@ h4
     animation: fade-in var(--dur) var(--ease-out) var(--delay-loading) backwards;
 }
 
-/* A button whose action is under way: dots in place of its label, same size */
-.button.is-loading
-{
-    pointer-events: none;
-}
-
+/* A button whose action is under way: its dots and hidden label */
 @scope (.button)
 {
     .dots
@@ -369,7 +371,7 @@ h4
 /* One text field (_form_fields.html), in Beer's own outlined style */
 .form-field
 {
-    margin-top: 16px;
+    margin-block-start: 16px;
 }
 
 /* Keep typed text clear of the eye button */
@@ -377,7 +379,7 @@ h4
 {
     .password
     {
-        padding-right: 40px;
+        padding-inline-end: 40px;
     }
 }
 
@@ -387,8 +389,8 @@ h4
 .toasts
 {
     position: fixed;
-    right: 24px;
-    bottom: var(--toast-bottom, calc(var(--footer-height) + 24px));
+    inset-inline-end: 24px;
+    inset-block-end: var(--toast-bottom, calc(var(--footer-height) + 24px));
     z-index: 10000;
     display: flex;
     flex-direction: column;
@@ -401,9 +403,11 @@ h4
 {
     .toasts
     {
-        top: var(--toast-top, calc(var(--header-height) + 12px));
+        inset-block-start: var(--toast-top, calc(var(--header-height) + 12px));
+        inset-block-end: auto;
+        /* Centred: left and the translate below are both physical, so it
+           stays centred either way the text runs */
         right: auto;
-        bottom: auto;
         left: 50%;
         align-items: center;
         width: max-content;
@@ -426,6 +430,11 @@ h4
     line-height: 1.4;
     cursor: pointer; /* a tap closes it */
     animation: fade-in-up var(--dur) var(--ease-out);
+
+    &.is-leaving
+    {
+        animation: fade-out var(--dur-fast) var(--ease-in) forwards;
+    }
 }
 
 /* Coming down from the header on phones */
@@ -435,11 +444,6 @@ h4
     {
         animation-name: fade-in-down;
     }
-}
-
-.toast.is-leaving
-{
-    animation: fade-out var(--dur-fast) var(--ease-in) forwards;
 }
 
 /* Light tones that read on the dark snackbar */
@@ -452,8 +456,8 @@ h4
         color: var(--md-inverse-primary);
     }
 
-    :scope.success .icon { color: #a5d6a7; }
-    :scope.warning .icon { color: #ffb74d; }
+    :scope.success .icon { color: var(--success-on-dark); }
+    :scope.warning .icon { color: var(--warning-on-dark); }
 }
 
 /* The thin bar across the top while the next page loads (loadingBar.js).
@@ -468,6 +472,7 @@ h4
     z-index: 10000;
     --loading-bar-edge: #ffca28;
     --loading-bar-middle: #ff9100;
+    --loading-bar-glint: #ffe082; /* pale yellow */
     height: 3px;
     /* Deepest in the middle, where it grows from, lighter toward the edges */
     background-image: linear-gradient(to right, var(--loading-bar-edge), var(--loading-bar-middle), var(--loading-bar-edge));
@@ -492,7 +497,7 @@ h4
         inset-block: 0;
         inset-inline-start: 40%;
         width: 20%;
-        background-image: linear-gradient(to right, transparent, #ffe082, transparent);
+        background-image: linear-gradient(to right, transparent, var(--loading-bar-glint), transparent);
         opacity: 0;
     }
 
@@ -518,9 +523,9 @@ h4
 
     /* Under the header it runs along the header's yellow line in deeper
        orange, which shows on the yellow without shouting */
-    &.under-header
+    &.is-under-header
     {
-        top: calc(var(--header-height) - 4px);
+        inset-block-start: calc(var(--header-height) - 4px);
         z-index: 111; /* just above the header */
         --loading-bar-edge: #ff8f00;
         --loading-bar-middle: #e65100;
@@ -563,70 +568,72 @@ h4
 }
 
 /* Tooltips (tooltip.js): a small near-black label with a little arrow,
-   fading in just above the thing (or below it near the top of the screen) */
+   fading in just above the thing (or below it near the top of the screen).
+   Physical left and right: tooltip.js places it, and --arrow-x, in pixels
+   from the window's left */
 .tooltip
 {
-    --tooltip-colour: rgba(33, 33, 33, 0.92);
+    --tooltip-colour: color-mix(in srgb, var(--text-strong) 92%, transparent);
     position: fixed;
     z-index: 2000;
     max-width: 240px;
     padding: 5px 9px;
     border-radius: 6px;
     background-color: var(--tooltip-colour);
-    color: #fff;
-    font-size: 12px;
+    color: var(--md-on-primary);
+    font-size: 11px;
     line-height: 1.35;
     pointer-events: none;
     opacity: 0;
     transform: translateY(3px);
     transition: opacity var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
-}
 
-.tooltip.is-below
-{
-    transform: translateY(-3px);
-}
+    &.is-below
+    {
+        transform: translateY(-3px);
+    }
 
-/* The arrow, under the label pointing down, or above it when it's below */
-.tooltip::after
-{
-    content: '';
-    position: absolute;
-    top: 100%;
-    left: var(--arrow-x, 50%);
-    border: 4px solid transparent;
-    border-top-color: var(--tooltip-colour);
-    transform: translateX(-50%);
-}
+    /* The arrow, under the label pointing down, or above it when it's below */
+    &::after
+    {
+        content: '';
+        position: absolute;
+        inset-block-start: 100%;
+        left: var(--arrow-x, 50%);
+        border: 4px solid transparent;
+        border-block-start-color: var(--tooltip-colour);
+        transform: translateX(-50%);
+    }
 
-.tooltip.is-below::after
-{
-    top: auto;
-    bottom: 100%;
-    border-top-color: transparent;
-    border-bottom-color: var(--tooltip-colour);
-}
+    &.is-below::after
+    {
+        inset-block-start: auto;
+        inset-block-end: 100%;
+        border-block-start-color: transparent;
+        border-block-end-color: var(--tooltip-colour);
+    }
 
-/* Beside the thing, on its left, with the arrow pointing right at it */
-.tooltip.is-on-left
-{
-    transform: translateX(3px);
-}
+    /* Beside the thing, on its left, with the arrow pointing right at it */
+    &.is-on-left
+    {
+        transform: translateX(3px);
+    }
 
-.tooltip.is-on-left::after
-{
-    top: 50%;
-    left: 100%;
-    border-top-color: transparent;
-    border-left-color: var(--tooltip-colour);
-    transform: translateY(-50%);
-}
+    &.is-on-left::after
+    {
+        inset-block-start: 50%;
+        left: 100%;
+        border-block-start-color: transparent;
+        border-left-color: var(--tooltip-colour);
+        transform: translateY(-50%);
+    }
 
-/* After the sides, so it wins over their small offsets */
-.tooltip.is-shown
-{
-    opacity: 1;
-    transform: none;
+    /* After the sides, so it wins over their small offsets */
+    &.is-shown
+    {
+        opacity: 1;
+        transform: none;
+    }
 }
 
 /* Read by screen readers, not shown: the rest of a label whose visible part is a number or an icon */
@@ -638,4 +645,29 @@ h4
     overflow: hidden;
     clip-path: inset(50%);
     white-space: nowrap;
+}
+
+/* Page content straight on the page, no framed box (base_app.html) */
+.site-main
+{
+    position: relative;
+    inset-block-start: var(--header-height);
+    margin-inline: auto;
+    margin-block: 0 140px; /* clear the fixed footer */
+    padding: 10px 16px 40px;
+    /* clip, not hidden: hidden would make this its own scroll box */
+    overflow-x: clip;
+}
+
+/* Phones: Safari on iPhone zooms in on a field whose text is under 16px.
+   Beer's fields set 14px in a lower layer, so this wins; the chat's message
+   box sets its own (chat-composer.css) */
+@media (max-width: 700px)
+{
+    input,
+    textarea,
+    select
+    {
+        font-size: 16px;
+    }
 }

@@ -1,0 +1,449 @@
+/* The people list beside the map (people.js), each person in it, and the
+   button that brings it back on narrower screens */
+
+/* The list slides in from its edge, and out again when closed */
+@keyframes panel-in-right
+{
+    from { transform: translateX(100%); }
+}
+
+@keyframes panel-out-right
+{
+    to { transform: translateX(100%); }
+}
+
+.people
+{
+    position: fixed; /* fixed, so sliding in from the edge never widens the page */
+    inset-block: var(--header-height) var(--footer-height);
+    inset-inline-end: 0;
+    width: var(--people-width);
+    display: flex;
+    flex-direction: column; /* the header stays put; only the list below scrolls */
+    background-color: var(--chat-surface);
+    box-shadow: -2px 0 8px var(--panel-shadow);
+    /* Held off screen until the page's script runs, as the chat panel is */
+    animation: panel-in-right var(--dur-slow) var(--ease-out) both paused;
+
+    .is-ready &
+    {
+        animation-play-state: running;
+    }
+
+    /* Closing: slide out, then the page hides it */
+    .is-ready &.is-closing
+    {
+        animation: panel-out-right var(--dur) var(--ease-in) forwards;
+    }
+}
+
+@scope (.people) to (.person)
+{
+    .list
+    {
+        flex: 1;
+        overflow-y: auto;
+        /* Rows slide in and out sideways; that never makes it scroll sideways */
+        overflow-x: hidden;
+        padding: 8px 0; /* room under the header line and after the last person */
+    }
+
+    .heading
+    {
+        margin: 0;
+        padding: 16px 16px 8px;
+        color: var(--text-faint);
+        font-size: 11px;
+        line-height: 16px;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+
+        /* Lines up with the chat tabs on the left */
+        &.top
+        {
+            flex: none;
+            display: flex;
+            align-items: center;
+            box-sizing: border-box;
+            height: 48px;
+            padding: 0 16px;
+            gap: 8px;
+            border-block-end: 1px solid var(--line);
+            color: var(--md-primary);
+            font-size: 13px; /* in capitals like the chat header's name */
+        }
+    }
+
+    /* Count and "Online" sit on one baseline, so the digit and the letters line up */
+    /* The count's pill, then a clear space before the word */
+    .title
+    {
+        display: flex;
+        align-items: baseline;
+        gap: 12px;
+    }
+
+    /* A square icon button, as the emoji picker's; its X lines up with the
+       heading's edge */
+    .close
+    {
+        width: 24px;
+        height: 24px;
+        margin-inline: auto -5px;
+        /* Half a pixel up, level with the middle of "ONLINE"'s capitals,
+           which sit that much above the line's own middle */
+        margin-block-end: 1px;
+        padding: 0;
+        border: none;
+        border-radius: 4px;
+        background-color: transparent;
+        color: var(--md-on-surface-variant);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background-color var(--dur-fast) var(--ease-out),
+                    color var(--dur-fast) var(--ease-out);
+
+        &:hover
+        {
+            background-color: color-mix(in srgb, var(--md-primary) var(--md-hover), transparent);
+            color: var(--md-primary);
+        }
+
+        & .icon
+        {
+            font-size: 14px; /* about the weight of the 13px heading beside it */
+        }
+    }
+
+    /* Lighter than a tab's unread badge: this only informs, the badge wants attention */
+    .count
+    {
+        /* A circle for one digit that widens for more, with room around the number */
+        box-sizing: border-box;
+        min-width: 22px;
+        height: 22px;
+        padding: 1px 6px 0; /* digits sit half a pixel high in their line; this centres them */
+        border-radius: 11px;
+        background-color: var(--md-secondary-container);
+        color: var(--md-primary);
+        font-size: 11px; /* as a tab's unread count */
+        line-height: 21px;
+        letter-spacing: 0;
+        text-align: center;
+    }
+
+    /* Until the first reply: the dots in the middle, in the sidebar and the
+       drawer alike */
+    .loading
+    {
+        display: flex;
+        justify-content: center;
+        padding: 12px 16px;
+    }
+}
+
+/* One person in the list: a button that opens a private chat, or a plain
+   row for you. Drawn as the row, not as a button */
+.person
+{
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: none;
+    color: inherit;
+    font: inherit;
+    letter-spacing: inherit;
+    text-align: inherit;
+    text-shadow: inherit;
+    text-transform: inherit;
+}
+
+.person
+{
+    display: grid;
+    width: 100%; /* a button, for anyone but you */
+    grid-template-columns: 32px 1fr; /* avatar as big as in the chat */
+    column-gap: 12px;
+    align-items: center;
+    padding: 8px 16px;
+    cursor: default;
+    transition: background-color var(--dur-fast) var(--ease-out);
+
+    &:hover
+    {
+        background-color: var(--lavender);
+    }
+
+    /* Someone who comes or goes slides in or out of their part of the list */
+    &.is-entering
+    {
+        animation: person-in var(--dur-slow) var(--ease-out) backwards;
+    }
+
+    /* A separate class, so the row can slide again once it's in while the tint fades */
+    &.is-arrived
+    {
+        animation: person-arrived var(--dur-linger) var(--ease-out);
+    }
+
+    /* Both at once in one rule: each class's own rule would override the other's */
+    &.is-entering.is-arrived
+    {
+        animation: person-in var(--dur-slow) var(--ease-out) backwards,
+                   person-arrived var(--dur-linger) var(--ease-out);
+    }
+
+    /* The rest of the list slides to its new place instead of jumping
+       (slideFromShifts in dom.js) */
+    &.is-shifting
+    {
+        transition: translate var(--dur) var(--ease-out);
+    }
+
+    &.is-leaving
+    {
+        animation: person-out var(--dur-fast) var(--ease-in) forwards;
+        pointer-events: none;
+    }
+}
+
+.person.is-messageable
+{
+    cursor: pointer;
+}
+
+@scope (.person) to (.place)
+{
+    .avatar
+    {
+        position: relative;
+        width: 32px;
+        height: 32px;
+        /* A soft circle while an uploaded photo loads; the photo then fades in
+           (see fadeInPhotos in dom.js) */
+        border-radius: 50%;
+
+        &.is-loading
+        {
+            background-color: var(--lavender);
+        }
+
+        &.is-loading .photo
+        {
+            opacity: 0;
+        }
+    }
+
+    .photo
+    {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        object-fit: cover;
+        display: block;
+        transition: opacity var(--dur) var(--ease-out);
+    }
+
+    /* Green dot on the avatar of someone online */
+    :scope.is-online .avatar::after
+    {
+        content: '';
+        position: absolute;
+        inset-block-start: 2px;
+        inset-inline-end: -4px;
+        width: 9px;
+        height: 9px;
+        border: 2px solid var(--chat-surface);
+        border-radius: 50%;
+        background-color: var(--online);
+    }
+
+    :scope:not(.is-online) .photo
+    {
+        filter: grayscale(1);
+        opacity: 0.6;
+    }
+
+    .text
+    {
+        min-width: 0;
+    }
+
+    .name
+    {
+        display: block;
+        overflow: hidden;
+        color: var(--text-strong);
+        font-size: 13px; /* as the chat header's name */
+        line-height: 18px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    :scope:not(.is-online) .name
+    {
+        color: var(--text-faint);
+    }
+
+    /* Flag and city on one centre line, like the city line in the chat */
+    .detail
+    {
+        display: flex;
+        align-items: center;
+        gap: var(--icon-gap);
+        min-width: 0;
+        margin-block-start: 2px;
+        color: var(--text-faint);
+        font-size: 11px; /* same as the messages' times and the header's subtitle */
+        line-height: 16px; /* same as the city line in the chat */
+    }
+}
+
+/* A person's row sliding in and out, and the tint on one just arrived */
+@keyframes person-in
+{
+    from { opacity: 0; transform: translateX(24px); }
+}
+
+@keyframes person-arrived
+{
+    from { background-color: var(--lavender); }
+}
+
+@keyframes person-out
+{
+    to { opacity: 0; transform: translateX(12px); }
+}
+
+/* Button over the map that brings back the people list */
+.people-toggle
+{
+    display: none;
+    position: absolute;
+    inset-block-start: calc(var(--header-height) + 12px);
+    inset-inline-end: 12px;
+    z-index: 2;
+    align-items: center;
+    gap: var(--icon-gap);
+    height: 36px;
+    padding: 0 12px;
+    border: none;
+    border-radius: 4px;
+    background-color: var(--md-surface-container-lowest); /* white, clear of the lavender map */
+    color: var(--md-primary);
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: var(--md-elevation-2);
+    cursor: pointer;
+    transition: background-color var(--dur-fast) var(--ease-out);
+
+    /* Only a faint tint: over the map a stronger one, or a deeper shadow, turns it grey */
+    &:hover
+    {
+        background-color: color-mix(in srgb, var(--md-primary) 4%, var(--md-surface-container-lowest));
+    }
+
+    &:focus-visible
+    {
+        outline: none;
+        box-shadow: 0 0 0 3px var(--lavender-line);
+    }
+}
+
+@scope (.people-toggle)
+{
+    .icon
+    {
+        font-size: 20px;
+    }
+}
+
+/* Wide screens: the list shows unless it was closed */
+@media (min-width: 1101px)
+{
+    .is-people-closed .people
+    {
+        display: none;
+    }
+
+    .is-people-closed .people-toggle
+    {
+        display: flex;
+    }
+}
+
+/* Tablets: the people list slides in over the map */
+@media (max-width: 1100px)
+{
+    .people-toggle
+    {
+        display: flex;
+    }
+
+    /* Hidden rather than moved off screen, which would widen the page */
+    .people
+    {
+        display: none;
+        z-index: 3;
+
+        &.is-open
+        {
+            display: flex;
+        }
+    }
+}
+
+@media (max-width: 700px)
+{
+    /* The people button moves up into the header, before the menu button,
+       as a white icon on the purple, so the tab row keeps its full width */
+    .people-toggle
+    {
+        position: fixed;
+        inset-block-start: calc((var(--header-height) - 4px - 36px) / 2); /* centred, above the yellow line */
+        /* Against the 44px menu button, 4px from the edge: its lines sit
+           inside that box, so this leaves about 14px to them */
+        inset-inline-end: 48px;
+        z-index: 111;
+        height: 36px;
+        padding: 0 8px;
+        background: none;
+        box-shadow: none;
+        color: var(--md-on-primary);
+        transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+
+        &:focus
+        {
+            background: none;
+        }
+
+        &:hover
+        {
+            background-color: color-mix(in srgb, var(--md-on-primary) 15%, transparent);
+            box-shadow: none;
+        }
+
+        /* Open: a white button with purple inside, so on and off differ at
+           a glance, not only by a faint tint */
+        &[aria-expanded="true"],
+        &[aria-expanded="true"]:hover
+        {
+            background-color: var(--md-on-primary);
+            color: var(--md-primary);
+        }
+
+        &:focus-visible
+        {
+            box-shadow: 0 0 0 3px var(--focus-ring-on-purple);
+        }
+    }
+
+    .people
+    {
+        width: 260px;
+        max-width: 85vw;
+    }
+}

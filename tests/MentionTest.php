@@ -3,6 +3,7 @@
 namespace Tests;
 
 use App\Mention;
+use App\PersonName;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -10,17 +11,17 @@ use PHPUnit\Framework\TestCase;
  */
 class MentionTest extends TestCase
 {
-    public function testFindsTheWholeNameInAnyCase()
+    public function testFindsTheWholeNameInAnyCase(): void
     {
-        $this->assertTrue(Mention::isMentionedIn('hey @mapchat, where are you?', 'MapChat'));
-        $this->assertTrue(Mention::isMentionedIn('@Maya Thompson hi', 'Maya Thompson'));
-        $this->assertFalse(Mention::isMentionedIn('@MapChatty hi', 'MapChat'));
-        $this->assertFalse(Mention::isMentionedIn('MapChat hi', 'MapChat'));
+        $this->assertTrue(Mention::isMentionedIn('hey @mapchat, where are you?', new PersonName('MapChat')));
+        $this->assertTrue(Mention::isMentionedIn('@Maya Thompson hi', new PersonName('Maya Thompson')));
+        $this->assertFalse(Mention::isMentionedIn('@MapChatty hi', new PersonName('MapChat')));
+        $this->assertFalse(Mention::isMentionedIn('MapChat hi', new PersonName('MapChat')));
     }
 
-    public function testMarksMentionsAsChipsAndEscapesTheRest()
+    public function testMarksMentionsAsChipsAndEscapesTheRest(): void
     {
-        $html = Mention::mark('<b>hi</b> @maya and @Ann', ['Maya', 'Ann'], 'Ann');
+        $html = Mention::htmlWithChips('<b>hi</b> @maya and @Ann', ['Maya', 'Ann'], new PersonName('Ann'));
 
         $this->assertSame(
             '&lt;b&gt;hi&lt;/b&gt; <span class="mention">@maya</span> and <span class="mention me">@Ann</span>',
@@ -28,52 +29,52 @@ class MentionTest extends TestCase
         );
     }
 
-    public function testPrefersTheLongerName()
+    public function testPrefersTheLongerName(): void
     {
-        $html = Mention::mark('@Maya Thompson hi', ['Maya', 'Maya Thompson'], 'Ann');
+        $html = Mention::htmlWithChips('@Maya Thompson hi', ['Maya', 'Maya Thompson'], new PersonName('Ann'));
 
         $this->assertSame('<span class="mention">@Maya Thompson</span> hi', $html);
     }
 
-    public function testNamesWithSymbolsAreMatchedAsTyped()
+    public function testNamesWithSymbolsAreMatchedAsTyped(): void
     {
-        $html = Mention::mark('hi @Tom & Jerry', ['Tom & Jerry'], 'Tom & Jerry');
+        $html = Mention::htmlWithChips('hi @Tom & Jerry', ['Tom & Jerry'], new PersonName('Tom & Jerry'));
 
         $this->assertSame('hi <span class="mention me">@Tom &amp; Jerry</span>', $html);
     }
 
-    public function testFirstNamesCountExceptForGuests()
+    public function testFirstNamesCountExceptForGuests(): void
     {
-        $this->assertTrue(Mention::isMentionedIn('hi @maya!', 'Maya Thompson'));
-        $this->assertTrue(Mention::isMentionedIn('hi @Maya Thompson', 'Maya Thompson'));
-        $this->assertFalse(Mention::isMentionedIn('hi @Guest', 'Guest 2189', null, true));
-        $this->assertTrue(Mention::isMentionedIn('hi @guest 2189', 'Guest 2189', null, true));
+        $this->assertTrue(Mention::isMentionedIn('hi @maya!', new PersonName('Maya Thompson')));
+        $this->assertTrue(Mention::isMentionedIn('hi @Maya Thompson', new PersonName('Maya Thompson')));
+        $this->assertFalse(Mention::isMentionedIn('hi @Guest', new PersonName('Guest 2189', isGuest: true)));
+        $this->assertTrue(Mention::isMentionedIn('hi @guest 2189', new PersonName('Guest 2189', isGuest: true)));
     }
 
-    public function testMarksTheReadersFirstNameAsTheirs()
+    public function testMarksTheReadersFirstNameAsTheirs(): void
     {
-        $html = Mention::mark('@Maya and @Ann', ['Maya Thompson', 'Maya', 'Ann Lee', 'Ann'], 'Ann Lee');
+        $html = Mention::htmlWithChips('@Maya and @Ann', ['Maya Thompson', 'Maya', 'Ann Lee', 'Ann'], new PersonName('Ann Lee'));
 
         $this->assertSame('<span class="mention">@Maya</span> and <span class="mention me">@Ann</span>', $html);
     }
 
-    public function testANicknameTakesThePlaceOfTheFirstName()
+    public function testANicknameTakesThePlaceOfTheFirstName(): void
     {
         $this->assertSame('zee', Mention::shownName('Zainab Ali', 'zee'));
-        $this->assertTrue(Mention::isMentionedIn('hi @Zee', 'Zainab Ali', 'zee'));
-        $this->assertTrue(Mention::isMentionedIn('hi @Zainab Ali', 'Zainab Ali', 'zee'));
-        $this->assertFalse(Mention::isMentionedIn('hi @Zainab', 'Zainab Ali', 'zee'));
+        $this->assertTrue(Mention::isMentionedIn('hi @Zee', new PersonName('Zainab Ali', 'zee')));
+        $this->assertTrue(Mention::isMentionedIn('hi @Zainab Ali', new PersonName('Zainab Ali', 'zee')));
+        $this->assertFalse(Mention::isMentionedIn('hi @Zainab', new PersonName('Zainab Ali', 'zee')));
     }
 
-    public function testGuestsKeepTheirGuestName()
+    public function testGuestsKeepTheirGuestName(): void
     {
-        $this->assertSame('Guest 2189', Mention::shownName('Guest 2189', 'sunny', true));
-        $this->assertFalse(Mention::isMentionedIn('hi @sunny', 'Guest 2189', 'sunny', true));
+        $this->assertSame('Guest 2189', Mention::shownName('Guest 2189', 'sunny', isGuest: true));
+        $this->assertFalse(Mention::isMentionedIn('hi @sunny', new PersonName('Guest 2189', 'sunny', isGuest: true)));
     }
 
-    public function testMarksTheReadersNicknameAsTheirs()
+    public function testMarksTheReadersNicknameAsTheirs(): void
     {
-        $html = Mention::mark('hi @zee', ['Zainab Ali', 'zee'], 'Zainab Ali', 'zee');
+        $html = Mention::htmlWithChips('hi @zee', ['Zainab Ali', 'zee'], new PersonName('Zainab Ali', 'zee'));
 
         $this->assertSame('hi <span class="mention me">@zee</span>', $html);
     }

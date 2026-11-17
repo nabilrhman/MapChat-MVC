@@ -7,7 +7,7 @@ explanations. The main ones:
 
 | Variable | What it does |
 |---|---|
-| `APP_URL` | Public address of the site. Used in links inside emails, by the check that a form, a request from a page or the chat socket comes from the site itself, to mark cookies Secure when it's `https://`, and as the default `VAPID_SUBJECT`. Without it, the address each request came to |
+| `APP_URL` | Public address of the site. Used in links inside emails, by the check that a form, a request from a page or the chat socket comes from the site itself, to mark cookies Secure when it's `https://`, and as the default `VAPID_SUBJECT`. Required on a real site: without it, links point at `http://localhost:8080` and the log says so |
 | `SHOW_ERRORS` | `true` shows an error's details on the page. Leave it `false` on a real site, where errors go to the log |
 | `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | Database connection |
 | `DB_SSL` | `true` for hosted MySQL that requires TLS |

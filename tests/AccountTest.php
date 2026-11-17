@@ -8,56 +8,36 @@ use PHPUnit\Framework\TestCase;
 /**
  * Logging in, logging out and saving the profile, over real HTTP requests to
  * the app on PHP's built-in server. Changing anything takes a POST from this
- * site; other methods get 405 and change nothing. Also the route table: only
- * listed routes answer, each with its own method
+ * site; other methods get 405 and change nothing. Also the site's own
+ * routes: a controller method without one can't be reached, and ids and
+ * tokens keep to their patterns (how the router matches is RouterTest's)
  */
 class AccountTest extends TestCase
 {
+    use DrivesTheSite;
+
     const EMAIL = 'account@test.local';
     const PASSWORD = 'secret123';
     /** Someone else, for a private message to the test's user */
     const OTHER_EMAIL = 'other@test.local';
-
-    /** The built-in server, shared by the tests in this class */
-    private static $server;
-    private static string $host;
+    /** The email a guest keeps their account with, or someone signs up with */
+    const NEW_EMAIL = 'new@test.local';
 
     private PDO $db;
 
-    /** Cookies the "browser" has, by name */
-    private array $cookies = [];
-
     public static function setUpBeforeClass(): void
     {
-        // A free port: bind to 0, read the port back, then let it go
-        $socket = stream_socket_server('tcp://127.0.0.1:0');
-        self::$host = stream_socket_get_name($socket, false);
-        fclose($socket);
-
-        $root = dirname(__DIR__);
-        $command = [PHP_BINARY, '-S', self::$host, '-t', "$root/public", "$root/tests/server.php"];
         // A site without Cloudinary settings, so photo uploads are off, and
         // with a Google client, so the login page offers it
-        $environment = array_diff_key(getenv(), ['CLOUDINARY_CLOUD_NAME' => '', 'CLOUDINARY_UPLOAD_PRESET' => ''])
-            + ['GOOGLE_CLIENT_ID' => 'mapchat-test.apps.googleusercontent.com', 'GOOGLE_CLIENT_SECRET' => 'test-secret'];
-        self::$server = proc_open($command, [1 => ['file', '/dev/null', 'w'], 2 => ['file', '/dev/null', 'w']], $pipes, null, $environment);
-
-        // Wait for it to accept connections
-        for ($tries = 0; $tries < 50; $tries++) {
-            $connection = @fsockopen('tcp://' . self::$host);
-            if ($connection) {
-                fclose($connection);
-                return;
-            }
-            usleep(100000);
-        }
-        throw new \RuntimeException('The built-in server did not start on ' . self::$host);
+        self::startSite(
+            ['GOOGLE_CLIENT_ID' => 'mapchat-test.apps.googleusercontent.com', 'GOOGLE_CLIENT_SECRET' => 'test-secret'],
+            unset: ['CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_UPLOAD_PRESET']
+        );
     }
 
     public static function tearDownAfterClass(): void
     {
-        proc_terminate(self::$server);
-        proc_close(self::$server);
+        self::stopSite();
     }
 
     protected function setUp(): void
@@ -65,79 +45,13 @@ class AccountTest extends TestCase
         // The server is another process, so these rows are committed, not
         // rolled back; tearDown deletes them
         $this->db = TestDb::get();
-        $this->db->prepare("INSERT INTO users (name, email, password_hash, is_active) VALUES ('Ann', ?, ?, TRUE)")
-            ->execute([self::EMAIL, password_hash(self::PASSWORD, PASSWORD_DEFAULT)]);
+        TestDb::createUser('Ann', self::EMAIL, self::PASSWORD);
     }
 
     protected function tearDown(): void
     {
         $this->db->prepare('DELETE FROM userinfo WHERE email = ?')->execute([self::EMAIL]);
-        $this->db->prepare('DELETE FROM users WHERE email IN (?, ?)')->execute([self::EMAIL, self::OTHER_EMAIL]);
-    }
-
-    /**
-     * Send a request with the cookies set so far, like a browser that
-     * doesn't follow redirects. A POST carries this site as its Origin unless
-     * told otherwise; a header given as null isn't sent
-     *
-     * @return array ['status' => int, 'headers' => [lowercase name => value], 'body' => string]
-     */
-    private function request(string $method, string $path, array $form = [], array $headers = []): array
-    {
-        if ($method === 'POST') {
-            $headers += ['Origin' => 'http://' . self::$host];
-        }
-        $headers = array_filter($headers, fn ($value) => $value !== null);
-        if ($form) {
-            $headers['Content-Type'] = 'application/x-www-form-urlencoded';
-        }
-        if ($this->cookies) {
-            $headers['Cookie'] = http_build_query($this->cookies, '', '; ');
-        }
-
-        $lines = [];
-        foreach ($headers as $name => $value) {
-            $lines[] = "$name: $value";
-        }
-
-        $context = stream_context_create(['http' => [
-            'method' => $method,
-            'header' => $lines,
-            'content' => http_build_query($form),
-            'follow_location' => 0,
-            'ignore_errors' => true,
-        ]]);
-        $body = file_get_contents('http://' . self::$host . $path, false, $context);
-
-        $responseHeaders = http_get_last_response_headers();
-        preg_match('/^HTTP\/\S+ (\d+)/', array_shift($responseHeaders), $status);
-
-        $found = [];
-        foreach ($responseHeaders as $line) {
-            [$name, $value] = array_map('trim', explode(':', $line, 2));
-            $found[strtolower($name)] = $value;
-
-            if (strtolower($name) === 'set-cookie') {
-                $this->keepCookie($value);
-            }
-        }
-
-        return ['status' => (int) $status[1], 'headers' => $found, 'body' => $body];
-    }
-
-    /**
-     * Remember a cookie, or forget it when the server deletes it
-     */
-    private function keepCookie(string $setCookie): void
-    {
-        [$pair] = explode(';', $setCookie, 2);
-        [$name, $value] = explode('=', $pair, 2);
-
-        if ($value === '' || $value === 'deleted') {
-            unset($this->cookies[$name]);
-        } else {
-            $this->cookies[$name] = urldecode($value);
-        }
+        $this->db->prepare('DELETE FROM users WHERE email IN (?, ?, ?)')->execute([self::EMAIL, self::OTHER_EMAIL, self::NEW_EMAIL]);
     }
 
     /**
@@ -190,21 +104,12 @@ class AccountTest extends TestCase
         $this->assertSame($allow, $response['headers']['allow'] ?? null);
     }
 
-    /**
-     * Check the request was sent on to this page
-     */
-    private function assertRedirect(string $location, array $response): void
-    {
-        $this->assertSame(303, $response['status']);
-        $this->assertSame($location, $response['headers']['location'] ?? null);
-    }
-
-    public function testLoginPageShowsOverGet()
+    public function testLoginPageShowsOverGet(): void
     {
         $this->assertSame(200, $this->request('GET', '/login')['status']);
     }
 
-    public function testEveryScriptOnAPageCarriesThePolicysNonce()
+    public function testEveryScriptOnAPageCarriesThePolicysNonce(): void
     {
         $this->logIn();
 
@@ -221,7 +126,7 @@ class AccountTest extends TestCase
         }
     }
 
-    public function testLoginOverPostSignsIn()
+    public function testLoginOverPostSignsIn(): void
     {
         $response = $this->request('POST', '/login/create', ['email' => self::EMAIL, 'password' => self::PASSWORD]);
 
@@ -230,7 +135,7 @@ class AccountTest extends TestCase
         $this->assertTrue($this->isSignedIn());
     }
 
-    public function testLoginOverGetIsRefused()
+    public function testLoginOverGetIsRefused(): void
     {
         $query = http_build_query(['email' => self::EMAIL, 'password' => self::PASSWORD]);
 
@@ -238,7 +143,7 @@ class AccountTest extends TestCase
         $this->assertFalse($this->isSignedIn());
     }
 
-    public function testLogoutOverPostSignsOutWithAMessage()
+    public function testLogoutOverPostSignsOutWithAMessage(): void
     {
         $this->logIn();
 
@@ -253,7 +158,7 @@ class AccountTest extends TestCase
         $this->assertFalse($this->isSignedIn());
     }
 
-    public function testLogoutOverGetLeavesYouSignedIn()
+    public function testLogoutOverGetLeavesYouSignedIn(): void
     {
         $this->logIn();
 
@@ -261,7 +166,7 @@ class AccountTest extends TestCase
         $this->assertTrue($this->isSignedIn());
     }
 
-    public function testLogoutFromAnotherSiteIsRefused()
+    public function testLogoutFromAnotherSiteIsRefused(): void
     {
         $this->logIn();
 
@@ -271,7 +176,7 @@ class AccountTest extends TestCase
         $this->assertTrue($this->isSignedIn());
     }
 
-    public function testProfileUpdateOverPostSaves()
+    public function testProfileUpdateOverPostSaves(): void
     {
         $this->logIn();
 
@@ -282,7 +187,7 @@ class AccountTest extends TestCase
         $this->assertSame('Ann Lee', $this->user()['name']);
     }
 
-    public function testProfileUpdateWithoutPostChangesNothing()
+    public function testProfileUpdateWithoutPostChangesNothing(): void
     {
         $this->logIn();
         $before = $this->user();
@@ -295,7 +200,7 @@ class AccountTest extends TestCase
         $this->assertTrue($this->isSignedIn());
     }
 
-    public function testWithoutCloudinaryTheProfileSaysPhotoUploadsAreOff()
+    public function testWithoutCloudinaryTheProfileSaysPhotoUploadsAreOff(): void
     {
         $this->logIn();
 
@@ -306,7 +211,7 @@ class AccountTest extends TestCase
         $this->assertStringNotContainsString('id="file-upload"', $page);
     }
 
-    public function testWithoutCloudinaryAPhotoIsRefusedButOneCanStillBeRemoved()
+    public function testWithoutCloudinaryAPhotoIsRefusedButOneCanStillBeRemoved(): void
     {
         $this->logIn();
         $photo = 'https://res.cloudinary.com/someone-else/image/upload/v1/ann.jpg';
@@ -319,7 +224,7 @@ class AccountTest extends TestCase
         $this->assertNull($this->avatar());
     }
 
-    public function testPagesAndTheirOlderUrls()
+    public function testPagesAndTheirOlderUrls(): void
     {
         $this->assertRedirect('/login', $this->request('GET', '/'));
         $this->assertRedirect('/login', $this->request('GET', '/home/index'));
@@ -336,14 +241,14 @@ class AccountTest extends TestCase
         $this->assertSame(200, $this->request('GET', '/app/index')['status']);
     }
 
-    public function testHeadAnswersLikeGet()
+    public function testHeadAnswersLikeGet(): void
     {
         $this->assertSame(200, $this->request('HEAD', '/login')['status']);
         $this->assertRedirect('/login', $this->request('HEAD', '/'));
         $this->assertRefusedMethod($this->request('HEAD', '/logout'));
     }
 
-    public function testOlderLogoutUrlSignsOut()
+    public function testOlderLogoutUrlSignsOut(): void
     {
         $this->logIn();
 
@@ -354,21 +259,21 @@ class AccountTest extends TestCase
         $this->assertFalse($this->isSignedIn());
     }
 
-    public function testPostOnlyUrlsRefuseGet()
+    public function testPostOnlyUrlsRefuseGet(): void
     {
         foreach (['/login/guest', '/signup/create', '/password/request-reset', '/password/reset-password', '/app/get', '/app/send', '/app/get-locations', '/profile/update-avatar', '/profile/delete'] as $path) {
             $this->assertRefusedMethod($this->request('GET', $path), 'POST');
         }
     }
 
-    public function testGetOnlyUrlsRefusePost()
+    public function testGetOnlyUrlsRefusePost(): void
     {
         $this->assertRefusedMethod($this->request('POST', '/login'), 'GET, HEAD');
         $this->assertRefusedMethod($this->request('POST', '/profile/show'), 'GET, HEAD');
         $this->assertRefusedMethod($this->request('DELETE', '/about'), 'GET, HEAD');
     }
 
-    public function testAPostWithNeitherOriginNorRefererIsRefused()
+    public function testAPostWithNeitherOriginNorRefererIsRefused(): void
     {
         $this->logIn();
 
@@ -378,7 +283,7 @@ class AccountTest extends TestCase
         $this->assertTrue($this->isSignedIn());
     }
 
-    public function testAPostFromThisHostOnAnotherPortIsRefused()
+    public function testAPostFromThisHostOnAnotherPortIsRefused(): void
     {
         $this->logIn();
         [$host, $port] = explode(':', self::$host);
@@ -389,7 +294,7 @@ class AccountTest extends TestCase
         $this->assertTrue($this->isSignedIn());
     }
 
-    public function testAPostWithOnlyAThisSiteRefererIsLetIn()
+    public function testAPostWithOnlyAThisSiteRefererIsLetIn(): void
     {
         $this->logIn();
 
@@ -399,7 +304,7 @@ class AccountTest extends TestCase
         $this->assertFalse($this->isSignedIn());
     }
 
-    public function testLoggingOutStopsPushOnThatBrowserOnly()
+    public function testLoggingOutStopsPushOnThatBrowserOnly(): void
     {
         $thisBrowser = 'https://push.example.com/this-browser';
         $otherBrowser = 'https://push.example.com/other-browser';
@@ -430,7 +335,7 @@ class AccountTest extends TestCase
         return (int) $stmt->fetchColumn();
     }
 
-    public function testTheProfilePageOffersToDeleteTheProfileWithThePassword()
+    public function testTheProfilePageOffersToDeleteTheProfileWithThePassword(): void
     {
         $this->logIn();
 
@@ -438,13 +343,12 @@ class AccountTest extends TestCase
 
         $this->assertStringContainsString('<dialog class="delete-dialog" id="delete-profile-dialog"', $page);
         $this->assertStringContainsString('action="/profile/delete" method="post"', $page);
-        $this->assertStringContainsString('id="inputDeletePassword" name="current_password"', $page);
+        $this->assertStringContainsString('id="delete-password-input" name="current_password"', $page);
     }
 
-    public function testDeletingTheProfileDeletesEverythingOfTheirsAndSignsOut()
+    public function testDeletingTheProfileDeletesEverythingOfTheirsAndSignsOut(): void
     {
-        $this->db->prepare("INSERT INTO users (name, email, password_hash, is_active) VALUES ('Bob', ?, '!', TRUE)")
-            ->execute([self::OTHER_EMAIL]);
+        TestDb::createUser('Bob', self::OTHER_EMAIL);
         $this->db->prepare("INSERT INTO chats (email, to_email, body) VALUES (?, NULL, 'Hello room'), (?, ?, 'Hi Ann')")
             ->execute([self::EMAIL, self::OTHER_EMAIL, self::EMAIL]);
         $this->db->prepare("INSERT INTO userinfo (email, ip, city) VALUES (?, '127.0.0.1', 'Dhaka')")->execute([self::EMAIL]);
@@ -471,7 +375,7 @@ class AccountTest extends TestCase
         $this->assertSame(0, (int) $stmt->fetchColumn());
     }
 
-    public function testDeletingTheProfileWithAWrongPasswordKeepsIt()
+    public function testDeletingTheProfileWithAWrongPasswordKeepsIt(): void
     {
         $this->logIn();
 
@@ -481,7 +385,7 @@ class AccountTest extends TestCase
         $this->assertTrue($this->isSignedIn());
     }
 
-    public function testDeletingTheProfileFromAnotherSiteIsRefused()
+    public function testDeletingTheProfileFromAnotherSiteIsRefused(): void
     {
         $this->logIn();
 
@@ -491,17 +395,17 @@ class AccountTest extends TestCase
         $this->assertSame(1, $this->countOwnRows('users'));
     }
 
-    public function testAGuestDeletesTheirProfileWithoutAPassword()
+    public function testAGuestDeletesTheirProfileWithoutAPassword(): void
     {
         $this->request('POST', '/login/guest');
         $this->assertTrue($this->isSignedIn());
-        $this->assertStringNotContainsString('id="inputDeletePassword"', $this->request('GET', '/profile/show')['body']);
+        $this->assertStringNotContainsString('id="delete-password-input"', $this->request('GET', '/profile/show')['body']);
 
         $this->assertRedirect('/login/show-deleted-message', $this->request('POST', '/profile/delete'));
         $this->assertFalse($this->isSignedIn());
     }
 
-    public function testAResetRequestWithEmailOffSaysSoWhateverTheEmail()
+    public function testAResetRequestWithEmailOffSaysSoWhateverTheEmail(): void
     {
         foreach ([self::EMAIL, 'nobody@test.local'] as $email) {
             $response = $this->request('POST', '/password/request-reset', ['email' => $email]);
@@ -513,13 +417,7 @@ class AccountTest extends TestCase
         }
     }
 
-    public function testUnknownUrlIs404()
-    {
-        $this->assertSame(404, $this->request('GET', '/nothing/here')['status']);
-        $this->assertSame(404, $this->request('POST', '/nothing/here')['status']);
-    }
-
-    public function testControllerMethodsWithoutARouteAreUnreachable()
+    public function testControllerMethodsWithoutARouteAreUnreachable(): void
     {
         $this->logIn();
 
@@ -532,7 +430,7 @@ class AccountTest extends TestCase
         }
     }
 
-    public function testRouteVariableOutsideItsPatternIs404()
+    public function testTheSitesIdAndTokenRoutesAre404ForAnythingElse(): void
     {
         $this->logIn();
 
@@ -541,7 +439,7 @@ class AccountTest extends TestCase
         $this->assertSame(404, $this->request('GET', '/password/reset/zz')['status']);
     }
 
-    public function testAvatarRouteSendsTheImage()
+    public function testAvatarRouteSendsTheImage(): void
     {
         $this->logIn();
         $id = $this->db->query("SELECT id FROM users WHERE email = '" . self::EMAIL . "'")->fetchColumn();
@@ -552,7 +450,7 @@ class AccountTest extends TestCase
         $this->assertSame('image/svg+xml', $response['headers']['content-type']);
     }
 
-    public function testActivationLinkFromTheEmailActivates()
+    public function testActivationLinkFromTheEmailActivates(): void
     {
         $token = bin2hex(random_bytes(16));
         $this->db->prepare('UPDATE users SET is_active = FALSE, activation_hash = ? WHERE email = ?')
@@ -565,7 +463,7 @@ class AccountTest extends TestCase
         $this->assertSame(1, (int) $this->db->query("SELECT is_active FROM users WHERE email = '" . self::EMAIL . "'")->fetchColumn());
     }
 
-    public function testResetLinkFromTheEmailShowsTheForm()
+    public function testResetLinkFromTheEmailShowsTheFormThatSetsTheNewPassword(): void
     {
         $token = bin2hex(random_bytes(16));
         $this->db->prepare('UPDATE users SET password_reset_hash = ?, password_reset_expires_at = DATE_ADD(NOW(), INTERVAL 1 HOUR) WHERE email = ?')
@@ -580,7 +478,7 @@ class AccountTest extends TestCase
         $this->assertTrue(password_verify('newpass123', $this->user()['password_hash']));
     }
 
-    public function testEmailCheckReadsTheQueryString()
+    public function testEmailCheckReadsTheQueryString(): void
     {
         $taken = $this->request('GET', '/account/validate-email?' . http_build_query(['email' => self::EMAIL]));
         $free = $this->request('GET', '/account/validate-email?' . http_build_query(['email' => 'free@test.local']));
@@ -589,7 +487,7 @@ class AccountTest extends TestCase
         $this->assertSame('true', $free['body']);
     }
 
-    public function testProtectedPageSendsYouToLogInAndBack()
+    public function testProtectedPageSendsYouToLogInAndBack(): void
     {
         $this->assertRedirect('/login', $this->request('GET', '/profile/show?tab=1'));
 
@@ -597,7 +495,7 @@ class AccountTest extends TestCase
         $this->assertRedirect('/profile/show?tab=1', $response);
     }
 
-    public function testProtectedAjaxRequestAsksYouToLogInAgain()
+    public function testProtectedAjaxRequestAsksYouToLogInAgain(): void
     {
         $headers = ['X-Requested-With' => 'XMLHttpRequest'];
 
@@ -617,12 +515,12 @@ class AccountTest extends TestCase
         $this->assertIsArray(json_decode($response['body'], true));
     }
 
-    public function testTheLoginPageOffersGoogle()
+    public function testTheLoginPageOffersGoogle(): void
     {
         $this->assertStringContainsString('href="/login/google"', $this->request('GET', '/login')['body']);
     }
 
-    public function testContinueWithGoogleSendsYouToGoogleWithAStateAndAChallenge()
+    public function testContinueWithGoogleSendsYouToGoogleWithAStateAndAChallenge(): void
     {
         $response = $this->request('GET', '/login/google');
 
@@ -640,7 +538,7 @@ class AccountTest extends TestCase
         $this->assertNotEmpty($query['code_challenge']);
     }
 
-    public function testAGoogleCallbackThisBrowserDidNotStartIsRefused()
+    public function testAGoogleCallbackThisBrowserDidNotStartIsRefused(): void
     {
         $this->request('GET', '/login/google');
 
@@ -650,7 +548,7 @@ class AccountTest extends TestCase
         $this->assertFalse($this->isSignedIn());
     }
 
-    public function testCancellingAtGoogleComesBackToTheLoginPage()
+    public function testCancellingAtGoogleComesBackToTheLoginPage(): void
     {
         $response = $this->request('GET', '/login/google/callback?error=access_denied');
 
@@ -658,7 +556,7 @@ class AccountTest extends TestCase
         $this->assertStringContainsString('Google sign-in was cancelled.', $this->request('GET', '/login')['body']);
     }
 
-    public function testAnAccountWithNoPasswordIsToldToUseGoogle()
+    public function testAnAccountWithNoPasswordIsToldToUseGoogle(): void
     {
         $this->db->prepare("UPDATE users SET password_hash = '' WHERE email = ?")->execute([self::EMAIL]);
 
@@ -669,7 +567,7 @@ class AccountTest extends TestCase
         $this->assertFalse($this->isSignedIn());
     }
 
-    public function testAnAccountWithNoPasswordSetsOneWithoutACurrentOne()
+    public function testAnAccountWithNoPasswordSetsOneWithoutACurrentOne(): void
     {
         $this->logIn();
         $this->db->prepare("UPDATE users SET password_hash = '' WHERE email = ?")->execute([self::EMAIL]);
@@ -678,5 +576,137 @@ class AccountTest extends TestCase
 
         $this->assertRedirect('/profile/show', $response);
         $this->assertTrue(password_verify('newpass1', $this->user()['password_hash']));
+    }
+
+    public function testLoggingInWithAWrongPasswordSaysSoAndLeavesYouOut(): void
+    {
+        $response = $this->request('POST', '/login/create', ['email' => self::EMAIL, 'password' => 'wrong123']);
+
+        $this->assertSame(200, $response['status']);
+        $this->assertStringContainsString('Wrong email or password.', $response['body']);
+        $this->assertStringContainsString('value="' . self::EMAIL . '"', $response['body']);
+        $this->assertFalse($this->isSignedIn());
+    }
+
+    public function testAnAccountNotYetActivatedIsAskedToActivateFirst(): void
+    {
+        $this->db->prepare('UPDATE users SET is_active = FALSE WHERE email = ?')->execute([self::EMAIL]);
+
+        $response = $this->request('POST', '/login/create', ['email' => self::EMAIL, 'password' => self::PASSWORD]);
+
+        $this->assertSame(200, $response['status']);
+        $this->assertStringContainsString('Activate your account first.', $response['body']);
+        $this->assertFalse($this->isSignedIn());
+    }
+
+    public function testWithoutEmailSigningUpMakesAnActiveAccount(): void
+    {
+        $response = $this->request('POST', '/signup/create', ['name' => 'Nia Roe', 'email' => self::NEW_EMAIL, 'password' => 'secret123']);
+
+        $this->assertRedirect('/signup/activated', $response);
+        $stmt = $this->db->prepare('SELECT name, is_active FROM users WHERE email = ?');
+        $stmt->execute([self::NEW_EMAIL]);
+        $account = $stmt->fetch(PDO::FETCH_ASSOC);
+        $this->assertSame('Nia Roe', $account['name']);
+        $this->assertSame(1, (int) $account['is_active']);
+    }
+
+    public function testSigningUpWithAnEmailThatHasAnAccountIsRefusedUnderTheField(): void
+    {
+        $response = $this->request('POST', '/signup/create', ['name' => 'Ann Two', 'email' => self::EMAIL, 'password' => 'secret123']);
+
+        $this->assertSame(200, $response['status']);
+        $this->assertMatchesRegularExpression('/id="email-input-error">[^<]+</', $response['body']);
+        $this->assertSame(1, $this->countOwnRows('users'));
+    }
+
+    public function testAGuestKeepsTheirAccountWithAnEmailAndPassword(): void
+    {
+        $this->request('POST', '/login/guest');
+        $this->assertStringContainsString('Keep my account', $this->request('GET', '/profile/show')['body']);
+
+        $response = $this->request('POST', '/profile/update', ['name' => 'Kim Lee', 'email' => self::NEW_EMAIL, 'password' => 'newpass123']);
+
+        $this->assertRedirect('/profile/show', $response);
+        $stmt = $this->db->prepare('SELECT name, is_guest, password_hash FROM users WHERE email = ?');
+        $stmt->execute([self::NEW_EMAIL]);
+        $kept = $stmt->fetch(PDO::FETCH_ASSOC);
+        $this->assertSame('Kim Lee', $kept['name']);
+        $this->assertSame(0, (int) $kept['is_guest']);
+        $this->assertTrue(password_verify('newpass123', $kept['password_hash']));
+        $this->assertStringNotContainsString('Keep my account', $this->request('GET', '/profile/show')['body']);
+    }
+
+    public function testAGuestCantKeepTheirAccountWithoutAnEmail(): void
+    {
+        $this->request('POST', '/login/guest');
+
+        $this->assertRedirect('/profile/show', $this->request('POST', '/profile/update', ['name' => 'Kim Lee', 'email' => '', 'password' => 'newpass123']));
+
+        // The warning goes to the page as a toast, in a data attribute
+        $page = $this->request('GET', '/profile/show')['body'];
+        $this->assertStringContainsString('"Enter your email to keep your account."', html_entity_decode($page, ENT_QUOTES | ENT_HTML5));
+        $this->assertStringContainsString('Keep my account', $page);
+
+        $this->request('POST', '/profile/delete');
+    }
+
+    public function testTurningLocationSharingOffTakesYourPinOffTheMapAndOnPutsItBack(): void
+    {
+        $this->logIn();
+        $this->db->prepare("UPDATE userinfo SET lat = 23.8, lng = 90.4, city = 'Dhaka', country = 'BD', online_at = NOW() WHERE email = ?")
+            ->execute([self::EMAIL]);
+        $userId = (int) $this->db->query("SELECT id FROM users WHERE email = '" . self::EMAIL . "'")->fetchColumn();
+
+        $this->assertSame(['share_location' => false], json_decode($this->request('POST', '/profile/update-location-sharing', ['share' => ''])['body'], true));
+        $this->assertNotContains($userId, array_column($this->locations(), 'user_id'));
+
+        $this->assertSame(['share_location' => true], json_decode($this->request('POST', '/profile/update-location-sharing', ['share' => '1'])['body'], true));
+        $this->assertContains($userId, array_column($this->locations(), 'user_id'));
+    }
+
+    /**
+     * Everyone's pin, as the map asks for them
+     *
+     * @return array[]
+     */
+    private function locations(): array
+    {
+        $response = $this->request('POST', '/app/get-locations');
+        $this->assertSame(200, $response['status']);
+
+        return json_decode($response['body'], true);
+    }
+
+    public function testThePinsHaveThePlaceAndNameButNoEmail(): void
+    {
+        $this->logIn();
+        $this->db->prepare("UPDATE userinfo SET lat = 23.8, lng = 90.4, city = 'Dhaka', country = 'BD', online_at = NOW() WHERE email = ?")
+            ->execute([self::EMAIL]);
+
+        $userId = (int) $this->db->query("SELECT id FROM users WHERE email = '" . self::EMAIL . "'")->fetchColumn();
+
+        $pins = array_values(array_filter($this->locations(), fn (array $pin): bool => $pin['user_id'] === $userId));
+
+        $this->assertCount(1, $pins);
+        $this->assertSame('Dhaka', $pins[0]['city']);
+        $this->assertSame('BD', $pins[0]['country']);
+        $this->assertArrayNotHasKey('email', $pins[0]);
+        $this->assertStringNotContainsString(self::EMAIL, $this->request('POST', '/app/get-locations')['body']);
+    }
+
+    public function testThePeopleListHasYouOnlineWithYourTimeZoneButNoEmails(): void
+    {
+        $this->logIn();
+
+        $response = $this->request('POST', '/app/get-people', ['timezone' => 'Asia/Dhaka']);
+
+        $this->assertSame(200, $response['status']);
+        $userId = (int) $this->db->query("SELECT id FROM users WHERE email = '" . self::EMAIL . "'")->fetchColumn();
+        $ann = array_values(array_filter(json_decode($response['body'], true), fn (array $person): bool => $person['id'] === $userId));
+        $this->assertCount(1, $ann);
+        $this->assertTrue((bool) $ann[0]['is_online']);
+        $this->assertSame('Asia/Dhaka', $ann[0]['timezone']);
+        $this->assertStringNotContainsString(self::EMAIL, $response['body']);
     }
 }

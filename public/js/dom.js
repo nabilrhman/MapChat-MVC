@@ -41,7 +41,7 @@ function createPlace(city, country) {
     return place;
 }
 
-// Phones, where the chat is a sheet over the map (matches chat.css)
+// Phones, where the chat is a sheet over the map (the breakpoint base.css names)
 const phoneScreen = window.matchMedia('(max-width: 700px)');
 
 // Asked for less motion in the system's settings; it can change while the
@@ -120,6 +120,43 @@ function setIcon(svg, name) {
     svg.dataset.icon = name;
     const use = svg.querySelector('use');
     use.setAttribute('href', use.getAttribute('href').replace(/#.*$/, `#${name}`));
+}
+
+// The time where someone is, or was when they sent a message. Without their
+// time zone, an estimate from longitude (an hour per 15 degrees), marked
+// with "~"
+function localTimeOf(date, timezone, longitude) {
+    const format = {hour: 'numeric', minute: '2-digit'};
+
+    if (timezone) {
+        return {
+            text: date.toLocaleTimeString([], {...format, timeZone: timezone}),
+            hour: Number(date.toLocaleString('en-US', {hour: 'numeric', hourCycle: 'h23', timeZone: timezone})),
+        };
+    }
+
+    const shiftedDate = new Date(date.getTime() + Math.round(longitude / 15) * 3600000);
+    return {
+        text: `~${shiftedDate.toLocaleTimeString([], {...format, timeZone: 'UTC'})}`,
+        hour: shiftedDate.getUTCHours(),
+    };
+}
+
+// A daylight icon shows the sun from six in the morning to six at night,
+// and the moon otherwise, coloured by its day or night class
+function showDaylight(icon, hour) {
+    const isDaytime = hour >= 6 && hour < 18;
+    setIcon(icon, isDaytime ? 'sun' : 'moon');
+    icon.classList.toggle('day', isDaytime);
+    icon.classList.toggle('night', !isDaytime);
+}
+
+// Shows a local time with its sun or moon in a line: a message's sender
+// time, a pin's label, a private chat's header
+function showLocalTime(timeLine, localTime) {
+    const daylightIcon = createIcon('sun', 'daylight');
+    showDaylight(daylightIcon, localTime.hour);
+    timeLine.replaceChildren(daylightIcon, createElement('span', '', localTime.text));
 }
 
 // Elements from a chunk of HTML the server sent

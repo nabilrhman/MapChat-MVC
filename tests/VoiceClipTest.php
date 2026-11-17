@@ -18,35 +18,35 @@ class VoiceClipTest extends TestCase
         array_map(unlink(...), $this->files);
     }
 
-    public function testNoUploadSaysNothingWasRecorded()
+    public function testNoUploadSaysNothingWasRecorded(): void
     {
-        $this->assertSame('Nothing was recorded.', VoiceClip::fromUpload(null));
-        $this->assertSame('Nothing was recorded.', VoiceClip::fromUpload(['error' => UPLOAD_ERR_NO_FILE]));
+        $this->assertSame('Nothing was recorded.', VoiceClip::problemWith(null));
+        $this->assertSame('Nothing was recorded.', VoiceClip::problemWith(['error' => UPLOAD_ERR_NO_FILE]));
     }
 
-    public function testARecordingOverTheLimitIsTooLong()
+    public function testARecordingOverTheLimitIsTooLong(): void
     {
         $upload = $this->uploadOf($this->wavBytes(), size: VoiceClip::MAX_BYTES + 1);
-        $this->assertSame('That recording is too long. Try a shorter one.', VoiceClip::fromUpload($upload));
+        $this->assertSame('That recording is too long. Try a shorter one.', VoiceClip::problemWith($upload));
 
         $refusedByPhp = ['error' => UPLOAD_ERR_INI_SIZE, 'size' => 0, 'tmp_name' => ''];
-        $this->assertSame('That recording is too long. Try a shorter one.', VoiceClip::fromUpload($refusedByPhp));
+        $this->assertSame('That recording is too long. Try a shorter one.', VoiceClip::problemWith($refusedByPhp));
     }
 
-    public function testAFileThatIsNotSoundIsRefusedWhateverItIsCalled()
+    public function testAFileThatIsNotSoundIsRefusedWhateverItIsCalled(): void
     {
         $upload = $this->uploadOf('<?php echo "hi";');
 
-        $this->assertSame('That recording is not a sound file.', VoiceClip::fromUpload($upload));
+        $this->assertSame('That recording is not a sound file.', VoiceClip::problemWith($upload));
     }
 
-    public function testASoundFileGoesToGroqUnderItsOwnExtension()
+    public function testASoundFileGoesToGroqUnderItsOwnExtension(): void
     {
         $upload = $this->uploadOf($this->wavBytes());
 
+        $this->assertNull(VoiceClip::problemWith($upload));
         $clip = VoiceClip::fromUpload($upload);
 
-        $this->assertInstanceOf(VoiceClip::class, $clip);
         $this->assertSame($upload['tmp_name'], $clip->path);
         $this->assertSame('voice.wav', $clip->fileName());
     }

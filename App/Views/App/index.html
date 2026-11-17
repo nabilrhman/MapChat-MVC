@@ -1,4 +1,5 @@
 {% extends 'base_chat.html' %}
+{# The chat page, with the latest messages already in it (App::indexAction) #}
 {% types {chats: 'array', last_chat_id: 'int', conversations: 'array', build_id: 'string', can_transcribe: 'bool'} %}
 {% block chats %}
 {{ include('App/chat.html', {chats: chats, initial: true}, with_context = false) }}

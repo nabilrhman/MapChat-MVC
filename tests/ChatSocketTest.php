@@ -114,8 +114,7 @@ class ChatSocketTest extends TestCase
         foreach (self::PEOPLE as $name) {
             $email = "$name-" . bin2hex(random_bytes(4)) . '@socket.test';
             $this->emails[$name] = $email;
-            $this->db->prepare("INSERT INTO users (name, email, password_hash, is_active) VALUES (?, ?, '!', TRUE)")
-                ->execute([ucfirst($name), $email]);
+            TestDb::createUser(ucfirst($name), $email);
             $this->db->prepare("INSERT INTO userinfo (email, ip) VALUES (?, '127.0.0.1')")->execute([$email]);
             $user = User::findByEmail($email);
             $this->users[$name] = $user;
@@ -205,7 +204,7 @@ class ChatSocketTest extends TestCase
         return array_column(self::chatsIn($client->collect($seconds)), 1);
     }
 
-    public function testPrivateMessageReachesOnlyThePair()
+    public function testPrivateMessageReachesOnlyThePair(): void
     {
         $ann = $this->openPage('ann');
         $bob = $this->openPage('bob');
@@ -218,7 +217,7 @@ class ChatSocketTest extends TestCase
         $this->assertSame([], $this->bodiesReceived($cat, 0.5));
     }
 
-    public function testOpenRoomMessageReachesEveryone()
+    public function testOpenRoomMessageReachesEveryone(): void
     {
         $ann = $this->openPage('ann');
         $bob = $this->openPage('bob');
@@ -231,7 +230,7 @@ class ChatSocketTest extends TestCase
         }
     }
 
-    public function testMessageSavedByHttpReachesTheSocket()
+    public function testMessageSavedByHttpReachesTheSocket(): void
     {
         $bob = $this->openPage('bob');
 
@@ -241,7 +240,7 @@ class ChatSocketTest extends TestCase
         $this->assertSame(['sent by http'], $this->bodiesReceived($bob, 1.5));
     }
 
-    public function testSendingAgainAfterALostAnswerGivesTheFirstMessage()
+    public function testSendingAgainAfterALostAnswerGivesTheFirstMessage(): void
     {
         $bob = $this->openPage('bob');
         $before = Chat::getNewestId();
@@ -267,7 +266,7 @@ class ChatSocketTest extends TestCase
         $this->assertSame(['only once'], $this->bodiesReceived($ann, 0.5));
     }
 
-    public function testRetryIsAnsweredEvenOverTheRateLimit()
+    public function testRetryIsAnsweredEvenOverTheRateLimit(): void
     {
         $ann = $this->openPage('ann');
         $first = $this->sendOver($ann, 'first try', null, 'retry-limit-1');
@@ -281,7 +280,7 @@ class ChatSocketTest extends TestCase
         $this->assertSame(429, $ann->waitFor('refused')['status']);
     }
 
-    public function testCatchesUpAfterARestartInOrderAndOnce()
+    public function testCatchesUpAfterARestartInOrderAndOnce(): void
     {
         $bob = $this->openPage('bob');
         $seen = Chat::getNewestId();
@@ -323,7 +322,7 @@ class ChatSocketTest extends TestCase
         $this->assertSame('during catch-up 5', end($received)[1]);
     }
 
-    public function testConcurrentSendersArriveInOrderOnce()
+    public function testConcurrentSendersArriveInOrderOnce(): void
     {
         $ann = $this->openPage('ann');
         $cat = $this->openPage('cat');
@@ -345,9 +344,9 @@ class ChatSocketTest extends TestCase
         $this->assertSame(array_values(array_unique($ids)), $ids);
     }
 
-    public function testOlderPrivateHistoryComesStraightFromThatChat()
+    public function testOlderPrivateHistoryComesStraightFromThatChat(): void
     {
-        $old = Chat::sendFrom($this->users['ann'], 'old private', (int) $this->users['bob']->id)['id'];
+        $old = Chat::sendFrom($this->users['ann'], 'old private', (int) $this->users['bob']->id)->id;
         for ($i = 0; $i < Chat::HISTORY + 10; $i++) {
             Chat::save($this->emails['cat'], null, "busy room $i");
         }
@@ -359,7 +358,7 @@ class ChatSocketTest extends TestCase
         $this->assertSame([[$old, 'old private']], self::chatsIn([['type' => 'chats', 'html' => $older['html']]]));
     }
 
-    public function testReadInOneTabClearsTheOthers()
+    public function testReadInOneTabClearsTheOthers(): void
     {
         $ann = $this->openPage('ann');
         $bobFirstTab = $this->openPage('bob');
@@ -374,7 +373,7 @@ class ChatSocketTest extends TestCase
         $this->assertSame(0, (int) Chat::getConversations($this->emails['bob'], PHP_INT_MAX)[0]['unread']);
     }
 
-    public function testTypingGoesOnlyToThePartnerAndExpires()
+    public function testTypingGoesOnlyToThePartnerAndExpires(): void
     {
         $ann = $this->openPage('ann');
         $bob = $this->openPage('bob');
@@ -392,7 +391,7 @@ class ChatSocketTest extends TestCase
         $this->assertFalse($stopped['isTyping']);
     }
 
-    public function testTypingStopsWhenTheTabCloses()
+    public function testTypingStopsWhenTheTabCloses(): void
     {
         $ann = $this->openPage('ann');
         $bob = $this->openPage('bob');
@@ -404,7 +403,7 @@ class ChatSocketTest extends TestCase
         $this->assertFalse($bob->waitFor('typing', 2)['isTyping']);
     }
 
-    public function testWorkerTypingReachesOnlyThatPerson()
+    public function testWorkerTypingReachesOnlyThatPerson(): void
     {
         $ann = $this->openPage('ann');
         $bob = $this->openPage('bob');
@@ -418,7 +417,7 @@ class ChatSocketTest extends TestCase
         $this->assertNull($bob->waitFor('typing', 0.5));
     }
 
-    public function testPersonStaysOnlineWhileAnyTabIsOpen()
+    public function testPersonStaysOnlineWhileAnyTabIsOpen(): void
     {
         $cat = $this->openPage('cat');
         $annId = (int) $this->users['ann']->id;
@@ -426,28 +425,28 @@ class ChatSocketTest extends TestCase
 
         $firstTab = $this->openPage('ann');
         $secondTab = $this->openPage('ann');
-        $this->assertSame(1, $cat->waitFor('presence', 3, $isAboutAnn)['person']['is_online']);
+        $this->assertTrue($cat->waitFor('presence', 3, $isAboutAnn)['person']['is_online']);
 
         $firstTab->close();
         $this->assertNull($cat->waitFor('presence', self::GRACE_SECONDS + 1.5, $isAboutAnn), 'still online in the other tab');
 
         $secondTab->close();
         // A reload within the grace period wouldn't show them leaving; past it, they've gone
-        $this->assertSame(0, $cat->waitFor('presence', self::GRACE_SECONDS + 6, $isAboutAnn)['person']['is_online']);
+        $this->assertFalse($cat->waitFor('presence', self::GRACE_SECONDS + 6, $isAboutAnn)['person']['is_online']);
     }
 
-    public function testWelcomeListsWhoIsOnlineWithoutEmails()
+    public function testWelcomeListsWhoIsOnlineWithoutEmails(): void
     {
         $this->openPage('ann');
         $bob = $this->connect('bob');
         $welcome = $bob->hello(0);
 
         $ann = array_values(array_filter($welcome['people'], fn ($person) => (int) $person['id'] === (int) $this->users['ann']->id));
-        $this->assertSame(1, $ann[0]['is_online']);
+        $this->assertTrue($ann[0]['is_online']);
         $this->assertStringNotContainsString('@socket.test', json_encode($welcome));
     }
 
-    public function testLoggingOutClosesTheTab()
+    public function testLoggingOutClosesTheTab(): void
     {
         $ann = $this->openPage('ann');
 
@@ -456,14 +455,14 @@ class ChatSocketTest extends TestCase
         $this->assertSame(4401, $ann->waitForClose(self::SESSION_CHECK_SECONDS + 3));
     }
 
-    public function testRefusesOtherSitesAndMissingSessions()
+    public function testRefusesOtherSitesAndMissingSessions(): void
     {
         $this->assertSame(403, $this->connect('ann', 'https://evil.example')->status);
         $this->assertSame(401, (new SocketClient(self::$address, null))->status);
         $this->assertSame(401, (new SocketClient(self::$address, 'made-up-session-id-1234567890'))->status);
     }
 
-    public function testClosesTabsThatSendMalformedMessages()
+    public function testClosesTabsThatSendMalformedMessages(): void
     {
         $notJson = $this->openPage('ann');
         $notJson->sendText('not json');
