@@ -86,7 +86,9 @@ The Twig views write HTML5 that says what each part is:
 - Landmarks and sections for what they hold (`header`, `nav`, `main`,
   `aside`, `section` with a heading, `footer`); a `div` only for layout.
 - A `button` for anything that acts on the page and an `a` for anything that
-  goes somewhere; a click handler on a `span` or `div` is out.
+  goes somewhere; a click handler on a `span` or `div` is out. A file picker
+  is a `button` that opens its hidden `input type="file"` from script, as
+  the keyboard can't reach a `label` for it.
 - Every field has a `label`; forms use the browser's own checks (`required`,
   `type="email"`, `minlength`, `autocomplete`) before any script.
 - `hidden` to hide, `<time datetime>` for times, `<dialog>` for a modal,

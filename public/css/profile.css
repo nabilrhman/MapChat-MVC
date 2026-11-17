@@ -114,19 +114,20 @@
         gap: 12px;
     }
 
-    /* View mode: the saved details as plain text */
+    /* View mode: the saved details as plain text. Labels and values share
+       the buttons' 13px; the labels' grey sets them apart */
     .view
     {
         display: grid;
         grid-template-columns: 90px 1fr;
         row-gap: 10px;
         margin: 0;
+        font-size: 13px;
     }
 
     .term
     {
         color: var(--md-on-surface-variant);
-        font-size: 13px;
     }
 
     .value
@@ -134,7 +135,6 @@
         margin: 0;
         overflow-wrap: anywhere;
         color: var(--md-on-surface);
-        font-size: 14px;
     }
 
     /* Edit mode swaps the text for fields, and hides the Edit button */

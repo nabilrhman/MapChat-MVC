@@ -2368,7 +2368,9 @@ body
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 6px 7px 0 12px; /* the X sits as far in as the title */
+        /* The X sits as far in as the title; the room under them is where
+           the emoji scroll out of sight, so none is cut off against the title */
+        padding: 6px 7px 6px 12px;
     }
 
     .title
@@ -2409,7 +2411,7 @@ body
 
     .groups
     {
-        max-height: 186px; /* about 220px with its top bar */
+        max-height: 180px; /* about 220px with its top bar */
         overflow-y: auto;
         padding: 0 8px 8px;
     }
