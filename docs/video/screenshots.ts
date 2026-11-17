@@ -1,10 +1,11 @@
 /**
- * Takes the README's screenshots, docs/images/mapchat-{app,private,profile}.png,
- * from the app running locally (docker compose up).
+ * Takes the README's screenshots, docs/images/mapchat-login.jpg and
+ * mapchat-{app,private,profile}.png, from the app running locally
+ * (docker compose up).
  *
  *   npm run screenshots
  *
- * A new guest signs in, and a demo person online with a city is greeted
+ * First the login page, then a new guest signs in, and a demo person online with a city is greeted
  * from the guest and answers, so the private chat has something in it. Then
  * the room, that private chat, and the whole profile page. The environment
  * is chrome.ts's
@@ -59,8 +60,14 @@ async function main(): Promise<void> {
         const page = await context.newPage();
         await printRenderer(page);
 
-        // A new guest, as anyone trying it would be
+        // The login page, once its map has drawn; a JPEG, as the map behind it is a photo-like texture
         await page.goto(`${URL}/login`);
+        await waitSeconds(3);
+        await page.evaluate(() => document.activeElement.blur()); // the email box takes the focus on load
+        await waitSeconds(1); // its label settles back into the box
+        await page.screenshot({path: join(IMAGES, 'mapchat-login.jpg'), type: 'jpeg', quality: 85});
+
+        // A new guest, as anyone trying it would be
         await page.locator('#guestForm button').click();
         await waitSeconds(5);
         const guestId = await page.evaluate('myUserId');
@@ -112,7 +119,7 @@ async function main(): Promise<void> {
         await waitSeconds(3);
         await page.screenshot({path: join(IMAGES, 'mapchat-profile.png')});
 
-        console.log(`${IMAGES}: mapchat-app.png, mapchat-private.png, mapchat-profile.png, with ${greeted.shown_name}`);
+        console.log(`${IMAGES}: mapchat-login.jpg, mapchat-app.png, mapchat-private.png, mapchat-profile.png, with ${greeted.shown_name}`);
     } finally {
         await browser.close();
     }
