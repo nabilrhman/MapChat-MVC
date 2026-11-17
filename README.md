@@ -41,7 +41,7 @@ In 2026 I came back to it to bring parts of it up to date.
 sleeps when nobody visits; a GitHub Actions workflow visits it every 10 minutes
 so it stays awake.
 
-https://github.com/user-attachments/assets/a76dcaa3-760b-42fd-bf61-da841171d7ea
+https://github.com/user-attachments/assets/2c33f93d-1182-4175-8c6c-f154264544d0
 
 <sub>A quick tour of MapChat.</sub>
 
