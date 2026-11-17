@@ -1316,9 +1316,10 @@ setUpMentions(messageInput, () => activeConversation === EVERYONE, getPeopleToMe
 setUpEmojiPicker(messageInput, document.getElementById('emoji-toggle'), document.getElementById('emoji-picker'));
 setUpVoiceTyping(messageInput, document.getElementById('voice-button'), sendButton);
 
-// Enter sends, Shift+Enter starts a new line
+// Enter sends, Shift+Enter starts a new line. On a touch screen Enter is
+// the keyboard's return key, which starts a new line; Send sends
 messageInput.addEventListener('keydown', (event) => {
-    if (event.key !== 'Enter' || event.shiftKey || event.isComposing) return;
+    if (event.key !== 'Enter' || event.shiftKey || event.isComposing || hasNoHover.matches) return;
     event.preventDefault();
     if (!sendButton.disabled) {
         composerForm.requestSubmit();

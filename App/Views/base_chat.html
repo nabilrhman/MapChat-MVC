@@ -117,7 +117,7 @@
             <div class="box">
                 <label class="label" for="textarea-send">Your message</label>
                 <span class="count" id="char-count" hidden></span>
-                <textarea name="message" placeholder="Your message" rows="1" class="input" id="textarea-send"
+                <textarea name="message" placeholder="Your message" rows="1" class="input" id="textarea-send" enterkeyhint="enter"
                           maxlength="{{ constant('App\\Models\\Chat::MAX_LENGTH') }}" required autofocus></textarea>
             </div>
 
