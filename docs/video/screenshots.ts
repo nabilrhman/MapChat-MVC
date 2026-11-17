@@ -1,54 +1,54 @@
 /**
- * Takes the README's screenshots, docs/images/mapchat-login.jpg and
- * mapchat-{app,private,profile}.png, from the app running locally
- * (docker compose up).
+ * Takes the README's main picture, docs/images/mapchat-app.png, from the app
+ * running locally (docker compose up).
  *
  *   npm run screenshots
  *
- * First the login page, then a new guest signs in, and a demo person online with a city is greeted
- * from the guest and answers, so the private chat has something in it. Then
- * the room, that private chat, and the whole profile page. The environment
- * is chrome.ts's
+ * Only this one is retaken; the README's profile and email pictures stay as
+ * they are. A new guest signs in and opens two private chats as tabs, then
+ * the room is shown with a message being written in the box and the label of
+ * the pin nearest the middle of the map open, as hovering it shows. The
+ * environment is chrome.ts's
  */
 import {join} from 'node:path';
 import type {Page} from 'playwright';
 
-import {app, launchChrome, printRenderer, REPO, signInAsNewGuest, URL} from './chrome.ts';
+import {launchChrome, printRenderer, REPO, signInAsNewGuest, URL} from './chrome.ts';
 import {waitSeconds} from './person.ts';
 
 const WIDTH = 1440;
 const HEIGHT = 900;
 const IMAGES = join(REPO, 'docs/images');
+// Being written in the box, as if the guest were about to send it
+const DRAFT = 'anyone else still up? 🌙 what time is it where you are?';
 
 /** A person in the online list, as people.js has them */
-type ListedPerson = {id: number, shown_name: string, city: string | null};
+type ListedPerson = {id: number, shown_name: string};
 
-// Run in the app's container with the emails and text as arguments, so
-// nothing in them is read as PHP
-const SEND_MESSAGE_PHP = `require 'vendor/autoload.php';
-use App\\Models\\{Chat, User};
-[, $fromEmail, $toEmail, $body] = $argv;
-$result = Chat::sendFrom(User::findByEmail($fromEmail), $body, (int) User::findByEmail($toEmail)->id);
-if (isset($result['error'])) {
-    fwrite(STDERR, $result['error'] . PHP_EOL);
-    exit(1);
-}`;
-
-/** A demo person's email, from the name the list shows */
-function demoEmailOf(person: ListedPerson): string {
-    return `${person.shown_name.toLowerCase().replace('-', '')}@demo.mapchat.local`;
-}
-
-async function sendMessage(fromEmail: string, toEmail: string, body: string): Promise<void> {
-    await app('php', '-r', SEND_MESSAGE_PHP, '--', fromEmail, toEmail, body);
-}
-
-/** Opens a private chat as a click on the person would, and takes the focus off the composer */
+/** Opens a private chat as a click on the person would */
 async function openPrivateChat(page: Page, person: ListedPerson): Promise<void> {
-    await page.evaluate(({id, shown_name}) => {
-        openPrivateChat(id, shown_name);
-        document.activeElement.blur();
-    }, person);
+    await page.evaluate(({id, shown_name}) => openPrivateChat(id, shown_name), person);
+}
+
+/** Hovers the pin nearest the middle of the map between the chat and the people list, so its label opens */
+async function hoverMiddlePin(page: Page): Promise<void> {
+    const pinCentre = await page.evaluate(() => {
+        const left = document.getElementById('chat').getBoundingClientRect().right;
+        const right = document.getElementById('people').getBoundingClientRect().left;
+        const map = document.getElementById('map').getBoundingClientRect();
+        const middle = {x: (left + right) / 2, y: map.top + map.height / 2};
+
+        const centres = [...document.querySelectorAll('[data-part="map-pin"]')].map((pin) => {
+            const box = pin.getBoundingClientRect();
+            return {x: box.left + box.width / 2, y: box.top + box.height / 2};
+        }).filter(({x}) => x > left && x < right);
+        const distanceToMiddle = ({x, y}) => Math.hypot(x - middle.x, y - middle.y);
+        return centres.sort((a, b) => distanceToMiddle(a) - distanceToMiddle(b))[0] ?? null;
+    });
+    if (!pinCentre) {
+        throw new Error('No pin on the map between the chat and the people list: is the demo running?');
+    }
+    await page.mouse.move(pinCentre.x, pinCentre.y, {steps: 5});
 }
 
 async function main(): Promise<void> {
@@ -58,64 +58,37 @@ async function main(): Promise<void> {
         const page = await context.newPage();
         await printRenderer(page);
 
-        // The login page, once its map has drawn; a JPEG, as the map behind it is a photo-like texture
-        await page.goto(`${URL}/login`);
-        await waitSeconds(3);
-        await page.evaluate(() => document.activeElement.blur()); // the email box takes the focus on load
-        await waitSeconds(1); // its label settles back into the box
-        await page.screenshot({path: join(IMAGES, 'mapchat-login.jpg'), type: 'jpeg', quality: 85});
-
         // A new guest, as anyone trying it would be
-        const {email: guestEmail} = await signInAsNewGuest(page);
-        await waitSeconds(5);
-
-        // Someone online with a city, and someone else to have a tab open for
-        await page.goto(`${URL}/app`);
+        await page.goto(`${URL}/login`);
+        await signInAsNewGuest(page);
         await waitSeconds(4);
-        const demoPeople: ListedPerson[] = await page.evaluate(() => getPeopleToMention().filter((p) => Number(p.is_demo)));
-        const greeted = await page.evaluate(() => getPeopleToMention().find((p) => Number(p.is_demo) && p.isOnline && p.city));
-        const otherPerson = demoPeople.find((person) => person.id !== greeted?.id);
-        if (!greeted || !otherPerson) {
-            throw new Error('No demo people online with a city: is the demo running?');
-        }
 
-        await sendMessage(guestEmail, demoEmailOf(greeted), `hi ${greeted.shown_name}! how's the weather in ${greeted.city}?`);
-        await waitSeconds(1);
-        await sendMessage(demoEmailOf(greeted), guestEmail, 'grey and windy, so tea weather ☕ and yours?');
-
-        // The room, with both private chats open as tabs
-        await page.reload();
-        await waitSeconds(4);
         const closeNotificationsOffer = page.locator('#notify-prompt-dismiss');
         if (await closeNotificationsOffer.isVisible()) {
             await closeNotificationsOffer.click();
         }
-        await openPrivateChat(page, greeted);
-        await openPrivateChat(page, otherPerson);
+
+        // Two private chats open as tabs, then back to the room
+        const demoPeople: ListedPerson[] = await page.evaluate(() => getPeopleToMention().filter((p) => Number(p.is_demo) && p.isOnline));
+        if (demoPeople.length < 2) {
+            throw new Error('Fewer than two demo people online: is the demo running?');
+        }
+        for (const person of demoPeople.slice(0, 2)) {
+            await openPrivateChat(page, person);
+        }
         await page.evaluate(() => {
             showConversation('everyone');
             scrollToNewest('instant');
-            document.activeElement.blur();
         });
-        await waitSeconds(5);
+        await waitSeconds(4);
+
+        // A message being written, and a pin's label open in the middle of the map
+        await page.locator('#textarea-send').fill(DRAFT);
+        await hoverMiddlePin(page);
+        await waitSeconds(1);
         await page.screenshot({path: join(IMAGES, 'mapchat-app.png')});
 
-        // The private chat, with their city and local time
-        await openPrivateChat(page, greeted);
-        await waitSeconds(3);
-        await page.screenshot({path: join(IMAGES, 'mapchat-private.png')});
-
-        // The whole profile page; with notifications allowed, their switch shows on
-        await context.grantPermissions(['notifications'], {origin: URL});
-        await page.goto(`${URL}/profile/show`);
-        await waitSeconds(3);
-        const pageHeight = await page.evaluate(() => document.documentElement.scrollHeight);
-        await page.setViewportSize({width: WIDTH, height: pageHeight});
-        await page.evaluate(() => window.scrollTo(0, 0));
-        await waitSeconds(3);
-        await page.screenshot({path: join(IMAGES, 'mapchat-profile.png')});
-
-        console.log(`${IMAGES}: mapchat-login.jpg, mapchat-app.png, mapchat-private.png, mapchat-profile.png, with ${greeted.shown_name}`);
+        console.log(`${IMAGES}/mapchat-app.png`);
     } finally {
         await browser.close();
     }
