@@ -149,7 +149,8 @@ is one line.
 ### Commits
 
 Commits are authored as the repo's owner, with no AI attribution line in the
-message, PR or code.
+message, PR or code. Shipping, from branch to merged PR in this shared
+checkout: `.claude/skills/ship/SKILL.md`.
 
 ## Check your work
 
@@ -162,6 +163,7 @@ message, PR or code.
 | `public/sw.js` | Reload a MapChat tab: the new version takes over at once |
 | A page's markup or colours | `npm run a11y` (once: `npm install`): axe on every page at desktop and phone widths, in Playwright against the app on :8080 |
 | A script or style from a new host | Add the host to `Core/ContentSecurityPolicy.php`; a script tag needs `nonce="{{ csp_nonce }}"` |
+| What the README's screenshots or tour show | Retake them, and swap in the video the README plays: `.claude/skills/readme-media/SKILL.md` |
 
 A change is done when the tests pass, a change a person sees has been looked
 at in the browser, and the README and About page still match what the app

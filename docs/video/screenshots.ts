@@ -13,7 +13,7 @@
 import {join} from 'node:path';
 import type {Page} from 'playwright';
 
-import {app, launchChrome, printRenderer, REPO, URL} from './chrome.ts';
+import {app, launchChrome, printRenderer, REPO, signInAsNewGuest, URL} from './chrome.ts';
 import {waitSeconds} from './person.ts';
 
 const WIDTH = 1440;
@@ -23,10 +23,8 @@ const IMAGES = join(REPO, 'docs/images');
 /** A person in the online list, as people.js has them */
 type ListedPerson = {id: number, shown_name: string, city: string | null};
 
-// Run in the app's container with the user ids and text as arguments, so
+// Run in the app's container with the emails and text as arguments, so
 // nothing in them is read as PHP
-const EMAIL_OF_USER_PHP = `require 'vendor/autoload.php';
-echo App\\Models\\User::findByID((int) $argv[1])->email;`;
 const SEND_MESSAGE_PHP = `require 'vendor/autoload.php';
 use App\\Models\\{Chat, User};
 [, $fromEmail, $toEmail, $body] = $argv;
@@ -68,10 +66,8 @@ async function main(): Promise<void> {
         await page.screenshot({path: join(IMAGES, 'mapchat-login.jpg'), type: 'jpeg', quality: 85});
 
         // A new guest, as anyone trying it would be
-        await page.locator('#guestForm button').click();
+        const {email: guestEmail} = await signInAsNewGuest(page);
         await waitSeconds(5);
-        const guestId = await page.evaluate('myUserId');
-        const guestEmail = await app('php', '-r', EMAIL_OF_USER_PHP, '--', String(guestId));
 
         // Someone online with a city, and someone else to have a tab open for
         await page.goto(`${URL}/app`);
