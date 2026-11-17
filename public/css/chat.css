@@ -169,7 +169,7 @@ body
     box-shadow: 2px 0 8px var(--panel-shadow);
 }
 
-@scope (.chat-panel) to (.chat-tabs, .chat-fold, .chat-header, .notify-prompt, .chat, .day-divider, .typing-row, .jump-latest, .chat-composer)
+@scope (.chat-panel) to (.sheet-handle, .chat-tabs, .chat-header, .notify-prompt, .chat, .day-divider, .typing-row, .jump-latest, .chat-composer)
 {
     /* The messages, with room for the jump button to float over their bottom */
     .messages
@@ -1339,69 +1339,21 @@ body
     }
 }
 
-/* The map button, only on phones; styled like the people button */
-.map-toggle
+/* The grip on top of the chat, only on phones, where the chat is a sheet
+   that slides over the map. Square, like the rest */
+.sheet-handle
 {
     display: none;
-    position: absolute;
-    top: calc(var(--header-height) + 12px);
-    right: 12px;
-    z-index: 2;
+    flex: none;
     align-items: center;
     justify-content: center;
-    width: 36px;
-    height: 36px;
-    padding: 0;
-    border: none;
-    border-radius: 4px;
-    background-color: #fff;
-    color: var(--md-primary);
-    box-shadow: 0 2px 6px var(--raised-shadow);
-    cursor: pointer;
-
-    &:focus
-    {
-        background-color: #fff;
-    }
-
-    &:hover,
-    &[aria-pressed="true"]
-    {
-        background-color: var(--lavender-tint);
-    }
-
-    &:focus-visible
-    {
-        outline: none;
-        box-shadow: 0 0 0 3px var(--lavender-line);
-    }
-}
-
-@scope (.map-toggle)
-{
-    .icon
-    {
-        font-size: 20px;
-    }
-}
-
-/* The caret at the end of the tab row, only on phones with the map open */
-.chat-fold
-{
-    display: none;
-    position: absolute;
-    top: 0;
-    right: 0;
-    z-index: 1;
-    align-items: center;
-    justify-content: center;
-    width: 48px;
-    height: 47px; /* the tab row, leaving its line below showing */
+    width: 100%;
+    height: var(--sheet-handle-height);
     padding: 0;
     border: none;
     background-color: var(--lavender);
-    color: var(--md-primary);
-    cursor: pointer;
+    cursor: grab;
+    touch-action: none; /* the drag moves the sheet, not the page */
 
     &:hover
     {
@@ -1415,19 +1367,14 @@ body
     }
 }
 
-/* Points down to fold, up to bring the chat back */
-@scope (.chat-fold)
+@scope (.sheet-handle)
 {
-    .icon
+    .grip
     {
-        font-size: 16px; /* the thick chevron fills more of its box than the old glyph */
-        transition: transform var(--dur) var(--ease-out);
+        width: 32px;
+        height: 4px;
+        background-color: var(--lavender-line-hover);
     }
-}
-
-.is-chat-folded .chat-fold .icon
-{
-    transform: rotate(180deg);
 }
 
 /* Wide screens: the list shows unless it was closed */
@@ -1470,145 +1417,117 @@ body
     }
 }
 
-/* Phones: the chat at full width and height, the map hidden under it.
-   The map button opens a strip of map on top, with the chat below */
+/* Phones: as in a maps app, the map fills the screen and the chat is a
+   sheet over it, dragged between three stops: down to its tabs, halfway,
+   and up to the header. chat.js sets --sheet-top, the sheet's distance
+   below the header */
 @media (max-width: 700px)
 {
-    .map-loading
+    :root
     {
-        display: none;
-        left: 0;
-        bottom: auto;
-        height: 30vh;
+        --sheet-handle-height: 20px;
+        /* Halfway down the map, as chat.js puts it, so nothing moves when it takes over */
+        --sheet-top: calc((100dvh - var(--header-height) - var(--footer-height)) * 0.45);
     }
 
     .chat-panel
     {
-        top: var(--header-height);
+        top: calc(var(--header-height) + var(--sheet-top));
         max-width: none;
         min-width: 0;
         box-shadow: 0 -2px 8px var(--panel-shadow);
+        transition: top var(--dur-slow) var(--ease-out);
     }
 
-    /* Both buttons move up into the header, left of the menu button, as
-       white icons on the purple, so the tab row keeps its full width */
-    .map-toggle,
+    .sheet-handle
+    {
+        display: flex;
+    }
+
+    /* While a finger holds it, it follows the finger without lag */
+    .is-sheet-dragging .chat-panel,
+    .is-sheet-dragging .map .maplibregl-ctrl-bottom-right,
+    .is-sheet-dragging .map .leaflet-bottom.leaflet-right
+    {
+        transition: none;
+    }
+
+    .is-sheet-dragging,
+    .is-sheet-dragging .sheet-handle
+    {
+        cursor: grabbing;
+    }
+
+    /* The chat header is a handle too */
+    .chat-header
+    {
+        touch-action: none;
+    }
+
+    /* The people button moves up into the header, left of the menu button,
+       as a white icon on the purple, so the tab row keeps its full width */
     .people-toggle
     {
         position: fixed;
         top: calc((var(--header-height) - 4px - 36px) / 2); /* centred, above the yellow line */
+        right: 60px; /* 12px from the 44px menu button, 4px from the edge */
         z-index: 111;
         height: 36px;
+        padding: 0 8px;
         background: none;
         box-shadow: none;
         color: #fff;
-    }
-
-    /* 12px apart, and from the 44px menu button (4px from the edge) */
-    .map-toggle
-    {
-        display: flex;
-        right: 60px;
-    }
-
-    .people-toggle
-    {
-        right: 108px;
-        padding: 0 8px;
-    }
-
-    .map-toggle:focus,
-    .people-toggle:focus
-    {
-        background: none;
-    }
-
-    .map-toggle:hover,
-    .people-toggle:hover
-    {
-        background-color: rgba(255, 255, 255, 0.15);
-        box-shadow: none;
-    }
-
-    /* On (the map shown, the people list open): a white button with purple
-       inside, so on and off differ at a glance, not only by a faint tint */
-    .map-toggle[aria-pressed="true"],
-    .map-toggle[aria-pressed="true"]:hover,
-    .people-toggle[aria-expanded="true"],
-    .people-toggle[aria-expanded="true"]:hover
-    {
-        background-color: #fff;
-        color: var(--md-primary);
-    }
-
-    .map-toggle,
-    .people-toggle
-    {
         transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+
+        &:focus
+        {
+            background: none;
+        }
+
+        &:hover
+        {
+            background-color: rgba(255, 255, 255, 0.15);
+            box-shadow: none;
+        }
+
+        /* Open: a white button with purple inside, so on and off differ at
+           a glance, not only by a faint tint */
+        &[aria-expanded="true"],
+        &[aria-expanded="true"]:hover
+        {
+            background-color: #fff;
+            color: var(--md-primary);
+        }
+
+        &:focus-visible
+        {
+            box-shadow: 0 0 0 3px var(--focus-ring-on-purple);
+        }
     }
 
-    .map-toggle:focus-visible,
-    .people-toggle:focus-visible
-    {
-        box-shadow: 0 0 0 3px var(--focus-ring-on-purple);
-    }
-
-    /* Map open: the strip shows and the buttons float on it, as before */
-    .is-map-open .chat-panel
-    {
-        top: calc(var(--header-height) + 30vh);
-    }
-
-    /* Slides when the map opens or the chat folds */
-    .chat-panel
-    {
-        transition: top var(--dur-slow) var(--ease-out);
-    }
-
-    .is-map-open .chat-fold
-    {
-        display: flex;
-    }
-
-    /* Tabs don't scroll under the caret */
-    .is-map-open .chat-tabs
-    {
-        padding-right: 48px;
-    }
-
-    /* Folded: only the tab row stays, just above the footer */
-    .is-map-open.is-chat-folded .chat-panel
-    {
-        top: calc(100% - var(--footer-height) - 48px);
-    }
-
-    /* The squeezed list would count as scrolled up */
-    .is-map-open.is-chat-folded .jump-latest
+    /* Down to its tabs: the squeezed list would count as scrolled up */
+    .is-chat-folded .jump-latest
     {
         display: none;
     }
 
-    .is-map-open .map-loading
+    /* Over the part of the map the sheet leaves showing */
+    .map-loading
     {
-        display: flex;
+        left: 0;
+        bottom: auto;
+        height: var(--sheet-top);
     }
 
-    /* The chat covers the bottom of the map here, so the credits sit at the
-       bottom right of the strip that shows, small. The map libraries' CSS
-       loads later and sets bottom: 0, hence .map */
+    /* The map's credits sit just above the sheet, small, and ride with it.
+       The map libraries' CSS loads later and sets bottom: 0, hence .map */
     .map .maplibregl-ctrl-bottom-right,
     .map .leaflet-bottom.leaflet-right
     {
-        top: 30vh;
+        top: var(--sheet-top);
         bottom: auto;
         transform: translateY(-100%);
-    }
-
-    /* With the chat folded, they sit just above its tab row */
-    .is-chat-folded .map .maplibregl-ctrl-bottom-right,
-    .is-chat-folded .map .leaflet-bottom.leaflet-right
-    {
-        top: calc(100% - 48px);
+        transition: top var(--dur-slow) var(--ease-out);
     }
 
     .people

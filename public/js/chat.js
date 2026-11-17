@@ -413,7 +413,7 @@ chatTabs.addEventListener('click', (event) => {
     event.preventDefault();
     if (isEndingTabDrag) return;
     // A tab of a folded chat brings the chat back up
-    if (isChatFolded()) setChatFolded(false);
+    if (isChatFolded()) moveSheetTo('half');
 
     if (event.target.closest('[data-part="tab-close"]')) {
         closeTab(tab);
@@ -717,8 +717,8 @@ function onCityHover(event, isHighlighted) {
 chatList.addEventListener('mouseover', (event) => onCityHover(event, true));
 chatList.addEventListener('mouseout', (event) => onCityHover(event, false));
 
-// Clicking it brings their pin to the middle of the map; on a phone the
-// map opens first
+// Clicking it brings their pin to the middle of the map; on a phone with
+// the chat all the way up, the sheet comes down first
 chatList.addEventListener('click', (event) => {
     const city = event.target.closest(CITY);
     if (!city) return;
@@ -727,10 +727,10 @@ chatList.addEventListener('click', (event) => {
         focusPin(senderId);
         return;
     }
-    // The button's own handlers open the map and start it loading (map.js).
-    // The pin waits for the chat to slide down, as the room it leaves sets
-    // where the middle of the map is
-    mapToggle.click();
+    // Moving the sheet starts the map loading (map.js). The pin waits for
+    // the sheet to settle, as the room it leaves sets where the middle of
+    // the map is
+    moveSheetTo('half');
     // Its own slide: the tapped city's swap ends inside it first
     const onChatSlid = (slide) => {
         if (slide.target !== chatPanel || slide.propertyName !== 'top') return;
@@ -747,46 +747,178 @@ chatList.addEventListener('click', (event) => {
     }
 });
 
-/* The map toggle and the chat's fold caret, on phones */
+/* Phones: the chat is a sheet over the map, as in a maps app. It rests at
+   one of three stops, and dragging its handle or header moves it */
 
-const mapToggle = document.getElementById('map-toggle');
-const MAP_OPEN_KEY = 'mapOpen';
-const chatFoldButton = document.getElementById('chat-fold');
+const sheetHandle = document.getElementById('sheet-handle');
+const SHEET_STOP_KEY = 'sheetStop';
+// Top to bottom: up to the header, halfway, down to its tabs
+const SHEET_STOP_ORDER = ['full', 'half', 'tabs'];
+// What a tap on the handle does at each stop, and what it says it does
+const SHEET_TAPS = {
+    full: {nextStop: 'half', label: 'Show the map'},
+    half: {nextStop: 'full', label: 'Show all of the chat'},
+    tabs: {nextStop: 'half', label: 'Show the chat'},
+};
+// How far a finger moves (px) before a press becomes a drag, so a tap stays a tap
+const SHEET_DRAG_THRESHOLD = 6;
+// Let go faster than this (px per ms), the sheet goes on to the next stop
+// that way, as a flick does
+const SHEET_FLICK_SPEED = 0.4;
+// A drag's speed is measured over stretches this long (ms), and a finger
+// still for three of them before letting go isn't flicking
+const SHEET_SPEED_STRETCH = 50;
+const SHEET_REST_TIME = SHEET_SPEED_STRETCH * 3;
 
-const isChatFolded = () => document.body.classList.contains('is-chat-folded');
+let sheetStop = 'half';
+let sheetDrag = null;
+let isEndingSheetDrag = false;
 
-// With the map open, the chat folds down to its tab row and the map gets
-// the screen
+const isChatFolded = () => sheetStop === 'tabs';
+
+// A stop's distance below the header, in px. The map fills the room
+// between the header and the footer, so its height is the sheet's whole run
+function sheetTopOf(stop) {
+    const runHeight = document.getElementById('map').clientHeight;
+    const tops = {
+        full: 0,
+        half: Math.round(runHeight * 0.45),
+        tabs: runHeight - sheetHandle.offsetHeight - chatTabs.offsetHeight,
+    };
+    return tops[stop];
+}
+
+// chat.css places the sheet and the map's credits from this
+function setSheetTop(top) {
+    document.documentElement.style.setProperty('--sheet-top', `${top}px`);
+}
+
+// Down to its tabs, what's folded away can't be tabbed to
 function setChatFolded(isFolded) {
-    const label = isFolded ? 'Show the chat' : 'Fold the chat away';
     document.body.classList.toggle('is-chat-folded', isFolded);
-    chatFoldButton.setAttribute('aria-expanded', String(!isFolded));
-    chatFoldButton.setAttribute('aria-label', label);
-    chatFoldButton.title = label;
-    // What's folded away can't be tabbed to
     chatList.parentElement.inert = isFolded;
     composerForm.inert = isFolded;
 }
 
-chatFoldButton.addEventListener('click', () => setChatFolded(!isChatFolded()));
-
-// Phones start with the map hidden; the button brings a strip of it back,
-// and the choice is remembered for next time
-function setMapOpen(isOpen) {
-    const label = isOpen ? 'Hide the map' : 'Show the map';
-    document.body.classList.toggle('is-map-open', isOpen);
-    if (!isOpen) setChatFolded(false);
-    mapToggle.setAttribute('aria-pressed', String(isOpen));
-    mapToggle.setAttribute('aria-label', label);
-    mapToggle.title = label;
-    writeFlag(MAP_OPEN_KEY, isOpen);
+// Rests the sheet at a stop, remembered for next time
+function moveSheetTo(stop) {
+    sheetStop = stop;
+    setSheetTop(sheetTopOf(stop));
+    setChatFolded(stop === 'tabs');
+    const {label} = SHEET_TAPS[stop];
+    sheetHandle.setAttribute('aria-label', label);
+    sheetHandle.title = label;
+    writeStored(SHEET_STOP_KEY, stop);
+    // map.js starts the map once some of it shows
+    document.dispatchEvent(new Event('sheet-moved'));
 }
 
-// Without storage the map starts hidden, as it does the first time
-setMapOpen(readFlag(MAP_OPEN_KEY));
+// The stop nearest where the sheet was let go
+function nearestSheetStop(top) {
+    const distanceTo = (stop) => Math.abs(sheetTopOf(stop) - top);
+    return SHEET_STOP_ORDER.reduce((nearest, stop) => (distanceTo(stop) < distanceTo(nearest) ? stop : nearest));
+}
 
-mapToggle.addEventListener('click', () => {
-    setMapOpen(!document.body.classList.contains('is-map-open'));
+// Where a drag lets the sheet settle: after a flick, the next stop the way
+// it was going; otherwise the nearest
+function sheetStopAfterDrag(top, speed) {
+    if (Math.abs(speed) < SHEET_FLICK_SPEED) return nearestSheetStop(top);
+    const isGoingDown = speed > 0;
+    const stopsThatWay = isGoingDown
+        ? SHEET_STOP_ORDER.filter((stop) => sheetTopOf(stop) > top)
+        : SHEET_STOP_ORDER.filter((stop) => sheetTopOf(stop) < top).reverse();
+    return stopsThatWay[0] ?? nearestSheetStop(top);
+}
+
+function onSheetPress(event) {
+    if (!phoneScreen.matches || !event.isPrimary) return;
+    const startTop = sheetTopOf(sheetStop);
+    sheetDrag = {
+        pointerId: event.pointerId,
+        startY: event.clientY,
+        startTop,
+        top: startTop,
+        lastY: event.clientY,
+        lastTime: event.timeStamp,
+        speed: 0,
+        isMoving: false,
+    };
+}
+
+// The sheet follows the finger, no further than its top and bottom stops
+function onSheetDrag(event) {
+    if (sheetDrag?.pointerId !== event.pointerId) return;
+    const distance = event.clientY - sheetDrag.startY;
+    if (!sheetDrag.isMoving) {
+        if (Math.abs(distance) < SHEET_DRAG_THRESHOLD) return;
+        sheetDrag.isMoving = true;
+        document.body.classList.add('is-sheet-dragging');
+    }
+
+    // Its speed over the last stretch, as one event to the next is too jittery
+    const elapsed = event.timeStamp - sheetDrag.lastTime;
+    if (elapsed >= SHEET_SPEED_STRETCH) {
+        sheetDrag.speed = (event.clientY - sheetDrag.lastY) / elapsed;
+        sheetDrag.lastY = event.clientY;
+        sheetDrag.lastTime = event.timeStamp;
+    }
+
+    const lowestTop = sheetTopOf('tabs');
+    sheetDrag.top = Math.min(Math.max(sheetDrag.startTop + distance, 0), lowestTop);
+    setSheetTop(sheetDrag.top);
+}
+
+// How fast the finger was going as it let go: the last stretch, a quick
+// flick shorter than a stretch, or none if it rested first
+function speedAtLetGo(letGo, {speed, lastY, lastTime}) {
+    const elapsed = letGo.timeStamp - lastTime;
+    if (elapsed > SHEET_REST_TIME) return 0;
+    if (speed === 0 && elapsed > 0) return (letGo.clientY - lastY) / elapsed;
+    return speed;
+}
+
+function onSheetLetGo(event) {
+    if (sheetDrag?.pointerId !== event.pointerId) return;
+    const {isMoving, top, speed, lastY, lastTime} = sheetDrag;
+    sheetDrag = null;
+    if (!isMoving) return;
+    document.body.classList.remove('is-sheet-dragging');
+    moveSheetTo(sheetStopAfterDrag(top, speedAtLetGo(event, {speed, lastY, lastTime})));
+    // The click that ends the drag isn't a tap on the handle
+    isEndingSheetDrag = true;
+    setTimeout(() => {
+        isEndingSheetDrag = false;
+    });
+}
+
+for (const sheetGrip of [sheetHandle, document.getElementById('chat-header')]) {
+    sheetGrip.addEventListener('pointerdown', onSheetPress);
+}
+window.addEventListener('pointermove', onSheetDrag);
+window.addEventListener('pointerup', onSheetLetGo);
+window.addEventListener('pointercancel', onSheetLetGo);
+
+sheetHandle.addEventListener('click', () => {
+    if (isEndingSheetDrag) return;
+    moveSheetTo(SHEET_TAPS[sheetStop].nextStop);
+});
+
+// Without storage, or the first time, it starts halfway
+const storedSheetStop = readStored(SHEET_STOP_KEY);
+if (phoneScreen.matches) moveSheetTo(Object.hasOwn(SHEET_TAPS, String(storedSheetStop)) ? storedSheetStop : 'half');
+
+// The stops move with the screen's height (turning the phone, its keyboard)
+window.addEventListener('resize', () => {
+    if (phoneScreen.matches) setSheetTop(sheetTopOf(sheetStop));
+});
+
+// Wider screens have no sheet, so nothing there is folded away
+phoneScreen.addEventListener('change', () => {
+    if (phoneScreen.matches) {
+        moveSheetTo(sheetStop);
+    } else {
+        setChatFolded(false);
+    }
 });
 
 /* The "Latest" button: shows once you've scrolled up, counts messages in
