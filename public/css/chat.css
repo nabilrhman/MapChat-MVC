@@ -282,11 +282,12 @@ body
         overflow: hidden;
     }
 
+    /* The face at the messages' left edge, the dots just after it */
     .content
     {
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 8px;
         padding: 8px 16px;
     }
 
@@ -2425,14 +2426,16 @@ body
     }
 }
 
+/* Floats above the box where the emoji grid does: over the composer's top
+   padding, 6px clear of the box's border */
 .mention-picker
 {
     position: absolute;
-    left: 0;
-    bottom: calc(100% + 8px);
+    inset-inline-start: 16px;
+    bottom: calc(100% - 4px);
     z-index: 2;
     min-width: 180px;
-    max-width: 100%;
+    max-width: calc(100% - 32px); /* within the box's own edges */
     margin: 0;
     padding: 4px 0;
     list-style: none;

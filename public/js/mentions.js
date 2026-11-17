@@ -45,7 +45,8 @@ function setUpMentions(input, canMention, getPeople) {
     picker.setAttribute('role', 'listbox');
     picker.setAttribute('aria-label', 'People to mention');
     picker.hidden = true;
-    input.after(picker);
+    // In the form, as the emoji grid is, so both float the same gap above the box
+    input.form.append(picker);
     input.setAttribute('aria-controls', picker.id);
     input.setAttribute('aria-autocomplete', 'list');
 
