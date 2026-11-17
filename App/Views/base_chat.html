@@ -119,6 +119,8 @@
                 <span class="count" id="char-count" hidden></span>
                 <textarea name="message" placeholder="Your message" rows="1" class="input" id="textarea-send" enterkeyhint="enter"
                           maxlength="{{ constant('App\\Models\\Chat::MAX_LENGTH') }}" required autofocus></textarea>
+                {# Where the words will go while a voice message is written out (voice.js) #}
+                <span class="dots loading-dots" id="voice-dots" aria-hidden="true" hidden><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
             </div>
 
             <div class="tools">

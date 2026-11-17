@@ -287,7 +287,7 @@ body
     {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 10px;
         padding: 8px 16px;
     }
 
@@ -2033,6 +2033,28 @@ body
     {
         grid-area: box;
         position: relative;
+    }
+
+    /* While a voice message is written out (voice.js): the dots where the
+       words will go, on the first line, in the placeholder's place */
+    .dots
+    {
+        position: absolute;
+        inset-block-start: 0;
+        inset-inline-start: 0;
+        height: 32px; /* the box's one line */
+        align-items: center;
+    }
+
+    /* A scoped display would beat [hidden] */
+    .dots[hidden]
+    {
+        display: none;
+    }
+
+    .box:has(.dots:not([hidden])) .input::placeholder
+    {
+        color: transparent;
     }
 
     /* For screen readers only */

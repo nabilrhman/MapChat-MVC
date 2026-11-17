@@ -238,9 +238,10 @@ function moveWaveWith(wave, microphone) {
 
 /**
  * Lets `micButton` fill `input` by voice at the cursor. While it listens it
- * shows a moving wave, and `sendButton` beside it becomes its stop button
+ * shows a moving wave, and `sendButton` beside it becomes its stop button;
+ * while the words are written out, `writingDots` show in the box
  */
-function setUpVoiceTyping(input, micButton, sendButton) {
+function setUpVoiceTyping(input, micButton, sendButton, writingDots) {
     const wave = micButton.querySelector('[data-part="voice-wave"]');
     const BrowserSpeech = window.SpeechRecognition ?? window.webkitSpeechRecognition;
     const canRecord = Boolean(navigator.mediaDevices?.getUserMedia) && 'MediaRecorder' in window;
@@ -260,6 +261,7 @@ function setUpVoiceTyping(input, micButton, sendButton) {
         micButton.classList.toggle('is-listening', state === 'listening');
         micButton.classList.toggle('is-transcribing', state === 'transcribing');
         micButton.disabled = state === 'transcribing';
+        writingDots.hidden = state !== 'transcribing';
         micButton.setAttribute('aria-pressed', String(state === 'listening'));
         micButton.setAttribute('aria-label', MIC_LABELS[state]);
         micButton.title = MIC_LABELS[state];
