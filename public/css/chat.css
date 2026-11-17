@@ -1611,38 +1611,39 @@ body
         top: calc(100% - 48px);
     }
 
-    /* Leaflet's credit as MapLibre draws its own: a see-through round "i"
-       that opens into a white box (icon from maplibre-gl.css). Leaflet's
-       own rule is loaded later, hence the longer selectors */
-    .leaflet-container .leaflet-bottom .leaflet-control-attribution
-    {
-        min-height: 20px;
-        margin: 0 8px 8px 0;
-        padding: 2px 28px 2px 8px;
-        border-radius: 12px;
-        background: #fff url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' fill-rule='evenodd' viewBox='0 0 20 20'%3E%3Cpath d='M4 10a6 6 0 1 0 12 0 6 6 0 1 0-12 0m5-3a1 1 0 1 0 2 0 1 1 0 1 0-2 0m0 3a1 1 0 1 1 2 0v3a1 1 0 1 1-2 0'/%3E%3C/svg%3E") no-repeat right center / 24px;
-        color: #000;
-        font-size: 12px;
-        line-height: 20px;
-        cursor: pointer;
-    }
-
-    .leaflet-container .leaflet-bottom .leaflet-control-attribution:not(.is-open)
-    {
-        width: 24px;
-        height: 24px;
-        min-height: 0;
-        padding: 0;
-        background-color: rgba(255, 255, 255, 0.5);
-        background-position: center;
-        font-size: 0;
-    }
-
     .people
     {
         width: 260px;
         max-width: 85vw;
     }
+}
+
+/* Leaflet's credit as MapLibre draws its own, at every width: a
+   see-through round "i" that opens into a white box (icon from
+   maplibre-gl.css). Leaflet's own rule is loaded later, hence the longer
+   selectors */
+.leaflet-container .leaflet-bottom .leaflet-control-attribution
+{
+    min-height: 20px;
+    margin: 0 8px 8px 0;
+    padding: 2px 28px 2px 8px;
+    border-radius: 12px;
+    background: #fff url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' fill-rule='evenodd' viewBox='0 0 20 20'%3E%3Cpath d='M4 10a6 6 0 1 0 12 0 6 6 0 1 0-12 0m5-3a1 1 0 1 0 2 0 1 1 0 1 0-2 0m0 3a1 1 0 1 1 2 0v3a1 1 0 1 1-2 0'/%3E%3C/svg%3E") no-repeat right center / 24px;
+    color: #000;
+    font-size: 12px;
+    line-height: 20px;
+    cursor: pointer;
+}
+
+.leaflet-container .leaflet-bottom .leaflet-control-attribution:not(.is-open)
+{
+    width: 24px;
+    height: 24px;
+    min-height: 0;
+    padding: 0;
+    background-color: rgba(255, 255, 255, 0.5);
+    background-position: center;
+    font-size: 0;
 }
 
 /* Messages */

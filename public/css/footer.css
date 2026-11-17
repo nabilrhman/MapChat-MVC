@@ -36,7 +36,17 @@
     .author
     {
         color: #ffc107;
+    }
 
+    /* Quiet beside the name: the footer's own colour */
+    .privacy
+    {
+        color: inherit;
+    }
+
+    .author,
+    .privacy
+    {
         &:hover
         {
             text-decoration: underline;
