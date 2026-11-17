@@ -2,7 +2,11 @@
  * Records the tour in the README, docs/images/mapchat-tour.mp4, from the
  * app running locally (docker compose up).
  *
- *   MAPCHAT_SESSION=<PHPSESSID of a signed-in guest> MAPCHAT_GUEST_EMAIL=<their email> npm run tour
+ *   npm run tour
+ *
+ * It signs a new guest in first. To record as a guest you already have, set
+ * MAPCHAT_SESSION to their PHPSESSID cookie and MAPCHAT_GUEST_EMAIL to their
+ * email; their earlier private chats with Maya and Rafael are cleared.
  *
  * It drives headless Chrome with Playwright: the login page, the
  * notifications offer closed, pins pointed out from the online list and a
@@ -18,8 +22,7 @@
  * paused while it records, so the demo people don't talk over the tour (with
  * DEMO_SPEED they would); the replies' jobs are run from here every second
  * instead, as the worker would. The worker is let go again however the run
- * ends, Ctrl+C included. It clears that guest's earlier private chats with
- * Maya and Rafael first, so the tour starts with none.
+ * ends, Ctrl+C included.
  *
  * Needs Chrome and ffmpeg. MAPCHAT_SCALE is below; MAPCHAT_URL, MAPCHAT_ROOT
  * (set it when recording from a git worktree), MAPCHAT_GPU and
@@ -30,12 +33,17 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import type {Browser, Locator, Page} from 'playwright';
 
-import {app, launchChrome, printRenderer, REPO, run, sql, URL, USES_GPU} from './chrome.ts';
+import {app, launchChrome, printRenderer, REPO, run, signInAsNewGuest, sql, URL, USES_GPU} from './chrome.ts';
 import {Person, type Point, SeededRandom, waitSeconds} from './person.ts';
 import {drawPointer, readThemeCursors} from './pointer.ts';
 
-const SESSION = process.env.MAPCHAT_SESSION ?? '';
-const GUEST_EMAIL = (process.env.MAPCHAT_GUEST_EMAIL ?? '').replaceAll("'", '');
+/** The guest the tour signs in as: their session cookie and email */
+type Guest = {session: string, email: string};
+
+const GIVEN_GUEST: Guest = {
+    session: process.env.MAPCHAT_SESSION ?? '',
+    email: (process.env.MAPCHAT_GUEST_EMAIL ?? '').replaceAll("'", ''),
+};
 const OUT = join(REPO, 'docs/images/mapchat-tour.mp4');
 const WIDTH = 1440;
 const HEIGHT = 900;
@@ -93,20 +101,35 @@ class JobRunner {
 }
 
 /**
- * The guest's private chats with Maya and Rafael, and what they said in the
- * room, so the tour starts afresh. Without MAPCHAT_GUEST_EMAIL they're kept
+ * A given guest's private chats with Maya and Rafael, and what they said in
+ * the room, so the tour starts afresh. Without an email they're kept
  */
-async function clearEarlierTour(): Promise<void> {
-    if (!GUEST_EMAIL) {
+async function clearEarlierTour(guestEmail: string): Promise<void> {
+    if (!guestEmail) {
         return;
     }
     for (const character of ['maya', 'rafael']) {
         const demoEmail = `${character}@demo.mapchat.local`;
-        await sql(`DELETE FROM chats WHERE (email = '${GUEST_EMAIL}' AND to_email = '${demoEmail}') OR (email = '${demoEmail}' AND to_email = '${GUEST_EMAIL}')`);
+        await sql(`DELETE FROM chats WHERE (email = '${guestEmail}' AND to_email = '${demoEmail}') OR (email = '${demoEmail}' AND to_email = '${guestEmail}')`);
     }
     // And what they said in the room, with the answers to it
-    await sql(`DELETE FROM chats WHERE id IN (SELECT posted_id FROM mapchat_jobs WHERE email = '${GUEST_EMAIL}' AND posted_id IS NOT NULL)`);
-    await sql(`DELETE FROM chats WHERE email = '${GUEST_EMAIL}' AND to_email IS NULL`);
+    await sql(`DELETE FROM chats WHERE id IN (SELECT posted_id FROM mapchat_jobs WHERE email = '${guestEmail}' AND posted_id IS NOT NULL)`);
+    await sql(`DELETE FROM chats WHERE email = '${guestEmail}' AND to_email IS NULL`);
+}
+
+/** A new guest, signed in from the login page in a browser of its own */
+async function signInNewGuest(): Promise<Guest> {
+    const browser = await launchChrome();
+    try {
+        const context = await browser.newContext();
+        const page = await context.newPage();
+        await page.goto(`${URL}/login`);
+        const {email} = await signInAsNewGuest(page);
+        const session = (await context.cookies()).find((cookie) => cookie.name === 'PHPSESSID')?.value ?? '';
+        return {session, email};
+    } finally {
+        await browser.close();
+    }
 }
 
 /** Polls a quarter of a second at a time until it's true; false if it never was */
@@ -138,7 +161,7 @@ async function requiredCentreOf(element: Locator): Promise<Point> {
 }
 
 /** The tour itself, step by step, while the screencast saves each frame */
-async function tour(page: Page, person: Person, startScreencast: () => Promise<void>, stopScreencast: () => Promise<void>): Promise<void> {
+async function tour(page: Page, person: Person, guest: Guest, startScreencast: () => Promise<void>, stopScreencast: () => Promise<void>): Promise<void> {
     const onlinePerson = (name: string) => page.locator('[data-part="person"]', {hasText: name}).first();
     const chatTab = (name: string) => page.locator('[data-part="tab"]', {hasText: name}).first();
     const composer = page.locator('#textarea-send');
@@ -189,7 +212,7 @@ async function tour(page: Page, person: Person, startScreencast: () => Promise<v
     await waitSeconds(1);
 
     // Signed in: the room, the map and who's online
-    await page.context().addCookies([{name: 'PHPSESSID', value: SESSION, url: URL}]);
+    await page.context().addCookies([{name: 'PHPSESSID', value: guest.session, url: URL}]);
     await page.goto(`${URL}/app`);
     await waitForMap();
     await waitSeconds(1.5);
@@ -351,10 +374,7 @@ async function encode(frames: Frame[], workDir: string): Promise<void> {
 }
 
 async function main(): Promise<void> {
-    if (!SESSION) {
-        console.error('Set MAPCHAT_SESSION to the PHPSESSID cookie of a signed-in guest');
-        process.exit(1);
-    }
+    const guest = GIVEN_GUEST.session ? GIVEN_GUEST : await signInNewGuest();
     const workDir = mkdtempSync(join(tmpdir(), 'mapchat-frames-'));
     const frames: Frame[] = [];
     let browser: Browser | undefined;
@@ -369,7 +389,7 @@ async function main(): Promise<void> {
         });
     }
 
-    await clearEarlierTour();
+    await clearEarlierTour(GIVEN_GUEST.email);
     await pauseWorker();
     const jobs = new JobRunner();
     try {
@@ -402,7 +422,7 @@ async function main(): Promise<void> {
         };
 
         const person = new Person(page, new SeededRandom(SEED), [WIDTH * 0.55, HEIGHT * 0.6]);
-        await tour(page, person, startScreencast, stopScreencast);
+        await tour(page, person, guest, startScreencast, stopScreencast);
     } finally {
         await browser?.close();
         await jobs.stop();

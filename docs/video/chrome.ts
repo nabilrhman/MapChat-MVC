@@ -1,6 +1,7 @@
 /**
  * What the tour and the screenshots share: where the app is, the commands
- * run in its containers, and headless Chrome drawing on the GPU.
+ * run in its containers, headless Chrome drawing on the GPU, and signing a
+ * new guest in.
  *
  * MAPCHAT_URL is the app's address (default http://localhost:8080).
  * MAPCHAT_ROOT is the checkout whose docker compose project runs the app
@@ -54,6 +55,24 @@ export function launchChrome(extraFlags: string[] = [], {handlesSignals = false}
         handleSIGINT: !handlesSignals,
         handleSIGTERM: !handlesSignals,
     });
+}
+
+// Run in the app's container with the id as an argument, so nothing in it is read as PHP
+const EMAIL_OF_USER_PHP = `require 'vendor/autoload.php';
+echo App\\Models\\User::findByID((int) $argv[1])->email;`;
+
+/**
+ * Signs a new guest in from the login page the page is on, as anyone trying
+ * MapChat would
+ *
+ * @returns Their user id, and the email the app made for them
+ */
+export async function signInAsNewGuest(page: Page): Promise<{id: number, email: string}> {
+    await page.locator('#guestForm button').click();
+    await page.waitForURL(/\/app/);
+    const id = Number(await page.evaluate('myUserId'));
+    const email = await app('php', '-r', EMAIL_OF_USER_PHP, '--', String(id));
+    return {id, email};
 }
 
 /** Prints what the page draws with, so a run without the GPU shows */
