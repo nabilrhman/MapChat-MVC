@@ -1,10 +1,10 @@
 /**
- * Takes the README's main picture, its two phone pictures and the login
- * page, at 2x, from the app running locally (docker compose up).
+ * Takes the README's main picture, its two phone pictures, the profile and
+ * the login page, at 2x, from the app running locally (docker compose up).
  *
  *   npm run screenshots
  *
- * The README's profile and email pictures stay as they are.
+ * The README's email pictures stay as they are.
  *
  * - mapchat-app.png: a new guest opens two private chats as tabs and sends
  *   the room a message that @mentions someone, then the room is shown with a
@@ -14,6 +14,7 @@
  * - mapchat-phone.png: the room on a phone, with a pin in the middle of the
  *   map and its label open as a tap opens it.
  * - mapchat-phone-online.png: the same phone with the online list slid open.
+ * - mapchat-profile.png: a new guest's profile page.
  * - mapchat-login.png: the login page, with Continue with Google.
  *
  * The environment is chrome.ts's
@@ -23,7 +24,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import type {Browser, Page} from 'playwright';
 
-import {launchChrome, printRenderer, REPO, restoreApp, showGoogleSignIn, signInAsNewGuest, URL} from './chrome.ts';
+import {launchChrome, printRenderer, REPO, restoreApp, showGoogleSignIn, signInAsNewGuest, sql, URL} from './chrome.ts';
 import {waitSeconds} from './person.ts';
 
 const DESKTOP = {width: 1440, height: 900};
@@ -107,16 +108,35 @@ async function tapMiddlePinUntilLabelShows(page: Page): Promise<void> {
     throw new Error('Tapping a pin never opened its label');
 }
 
+// Every guest this run signs in, so what was said to them is taken out of the room at the end
+const guestEmails: string[] = [];
+
 /** Signs in a new guest, as anyone trying it would be, and closes the offer of notifications */
 async function signInFresh(page: Page): Promise<void> {
     await page.goto(`${URL}/login`);
-    await signInAsNewGuest(page);
+    const {email} = await signInAsNewGuest(page);
+    guestEmails.push(email);
     await waitSeconds(4);
 
     const closeNotificationsOffer = page.locator('#notify-prompt-dismiss');
     if (await closeNotificationsOffer.isVisible()) {
         await closeNotificationsOffer.click();
     }
+}
+
+/** Logs the guest out, so they don't show as online in the next pictures */
+async function signOut(page: Page): Promise<void> {
+    await page.evaluate(() => fetch('/logout', {method: 'POST'}));
+}
+
+/**
+ * Takes what a guest said, and what was said to them, out of the room, so
+ * the next run's pictures don't show this one's too
+ */
+async function removeWhatWasSaid(guestEmail: string): Promise<void> {
+    const shownName = await sql(`SELECT name FROM users WHERE email = '${guestEmail}'`);
+    await sql(`DELETE FROM chats WHERE email = '${guestEmail}'
+        OR ((email = 'bot@mapchat.local' OR email LIKE '%@demo.mapchat.local') AND body LIKE '@${shownName} %')`);
 }
 
 /** The room with two private chats open as tabs, a draft in the box and a pin's label open */
@@ -149,6 +169,7 @@ async function takeDesktopPicture(browser: Browser): Promise<void> {
     await page.mouse.move(pinCentre.x, pinCentre.y, {steps: 5});
     await waitSeconds(1);
     await savePicture(page, 'mapchat-app.png');
+    await signOut(page);
     await context.close();
 }
 
@@ -177,6 +198,7 @@ async function takePhonePictures(browser: Browser): Promise<void> {
     await page.mouse.move(1, 1);
     await waitSeconds(0.5);
     await savePicture(page, 'mapchat-phone-online.png');
+    await signOut(page);
     await context.close();
 }
 
@@ -202,6 +224,18 @@ async function takeLoginPicture(browser: Browser): Promise<void> {
     }
 }
 
+/** A new guest's profile page, one screen of it: the same size as the login's, so they share a row evenly */
+async function takeProfilePicture(browser: Browser): Promise<void> {
+    const context = await browser.newContext({viewport: DESKTOP, deviceScaleFactor: PIXEL_RATIO});
+    const page = await context.newPage();
+    await signInFresh(page);
+    await page.goto(`${URL}/profile/show`);
+    await waitSeconds(2);
+    await savePicture(page, 'mapchat-profile.png');
+    await signOut(page);
+    await context.close();
+}
+
 /** Saves the page as it shows now to docs/images */
 async function savePicture(page: Page, name: string): Promise<void> {
     const path = join(IMAGES, name);
@@ -214,10 +248,15 @@ async function main(): Promise<void> {
     try {
         await takeDesktopPicture(browser);
         await takePhonePictures(browser);
+        await takeProfilePicture(browser);
         // Last, as it may start the app again
         await takeLoginPicture(browser);
     } finally {
         await browser.close();
+        // Last, so an answer that came in late goes too
+        for (const guestEmail of guestEmails) {
+            await removeWhatWasSaid(guestEmail);
+        }
     }
 }
 
