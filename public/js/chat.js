@@ -1314,7 +1314,7 @@ composerForm.addEventListener('submit', async (event) => {
 setUpMentions(messageInput, () => activeConversation === EVERYONE, getPeopleToMention);
 
 setUpEmojiPicker(messageInput, document.getElementById('emoji-toggle'), document.getElementById('emoji-picker'));
-setUpVoiceTyping(messageInput, document.getElementById('voice-button'), sendButton);
+setUpVoiceTyping(messageInput, document.getElementById('voice-button'), sendButton, document.getElementById('voice-dots'));
 
 // Enter sends, Shift+Enter starts a new line. On a touch screen Enter is
 // the keyboard's return key, which starts a new line; Send sends

@@ -73,11 +73,18 @@ Done when:
   out, the clicked city's pin flown to the middle of the map, the whole @
   list then Lukas, each emoji picked from the emoji menu, Lukas's answer
   arriving, the private chats' replies, the question to Rafael voice typed
-  (the wave moving, "Typing it out", then the words in the box and sent),
-  the tab moved and closed, the profile scrolled to its bottom;
+  (the wave moving, the dots in the box while it's written out, then the
+  words in the box and sent), the tab moved and closed, the profile
+  scrolled to its bottom;
 - the voice line is heard while the mic's wave moves: the script prints
-  where it lays the line, and the frames there show the wave. A frame that only looks current isn't enough: a city click once
-  landed on MapChat's Null Island, which has no pin, so the map never moved.
+  where it lays the line, and the frames there show the wave;
+- the notifications offer slides in and is closed at the start. The tour
+  grants the mic only at the voice step, as granting one permission denies
+  the rest, and the offer shows only while notifications haven't been
+  asked.
+
+A frame that only looks current isn't enough: a city click once landed on
+MapChat's Null Island, which has no pin, so the map never moved.
 
 ## 3. The video the README plays
 

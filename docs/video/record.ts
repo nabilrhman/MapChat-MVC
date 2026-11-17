@@ -227,6 +227,9 @@ async function voiceLineSeconds(): Promise<number> {
  * once Whisper has written it into the box, it's sent
  */
 async function speakMessage(page: Page, person: Person, composer: Locator): Promise<void> {
+    // Granted only now: granting any permission denies the rest, notifications
+    // too, and the page offers those only while they haven't been asked
+    await page.context().grantPermissions(['microphone'], {origin: URL});
     const mic = page.locator('#voice-button');
     await person.moveTo(await requiredCentreOf(mic));
     await waitSeconds(0.4);
@@ -606,11 +609,10 @@ async function main(): Promise<void> {
     try {
         // The handlers above close it and let the worker go
         // The voice line plays once as the microphone, from when the mic opens
-        // it. The permission is granted below, not by --use-fake-ui-for-media-stream,
-        // which stops the tab's capture finding its source
+        // it. The permission is granted when it's used (speakMessage), not by
+        // --use-fake-ui-for-media-stream, which stops the tab's capture finding its source
         const fakeMicrophone = ['--use-fake-device-for-media-stream', `--use-file-for-fake-audio-capture=${VOICE_LINE_FILE}%noloop`];
         context = await launchWithExtension(CAPTURE_EXTENSION, {width: WIDTH, height: HEIGHT, scale: SCALE}, {handlesSignals: true, extraFlags: fakeMicrophone});
-        await context.grantPermissions(['microphone'], {origin: URL});
         await context.addInitScript(drawPointer, readThemeCursors(SCALE));
         const page = context.pages()[0] ?? await context.newPage();
         await printRenderer(page);
