@@ -8,7 +8,7 @@
 const LOADING_BAR_PROGRESS_KEY = 'loadingBar';
 const LOADING_BAR_DELAY = 200;
 // The fill and the fade after it (.loading-bar.is-finishing in ui.css)
-const LOADING_BAR_FINISH_TIME = 600;
+const LOADING_BAR_FINISH_TIME = 700;
 
 function setUpLoadingBar() {
     let isRunning = false;

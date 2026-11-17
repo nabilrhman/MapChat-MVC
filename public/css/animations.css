@@ -18,6 +18,8 @@
     --dur-pulse: 1.4s; /* a loading dot's pulse */
     --dur-pulse-step: 0.16s; /* from one loading dot to the next */
     --dur-loading-bar: 10s; /* the loading bar's crawl; the next page fills the rest */
+    --dur-loading-bar-glint: 1.2s; /* the bar's glint, from its middle to its ends */
+    --ease-loading-bar: cubic-bezier(0.2, 0.7, 0.1, 1); /* eases in, a third across by a second, then a long slow crawl */
 }
 
 @keyframes fade-in
