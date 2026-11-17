@@ -144,6 +144,26 @@ h4
     }
 }
 
+/* An action that deletes something for good: a tonal button in the error
+   colour, as Remove looks on hover, so it reads apart from Edit */
+.button.danger
+{
+    --danger-tint: 8%;
+
+    background-color: color-mix(in srgb, var(--md-error) var(--danger-tint), transparent);
+    color: var(--md-error);
+
+    &:hover:not(:disabled)
+    {
+        background-color: color-mix(in srgb, var(--md-error) calc(var(--danger-tint) + var(--md-hover)), transparent);
+    }
+
+    &:active:not(:disabled)
+    {
+        background-color: color-mix(in srgb, var(--md-error) calc(var(--danger-tint) + var(--md-pressed)), transparent);
+    }
+}
+
 /* Material 3's disabled look, the same for every kind of button. After the
    kinds, which it ties with */
 .button:disabled

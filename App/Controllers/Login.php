@@ -107,4 +107,15 @@ class Login extends \Core\Controller
 
         $this->redirect('/login');
     }
+
+    /**
+     * Say the profile is deleted, on the home page. A request of its own for
+     * the same reason as the logout message
+     */
+    public function showDeletedMessageAction(): void
+    {
+        Flash::addMessage('Your profile is deleted.');
+
+        $this->redirect('/');
+    }
 }

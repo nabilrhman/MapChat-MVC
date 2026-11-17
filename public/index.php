@@ -57,6 +57,7 @@ $router->post('/login/create', [Login::class, 'createAction']);
 $router->post('/login/guest', [Login::class, 'guestAction']);
 $router->post('/logout', [Login::class, 'destroyAction']);
 $router->get('/login/show-logout-message', [Login::class, 'showLogoutMessageAction']);
+$router->get('/login/show-deleted-message', [Login::class, 'showDeletedMessageAction']);
 // Signing in with Google, which makes the account the first time
 $router->get('/login/google', [Google::class, 'startAction']);
 $router->get('/login/google/callback', [Google::class, 'callbackAction']);
@@ -81,6 +82,7 @@ $router->post('/profile/update', [Profile::class, 'updateAction']);
 $router->post('/profile/update-avatar', [Profile::class, 'updateAvatarAction']);
 $router->post('/profile/remove-avatar', [Profile::class, 'removeAvatarAction']);
 $router->post('/profile/update-location-sharing', [Profile::class, 'updateLocationSharingAction']);
+$router->post('/profile/delete', [Profile::class, 'deleteAction']);
 $router->get('/avatar/{id:\d+}', [Avatar::class, 'showAction']);
 
 // Chat and map
