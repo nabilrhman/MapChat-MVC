@@ -39,21 +39,25 @@ pin, so the map never moved.
 ## 3. The video the README plays
 
 The README embeds a GitHub `user-attachments` upload, not the repo's file,
-so the new tour needs uploading. That takes the user, as a local file can't
-reach GitHub from here: the browser pane has no way to attach one, GitHub's
-page security blocks it fetching from this machine, and the pane opens
-popups in the same tab. (Claude in Chrome's `file_upload` can, when it's
-connected, up to 10 MB.)
+so the new tour needs uploading. A page on github.com can't fetch from this
+machine (its security blocks it), but it can fetch from GitHub's API, so the
+video goes up by way of a pushed branch:
 
-1. In the browser pane, open the comment box of a PR, signed in to GitHub
-   (the user signs in there if it isn't).
-2. Ask the user to drag in `docs/images/mapchat-tour.mp4`, the full-size
-   file, and leave the comment unposted.
-3. Read the link from `textarea[name="comment[body]"]` with the javascript
-   tool, then empty the box so nothing posts.
-4. Put the link in the README's Overview, in place of the old one.
+1. Commit the new tour on the branch you'll ship, and push it.
+2. In the browser pane, signed in to GitHub (the user signs in there if it
+   isn't), open the comment box of any PR.
+3. With the javascript tool on that page: fetch
+   `https://api.github.com/repos/nabilrhman/MapChat-MVC/contents/docs/images/mapchat-tour.mp4?ref=<branch>`
+   with `Accept: application/vnd.github.raw`, make the blob a `File`, set it
+   on the comment box's file input (`#fc-new_comment_field`) through a
+   `DataTransfer`, and dispatch `change`.
+4. Wait for the `user-attachments` link to appear in
+   `textarea[name="comment[body]"]`, read it, then empty the box so nothing
+   posts.
+5. Put the link in the README's Overview, in place of the old one.
 
-Done when the README links the new upload and the comment box is empty.
+Done when the fetched size matches the file's, the README links the new
+upload, and the comment box is empty.
 
 ## 4. The words around them
 
