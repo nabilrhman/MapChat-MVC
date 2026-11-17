@@ -1,4 +1,5 @@
 {% extends 'base_login.html' %}
+{# The sign-up form; after a refused submit each problem shows under its field (Signup::createAction) #}
 {% from '_form_fields.html' import text_field %}
 {% types {user?: '\\App\\Models\\User'} %}
 
@@ -11,16 +12,16 @@
 
 <div class="auth-card">
 
-    <form action="/signup/create" method="post" id="formSignup" novalidate>
+    <form action="/signup/create" method="post" id="signup-form" novalidate>
 
-        {{ text_field({id: 'inputName', name: 'name', label: 'Name', required: true,
+        {{ text_field({id: 'name-input', name: 'name', label: 'Name', required: true,
                        value: user.name ?? '', autocomplete: 'name', autofocus: true}, user.errors.name ?? []) }}
 
-        {{ text_field({id: 'inputEmail', name: 'email', type: 'email', label: 'Email', required: true,
+        {{ text_field({id: 'email-input', name: 'email', type: 'email', label: 'Email', required: true,
                        value: user.email ?? '', autocomplete: 'email'}, user.errors.email ?? []) }}
 
-        {{ text_field({id: 'inputPassword', name: 'password', type: 'password', label: 'Password', required: true, minlength: 6,
-                       autocomplete: 'new-password', hint: '6+ characters, a letter and a number'}, user.errors.password ?? []) }}
+        {{ text_field({id: 'password-input', name: 'password', type: 'password', label: 'Password', required: true, minlength: 6,
+                       autocomplete: 'new-password', hint: 'At least 6 characters, with a letter and a number.'}, user.errors.password ?? []) }}
 
         <button type="submit" class="button primary full-width action">Create account</button>
     </form>

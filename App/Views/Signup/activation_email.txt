@@ -1,3 +1,5 @@
+{# The email that activates a new account, as plain text -#}
+{% types {url: 'string', name: 'string', app_url: 'string'} -%}
 Welcome to MapChat
 
 Hi {{ name }},

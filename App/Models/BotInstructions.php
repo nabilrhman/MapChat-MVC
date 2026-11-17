@@ -50,7 +50,7 @@ class BotInstructions
      * voice and stories so far
      *
      * @param string $speaker The email of whoever answers
-     * @param array{name: string, city: ?string}|null $speakerPerson Their row, as Bot::person gives it
+     * @param array{name: string, city: ?string}|null $speakerPerson Their row, as Bot::getPerson gives it
      */
     public static function forSpeaker(string $speaker, ?array $speakerPerson): string
     {
@@ -82,7 +82,7 @@ class BotInstructions
         $isAnyUnfinished = false;
         foreach ($stories as $story) {
             $lines = array_map(
-                fn ($line) => $line[0] . ($line[1] === $speaker ? ' (you)' : '') . ': ' . $line[2],
+                fn (array $line): string => $line['name'] . ($line['email'] === $speaker ? ' (you)' : '') . ': ' . $line['body'],
                 $story['lines']
             );
             $note .= "\n\n" . implode("\n", $lines);

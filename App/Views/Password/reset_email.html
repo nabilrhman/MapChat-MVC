@@ -1,4 +1,5 @@
 {% extends 'base_email.html' %}
+{# The password reset email, in HTML (User::sendPasswordResetEmail) #}
 {% types {url: 'string', name: 'string'} %}
 
 {% block title %}Reset your password{% endblock %}
@@ -6,8 +7,7 @@
 {% block preheader %}This link works for the next 2 hours.{% endblock %}
 
 {% block body %}
-<p style="margin: 0 0 16px; font-size: 32px; line-height: 1.2;" aria-label="Hi">👋</p>
-<p style="margin: 0 0 20px;"><strong style="color: #512da8; font-size: 20px;">{{ name }}</strong></p>
+{{ include('email_greeting.html', {name: name}, with_context = false) }}
 <p style="margin: 0;">Someone asked to reset the password for your MapChat account. Choose a new one with the button below. The link works for 2 hours.</p>
 
 {{ include('email_button.html', {url: url, label: 'Choose a new password'}, with_context = false) }}

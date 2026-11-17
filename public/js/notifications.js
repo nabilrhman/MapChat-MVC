@@ -26,9 +26,17 @@ async function turnNotificationsOn() {
     return areNotificationsOn();
 }
 
-function turnNotificationsOff() {
+// How long turning them off waits on the browser's push service before it
+// goes on without it, as logging out does (header.js)
+const UNSUBSCRIBE_PUSH_WAIT = 1000;
+
+// They're off for this browser at once; a push service that fails or
+// doesn't answer only leaves its subscription for the next try
+async function turnNotificationsOff() {
     writeFlag(NOTIFY_OFF_KEY, true);
-    unsubscribeFromPush();
+    await withTimeLimit(unsubscribeFromPush(), UNSUBSCRIBE_PUSH_WAIT).catch((error) => {
+        console.warn('Could not let go of Web Push:', error);
+    });
 }
 
 // On each page: keep this browser's subscription the signed-in person's
@@ -93,15 +101,33 @@ function notifyOf(chat, onOpen) {
 
     const name = chat.querySelector('[data-part="sender-name"]').textContent.trim();
     const body = chat.querySelector('[data-part="message-body"]').textContent.trim();
-    const notification = new Notification(isMention ? `${name} mentioned you` : name, {
+    const title = isMention ? `${name} mentioned you` : name;
+    const options = {
         body: body.length > NOTIFY_BODY_LENGTH ? `${body.slice(0, NOTIFY_BODY_LENGTH - 1)}…` : body,
         icon: chat.querySelector('[data-part="sender-photo"]')?.src,
         // One per chat: a newer message replaces the last one
         tag: `chat-${chat.dataset.conversation}`,
+    };
+    // A notification that fails mustn't stop the message from showing
+    showNotification(title, options, {conversation: chat.dataset.conversation, name}, onOpen).catch((error) => {
+        console.warn('Could not show a notification:', error);
     });
+}
+
+// Through the service worker when this browser has one, as Android Chrome
+// has no Notification constructor; public/sw.js opens the chat on a click
+// (openNotifiedChat in chat.js). chatToOpen: {conversation, name}
+async function showNotification(title, options, chatToOpen, onOpen) {
+    const registration = await navigator.serviceWorker?.getRegistration();
+    if (registration?.active) {
+        await registration.showNotification(title, {...options, data: chatToOpen});
+        return;
+    }
+
+    const notification = new Notification(title, options);
     notification.addEventListener('click', () => {
         window.focus();
-        onOpen(chat.dataset.conversation);
+        onOpen(chatToOpen.conversation);
         notification.close();
     });
 }

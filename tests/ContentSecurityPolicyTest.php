@@ -11,7 +11,7 @@ use PHPUnit\Framework\TestCase;
  */
 class ContentSecurityPolicyTest extends TestCase
 {
-    public function testOnlyScriptsWithThisRequestsNonceRun()
+    public function testOnlyScriptsWithThisRequestsNonceRun(): void
     {
         $policy = ContentSecurityPolicy::headerFor('mapchat.example.com');
 
@@ -20,14 +20,14 @@ class ContentSecurityPolicyTest extends TestCase
         $this->assertStringNotContainsString("'unsafe-eval'", $policy);
     }
 
-    public function testTheChatSocketOnThisHostCanConnect()
+    public function testTheChatSocketOnThisHostCanConnect(): void
     {
         $policy = ContentSecurityPolicy::headerFor('mapchat.example.com');
 
         $this->assertStringContainsString('wss://mapchat.example.com', $policy);
     }
 
-    public function testNothingCanFrameThePageOrPostItsFormsElsewhere()
+    public function testNothingCanFrameThePageOrPostItsFormsElsewhere(): void
     {
         $policy = ContentSecurityPolicy::headerFor('mapchat.example.com');
 
@@ -37,7 +37,7 @@ class ContentSecurityPolicyTest extends TestCase
         $this->assertStringContainsString("base-uri 'none'", $policy);
     }
 
-    public function testTheNonceStaysTheSameForOneRequest()
+    public function testTheNonceStaysTheSameForOneRequest(): void
     {
         $this->assertSame(ContentSecurityPolicy::nonce(), ContentSecurityPolicy::nonce());
         $this->assertGreaterThanOrEqual(22, strlen(ContentSecurityPolicy::nonce()));

@@ -27,8 +27,7 @@ class PushTest extends TestCase
         $this->db->beginTransaction();
 
         foreach ([self::ANN => 'Ann Lee', self::BOB => 'Bob Ray', self::CAT => 'Cat Kim'] as $email => $name) {
-            $this->db->prepare("INSERT INTO users (name, email, password_hash, is_active) VALUES (?, ?, '!', TRUE)")
-                ->execute([$name, $email]);
+            TestDb::createUser($name, $email);
         }
     }
 
@@ -57,14 +56,14 @@ class PushTest extends TestCase
         return array_column($subscriptions, 'email');
     }
 
-    public function testAPrivateMessageGoesToTheOtherPersonOnly()
+    public function testAPrivateMessageGoesToTheOtherPersonOnly(): void
     {
         $chat = ['email' => self::ANN, 'to_email' => self::BOB, 'body' => 'hi @Cat'];
 
         $this->assertSame([self::BOB], $this->emailsOf(Push::recipientsOf($chat, $this->subscribeEveryone())));
     }
 
-    public function testARoomMessageGoesToWhoeverItMentions()
+    public function testARoomMessageGoesToWhoeverItMentions(): void
     {
         $subscriptions = $this->subscribeEveryone();
 
@@ -75,17 +74,17 @@ class PushTest extends TestCase
         $this->assertSame([], Push::recipientsOf($mentionsNobody, $subscriptions));
     }
 
-    public function testNobodyIsPushedTheirOwnMessage()
+    public function testNobodyIsPushedTheirOwnMessage(): void
     {
         $chat = ['email' => self::ANN, 'to_email' => null, 'body' => 'talking to myself, @Ann'];
 
         $this->assertSame([], Push::recipientsOf($chat, $this->subscribeEveryone()));
     }
 
-    public function testTheNotificationNamesTheSenderAndOpensTheirChat()
+    public function testTheNotificationNamesTheSenderAndOpensTheirChat(): void
     {
         $chat = [
-            'user_id' => 7, 'name' => 'Ann Lee', 'nickname' => null, 'is_guest' => 0, 'avatar' => null, 'is_demo' => 0,
+            'user_id' => 7, 'name' => 'Ann Lee', 'nickname' => null, 'is_guest' => false, 'avatar' => null, 'is_demo' => false,
             'to_email' => self::BOB, 'body' => str_repeat('a', 200),
         ];
 
@@ -101,7 +100,7 @@ class PushTest extends TestCase
         $this->assertSame('everyone', $mention['conversation']);
     }
 
-    public function testABrowserMovesToWhoeverSubscribesItLast()
+    public function testABrowserMovesToWhoeverSubscribesItLast(): void
     {
         PushSubscription::save(self::ANN, 'https://push.example.com/shared', 'key', 'secret');
         PushSubscription::save(self::BOB, 'https://push.example.com/shared', 'key2', 'secret2');
@@ -109,7 +108,7 @@ class PushTest extends TestCase
         $this->assertSame([self::BOB], $this->emailsOf(PushSubscription::getAll()));
     }
 
-    public function testOnlyItsOwnerCanForgetABrowser()
+    public function testOnlyItsOwnerCanForgetABrowser(): void
     {
         PushSubscription::save(self::ANN, 'https://push.example.com/ann', 'key', 'secret');
 
@@ -120,7 +119,7 @@ class PushTest extends TestCase
         $this->assertSame([], PushSubscription::getAll());
     }
 
-    public function testOnlyPushServiceAddressesAreSaved()
+    public function testOnlyPushServiceAddressesAreSaved(): void
     {
         $this->assertTrue(PushController::isPushEndpoint('https://fcm.googleapis.com/fcm/send/abc'));
         $this->assertFalse(PushController::isPushEndpoint('http://fcm.googleapis.com/fcm/send/abc'));

@@ -1,0 +1,971 @@
+/* The chat panel (base_chat.html): its tabs, the header of what's open,
+   the notifications offer, the typing row and the jump to the latest. The
+   messages and the box have their own files */
+
+.chat-panel
+{
+    display: flex;
+    flex-direction: column;
+    max-width: var(--chat-width);
+    overflow: hidden;
+    position: absolute;
+    inset: var(--header-height) 0 var(--footer-height);
+    background-color: var(--chat-surface);
+    box-shadow: 2px 0 8px var(--panel-shadow);
+}
+
+@scope (.chat-panel) to (.sheet-handle, .chat-tabs, .chat-header, .notify-prompt, .chat, .day-divider, .typing-row, .jump-latest, .chat-composer)
+{
+    /* The messages, with room for the jump button to float over their bottom */
+    .messages
+    {
+        position: relative;
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        min-height: 0;
+    }
+
+    .list
+    {
+        max-height: 100%;
+        overflow-y: auto;
+        overflow-x: hidden;
+        flex: 1;
+
+        /* A quick fade when switching tabs */
+        &.is-switching
+        {
+            animation: fade-in var(--dur) var(--ease-out);
+        }
+    }
+
+    /* The messages fade out at an end with more past it: a band stuck to
+       each end, shown while the list can scroll that way. Browsers without
+       scroll-state queries (Safari, Firefox) show no fade */
+    @supports (container-type: scroll-state)
+    {
+        .list
+        {
+            container-type: scroll-state;
+        }
+
+        .list::before,
+        .list::after
+        {
+            content: '';
+            display: block;
+            position: sticky;
+            z-index: 1;
+            height: var(--edge-fade);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity var(--dur-fast) var(--ease-out);
+        }
+
+        .list::before
+        {
+            inset-block-start: 0;
+            margin-block-end: calc(-1 * var(--edge-fade));
+            background: linear-gradient(var(--chat-surface), transparent);
+        }
+
+        .list::after
+        {
+            inset-block-end: 0;
+            margin-block-start: calc(-1 * var(--edge-fade));
+            background: linear-gradient(transparent, var(--chat-surface));
+        }
+
+        @container scroll-state(scrollable: top)
+        {
+            .list::before { opacity: 1; }
+        }
+
+        @container scroll-state(scrollable: bottom)
+        {
+            .list::after { opacity: 1; }
+        }
+    }
+}
+
+/* Under the last message, above the box: the other person in a private
+   chat is writing to you. Their face and the three dots, as chat apps show.
+   It opens to its height while it fades and slides up, and closes the same
+   way down, so the messages above move with it instead of jumping. A grid
+   row, as a height can't ease to "auto" */
+.typing-row
+{
+    display: grid;
+    flex: none;
+    grid-template-rows: 0fr;
+    opacity: 0;
+    translate: 0 8px;
+    visibility: hidden;
+    background-color: var(--chat-surface);
+    transition: grid-template-rows var(--dur) var(--ease-in),
+                opacity var(--dur) var(--ease-in),
+                translate var(--dur) var(--ease-in),
+                visibility 0s var(--dur);
+
+    &.is-shown
+    {
+        grid-template-rows: 1fr;
+        opacity: 1;
+        translate: 0 0;
+        visibility: visible;
+        transition-timing-function: var(--ease-out);
+        transition-delay: 0s;
+    }
+}
+
+@scope (.typing-row)
+{
+    .clip
+    {
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    /* The face at the messages' left edge, the dots just after it */
+    .content
+    {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 16px;
+    }
+
+    .photo
+    {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+    }
+
+    .dots
+    {
+        color: var(--md-primary);
+        animation: none; /* shows at once; the row eases in */
+    }
+
+    /* No need to keep the dots going while nobody's typing */
+    :scope:not(.is-shown) .dot
+    {
+        animation-play-state: paused;
+    }
+
+    /* For screen readers only */
+    .label
+    {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+    }
+}
+
+/* "Latest" / "3 new messages": a pill at the bottom centre of the messages
+   while you read further up */
+.jump-latest
+{
+    position: absolute;
+    inset-block-end: 12px;
+    left: 50%; /* physical, as the translate below is: centred either way the text runs */
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: var(--icon-gap);
+    height: 34px;
+    padding: 0 14px; /* even, as .icon takes back the arrow's blank sides */
+    border: none;
+    border-radius: 17px;
+    background: none;
+    color: var(--md-on-primary);
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    /* translate, not transform: fade-in-up animates transform, which would
+       drop the centring while it runs and slide the button in from the right */
+    translate: -50% 0;
+    cursor: pointer;
+    animation: fade-in-up var(--dur) var(--ease-out);
+
+    /* The pill itself, behind the label. When the label changes it starts at
+       the old width (--pill-scale, from chat.js) and grows from the middle */
+    &::before
+    {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        border-radius: inherit;
+        background-color: var(--md-primary);
+        box-shadow: var(--md-elevation-3);
+        transform: scaleX(var(--pill-scale, 1));
+    }
+
+    &.is-resizing::before
+    {
+        transition: transform var(--dur) var(--ease-out);
+    }
+
+    &[hidden]
+    {
+        display: none;
+    }
+
+    /* Back at the newest messages: it sinks and fades, the way it came */
+    &.is-leaving
+    {
+        animation: jump-latest-out var(--dur-fast) var(--ease-in) forwards;
+        pointer-events: none;
+    }
+
+    &:hover::before
+    {
+        background-color: color-mix(in srgb, var(--md-on-primary) var(--md-hover), var(--md-primary));
+    }
+
+    /* The transparent outline only shows in forced-colors mode, which drops
+       box-shadows */
+    &:focus-visible
+    {
+        outline: 3px solid transparent;
+    }
+
+    &:focus-visible::before
+    {
+        box-shadow: 0 0 0 3px var(--lavender-line);
+    }
+}
+
+@scope (.jump-latest)
+{
+    /* The new label fades in as the pill widens (chat.js) */
+    .text.is-changing
+    {
+        animation: fade-in var(--dur) var(--ease-out);
+    }
+
+    .icon
+    {
+        font-size: 14px; /* the solid arrow, a little taller than the capitals */
+    }
+}
+
+@keyframes jump-latest-out
+{
+    to
+    {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+}
+
+/* Tabs: the open room first, then one per private chat. The open tab joins
+   the messages below; the rest sit on a darker strip */
+.chat-tabs
+{
+    display: flex;
+    align-items: stretch; /* tabs reach down to the messages */
+    overflow-x: auto;
+    box-sizing: border-box;
+    height: 48px; /* same as the top of the people list, line included */
+    /* Flipped upside down so the scrollbar sits on top; each tab is flipped
+       back. So "bottom" here is the top on screen, and "top" the bottom */
+    flex: none; /* keeps its height when the chat is folded to it */
+    transform: scaleY(-1);
+    padding: 0 8px 6px; /* the strip above the tabs */
+    border-block-start: 1px solid var(--line); /* the line under the tabs */
+    background-color: var(--lavender);
+}
+
+/* The strip fades out at an end with more tabs past it, as the messages do */
+@supports (container-type: scroll-state)
+{
+    .chat-tabs
+    {
+        container-type: scroll-state;
+    }
+
+    .chat-tabs::before,
+    .chat-tabs::after
+    {
+        content: '';
+        position: sticky;
+        z-index: 1;
+        flex: none;
+        width: var(--edge-fade);
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity var(--dur-fast) var(--ease-out);
+    }
+
+    /* Physical left and right: a gradient's direction has no logical
+       form, so each fade is tied to its side of the screen */
+    .chat-tabs::before
+    {
+        left: 0;
+        margin-right: calc(-1 * var(--edge-fade));
+        background: linear-gradient(to right, var(--lavender), transparent);
+    }
+
+    .chat-tabs::after
+    {
+        right: 0;
+        margin-left: calc(-1 * var(--edge-fade));
+        background: linear-gradient(to left, var(--lavender), transparent);
+    }
+
+    @container scroll-state(scrollable: left)
+    {
+        .chat-tabs::before { opacity: 1; }
+    }
+
+    @container scroll-state(scrollable: right)
+    {
+        .chat-tabs::after { opacity: 1; }
+    }
+}
+
+@scope (.chat-tabs)
+{
+    /* Buttons drawn as the text they hold; the rules below give each its look */
+    .label,
+    .close
+    {
+        margin: 0;
+        padding: 0;
+        border: none;
+        background: none;
+        color: inherit;
+        font: inherit;
+        letter-spacing: inherit;
+        text-align: inherit;
+        text-shadow: inherit;
+        text-transform: inherit;
+    }
+
+    .tab
+    {
+        transform: scaleY(-1);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 0 12px;
+        color: var(--text-muted);
+        font-size: 13px;
+        font-weight: 400;
+        white-space: nowrap;
+        user-select: none; /* a drag moves the tab, not a text selection */
+        -webkit-touch-callout: none;
+        transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+
+        /* A tab that moves because a neighbour grew, shrank or closed (see slideTabs) */
+        &.is-shifting
+        {
+            transition: translate var(--dur) var(--ease-out);
+        }
+
+        /* A private tab being dragged into a new place (tabDragging.js) rides above the rest */
+        &.is-dragging
+        {
+            position: relative;
+            z-index: 1;
+            background-color: var(--chat-surface);
+            box-shadow: 0 0 8px var(--raised-shadow);
+            cursor: grabbing;
+        }
+
+        &:hover
+        {
+            background-color: color-mix(in srgb, var(--md-surface-container-lowest) 50%, transparent);
+            color: var(--md-primary);
+        }
+
+        &.is-active
+        {
+            background-color: var(--chat-surface); /* same as the messages, so they join */
+            color: var(--md-primary);
+            /* Heavier without real bold, which is wider and shifts the tabs */
+            text-shadow: 0 0 0.6px currentColor, 0 0 0.6px currentColor;
+        }
+    }
+
+    /* Same green as the dot on an online person's avatar */
+    .online
+    {
+        flex: none;
+        /* A whole number of screen pixels at 100%, 133%, 150% and 200%, so
+           it stays round; 7 or 8 blur into an oval on a 133% screen */
+        width: 6px;
+        height: 6px;
+        margin-inline-end: 2px; /* on top of the tab's gap, so the dot doesn't crowd the name */
+        border-radius: 50%;
+        background-color: var(--online);
+    }
+
+    .tab.is-entering,
+    .online
+    {
+        animation: grow-in var(--dur) var(--ease-out) backwards;
+    }
+
+    .tab.is-leaving,
+    .online.is-leaving
+    {
+        animation: shrink-out var(--dur-fast) var(--ease-in) forwards;
+        pointer-events: none;
+    }
+
+    /* Long names are cut short so more tabs fit */
+    .name
+    {
+        max-width: 180px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .unread
+    {
+        padding: 0 6px;
+        border-radius: 10px;
+        background-color: var(--lavender-line);
+        color: var(--purple-ink);
+        font-size: 11px;
+        line-height: 18px;
+
+        /* A new unread count pops in */
+        &.is-entering
+        {
+            animation: grow-in var(--dur) var(--ease-out) backwards;
+        }
+
+        /* Someone @mentioned you in a tab you're not looking at */
+        &.is-mention
+        {
+            background-color: var(--md-primary);
+            color: var(--md-on-primary);
+        }
+
+        &.is-mention::before
+        {
+            content: "@ ";
+        }
+    }
+
+    /* Everything in a tab but its close button: the label that opens its chat */
+    .label
+    {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        height: 100%;
+        cursor: pointer;
+    }
+
+    .close
+    {
+        cursor: pointer;
+        color: var(--text-faint);
+        font-size: 20px;
+        line-height: 1;
+        padding-inline-start: 2px; /* none after it, so the tab's sides match */
+
+        &:hover
+        {
+            color: var(--danger);
+        }
+    }
+}
+
+/* What's open: the room, or the person in a private chat. It leads the
+   messages below it, so its name is bigger than theirs and stays in
+   normal case, and its line is purple. White, so it flows from the open tab */
+.chat-header
+{
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-block-end: 1px solid var(--line); /* same gray as the composer's line */
+    background-color: var(--md-surface-container-lowest);
+    position: relative;
+    z-index: 1; /* its shadow falls over the messages, not under them */
+    box-shadow: 0 2px 6px var(--edge-shadow);
+}
+
+@scope (.chat-header) to (.place)
+{
+    .photo,
+    .room-icon
+    {
+        flex: none;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background-color: var(--lavender);
+    }
+
+    .photo
+    {
+        object-fit: cover;
+    }
+
+    /* Green dot before Online, the size of the tab's dot above */
+    :scope.is-online .status::before
+    {
+        content: '';
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        margin-inline-end: 6px;
+        border-radius: 50%;
+        background-color: var(--online);
+        vertical-align: middle;
+    }
+
+    .room-icon
+    {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--md-primary);
+        font-size: 18px;
+    }
+
+    .photo[hidden],
+    .room-icon[hidden],
+    .tag[hidden]
+    {
+        display: none;
+    }
+
+    .room-icon .icon
+    {
+        margin-inline: 0;
+        translate: none;
+    }
+
+    .who
+    {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+    }
+
+    /* The name with Public or Private, then online or last seen with
+       their city and time, each pair at the two ends of its line */
+    .top,
+    .bottom
+    {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        min-width: 0;
+    }
+
+    .name
+    {
+        overflow: hidden;
+        color: var(--text-strong);
+        font-size: 13px; /* same as the tabs above */
+        font-weight: 600;
+        line-height: 20px;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .status,
+    .where
+    {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        overflow: hidden;
+        color: var(--text-soft);
+        font-size: 11px; /* same as the messages' times */
+        line-height: 16px;
+        white-space: nowrap;
+    }
+
+    /* Just text now, so a block, which can end in an ellipsis */
+    .status
+    {
+        display: block;
+        min-width: 0;
+        text-overflow: ellipsis;
+    }
+
+    /* Only as wide as its text, so only that is hoverable */
+    .where
+    {
+        flex: none;
+        max-width: 70%;
+    }
+
+    .time
+    {
+        display: inline-flex;
+        flex: none;
+        align-items: center;
+        gap: var(--icon-gap);
+    }
+
+    /* City and time on one line, the country on the next, both kept to the
+       end; hovering either slides the whole line up to the country (chat.js) */
+    .line-swap .line:first-child
+    {
+        gap: 8px;
+    }
+
+    .daylight
+    {
+        &.day
+        {
+            color: var(--daylight-day);
+        }
+
+        &.night
+        {
+            color: var(--daylight-night);
+        }
+    }
+
+    .tag
+    {
+        display: inline-flex;
+        flex: none;
+        align-items: center;
+        gap: var(--icon-gap);
+        color: var(--purple-soft);
+        font-size: 11px;
+    }
+
+    /* No nudge: Public and Private start with a capital, so their middle is
+       the line's. 13px, as the sun and pin beside 11px text are */
+    .tag .icon
+    {
+        --icon-nudge: 0px;
+        font-size: 13px;
+    }
+
+    /* Phones: one line, as tall as the tabs above: the name, and Public or
+       Private at the right end. The second line waits under it, and a tap
+       slides it up for a moment (chat.js): online or last seen, and their
+       city and time */
+    @media (max-width: 700px)
+    {
+        :scope
+        {
+            box-sizing: border-box;
+            height: 48px;
+            padding-block: 0;
+            gap: 10px;
+        }
+
+        .photo,
+        .room-icon
+        {
+            width: 28px;
+            height: 28px;
+        }
+
+        /* Half the circle, as on wider screens */
+        .room-icon
+        {
+            font-size: 14px;
+        }
+
+        .who
+        {
+            gap: 0;
+            height: 20px;
+            overflow: clip;
+        }
+
+        .top,
+        .bottom
+        {
+            flex: none;
+            height: 20px;
+            transition: transform var(--dur) var(--ease-out);
+        }
+
+        :scope.is-showing-where .top,
+        :scope.is-showing-where .bottom
+        {
+            transform: translateY(-20px);
+        }
+    }
+}
+
+/* Offers notifications, in the same band as the private note. Slides down
+   into view and back up when closed, like the typing row */
+.notify-prompt
+{
+    display: grid;
+    flex: none;
+    grid-template-rows: 0fr;
+    opacity: 0;
+    visibility: hidden;
+    transition: grid-template-rows var(--dur) var(--ease-in),
+                opacity var(--dur) var(--ease-in),
+                visibility 0s var(--dur);
+
+    /* Opening takes a panel's time on a gentle curve; a steep one does most
+       of the height in the first frames and reads as a jump */
+    &.is-shown
+    {
+        grid-template-rows: 1fr;
+        opacity: 1;
+        visibility: visible;
+        transition: grid-template-rows var(--dur-slow) var(--ease-emphasized),
+                    opacity var(--dur-fast) linear,
+                    visibility 0s;
+    }
+}
+
+@scope (.notify-prompt)
+{
+    .clip
+    {
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    /* The bar's contents come down with it, rather than being uncovered */
+    .content
+    {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 10px 10px 16px;
+        border-block-end: 1px solid var(--hairline);
+        background-color: var(--lavender-tint);
+        translate: 0 -100%;
+        transition: translate var(--dur) var(--ease-in);
+    }
+
+    :scope.is-shown .content
+    {
+        translate: 0 0;
+        transition: translate var(--dur-slow) var(--ease-emphasized);
+    }
+
+    .bell
+    {
+        flex: none;
+        color: var(--purple-deep);
+        font-size: 18px;
+        margin-inline: 0;
+        translate: none;
+    }
+
+    .text
+    {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        color: var(--purple-deep);
+        font-size: 13px;
+        line-height: 16px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    /* Too long for the bar: it scrolls to its end and back, pausing at each,
+       instead of cutting off (notifications.js sets the distance and time) */
+    .text-inner
+    {
+        display: inline-block;
+    }
+
+    .text.is-scrolling
+    {
+        text-overflow: clip;
+
+        & .text-inner
+        {
+            animation: notify-marquee var(--marquee-time) var(--ease-in-out) infinite alternate;
+        }
+    }
+
+    /* Square, like the app's other buttons */
+    .turn-on
+    {
+        flex: none;
+        height: 28px;
+        padding: 0 12px;
+        border: none;
+        border-radius: 0;
+        background-color: var(--md-primary);
+        color: var(--md-on-primary);
+        font-size: 13px; /* as the app's small buttons */
+        font-weight: 600;
+        cursor: pointer;
+
+        &:hover
+        {
+            filter: brightness(1.08);
+        }
+
+        &:focus-visible
+        {
+            outline: 3px solid var(--lavender-line);
+            outline-offset: 1px;
+        }
+    }
+
+    .close
+    {
+        display: flex;
+        flex: none;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        border: none;
+        background-color: transparent;
+        color: var(--purple-deep);
+        cursor: pointer;
+
+        &:hover
+        {
+            background-color: var(--lavender-hover);
+        }
+
+        &:focus-visible
+        {
+            outline: 3px solid var(--lavender-line);
+            outline-offset: -3px;
+        }
+
+        & .icon
+        {
+            font-size: 16px;
+            margin-inline: 0;
+            translate: none;
+        }
+    }
+}
+
+@keyframes notify-marquee
+{
+    0%, 20% { transform: translateX(0); }
+    80%, 100% { transform: translateX(calc(-1 * var(--marquee-distance))); }
+}
+
+/* The panel slides in from its edge, as the people list does from its own */
+@keyframes panel-in-left
+{
+    from { transform: translateX(-100%); }
+}
+
+/* Held off screen until the page's script runs, so it slides in once the
+   page is ready rather than while it loads */
+.chat-panel
+{
+    animation: panel-in-left var(--dur-slow) var(--ease-out) both paused;
+
+    .is-ready &
+    {
+        animation-play-state: running;
+    }
+}
+
+/* The grip on top of the chat, only on phones, where the chat is a sheet
+   that slides over the map. Square, like the rest */
+.sheet-handle
+{
+    display: none;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: var(--sheet-handle-height);
+    padding: 0;
+    border: none;
+    background-color: var(--lavender);
+    cursor: grab;
+    touch-action: none; /* the drag moves the sheet, not the page */
+
+    &:hover
+    {
+        background-color: var(--lavender-hover);
+    }
+
+    &:focus-visible
+    {
+        outline: none;
+        box-shadow: inset 0 0 0 3px var(--lavender-line);
+    }
+}
+
+@scope (.sheet-handle)
+{
+    .grip
+    {
+        width: 32px;
+        height: 4px;
+        border-radius: 2px; /* half its height: round ends, as the scrollbars have */
+        background-color: var(--lavender-line-hover);
+    }
+}
+
+/* Phones: as in a maps app, the map fills the screen and the chat is a
+   sheet over it, dragged between three stops: down to its tabs, halfway,
+   and up to the header (chatSheet.js; --sheet-top is in chat.css) */
+@media (max-width: 700px)
+{
+    /* top, not translate: the sheet's height changes with it, so its
+       messages shrink and the box stays on screen. Physical, as chat.js
+       waits for this transition's end by the name top */
+    .chat-panel
+    {
+        top: calc(var(--header-height) + var(--sheet-top));
+        max-width: none;
+        min-width: 0;
+        box-shadow: 0 -2px 8px var(--panel-shadow);
+        transition: top var(--dur-slow) var(--ease-out);
+    }
+
+    .sheet-handle
+    {
+        display: flex;
+    }
+
+    /* While a finger holds it, it follows the finger without lag */
+    .is-sheet-dragging .chat-panel
+    {
+        transition: none;
+    }
+
+    .is-sheet-dragging,
+    .is-sheet-dragging .sheet-handle
+    {
+        cursor: grabbing;
+    }
+
+    /* The chat header is a handle too */
+    .chat-header
+    {
+        touch-action: none;
+    }
+
+    /* Down to its tabs: the squeezed list would count as scrolled up */
+    .is-chat-folded .jump-latest
+    {
+        display: none;
+    }
+}

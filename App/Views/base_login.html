@@ -1,3 +1,6 @@
+{# Every page you see signed out (log in, sign up, password): the logo,
+   a heading, the form, and the copyright line #}
+{% types {csp_nonce: 'string'} %}
 <!DOCTYPE html>
 <html lang="en" data-icons="{{ asset('/icons.svg') }}">
 <head>
@@ -10,7 +13,7 @@
     {{ include('_beer.html', with_context = false) }}
     <link rel="stylesheet" href="{{ asset('/css/base.css') }}" />
     <link rel="stylesheet" href="{{ asset('/css/animations.css') }}" />
-    <link rel="stylesheet" href="{{ asset('/css/styles.css') }}" />
+    <link rel="stylesheet" href="{{ asset('/css/icons.css') }}" />
     <link rel="stylesheet" href="{{ asset('/css/footer.css') }}" />
     <link rel="stylesheet" href="{{ asset('/css/ui.css') }}" />
     <link rel="stylesheet" type="text/css" href="{{ asset('/css/login.css') }}">

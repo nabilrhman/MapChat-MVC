@@ -9,7 +9,7 @@ const PEOPLE_INTERVAL = 15000;
 const TIME_AGO_INTERVAL = 60000;
 // Presence changes this close together are shown as one (updatePerson)
 const PEOPLE_RENDER_DELAY = 300;
-// Matches the breakpoint in chat.css
+// Matches the breakpoint in chat-people.css
 const NARROW_SCREEN = '(max-width: 1100px)';
 
 const peoplePanel = document.getElementById('people');
@@ -64,7 +64,7 @@ function createPersonRow(person) {
     // Your own row does nothing; anyone else's opens a private chat
     const row = isMe ? createElement('div', 'person') : createButton('person');
     row.classList.toggle('is-online', person.isOnline);
-    row.classList.toggle('can-message', !isMe);
+    row.classList.toggle('is-messageable', !isMe);
     row.dataset.part = 'person';
     row.dataset.userId = userId;
     row.title = isMe ? '' : `Message ${person.shown_name}`;
@@ -72,6 +72,7 @@ function createPersonRow(person) {
 
     const avatarFrame = createElement('span', 'avatar');
     const photo = createElement('img', 'photo');
+    photo.dataset.part = 'person-photo';
     photo.alt = '';
     photo.width = 32;
     photo.height = 32;
@@ -214,7 +215,7 @@ function showPeople(people) {
     fillPeople(document.getElementById('people-online'), onlinePeople);
     document.getElementById('recent-heading').hidden = recentPeople.length === 0;
     fillPeople(document.getElementById('people-recent'), recentPeople);
-    fadeInPhotos(peoplePanel.querySelectorAll('img'));
+    fadeInPhotos(peoplePanel.querySelectorAll('[data-part="person-photo"]'));
 }
 
 // What chat.js does when the list changes (see keepPeopleUpdated)

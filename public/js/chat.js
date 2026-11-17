@@ -1,6 +1,7 @@
 // The chat page: messages, tabs for private chats, and the composer. Talking
 // to the server about messages is in messages.js, the people list in
-// people.js. The server's values come from data attributes on #chat (see
+// people.js, dragging tabs in tabDragging.js and the phone's sheet in
+// chatSheet.js. The server's values come from data attributes on #chat (see
 // base_chat.html)
 
 // Scrolling down to new messages; none for people who ask for less motion
@@ -40,7 +41,7 @@ let onlineUserIds = new Set();
 // Messages that came into the open tab while you were scrolled up
 let newMessagesWhileScrolledUp = 0;
 
-const getConversation = (chat) => chat.dataset.conversation;
+const conversationOf = (chat) => chat.dataset.conversation;
 const getChats = () => [...chatList.querySelectorAll('[data-part="message"]')];
 // The newest message on the page, in any tab, or 0
 const getNewestId = () => Number(getChats().at(-1)?.dataset.id ?? 0);
@@ -118,7 +119,7 @@ const wasClosedAfter = (conversation, messageId) => Number(messageId) <= (closed
 // The chat's tab, unless it was closed after this message; a newer message
 // reopens it
 function addTabFor(chat) {
-    const conversation = getConversation(chat);
+    const conversation = conversationOf(chat);
     if (wasClosedAfter(conversation, chat.dataset.id)) return null;
 
     forgetClosedTab(conversation);
@@ -157,7 +158,7 @@ function addTab(conversation, name) {
     unreadCount.dataset.part = 'tab-unread';
     unreadCount.hidden = true;
 
-    const openButton = createButton('open');
+    const openButton = createButton('label');
     openButton.append(onlineDot, nameLabel, unreadCount);
 
     const closeButton = createButton('close', '×');
@@ -229,7 +230,7 @@ function showConversation(conversation) {
     clearUnreadCount(tab);
 
     getChats().forEach((chat) => {
-        chat.style.display = getConversation(chat) === activeConversation ? '' : 'none';
+        chat.hidden = conversationOf(chat) !== activeConversation;
     });
     replayAnimation(chatList, 'is-switching');
 
@@ -287,7 +288,7 @@ function showReadElsewhere(conversation, upTo) {
     const tab = getTab(conversation);
     if (!tab || conversation === activeConversation) return;
 
-    const unseenCount = getChats().filter((chat) => getConversation(chat) === conversation
+    const unseenCount = getChats().filter((chat) => conversationOf(chat) === conversation
         && Number(chat.dataset.id) > upTo && Number(chat.dataset.senderId) !== myUserId).length;
     if (unseenCount === 0) {
         clearUnreadCount(tab);
@@ -352,13 +353,13 @@ function showChatHeader() {
 
     if (!person?.city && !person?.country) return;
     const placeAndTime = [createPlace(person.city, person.country)];
-    // Hidden with their place when they don't share their location
-    if (person.lng !== null && person.lng !== undefined) placeAndTime.push(createLocalTime(person));
+    // Hidden with their place when they don't share their location: null, or missing
+    if (person.lng != null) placeAndTime.push(createLocalTime(person));
     where.append(...createFlipToCountry(placeAndTime, person));
 }
 
 // Their city and time, which flip up together to show their country on
-// hover (.chat-header .flip in chat.css). Stays put without a city to flip
+// hover (.chat-header .line-swap in chat-panel.css). Stays put without a city to flip
 // from, or a name for the country
 function createFlipToCountry(placeAndTime, person) {
     if (!person.city || !person.country || countryName(person.country) === person.country) return placeAndTime;
@@ -369,20 +370,16 @@ function createFlipToCountry(placeAndTime, person) {
     countryLine.append(createPlace(null, person.country));
     const track = createElement('span', 'track');
     track.append(cityLine, countryLine);
-    const flip = createElement('span', 'swap flip');
-    flip.dataset.swaps = '';
-    flip.append(track);
-    return [flip];
+    const lineSwap = createElement('span', 'line-swap');
+    lineSwap.dataset.swaps = '';
+    lineSwap.append(track);
+    return [lineSwap];
 }
 
 // Their time now, with a sun or moon, as their pin and messages show it
 function createLocalTime(person) {
-    const localTime = localTimeOf(new Date(), person.timezone, parseFloat(person.lng));
-    const daylightIcon = createIcon('sun', 'daylight');
-    showDaylight(daylightIcon, localTime.hour);
-
     const time = createElement('span', 'time');
-    time.append(daylightIcon, localTime.text);
+    showLocalTime(time, localTimeOf(new Date(), person.timezone, parseFloat(person.lng)));
     return time;
 }
 
@@ -393,23 +390,34 @@ setInterval(() => {
 
 // A green dot on the tab of each private chat partner who's online;
 // it fades only when that changes
-function updateOnlineDots(userIds) {
-    onlineUserIds = userIds;
-    showChatHeader();
+function updateOnlineDots() {
     chatTabs.querySelectorAll('[data-part="tab-online"]').forEach((dot) => {
         const isOnline = isUserOnline(dot.closest('[data-part="tab"]').dataset.conversation);
-        if (isOnline === !dot.hidden) return;
+        const isLeaving = dot.classList.contains('is-leaving');
+        const isDotShown = !dot.hidden && !isLeaving;
+        if (isOnline === isDotShown) return;
 
         if (isOnline) {
+            // Back before the dot finished fading: it stays
+            dot.classList.remove('is-leaving');
             dot.hidden = false;
             return;
         }
         dot.classList.add('is-leaving');
         onAnimationEnd(dot, () => {
+            // Came back online while it faded
+            if (!dot.classList.contains('is-leaving')) return;
             dot.hidden = true;
             dot.classList.remove('is-leaving');
         });
     });
+}
+
+// The people list changed who's online: the header and the tabs' dots follow
+function onPeopleOnline(userIds) {
+    onlineUserIds = userIds;
+    showChatHeader();
+    updateOnlineDots();
 }
 
 chatTabs.addEventListener('click', (event) => {
@@ -432,184 +440,9 @@ chatTabs.addEventListener('wheel', (event) => {
     chatTabs.scrollLeft += event.deltaY;
 });
 
-/* Dragging tabs */
-
-// A mouse press that moves this far drags the tab. A finger first holds the
-// tab still this long, since a swipe scrolls the tabs
-const DRAG_DISTANCE = 5;
-const TOUCH_HOLD_DELAY = 400;
-// Dragged this close to an end of the row, the tabs scroll along
-const DRAG_SCROLL_EDGE = 32;
-const DRAG_SCROLL_SPEED = 8;
-
-// The press on a private tab, until it's let go
-let tabDrag = null;
-// The click that ends a drag doesn't open the tab
-let isEndingTabDrag = false;
-
-// Where the pointer is along the whole row, scrolled part included
-const getRowX = (clientX) => clientX + chatTabs.scrollLeft;
-
-chatTabs.addEventListener('pointerdown', (event) => {
-    const tab = event.target.closest('[data-part="tab"]');
-    if (!tab || tab.dataset.conversation === EVERYONE || tab.classList.contains('is-leaving')) return;
-    if (event.button !== 0 || event.target.closest('[data-part="tab-close"]')) return;
-
-    tabDrag = {tab, pointerId: event.pointerId, startClientX: event.clientX, clientX: event.clientX, isDragging: false};
-    if (event.pointerType === 'touch') {
-        tabDrag.holdTimer = setTimeout(startTabDrag, TOUCH_HOLD_DELAY);
-    }
-});
-
-function startTabDrag() {
-    const {tab, pointerId, startClientX} = tabDrag;
-    tabDrag.isDragging = true;
-    tabDrag.startRowX = getRowX(startClientX);
-    tab.classList.remove('is-shifting');
-    tab.classList.add('is-dragging');
-    tab.setPointerCapture(pointerId);
-    scrollWhileDragging();
-}
-
-window.addEventListener('pointermove', (event) => {
-    if (!tabDrag || event.pointerId !== tabDrag.pointerId) return;
-    tabDrag.clientX = event.clientX;
-
-    if (tabDrag.isDragging) {
-        moveDraggedTab();
-    } else if (Math.abs(event.clientX - tabDrag.startClientX) > DRAG_DISTANCE) {
-        // A finger that moves before the hold is scrolling, not dragging
-        if (tabDrag.holdTimer) {
-            clearTimeout(tabDrag.holdTimer);
-            tabDrag = null;
-        } else {
-            startTabDrag();
-            moveDraggedTab();
-        }
-    }
-});
-
-// The dragged tab follows the pointer, kept within the private tabs, and
-// trades places with a neighbour once it's past that neighbour's middle
-function moveDraggedTab() {
-    const {tab} = tabDrag;
-    const everyoneTab = chatTabs.firstElementChild;
-    const firstLeft = everyoneTab.offsetLeft + everyoneTab.offsetWidth;
-    const lastTab = chatTabs.lastElementChild;
-    const lastLeft = lastTab.offsetLeft + lastTab.offsetWidth - tab.offsetWidth;
-
-    const left = Math.min(Math.max(tab.offsetLeft + getRowX(tabDrag.clientX) - tabDrag.startRowX, firstLeft), lastLeft);
-    const right = left + tab.offsetWidth;
-
-    // It passes a neighbour once its leading edge is past that neighbour's
-    // middle, so it can reach either end next to a narrower tab. A quick
-    // drag can pass several tabs between two moves
-    for (;;) {
-        const nextTab = tab.nextElementSibling;
-        const previousTab = tab.previousElementSibling;
-        if (nextTab && right > nextTab.offsetLeft + nextTab.offsetWidth / 2) {
-            swapTabs(nextTab, () => nextTab.after(tab));
-        } else if (previousTab.dataset.conversation !== EVERYONE
-                   && left < previousTab.offsetLeft + previousTab.offsetWidth / 2) {
-            swapTabs(previousTab, () => previousTab.before(tab));
-        } else {
-            break;
-        }
-    }
-    tab.style.translate = `${left - tab.offsetLeft}px 0`;
-}
-
-// Moves the dragged tab past a neighbour, which slides over to make room
-function swapTabs(neighbour, change) {
-    const {tab} = tabDrag;
-    const tabLeftBefore = tab.offsetLeft;
-    const neighbourLeftBefore = neighbour.offsetLeft;
-    change();
-    tabDrag.startRowX += tab.offsetLeft - tabLeftBefore;
-
-    slideFromShifts(new Map([[neighbour, {x: neighbourLeftBefore - neighbour.offsetLeft}]]));
-}
-
-// Held near an end of the row, the tabs keep scrolling
-function scrollWhileDragging() {
-    if (!tabDrag?.isDragging) return;
-    const row = chatTabs.getBoundingClientRect();
-    if (tabDrag.clientX < row.left + DRAG_SCROLL_EDGE) {
-        chatTabs.scrollLeft -= DRAG_SCROLL_SPEED;
-    } else if (tabDrag.clientX > row.right - DRAG_SCROLL_EDGE) {
-        chatTabs.scrollLeft += DRAG_SCROLL_SPEED;
-    }
-    moveDraggedTab();
-    requestAnimationFrame(scrollWhileDragging);
-}
-
-function endTabDrag(event) {
-    if (!tabDrag || event.pointerId !== tabDrag.pointerId) return;
-    const {tab, isDragging, holdTimer} = tabDrag;
-    clearTimeout(holdTimer);
-    if (isDragging && event.type === 'pointerup') {
-        // Where it's let go, which can be past the last move
-        tabDrag.clientX = event.clientX;
-        moveDraggedTab();
-    }
-    tabDrag = null;
-    if (!isDragging) return;
-
-    // Settles into its place, from where it was let go
-    const droppedAt = parseFloat(tab.style.translate) || 0;
-    tab.classList.remove('is-dragging');
-    slideFromShifts(new Map([[tab, {x: droppedAt}]]));
-    saveTabOrder();
-
-    isEndingTabDrag = true;
-    setTimeout(() => {
-        isEndingTabDrag = false;
-    });
-}
-
-window.addEventListener('pointerup', endTabDrag);
-window.addEventListener('pointercancel', endTabDrag);
-
-// While a finger drags a tab, the row doesn't scroll and no menu opens
-chatTabs.addEventListener('touchmove', (event) => {
-    if (tabDrag?.isDragging) event.preventDefault();
-}, {passive: false});
-chatTabs.addEventListener('contextmenu', (event) => {
-    if (tabDrag) event.preventDefault();
-});
-
 /* Messages */
 
-// The time where someone is, or was when they sent a message. Without their
-// time zone, an estimate from longitude (an hour per 15 degrees), marked
-// with "~"
-function localTimeOf(date, timezone, longitude) {
-    const format = {hour: 'numeric', minute: '2-digit'};
-
-    if (timezone) {
-        return {
-            text: date.toLocaleTimeString([], {...format, timeZone: timezone}),
-            hour: Number(date.toLocaleString('en-US', {hour: 'numeric', hourCycle: 'h23', timeZone: timezone})),
-        };
-    }
-
-    const shiftedDate = new Date(date.getTime() + Math.round(longitude / 15) * 3600000);
-    return {
-        text: `~${shiftedDate.toLocaleTimeString([], {...format, timeZone: 'UTC'})}`,
-        hour: shiftedDate.getUTCHours(),
-    };
-}
-
-// A daylight icon shows the sun from six in the morning to six at night,
-// and the moon otherwise, coloured by its day or night class
-function showDaylight(icon, hour) {
-    const isDaytime = hour >= 6 && hour < 18;
-    setIcon(icon, isDaytime ? 'sun' : 'moon');
-    icon.classList.toggle('day', isDaytime);
-    icon.classList.toggle('night', !isDaytime);
-}
-
-const getSentDate = (chat) => new Date(chat.querySelector('time').getAttribute('datetime'));
+const sentDateOf = (chat) => new Date(chat.querySelector('[data-part="sent-at"]').getAttribute('datetime'));
 
 function showSenderTime(chat) {
     const senderTimeLine = chat.querySelector('[data-part="sender-time"]');
@@ -619,10 +452,8 @@ function showSenderTime(chat) {
     // Always midnight on Null Island, where the time zones meet
     const senderTime = timeInfo.dataset.country === NULL_ISLAND
         ? {text: '00:00', hour: 0}
-        : localTimeOf(getSentDate(chat), timeInfo.dataset.timezone, parseFloat(timeInfo.dataset.lng));
-
-    showDaylight(senderTimeLine.querySelector('svg'), senderTime.hour);
-    senderTimeLine.querySelector('span').textContent = senderTime.text;
+        : localTimeOf(sentDateOf(chat), timeInfo.dataset.timezone, parseFloat(timeInfo.dataset.lng));
+    showLocalTime(senderTimeLine, senderTime);
 }
 
 // Each message shows its time; hovering it slides to the sender's own time.
@@ -633,12 +464,12 @@ function showTimes(chats) {
             country.textContent = countryName(country.dataset.country);
         });
 
-        chat.querySelector('time').textContent = getSentDate(chat).toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'});
+        chat.querySelector('[data-part="sent-at"]').textContent = sentDateOf(chat).toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'});
         showSenderTime(chat);
     });
 }
 
-function getDayLabel(date) {
+function dayLabelOf(date) {
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
 
@@ -653,14 +484,14 @@ function addDayDividers() {
 
     let lastDay = null;
     getChats()
-        .filter((chat) => getConversation(chat) === activeConversation)
+        .filter((chat) => conversationOf(chat) === activeConversation)
         .forEach((chat) => {
-            const date = getSentDate(chat);
+            const date = sentDateOf(chat);
             if (date.toDateString() === lastDay) return;
 
             const divider = createElement('div', 'day-divider');
             divider.dataset.part = 'day-divider';
-            divider.append(createElement('span', 'label', getDayLabel(date)));
+            divider.append(createElement('span', 'label', dayLabelOf(date)));
             chat.before(divider);
             lastDay = date.toDateString();
         });
@@ -682,17 +513,15 @@ function countUnread(tab, isMention) {
 function placeMessages(chats) {
     chats.forEach((chat) => {
         const tab = addTabFor(chat);
-        const isInOpenTab = getConversation(chat) === activeConversation;
+        const isInOpenTab = conversationOf(chat) === activeConversation;
 
-        if (!isInOpenTab) {
-            chat.style.display = 'none';
-        }
+        chat.hidden = !isInOpenTab;
         if (tab && (!isInOpenTab || document.hidden)) {
             countUnread(tab, 'mentionsMe' in chat.dataset);
             notifyOf(chat, showConversation);
         }
     });
-    if (!document.hidden && chats.some((chat) => getConversation(chat) === activeConversation)) {
+    if (!document.hidden && chats.some((chat) => conversationOf(chat) === activeConversation)) {
         markConversationRead(activeConversation);
     }
 }
@@ -745,7 +574,7 @@ chatList.addEventListener('click', (event) => {
     chatPanel.addEventListener('transitionend', onChatSlid);
 });
 
-/* Touch screens have no hover: a tap slides a two-line window (.swap in
+/* Touch screens have no hover: a tap slides a two-line window (.line-swap in
    chat.css) to its second line, and it slides back by itself */
 
 const SWAP_BACK_DELAY = 2000;
@@ -783,223 +612,6 @@ chatList.addEventListener('click', (event) => {
     }
 });
 
-/* Phones: the chat is a sheet over the map, as in a maps app. Dragging its
-   handle or header sets its height, between limits: above them it goes all
-   the way up, below them it folds down to its tabs. Tapping the handle then
-   switches between all the way up and the height you chose */
-
-const sheetHandle = document.getElementById('sheet-handle');
-const SHEET_STOP_KEY = 'sheetStop';
-const SHEET_CHOSEN_SHARE_KEY = 'sheetChosenShare';
-// Top to bottom: up to the header, the height you chose, down to its tabs
-const SHEET_STOP_ORDER = ['full', 'chosen', 'tabs'];
-// What a tap on the handle does at each stop, and what it says it does
-const SHEET_TAPS = {
-    full: {nextStop: 'chosen', label: 'Show the map'},
-    chosen: {nextStop: 'full', label: 'Show all of the chat'},
-    tabs: {nextStop: 'full', label: 'Show the chat'},
-};
-// The highest a chosen height goes, as a share of the run: let go above
-// it, the sheet goes all the way up
-const SHEET_HIGHEST_CHOSEN_SHARE = 0.125;
-// Until you choose, the sheet rests a little under halfway
-const SHEET_FIRST_CHOSEN_SHARE = 0.45;
-// The lowest a chosen height goes shows this many messages of about this
-// height (px): a name, a line or two, and its place. Let go below it, the
-// sheet folds
-const SHEET_MESSAGE_HEIGHT = 103;
-const SHEET_LOWEST_MESSAGES = 1;
-// How far a finger moves (px) before a press becomes a drag, so a tap stays a tap
-const SHEET_DRAG_THRESHOLD = 6;
-// Let go faster than this (px per ms), the sheet goes on to the next stop
-// that way, as a flick does
-const SHEET_FLICK_SPEED = 0.4;
-// A drag's speed is measured over stretches this long (ms), and a finger
-// still for three of them before letting go isn't flicking
-const SHEET_SPEED_STRETCH = 50;
-const SHEET_REST_TIME = SHEET_SPEED_STRETCH * 3;
-
-let sheetStop = 'chosen';
-// The chosen height's top as a share of the run, so it keeps its place
-// when the screen's height changes
-let sheetChosenShare = SHEET_FIRST_CHOSEN_SHARE;
-let sheetDrag = null;
-let isEndingSheetDrag = false;
-
-const isChatFolded = () => sheetStop === 'tabs';
-
-// The map fills the room between the header and the footer, so its height
-// is the sheet's whole run
-const sheetRunHeight = () => document.getElementById('map').clientHeight;
-
-// A stop's distance below the header, in px
-function sheetTopOf(stop) {
-    const runHeight = sheetRunHeight();
-    const tabsTop = runHeight - sheetHandle.offsetHeight - chatTabs.offsetHeight;
-    const tops = {
-        full: 0,
-        // No lower than the lowest, after the screen's height changed
-        chosen: Math.min(Math.round(runHeight * sheetChosenShare), lowestChosenTop(tabsTop)),
-        tabs: tabsTop,
-    };
-    return tops[stop];
-}
-
-// The lowest chosen height's top (px): room under it for the chat's header,
-// the lowest messages and the message box, above the tabs stop at `tabsTop`
-function lowestChosenTop(tabsTop) {
-    const messagesHeight = SHEET_MESSAGE_HEIGHT * SHEET_LOWEST_MESSAGES;
-    return tabsTop - chatHeader.offsetHeight - messagesHeight - composerForm.offsetHeight;
-}
-
-// chat.css places the sheet and the map's credits from this
-function setSheetTop(top) {
-    document.documentElement.style.setProperty('--sheet-top', `${top}px`);
-}
-
-// Down to its tabs, what's folded away can't be tabbed to
-function setChatFolded(isFolded) {
-    document.body.classList.toggle('is-chat-folded', isFolded);
-    chatList.parentElement.inert = isFolded;
-    composerForm.inert = isFolded;
-}
-
-// Rests the sheet at a stop, remembered for next time
-function moveSheetTo(stop) {
-    sheetStop = stop;
-    setSheetTop(sheetTopOf(stop));
-    setChatFolded(stop === 'tabs');
-    const {label} = SHEET_TAPS[stop];
-    sheetHandle.setAttribute('aria-label', label);
-    sheetHandle.title = label;
-    writeStored(SHEET_STOP_KEY, stop);
-    // map.js starts the map once some of it shows
-    document.dispatchEvent(new Event('sheet-moved'));
-}
-
-// Makes `top` px the chosen height, remembered for next time
-function chooseSheetHeight(top) {
-    sheetChosenShare = top / sheetRunHeight();
-    writeStored(SHEET_CHOSEN_SHARE_KEY, String(sheetChosenShare));
-}
-
-// The stop nearest where the sheet was let go
-function nearestSheetStop(top) {
-    const distanceTo = (stop) => Math.abs(sheetTopOf(stop) - top);
-    return SHEET_STOP_ORDER.reduce((nearest, stop) => (distanceTo(stop) < distanceTo(nearest) ? stop : nearest));
-}
-
-// Where a drag lets the sheet settle: after a flick, the next stop the way
-// it was going. Otherwise all the way up above the highest chosen height,
-// folded below the lowest, and anywhere between becomes the chosen height
-function sheetStopAfterDrag(top, speed) {
-    if (Math.abs(speed) >= SHEET_FLICK_SPEED) {
-        const isGoingDown = speed > 0;
-        const stopsThatWay = isGoingDown
-            ? SHEET_STOP_ORDER.filter((stop) => sheetTopOf(stop) > top)
-            : SHEET_STOP_ORDER.filter((stop) => sheetTopOf(stop) < top).reverse();
-        return stopsThatWay[0] ?? nearestSheetStop(top);
-    }
-
-    if (top < sheetRunHeight() * SHEET_HIGHEST_CHOSEN_SHARE) return 'full';
-    if (top > lowestChosenTop(sheetTopOf('tabs'))) return 'tabs';
-    chooseSheetHeight(top);
-    return 'chosen';
-}
-
-function onSheetPress(event) {
-    if (!phoneScreen.matches || !event.isPrimary) return;
-    const startTop = sheetTopOf(sheetStop);
-    sheetDrag = {
-        pointerId: event.pointerId,
-        startY: event.clientY,
-        startTop,
-        top: startTop,
-        lastY: event.clientY,
-        lastTime: event.timeStamp,
-        speed: 0,
-        isMoving: false,
-    };
-}
-
-// The sheet follows the finger, no further than its top and bottom stops
-function onSheetDrag(event) {
-    if (sheetDrag?.pointerId !== event.pointerId) return;
-    const distance = event.clientY - sheetDrag.startY;
-    if (!sheetDrag.isMoving) {
-        if (Math.abs(distance) < SHEET_DRAG_THRESHOLD) return;
-        sheetDrag.isMoving = true;
-        document.body.classList.add('is-sheet-dragging');
-    }
-
-    // Its speed over the last stretch, as one event to the next is too jittery
-    const elapsed = event.timeStamp - sheetDrag.lastTime;
-    if (elapsed >= SHEET_SPEED_STRETCH) {
-        sheetDrag.speed = (event.clientY - sheetDrag.lastY) / elapsed;
-        sheetDrag.lastY = event.clientY;
-        sheetDrag.lastTime = event.timeStamp;
-    }
-
-    const lowestTop = sheetTopOf('tabs');
-    sheetDrag.top = Math.min(Math.max(sheetDrag.startTop + distance, 0), lowestTop);
-    setSheetTop(sheetDrag.top);
-}
-
-// How fast the finger was going as it let go: the last stretch, a quick
-// flick shorter than a stretch, or none if it rested first
-function speedAtLetGo(letGo, {speed, lastY, lastTime}) {
-    const elapsed = letGo.timeStamp - lastTime;
-    if (elapsed > SHEET_REST_TIME) return 0;
-    if (speed === 0 && elapsed > 0) return (letGo.clientY - lastY) / elapsed;
-    return speed;
-}
-
-function onSheetLetGo(event) {
-    if (sheetDrag?.pointerId !== event.pointerId) return;
-    const {isMoving, top, speed, lastY, lastTime} = sheetDrag;
-    sheetDrag = null;
-    if (!isMoving) return;
-    document.body.classList.remove('is-sheet-dragging');
-    moveSheetTo(sheetStopAfterDrag(top, speedAtLetGo(event, {speed, lastY, lastTime})));
-    // The click that ends the drag isn't a tap on the handle
-    isEndingSheetDrag = true;
-    setTimeout(() => {
-        isEndingSheetDrag = false;
-    });
-}
-
-for (const sheetGrip of [sheetHandle, chatHeader]) {
-    sheetGrip.addEventListener('pointerdown', onSheetPress);
-}
-window.addEventListener('pointermove', onSheetDrag);
-window.addEventListener('pointerup', onSheetLetGo);
-window.addEventListener('pointercancel', onSheetLetGo);
-
-sheetHandle.addEventListener('click', () => {
-    if (isEndingSheetDrag) return;
-    moveSheetTo(SHEET_TAPS[sheetStop].nextStop);
-});
-
-// Without storage, or the first time, it starts at the first chosen height
-const storedSheetStop = readStored(SHEET_STOP_KEY);
-const storedChosenShare = Number(readStored(SHEET_CHOSEN_SHARE_KEY));
-if (storedChosenShare >= SHEET_HIGHEST_CHOSEN_SHARE && storedChosenShare < 1) sheetChosenShare = storedChosenShare;
-if (phoneScreen.matches) moveSheetTo(Object.hasOwn(SHEET_TAPS, String(storedSheetStop)) ? storedSheetStop : 'chosen');
-
-// The stops move with the screen's height (turning the phone, its keyboard)
-window.addEventListener('resize', () => {
-    if (phoneScreen.matches) setSheetTop(sheetTopOf(sheetStop));
-});
-
-// Wider screens have no sheet, so nothing there is folded away
-phoneScreen.addEventListener('change', () => {
-    if (phoneScreen.matches) {
-        moveSheetTo(sheetStop);
-    } else {
-        setChatFolded(false);
-    }
-});
-
 /* The "Latest" button: shows once you've scrolled up, counts messages in
    this tab that arrive meanwhile, and takes you back down */
 
@@ -1032,7 +644,7 @@ function showJumpCount(count, {shouldRoll}) {
 }
 
 // The pill eases to the new label's width instead of jumping: it starts
-// scaled to the old width (--pill-scale, .jump-latest::before in chat.css)
+// scaled to the old width (--pill-scale, .jump-latest::before in chat-panel.css)
 // and grows to the new. Going from "Latest" to a count, the words fade in;
 // after that only the number changes, so nothing fades and nothing flickers
 function changeJumpLabel(count) {
@@ -1112,11 +724,11 @@ const pageSize = Number(chatPanel.dataset.pageSize);
 const hasOlderIn = {};
 let isLoadingOlder = false;
 
-const hasChatsIn = (conversation) => getChats().some((chat) => getConversation(chat) === conversation);
+const hasChatsIn = (conversation) => getChats().some((chat) => conversationOf(chat) === conversation);
 
 // The tab's oldest message here; with none, the server sends its newest page
 function getOldestIdIn(conversation) {
-    const chat = getChats().find((chat) => getConversation(chat) === conversation);
+    const chat = getChats().find((chat) => conversationOf(chat) === conversation);
     return chat ? Number(chat.dataset.id) : Number.MAX_SAFE_INTEGER;
 }
 
@@ -1148,7 +760,7 @@ async function loadOlderMessages(conversation) {
     showTimes(olderChats);
     olderChats.forEach((chat) => {
         addTabFor(chat);
-        if (getConversation(chat) !== activeConversation) chat.style.display = 'none';
+        chat.hidden = conversationOf(chat) !== activeConversation;
     });
     insertInOrder(olderChats);
     fadeInPhotos(olderChats.map((chat) => chat.querySelector('[data-part="sender-photo"]')));
@@ -1195,10 +807,10 @@ function trimOldMessages() {
     if (chats.length <= MAX_MESSAGES || isLoadingOlder) return;
     // Nor while an open private chat would lose messages: its list could empty
     const toDrop = chats.slice(0, chats.length - MAX_MESSAGES);
-    if (activeConversation !== EVERYONE && toDrop.some((chat) => getConversation(chat) === activeConversation)) return;
+    if (activeConversation !== EVERYONE && toDrop.some((chat) => conversationOf(chat) === activeConversation)) return;
 
     toDrop.forEach((chat) => {
-        hasOlderIn[getConversation(chat)] = true;
+        hasOlderIn[conversationOf(chat)] = true;
         chat.remove();
     });
     addDayDividers();
@@ -1239,7 +851,7 @@ function showNewChats(newChats, isAfterSending) {
         scrollToNewest();
     } else {
         // Only ones in the open tab; the others get a count on their tab
-        newMessagesWhileScrolledUp += newChats.filter((chat) => chat.style.display !== 'none').length;
+        newMessagesWhileScrolledUp += newChats.filter((chat) => !chat.hidden).length;
         updateJumpButton();
     }
 }
@@ -1460,7 +1072,7 @@ showTimes(historyChats);
 fadeInPhotos(chatList.querySelectorAll('[data-part="sender-photo"]'));
 historyChats.forEach(addTabFor);
 // Your newest private chats, loaded or not, counting what came while you were away
-JSON.parse(chatPanel.dataset.conversations || '[]').forEach((partner) => {
+JSON.parse(chatPanel.dataset.conversations ?? '[]').forEach((partner) => {
     const conversation = String(partner.user_id);
     if (wasClosedAfter(conversation, partner.newest_id)) return;
 
@@ -1479,7 +1091,7 @@ function openNotifiedChat(conversation, name) {
     if (!conversation || conversation === EVERYONE) {
         showConversation(EVERYONE);
     } else {
-        openPrivateChat(conversation, name || '');
+        openPrivateChat(conversation, name ?? '');
     }
 }
 
@@ -1492,7 +1104,7 @@ navigator.serviceWorker?.addEventListener('message', (event) => {
     if (event.data?.openChat) openNotifiedChat(event.data.openChat, event.data.name);
 });
 
-keepPeopleUpdated({onPeopleOnline: updateOnlineDots, onPersonChosen: openPrivateChat});
+keepPeopleUpdated({onPeopleOnline, onPersonChosen: openPrivateChat});
 connectChat({
     onNewChats: showNewChats,
     onBuild: reloadIfUpdated,

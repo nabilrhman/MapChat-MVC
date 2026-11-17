@@ -40,7 +40,7 @@ function setUpMenus() {
 // messages. The browser lets go of its own copy too. A push service that
 // doesn't answer in time doesn't keep you waiting
 function setUpLogout() {
-    const logoutForm = document.querySelector('form[action="/logout"]');
+    const logoutForm = document.getElementById('logout-form');
     if (!logoutForm) return;
     let isLoggingOut = false;
 

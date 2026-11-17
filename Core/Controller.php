@@ -85,6 +85,19 @@ abstract class Controller
     }
 
     /**
+     * Show why something wasn't done as a warning on another page of this
+     * site, and end the request
+     *
+     * @param string $message A full sentence
+     * @param string $page A path on this site
+     */
+    protected function refuse(string $message, string $page): never
+    {
+        Flash::addMessage($message, Flash::WARNING);
+        $this->redirect($page);
+    }
+
+    /**
      * Send the browser to another page of this site, and end the request
      *
      * @param string $url A path on this site

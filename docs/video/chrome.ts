@@ -139,7 +139,7 @@ echo App\\Models\\User::findByID((int) $argv[1])->email;`;
  * @returns Their user id, and the email the app made for them
  */
 export async function signInAsNewGuest(page: Page): Promise<{id: number, email: string}> {
-    await page.locator('#guestForm button').click();
+    await page.locator('#guest-form button').click();
     await page.waitForURL(/\/app/);
     const id = Number(await page.evaluate('myUserId'));
     const email = await app('php', '-r', EMAIL_OF_USER_PHP, '--', String(id));

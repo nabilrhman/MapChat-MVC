@@ -37,11 +37,12 @@ class VoiceClip
     }
 
     /**
-     * The recording an upload holds, or what's wrong with it, said for the person
+     * What's wrong with an upload, said for the person, or null when it's a
+     * recording fromUpload can take
      *
      * @param array|null $upload One entry of $_FILES
      */
-    public static function fromUpload(?array $upload): self|string
+    public static function problemWith(?array $upload): ?string
     {
         if ($upload === null || ($upload['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
             return 'Nothing was recorded.';
@@ -57,13 +58,31 @@ class VoiceClip
             return 'Your recording could not be sent.';
         }
 
-        // The browser's own label could say anything, so the bytes decide
-        $type = (string) mime_content_type($upload['tmp_name']);
-        if (!isset(static::EXTENSIONS[$type])) {
+        if (!isset(static::EXTENSIONS[static::typeOf($upload)])) {
             return 'That recording is not a sound file.';
         }
 
-        return new self($upload['tmp_name'], $type);
+        return null;
+    }
+
+    /**
+     * The recording an upload holds, once problemWith found nothing wrong
+     *
+     * @param array $upload One entry of $_FILES
+     */
+    public static function fromUpload(array $upload): self
+    {
+        return new self($upload['tmp_name'], static::typeOf($upload));
+    }
+
+    /**
+     * An upload's type, from the file's own bytes: the browser's label could say anything
+     *
+     * @param array $upload One entry of $_FILES
+     */
+    protected static function typeOf(array $upload): string
+    {
+        return (string) mime_content_type($upload['tmp_name']);
     }
 
     /**

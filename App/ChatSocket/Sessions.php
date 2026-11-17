@@ -74,6 +74,6 @@ class Sessions extends \Core\Model
         $stmt->execute($userParams);
         $users = array_flip(array_map(intval(...), $stmt->fetchAll(PDO::FETCH_COLUMN)));
 
-        return array_values(array_filter($sessions, fn ($id) => isset($users[$userIdsBySession[$id]])));
+        return array_values(array_filter($sessions, fn (string $sessionId): bool => isset($users[$userIdsBySession[$sessionId]])));
     }
 }

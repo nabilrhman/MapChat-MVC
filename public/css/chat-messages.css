@@ -1,0 +1,255 @@
+/* The messages in the chat panel (App/chat.html), the day between them,
+   and the @mentions in them */
+
+.chat
+{
+    /* Avatar at the start, the message after it; a hairline between cards */
+    display: grid;
+    grid-template-columns: 36px 1fr;
+    column-gap: 12px;
+    padding: 12px 16px;
+    border-block-end: 1px solid var(--hairline);
+    background-color: var(--chat-surface);
+    transition: background-color var(--dur-fast) var(--ease-out);
+
+    /* A message in another tab (chat.js); the grid above would beat [hidden] */
+    &[hidden]
+    {
+        display: none;
+    }
+
+    /* A message from the poll eases in (see App/chat.html) */
+    &.is-entering
+    {
+        animation: fade-in-up var(--dur) var(--ease-out) backwards;
+    }
+
+    &:hover
+    {
+        background-color: var(--md-surface-container-lowest);
+    }
+}
+
+/* A message that @mentions you: a lavender tint and a thin purple edge, on
+   the left as a box-shadow has no logical sides */
+.chat.mentions-me
+{
+    background-color: color-mix(in srgb, var(--md-primary-container) 55%, var(--chat-surface));
+    box-shadow: inset 2px 0 0 var(--md-primary);
+
+    &:hover
+    {
+        background-color: color-mix(in srgb, var(--md-primary-container) 70%, var(--md-surface-container-lowest));
+    }
+}
+
+/* Bounded at .mention: an @mention chip sits in a message's text and is its
+   own component. Not at .line-swap, which is a message's .time and .city */
+@scope (.chat) to (.mention)
+{
+    /* Buttons drawn as the text they hold; the rules below give each its look */
+    .name-button,
+    .city
+    {
+        margin: 0;
+        padding: 0;
+        border: none;
+        background: none;
+        color: inherit;
+        font: inherit;
+        letter-spacing: inherit;
+        text-align: inherit;
+        text-shadow: inherit;
+        text-transform: inherit;
+    }
+
+    .avatar
+    {
+        width: 36px;
+        height: 36px;
+        /* A soft circle while an uploaded photo loads; the photo then fades in
+           (see fadeInPhotos in dom.js) */
+        border-radius: 50%;
+
+        &.is-loading
+        {
+            background-color: var(--lavender);
+        }
+
+        &.is-loading .photo
+        {
+            opacity: 0;
+        }
+    }
+
+    .photo
+    {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        object-fit: cover;
+        display: block;
+        transition: opacity var(--dur) var(--ease-out);
+    }
+
+    .content
+    {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: baseline;
+        min-width: 0;
+    }
+
+    .name
+    {
+        margin: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap; /* a long name is cut short before the time */
+        font-size: 13px;
+        line-height: 1.4;
+        font-weight: 600;
+    }
+
+    /* Someone you can chat with privately: their name opens that chat */
+    .name-button
+    {
+        display: block;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        cursor: pointer;
+
+        &:hover
+        {
+            color: var(--md-primary);
+        }
+    }
+
+    .body
+    {
+        grid-column: 1 / -1;
+        margin: 2px 0 0;
+        font-size: 13px;
+        line-height: 20px;
+        text-align: start;
+        overflow-wrap: anywhere;
+        white-space: pre-line; /* keep line breaks people typed */
+    }
+
+    .location
+    {
+        grid-column: 1 / -1;
+        display: flex;
+        justify-content: flex-end; /* bottom right corner, under the time */
+        margin-block-start: 2px;
+        color: var(--purple-soft);
+        font-size: 11px;
+        line-height: 16px;
+    }
+
+    /* The place, as a button: just the text, which reveals on hover */
+    .city
+    {
+        cursor: default;
+    }
+
+    /* A sender with a pin on the map: clicking the city brings it to the
+       middle. Two classes, to win over .line-swap's own cursor */
+    .location .is-on-map
+    {
+        cursor: pointer;
+    }
+
+    .sender-time
+    {
+        color: var(--text-muted);
+    }
+
+    /* Smaller than flag-icons' default, to sit with 11px text */
+    .location .fi
+    {
+        width: 12px;
+        height: 9px;
+        line-height: 9px;
+    }
+
+    .place-icon
+    {
+        font-size: 13px;
+    }
+
+    /* Sun or moon: day or night where the sender was */
+    .daylight
+    {
+        font-size: 13px;
+        line-height: 1;
+
+        &.day
+        {
+            color: var(--daylight-day);
+        }
+
+        &.night
+        {
+            color: var(--daylight-night);
+        }
+    }
+
+    .time
+    {
+        align-self: center; /* level with the name beside it */
+        padding-inline-start: 8px;
+        color: var(--text-faint);
+        font-size: 11px;
+        line-height: 16px;
+        text-align: end;
+    }
+}
+
+/* "Today", "Yesterday" or a date, between messages from different days */
+.day-divider
+{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 16px;
+    border-block-end: 1px solid var(--hairline);
+    background-color: var(--day-divider-surface);
+}
+
+@scope (.day-divider)
+{
+    .label
+    {
+        color: var(--purple-deep);
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        line-height: 16px;
+    }
+}
+
+/* An @mention: purple text on a faint tint, the same weight and size as
+   the words around it, so it looks exactly the same in the message box,
+   where the text can't get any wider. A chip that wraps onto the next
+   line keeps its padding on both lines */
+.mention
+{
+    padding: 1px 3px;
+    border-radius: 4px;
+    background-color: color-mix(in srgb, var(--md-primary) var(--md-hover), transparent);
+    color: var(--md-primary);
+    font-weight: 400;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+}
+
+/* Your own name stands out with a stronger tint; the text keeps the same
+   colour, so it's no heavier than the others */
+.mention.me
+{
+    background-color: var(--md-primary-container);
+}

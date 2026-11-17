@@ -1,0 +1,9 @@
+{# Three dots that pulse while something loads. With a label they're a
+   status a screen reader reads out; without one, decoration #}
+{% macro loading_dots(dots = {}) %}
+{% types {dots: 'array'} %}
+<span class="loading-dots{% if dots.class is defined %} {{ dots.class }}{% endif %}"
+      {%- if dots.id is defined %} id="{{ dots.id }}"{% endif %}
+      {%- if dots.label is defined %} role="status" aria-label="{{ dots.label }}"{% else %} aria-hidden="true"{% endif %}
+      {%- if dots.hidden ?? false %} hidden{% endif %}><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+{%- endmacro %}

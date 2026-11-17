@@ -5,10 +5,12 @@ namespace App\Controllers;
 use App\Auth;
 use App\Config;
 use App\Groq;
+use App\MessagesForReader;
 use App\VoiceClip;
 use Core\View;
 use App\Models\Bot;
 use App\Models\Chat;
+use App\Models\Conversation;
 use App\Models\DemoChat;
 use App\Models\UserInfo;
 
@@ -28,10 +30,10 @@ class App extends Authenticated
         Bot::onArrival(Auth::getEmail());
 
         $chats = Chat::getRecent(Auth::getEmail());
-        $lastChatId = $chats ? (int) end($chats)['id'] : 0;
+        $lastChatId = $chats ? end($chats)['id'] : 0;
 
         View::renderTemplate('App/index.html', [
-            'chats' => $chats,
+            'chats' => MessagesForReader::rowsOf($chats, Auth::getUser()),
             'last_chat_id' => $lastChatId,
             'conversations' => Chat::getConversations(Auth::getEmail(), $lastChatId),
             'build_id' => Config::buildId(),
@@ -62,7 +64,7 @@ class App extends Authenticated
 
         if ($chats) {
             View::renderTemplate('App/chat.html', [
-                'chats' => $chats
+                'chats' => MessagesForReader::rowsOf($chats, Auth::getUser()),
             ]);
         }
     }
@@ -74,14 +76,15 @@ class App extends Authenticated
      */
     public function getOlderAction(): void
     {
-        $conversation = isset($_POST['conversation']) ? (string) $_POST['conversation'] : null;
+        // A page from before tabs loaded their own sends none, and gets all it may see
+        $conversation = Conversation::fromPageName((string) ($_POST['conversation'] ?? ''));
         $chats = Chat::getOlder(Auth::getEmail(), $conversation, (int) ($_POST['before'] ?? 0));
 
         if ($chats) {
             // Older messages appear at once, without the new-message ease-in
             View::renderTemplate('App/chat.html', [
-                'chats' => $chats,
-                'initial' => true
+                'chats' => MessagesForReader::rowsOf($chats, Auth::getUser()),
+                'initial' => true,
             ]);
         }
     }
@@ -111,12 +114,12 @@ class App extends Authenticated
 
         $result = Chat::sendFrom(Auth::getUser(), (string) $_POST['body'], $toUserId, $clientId);
 
-        if (isset($result['error'])) {
-            $this->json(['error' => $result['error']], $result['status']);
+        if (!$result->isSent()) {
+            $this->json(['error' => $result->error], $result->status);
             return;
         }
 
-        $this->json(['id' => $result['id']]);
+        $this->json(['id' => $result->id]);
     }
 
     /**
@@ -130,13 +133,14 @@ class App extends Authenticated
             return;
         }
 
-        $clip = VoiceClip::fromUpload($_FILES['audio'] ?? null);
-        if (is_string($clip)) {
-            $this->json(['error' => $clip], 422);
+        $upload = $_FILES['audio'] ?? null;
+        $problem = VoiceClip::problemWith($upload);
+        if ($problem !== null) {
+            $this->json(['error' => $problem], 422);
             return;
         }
 
-        $text = Groq::transcribe($clip);
+        $text = Groq::transcribe(VoiceClip::fromUpload($upload));
         if ($text === null) {
             // voice.js hears this and has the browser listen instead
             $this->json(['error' => 'Voice typing is busy.'], 503);

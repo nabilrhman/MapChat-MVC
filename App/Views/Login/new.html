@@ -1,6 +1,8 @@
 {% extends 'base_login.html' %}
+{# The login page: email and password, Google, or a guest account (Login::newAction) #}
 {% from '_form_fields.html' import text_field %}
-{% types {email?: 'string', remember_me?: 'bool'} %}
+{% from '_loading_dots.html' import loading_dots %}
+{% types {email?: 'string', remember_me?: 'bool', is_google_sign_in_on: 'bool', csp_nonce: 'string'} %}
 
 {% block title %}Login{% endblock %}
 
@@ -13,10 +15,10 @@
 
     <form action="/login/create" method="post">
 
-        {{ text_field({id: 'inputEmail', name: 'email', type: 'email', label: 'Email', required: true,
+        {{ text_field({id: 'email-input', name: 'email', type: 'email', label: 'Email', required: true,
                        value: email ?? '', autocomplete: 'email', autofocus: true}) }}
 
-        {{ text_field({id: 'inputPassword', name: 'password', type: 'password', label: 'Password', required: true,
+        {{ text_field({id: 'password-input', name: 'password', type: 'password', label: 'Password', required: true,
                        autocomplete: 'current-password'}) }}
         <a href="/password/forgot" class="forgot">Forgot password?</a>
 
@@ -39,10 +41,10 @@
     </a>
     {% endif %}
 
-    <form action="/login/guest" method="post" id="guestForm">
-        <button type="submit" class="button outline full-width action">
+    <form action="/login/guest" method="post" id="guest-form">
+        <button type="submit" class="button outline full-width action" id="guest-button">
             <span class="label">Try it as a guest</span>
-            <span class="loading-dots dots" aria-hidden="true"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+            {{ loading_dots({class: 'dots'}) }}
         </button>
     </form>
 

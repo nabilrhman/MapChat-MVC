@@ -1,14 +1,14 @@
 // The profile page. The server's values come from data attributes (see
 // Profile/show.html)
 
-const profileForm = document.getElementById('formProfile');
+const profileForm = document.getElementById('profile-form');
 const ownUserId = profileForm.dataset.userId;
 const isGuest = profileForm.dataset.guest === 'true';
 
-const nameInput = document.getElementById('inputName');
-const nicknameInput = document.getElementById('inputNickname');
-const emailInput = document.getElementById('inputEmail');
-const passwordInput = document.getElementById('inputPassword');
+const nameInput = document.getElementById('name-input');
+const nicknameInput = document.getElementById('nickname-input');
+const emailInput = document.getElementById('email-input');
+const passwordInput = document.getElementById('password-input');
 const currentPasswordField = document.getElementById('current-password');
 
 /* Privacy: saves as soon as it's switched */
@@ -58,16 +58,24 @@ showNotificationsState();
 keepPushUpToDate();
 
 // Changed in the browser's site settings while this page is open
-navigator.permissions?.query({name: 'notifications'}).then((permission) => {
-    permission.addEventListener('change', () => {
+async function followNotificationsPermission() {
+    let permission;
+    try {
+        permission = await navigator.permissions?.query({name: 'notifications'});
+    } catch {
+        // Some browsers can't be asked about notifications; the page shows it as it was
+        return;
+    }
+    permission?.addEventListener('change', () => {
         showNotificationsState();
         keepPushUpToDate();
     });
-}).catch(() => {});
+}
+followNotificationsPermission();
 
 notificationsSwitch.addEventListener('change', async () => {
     if (!notificationsSwitch.checked) {
-        turnNotificationsOff();
+        await turnNotificationsOff();
         showToast('Notifications are off', 'info');
         return;
     }
@@ -180,7 +188,7 @@ function startEditing(card) {
 
 // Back to the saved values and out of edit mode
 function stopEditing(card) {
-    card.querySelectorAll('input').forEach((input) => {
+    card.querySelectorAll('[data-part="field-input"]').forEach((input) => {
         input.value = savedValues.get(input) ?? '';
     });
     formChecks.clearProblems(card);
@@ -192,7 +200,7 @@ document.querySelectorAll('[data-part="edit"]').forEach((editButton) => {
     editButton.addEventListener('click', () => {
         const card = editButton.closest('[data-part="settings-card"]');
         startEditing(card);
-        card.querySelector('[data-part="fields"] input').focus();
+        card.querySelector('[data-part="fields"] [data-part="field-input"]').focus();
     });
 });
 
@@ -215,7 +223,7 @@ let isSaving = false;
 profileForm.addEventListener('submit', (event) => {
     if (event.defaultPrevented) return;
     isSaving = true;
-    profileForm.querySelectorAll('button[type=submit]').forEach((saveButton) => {
+    profileForm.querySelectorAll('[data-part="save"]').forEach((saveButton) => {
         saveButton.disabled = true;
         saveButton.textContent = 'Saving…';
     });
@@ -238,5 +246,5 @@ document.getElementById('delete-profile').addEventListener('click', () => {
 
 // Closed with Cancel or Escape, so a typed password doesn't wait there for the next opening
 deleteProfileDialog.addEventListener('close', () => {
-    deleteProfileDialog.querySelector('form').reset();
+    document.getElementById('delete-profile-form').reset();
 });

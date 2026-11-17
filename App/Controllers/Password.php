@@ -28,7 +28,7 @@ class Password extends \Core\Controller
     public function requestResetAction(): void
     {
         // Every email would fail, so it's said for every address alike
-        if (!Config::mailEnabled()) {
+        if (!Config::isMailEnabled()) {
             Flash::addMessage("This site can't send email, so passwords can't be reset here.", Flash::WARNING);
             $this->redirect('/password/forgot');
         }

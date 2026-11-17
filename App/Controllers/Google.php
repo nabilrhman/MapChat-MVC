@@ -48,17 +48,17 @@ class Google extends \Core\Controller
 
         // Someone who pressed Cancel at Google comes back with an error
         if (isset($_GET['error'])) {
-            $this->refuse('Google sign-in was cancelled.');
+            $this->refuse('Google sign-in was cancelled.', '/login');
         }
 
         $isThisBrowsersSignIn = is_array($signIn) && hash_equals($signIn['state'], (string) ($_GET['state'] ?? ''));
         if (!$isThisBrowsersSignIn) {
-            $this->refuse("That Google sign-in didn't come from this browser. Please try again.");
+            $this->refuse("That Google sign-in didn't come from this browser. Please try again.", '/login');
         }
 
         $google = GoogleSignIn::fetchAccount((string) ($_GET['code'] ?? ''), $signIn['code_verifier'], $signIn['nonce']);
         if (!$google) {
-            $this->refuse("We couldn't sign you in with Google. Please try again.");
+            $this->refuse("We couldn't sign you in with Google. Please try again.", '/login');
         }
 
         $user = User::signInWithGoogle($google);
@@ -69,16 +69,5 @@ class Google extends \Core\Controller
         UserInfo::locate($user->email, UserInfo::getRealIP());
 
         $this->redirect(Auth::getReturnToPage());
-    }
-
-    /**
-     * Say why the sign-in didn't happen, on the login page
-     *
-     * @param string $message A full sentence
-     */
-    protected function refuse(string $message): never
-    {
-        Flash::addMessage($message, Flash::WARNING);
-        $this->redirect('/login');
     }
 }

@@ -23,8 +23,7 @@ class ChatTest extends TestCase
         $this->db->beginTransaction();
 
         foreach ([self::ANN, self::BOB, self::CAT] as $email) {
-            $this->db->prepare("INSERT INTO users (name, email, password_hash, is_active) VALUES (?, ?, '!', TRUE)")
-                ->execute([strtok($email, '@'), $email]);
+            TestDb::createUser(strtok($email, '@'), $email);
             $this->db->prepare("INSERT INTO userinfo (email, ip, lat, lng, city, country) VALUES (?, '8.8.8.8', 1, 2, 'Dhaka', 'BD')")
                 ->execute([$email]);
         }
@@ -53,14 +52,14 @@ class ChatTest extends TestCase
         return array_values(array_column($ours, 'body'));
     }
 
-    public function testEveryoneSeesTheOpenRoom()
+    public function testEveryoneSeesTheOpenRoom(): void
     {
         $this->send(self::ANN, 'hello all');
 
         $this->assertSame(['hello all'], $this->bodies(Chat::getRecent(self::BOB)));
     }
 
-    public function testPrivateMessageOnlyReachesSenderAndRecipient()
+    public function testPrivateMessageOnlyReachesSenderAndRecipient(): void
     {
         $this->send(self::ANN, 'just for bob', self::BOB);
 
@@ -69,7 +68,7 @@ class ChatTest extends TestCase
         $this->assertSame([], $this->bodies(Chat::getRecent(self::CAT)));
     }
 
-    public function testRecentIsOldestFirst()
+    public function testRecentIsOldestFirst(): void
     {
         $this->send(self::ANN, 'first');
         $this->send(self::BOB, 'second', self::ANN);
@@ -78,7 +77,7 @@ class ChatTest extends TestCase
         $this->assertSame(['first', 'second', 'third'], $this->bodies(Chat::getRecent(self::ANN)));
     }
 
-    public function testRecentKeepsOnlyTheNewest()
+    public function testRecentKeepsOnlyTheNewest(): void
     {
         $values = implode(',', array_fill(0, Chat::HISTORY + 5, "('" . self::ANN . "', 'm')"));
         $this->db->exec("INSERT INTO chats (email, body) VALUES $values");
@@ -90,7 +89,7 @@ class ChatTest extends TestCase
         $this->assertSame($last, (int) end($chats)['id']);
     }
 
-    public function testRecentMixesOpenAndPrivateByAge()
+    public function testRecentMixesOpenAndPrivateByAge(): void
     {
         // Lots of newer open-room messages must not hide an older private one
         // past the limit, nor let it jump ahead of them
@@ -104,7 +103,7 @@ class ChatTest extends TestCase
         $this->assertNotContains($private, $ids);
     }
 
-    public function testAfterReturnsOnlyNewerVisibleMessages()
+    public function testAfterReturnsOnlyNewerVisibleMessages(): void
     {
         $seen = $this->send(self::ANN, 'already seen');
         $this->send(self::BOB, 'new');
@@ -149,7 +148,7 @@ class ChatTest extends TestCase
         $this->db->exec("INSERT INTO chats (email, to_email, body) VALUES $values");
     }
 
-    public function testAfterReachesAnIdleViewerOnceOthersHaveChattedPrivately()
+    public function testAfterReachesAnIdleViewerOnceOthersHaveChattedPrivately(): void
     {
         $cursor = $this->send(self::ANN, 'already seen');
         $this->sendMany(self::BOB, 300, self::CAT);
@@ -165,7 +164,7 @@ class ChatTest extends TestCase
         $this->assertSame([$forAnn], $this->poll(self::ANN, $cursor));
     }
 
-    public function testAfterDoesNotReadOtherPeoplesPrivateMessages()
+    public function testAfterDoesNotReadOtherPeoplesPrivateMessages(): void
     {
         // With a long open-room history MySQL reads every newer message in id
         // order rather than merge the indexes; with a short one this test
@@ -180,7 +179,7 @@ class ChatTest extends TestCase
         $this->assertLessThan(50, $this->rowsRead() - $before);
     }
 
-    public function testAfterPagesThroughABacklogWithoutGapsOrRepeats()
+    public function testAfterPagesThroughABacklogWithoutGapsOrRepeats(): void
     {
         $cursor = $this->send(self::ANN, 'already seen');
         $expected = [];
@@ -207,7 +206,7 @@ class ChatTest extends TestCase
         $this->assertSame($expected, $shown);
     }
 
-    public function testOverlappingPollsShowEachMessageOnce()
+    public function testOverlappingPollsShowEachMessageOnce(): void
     {
         $cursor = $this->send(self::ANN, 'already seen');
         $this->sendMany(self::BOB, Chat::HISTORY + 20);
@@ -230,7 +229,7 @@ class ChatTest extends TestCase
         $this->assertSame($sorted, $shown);
     }
 
-    public function testBeforeReturnsOnlyOlderVisibleMessagesOldestFirst()
+    public function testBeforeReturnsOnlyOlderVisibleMessagesOldestFirst(): void
     {
         $this->send(self::ANN, 'old');
         $this->send(self::BOB, 'for cat only', self::CAT);
@@ -242,7 +241,7 @@ class ChatTest extends TestCase
         $this->assertSame(['old', 'for ann'], $this->bodies(Chat::getBefore(self::ANN, $first)));
     }
 
-    public function testBeforeKeepsOnlyThePageJustBefore()
+    public function testBeforeKeepsOnlyThePageJustBefore(): void
     {
         $oldest = $this->send(self::ANN, 'too old');
         $values = implode(',', array_fill(0, Chat::HISTORY, "('" . self::BOB . "', 'm')"));
@@ -256,7 +255,7 @@ class ChatTest extends TestCase
         $this->assertSame($first - 1, end($ids));
     }
 
-    public function testHiddenLocationIsNotSent()
+    public function testHiddenLocationIsNotSent(): void
     {
         $this->db->prepare('UPDATE users SET share_location = FALSE WHERE email = ?')->execute([self::ANN]);
         $this->send(self::ANN, 'where am i');
@@ -269,7 +268,7 @@ class ChatTest extends TestCase
         $this->assertSame('Dhaka', $chats['here']['city']);
     }
 
-    public function testBodyIsStoredAsTyped()
+    public function testBodyIsStoredAsTyped(): void
     {
         // Escaping happens in the template, not before saving
         $this->send(self::ANN, '<b>hi</b> & bye');
@@ -277,7 +276,7 @@ class ChatTest extends TestCase
         $this->assertSame(['<b>hi</b> & bye'], $this->bodies(Chat::getRecent(self::ANN)));
     }
 
-    public function testCountRecentOnlyCountsTheSendersRecentMessages()
+    public function testCountRecentOnlyCountsTheSendersRecentMessages(): void
     {
         $this->send(self::ANN, 'one');
         $this->send(self::ANN, 'two', self::BOB);
@@ -312,7 +311,7 @@ class ChatTest extends TestCase
         return $conversations;
     }
 
-    public function testConversationsCountUnreadPerPartner()
+    public function testConversationsCountUnreadPerPartner(): void
     {
         $this->send(self::ANN, 'one', self::BOB);
         $annNewest = $this->send(self::ANN, 'two', self::BOB);
@@ -322,7 +321,7 @@ class ChatTest extends TestCase
         $this->assertSame(['cat' => [1, $catNewest], 'ann' => [2, $annNewest]], $this->conversations(self::BOB));
     }
 
-    public function testConversationsIncludeOnesYouStartedWithNothingUnread()
+    public function testConversationsIncludeOnesYouStartedWithNothingUnread(): void
     {
         $sent = $this->send(self::ANN, 'for cat', self::CAT);
 
@@ -330,7 +329,7 @@ class ChatTest extends TestCase
         $this->assertSame([], $this->conversations(self::BOB));
     }
 
-    public function testConversationsIncludeOnesPushedOutOfTheNewestPage()
+    public function testConversationsIncludeOnesPushedOutOfTheNewestPage(): void
     {
         $private = $this->send(self::ANN, 'before the rush', self::BOB);
         for ($i = 0; $i < Chat::HISTORY; $i++) {
@@ -341,7 +340,7 @@ class ChatTest extends TestCase
         $this->assertSame(['ann' => [1, $private]], $this->conversations(self::BOB));
     }
 
-    public function testConversationsLeaveOutMessagesNewerThanThePage()
+    public function testConversationsLeaveOutMessagesNewerThanThePage(): void
     {
         $first = $this->send(self::ANN, 'on the page', self::BOB);
         $this->send(self::ANN, 'after the page', self::BOB);
@@ -349,7 +348,7 @@ class ChatTest extends TestCase
         $this->assertSame(['ann' => [1, $first]], $this->conversations(self::BOB, $first));
     }
 
-    public function testMarkReadOnlyClearsThatSenderUpToTheId()
+    public function testMarkReadOnlyClearsThatSenderUpToTheId(): void
     {
         $this->send(self::ANN, 'one', self::BOB);
         $seen = $this->send(self::ANN, 'two', self::BOB);
@@ -361,7 +360,7 @@ class ChatTest extends TestCase
         $this->assertSame(['cat' => [1, $catMessage], 'ann' => [1, $later]], $this->conversations(self::BOB));
     }
 
-    public function testMarkReadCantClearSomeoneElsesMessages()
+    public function testMarkReadCantClearSomeoneElsesMessages(): void
     {
         $sent = $this->send(self::ANN, 'for cat', self::CAT);
 
@@ -371,7 +370,7 @@ class ChatTest extends TestCase
         $this->assertSame(['ann' => [1, $sent]], $this->conversations(self::CAT));
     }
 
-    public function testMapShowsOnlyPeopleOnline()
+    public function testMapShowsOnlyPeopleOnline(): void
     {
         $this->db->prepare('UPDATE userinfo SET online_at = NOW() WHERE email = ?')->execute([self::ANN]);
         $this->db->prepare('UPDATE userinfo SET online_at = NOW() - INTERVAL 1 HOUR WHERE email = ?')->execute([self::BOB]);
@@ -391,35 +390,36 @@ class ChatTest extends TestCase
         return \App\Models\User::findByEmail($email);
     }
 
-    public function testSendFromWithTheSameClientIdSavesOnce()
+    public function testSendFromWithTheSameClientIdSavesOnce(): void
     {
         $first = Chat::sendFrom($this->user(self::ANN), 'once', $this->userId(self::BOB), 'client-id-1');
         $again = Chat::sendFrom($this->user(self::ANN), 'once', $this->userId(self::BOB), 'client-id-1');
 
-        $this->assertSame($first, $again);
+        $this->assertTrue($first->isSent());
+        $this->assertSame($first->id, $again->id);
         $this->assertSame(['once'], $this->bodies(Chat::getRecent(self::BOB)));
     }
 
-    public function testSendFromKeepsClientIdsPerSender()
+    public function testSendFromKeepsClientIdsPerSender(): void
     {
         $ann = Chat::sendFrom($this->user(self::ANN), 'from ann', null, 'shared-id-1');
         $bob = Chat::sendFrom($this->user(self::BOB), 'from bob', null, 'shared-id-1');
 
-        $this->assertNotSame($ann['id'], $bob['id']);
+        $this->assertNotSame($ann->id, $bob->id);
     }
 
-    public function testSendFromAppliesTheChatsRules()
+    public function testSendFromAppliesTheChatsRules(): void
     {
-        $this->assertSame(400, Chat::sendFrom($this->user(self::ANN), str_repeat('x', Chat::MAX_LENGTH + 1))['status']);
-        $this->assertSame(400, Chat::sendFrom($this->user(self::ANN), '   ')['status']);
-        $this->assertSame(400, Chat::sendFrom($this->user(self::ANN), 'to me', $this->userId(self::ANN))['status']);
-        $this->assertSame(400, Chat::sendFrom($this->user(self::ANN), 'bad id', null, 'not a valid id!')['status']);
+        $this->assertSame(400, Chat::sendFrom($this->user(self::ANN), str_repeat('x', Chat::MAX_LENGTH + 1))->status);
+        $this->assertSame(400, Chat::sendFrom($this->user(self::ANN), '   ')->status);
+        $this->assertSame(400, Chat::sendFrom($this->user(self::ANN), 'to me', $this->userId(self::ANN))->status);
+        $this->assertSame(400, Chat::sendFrom($this->user(self::ANN), 'bad id', null, 'not a valid id!')->status);
 
         $this->sendMany(self::ANN, Chat::USER_PER_MINUTE);
-        $this->assertSame(429, Chat::sendFrom($this->user(self::ANN), 'one too many')['status']);
+        $this->assertSame(429, Chat::sendFrom($this->user(self::ANN), 'one too many')->status);
     }
 
-    public function testAfterStopsAtTheGivenId()
+    public function testAfterStopsAtTheGivenId(): void
     {
         $start = $this->send(self::ANN, 'start');
         $upTo = $this->send(self::BOB, 'included');
@@ -428,7 +428,7 @@ class ChatTest extends TestCase
         $this->assertSame(['included'], $this->bodies(Chat::getAfter(self::ANN, $start, $upTo)));
     }
 
-    public function testPrivateBeforeReadsOnlyThatChat()
+    public function testPrivateBeforeReadsOnlyThatChat(): void
     {
         $this->send(self::ANN, 'ann to bob', self::BOB);
         $this->send(self::BOB, 'bob to ann', self::ANN);
@@ -439,7 +439,7 @@ class ChatTest extends TestCase
         $this->assertSame(['ann to bob', 'bob to ann'], $this->bodies(Chat::getPrivateBefore(self::BOB, $this->userId(self::ANN), PHP_INT_MAX)));
     }
 
-    public function testRoomBeforeLeavesOutPrivateMessages()
+    public function testRoomBeforeLeavesOutPrivateMessages(): void
     {
         $this->send(self::ANN, 'room one');
         $this->send(self::ANN, 'private', self::BOB);

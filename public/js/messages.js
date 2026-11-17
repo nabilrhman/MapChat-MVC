@@ -56,8 +56,6 @@ let failedSend = null;
 const olderRequests = new Map();
 let nextRequestId = 1;
 
-const isChatSocketLive = () => isSocketLive;
-
 /* Showing what arrives */
 
 // Hands chat.js the messages newer than any shown

@@ -47,7 +47,7 @@ class Signup extends \Core\Controller
      */
     protected function sendActivation(User $user): void
     {
-        if (!Config::mailEnabled()) {
+        if (!Config::isMailEnabled()) {
             $this->redirect('/signup/activated');
         }
 

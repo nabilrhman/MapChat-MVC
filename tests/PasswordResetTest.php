@@ -8,8 +8,8 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * Emailing a password reset link: a failed send says so, but only for an
- * account that exists, so the answer never tells which emails have one.
- * Each test runs in a transaction that is rolled back
+ * account that exists, so the answer never tells which emails have one;
+ * each test runs in a transaction that is rolled back
  */
 class PasswordResetTest extends TestCase
 {
@@ -22,8 +22,7 @@ class PasswordResetTest extends TestCase
     {
         $this->db = TestDb::get();
         $this->db->beginTransaction();
-        $this->db->prepare("INSERT INTO users (name, email, password_hash, is_active) VALUES ('Ann', ?, '!', TRUE)")
-            ->execute([self::ANN]);
+        TestDb::createUser('Ann', self::ANN);
 
         $this->dsnBefore = getenv('MAILER_DSN');
     }
@@ -50,18 +49,18 @@ class PasswordResetTest extends TestCase
         }
     }
 
-    public function testASentEmailIsAnsweredAsSent()
+    public function testASentEmailIsAnsweredAsSent(): void
     {
         $this->assertTrue($this->requestReset('null://null', self::ANN));
         $this->assertNotNull(User::findByEmail(self::ANN)->password_reset_hash);
     }
 
-    public function testAFailedSendIsAnsweredAsFailed()
+    public function testAFailedSendIsAnsweredAsFailed(): void
     {
         $this->assertFalse($this->requestReset('nope://user:pass@default', self::ANN));
     }
 
-    public function testAnUnknownEmailIsAnsweredLikeASentOne()
+    public function testAnUnknownEmailIsAnsweredLikeASentOne(): void
     {
         $this->assertTrue($this->requestReset('nope://user:pass@default', 'nobody@test.local'));
     }

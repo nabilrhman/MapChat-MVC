@@ -12,23 +12,23 @@ use PHPUnit\Framework\TestCase;
  */
 class ViewsTest extends TestCase
 {
-    public function testARefusedSignupShowsEachProblemUnderItsField()
+    public function testARefusedSignupShowsEachProblemUnderItsField(): void
     {
         $user = new User(['name' => '', 'email' => 'not an email', 'password' => 'abc']);
         $user->validate();
 
         $html = View::getTemplate('Signup/new.html', ['user' => $user]);
 
-        $this->assertMatchesRegularExpression('/id="inputName-error">Enter your name\.</', $html);
-        $this->assertMatchesRegularExpression('/id="inputEmail-error">Enter a valid email\.</', $html);
+        $this->assertMatchesRegularExpression('/id="name-input-error">Enter your name\.</', $html);
+        $this->assertMatchesRegularExpression('/id="email-input-error">Enter a valid email\.</', $html);
         $this->assertMatchesRegularExpression(
-            '/id="inputPassword-error">Use 6 or more characters, with a letter and a number\.</',
+            '/id="password-input-error">Use 6 or more characters, with a letter and a number\.</',
             $html
         );
         $this->assertStringNotContainsString('Name:', $html);
     }
 
-    public function testTheAccountPagesAndEmailsRender()
+    public function testTheAccountPagesAndEmailsRender(): void
     {
         $pages = [
             'Signup/new.html' => [],

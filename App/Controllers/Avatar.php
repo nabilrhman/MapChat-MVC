@@ -2,7 +2,7 @@
 
 namespace App\Controllers;
 
-use App\Models\DemoChat;
+use App\Models\Characters;
 use App\Models\User;
 
 /**
@@ -24,6 +24,6 @@ class Avatar extends Authenticated
         header('Content-Type: image/svg+xml');
         // The URL carries the name, so a renamed user gets a fresh image
         header('Cache-Control: private, max-age=86400');
-        echo \App\Avatar::drawn($user->id, $user->name, DemoChat::isDemoEmail($user->email));
+        echo \App\Avatar::drawn($user->id, $user->name, Characters::isDemo($user->email));
     }
 }

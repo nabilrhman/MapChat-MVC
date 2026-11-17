@@ -8,7 +8,9 @@ use Amp\Websocket\Server\WebsocketClientHandler;
 use Amp\Websocket\WebsocketClient;
 use App\Config;
 use App\Mention;
+use App\MessagesForReader;
 use App\Models\Chat;
+use App\Models\Conversation;
 use App\Models\User;
 use App\Models\UserInfo;
 use Core\DatabaseSessionHandler;
@@ -168,11 +170,10 @@ class Hub implements WebsocketClientHandler
             if (!$speaker) {
                 return;
             }
-            foreach ($this->tabsByEmail[$typing['to']] ?? [] as $tab) {
-                if ($tab->hasSaidHello) {
-                    $tab->send(['type' => 'typing', 'from' => $speaker->id, 'isTyping' => $typing['isTyping']]);
-                }
-            }
+            $this->sendToTabs(
+                $this->tabsByEmail[$typing['to']] ?? [],
+                ['type' => MessageToPage::Typing, 'from' => $speaker->id, 'isTyping' => $typing['isTyping']]
+            );
         });
     }
 
@@ -252,22 +253,22 @@ class Hub implements WebsocketClientHandler
     private function receive(Tab $tab, string $text): void
     {
         $message = json_decode($text, true);
-        $type = is_array($message) ? ($message['type'] ?? null) : null;
+        $typeName = is_array($message) ? ($message['type'] ?? null) : null;
+        $type = is_string($typeName) ? MessageFromPage::tryFrom($typeName) : null;
 
-        if (!is_string($type) || (!$tab->hasSaidHello && !in_array($type, ['hello', 'ping'], true))) {
+        if ($type === null || (!$tab->hasSaidHello && !$type->isAllowedBeforeHello())) {
             $tab->close(1008, 'Bad message');
             return;
         }
 
         try {
             $isValid = match ($type) {
-                'hello' => $this->sayHello($tab, $message),
-                'send' => $this->sendMessage($tab, $message),
-                'read' => $this->markRead($tab, $message),
-                'older' => $this->sendOlder($tab, $message),
-                'typing' => $this->passOnTyping($tab, $message),
-                'ping' => $this->answerPing($tab),
-                default => false,
+                MessageFromPage::Hello => $this->sayHello($tab, $message),
+                MessageFromPage::Send => $this->sendMessage($tab, $message),
+                MessageFromPage::Read => $this->markRead($tab, $message),
+                MessageFromPage::Older => $this->sendOlder($tab, $message),
+                MessageFromPage::Typing => $this->passOnTyping($tab, $message),
+                MessageFromPage::Ping => $this->answerPing($tab),
             };
         } catch (\PDOException $e) {
             // The page reconnects and sends again; a send it repeats isn't saved twice
@@ -303,7 +304,7 @@ class Hub implements WebsocketClientHandler
         if ($this->isPresenceQueued) {
             $this->updatePresence();
         }
-        $tab->send(['type' => 'welcome', 'build' => Config::buildId(), 'people' => $this->getPeopleList()]);
+        $tab->send(['type' => MessageToPage::Welcome, 'build' => Config::buildId(), 'people' => $this->getPeopleList()]);
 
         async(fn () => $this->catchUp($tab));
 
@@ -328,8 +329,8 @@ class Hub implements WebsocketClientHandler
             }
 
             if ($chats) {
-                $tab->send(['type' => 'chats', 'html' => $this->render($chats, $tab->user, Mention::namesIn($chats))]);
-                $tab->moveCursorTo((int) end($chats)['id']);
+                $tab->send(['type' => MessageToPage::Chats, 'html' => $this->render($chats, $tab->user, Mention::namesIn($chats))]);
+                $tab->moveCursorTo(end($chats)['id']);
             }
 
             if (count($chats) < Chat::HISTORY) {
@@ -373,12 +374,12 @@ class Hub implements WebsocketClientHandler
 
         $result = Chat::sendFrom($tab->user, $body, $to, $clientId);
 
-        if (isset($result['error'])) {
-            $tab->send(['type' => 'refused', 'clientId' => $clientId, 'status' => $result['status'], 'error' => $result['error']]);
+        if (!$result->isSent()) {
+            $tab->send(['type' => MessageToPage::Refused, 'clientId' => $clientId, 'status' => $result->status, 'error' => $result->error]);
             return true;
         }
 
-        $tab->send(['type' => 'sent', 'clientId' => $clientId, 'id' => $result['id']]);
+        $tab->send(['type' => MessageToPage::Sent, 'clientId' => $clientId, 'id' => $result->id]);
         $this->readNewMessages();
 
         return true;
@@ -402,11 +403,11 @@ class Hub implements WebsocketClientHandler
 
         Chat::markRead($tab->user->email, $from, $upTo);
 
-        foreach ($this->tabsByEmail[$tab->user->email] ?? [] as $otherTab) {
-            if ($otherTab !== $tab && $otherTab->hasSaidHello) {
-                $otherTab->send(['type' => 'read', 'conversation' => (string) $from, 'upTo' => $upTo]);
-            }
-        }
+        $otherTabs = array_filter($this->tabsByEmail[$tab->user->email] ?? [], fn (Tab $otherTab): bool => $otherTab !== $tab);
+        $this->sendToTabs(
+            $otherTabs,
+            ['type' => MessageToPage::Read, 'conversation' => Conversation::with($from)->pageName(), 'upTo' => $upTo]
+        );
 
         return true;
     }
@@ -422,14 +423,14 @@ class Hub implements WebsocketClientHandler
     {
         $requestId = $message['requestId'] ?? null;
         $before = $message['before'] ?? null;
-        $conversation = (string) ($message['conversation'] ?? '');
-        if (!is_int($requestId) || !is_int($before) || ($conversation !== 'everyone' && !ctype_digit($conversation))) {
+        $conversation = Conversation::fromPageName((string) ($message['conversation'] ?? ''));
+        if (!is_int($requestId) || !is_int($before) || $conversation === null) {
             return false;
         }
 
         $chats = Chat::getOlder($tab->user->email, $conversation, $before);
         $html = $chats ? $this->render($chats, $tab->user, Mention::namesIn($chats), isHistory: true) : '';
-        $tab->send(['type' => 'older', 'requestId' => $requestId, 'html' => $html, 'count' => count($chats)]);
+        $tab->send(['type' => MessageToPage::Older, 'requestId' => $requestId, 'html' => $html, 'count' => count($chats)]);
 
         return true;
     }
@@ -461,7 +462,7 @@ class Hub implements WebsocketClientHandler
         }
 
         if ($tab->noteTyping($to)) {
-            $this->sendToUser($to, ['type' => 'typing', 'from' => $tab->user->id, 'isTyping' => true]);
+            $this->sendToUser($to, ['type' => MessageToPage::Typing, 'from' => $tab->user->id, 'isTyping' => true]);
         }
 
         return true;
@@ -474,7 +475,7 @@ class Hub implements WebsocketClientHandler
      */
     private function answerPing(Tab $tab): bool
     {
-        $tab->send(['type' => 'pong']);
+        $tab->send(['type' => MessageToPage::Pong]);
 
         return true;
     }
@@ -486,7 +487,7 @@ class Hub implements WebsocketClientHandler
     {
         $wasTypingTo = $tab->stopTyping();
         if ($wasTypingTo !== null) {
-            $this->sendToUser($wasTypingTo, ['type' => 'typing', 'from' => $tab->user->id, 'isTyping' => false]);
+            $this->sendToUser($wasTypingTo, ['type' => MessageToPage::Typing, 'from' => $tab->user->id, 'isTyping' => false]);
         }
     }
 
@@ -509,8 +510,20 @@ class Hub implements WebsocketClientHandler
      */
     private function sendToUser(int $userId, array $message): void
     {
-        foreach ($this->tabs as $tab) {
-            if ($tab->user->id === $userId && $tab->hasSaidHello) {
+        $this->sendToTabs(array_filter($this->tabs, fn (Tab $tab): bool => $tab->user->id === $userId), $message);
+    }
+
+    /**
+     * Send a message to each of these pages that said hello; the rest
+     * aren't ready for it
+     *
+     * @param Tab[] $tabs
+     * @param array<string, mixed> $message
+     */
+    private function sendToTabs(array $tabs, array $message): void
+    {
+        foreach ($tabs as $tab) {
+            if ($tab->hasSaidHello) {
                 $tab->send($message);
             }
         }
@@ -543,7 +556,7 @@ class Hub implements WebsocketClientHandler
                 : ($this->tabsByEmail[$chat['email']] ?? []) + ($this->tabsByEmail[$chat['to_email']] ?? []);
 
             foreach ($readers as $tab) {
-                if ($tab->isLive && (int) $chat['id'] > $tab->cursor) {
+                if ($tab->isLive && $chat['id'] > $tab->cursor) {
                     $chatsByTab[$tab->getId()][] = $chat;
                 }
             }
@@ -563,7 +576,7 @@ class Hub implements WebsocketClientHandler
         $mentionNames = Mention::namesIn($chats);
         foreach ($chatsByTab as $tabId => $tabChats) {
             $tab = $this->tabs[$tabId];
-            $tab->send(['type' => 'chats', 'html' => $this->render($tabChats, $tab->user, $mentionNames)]);
+            $tab->send(['type' => MessageToPage::Chats, 'html' => $this->render($tabChats, $tab->user, $mentionNames)]);
         }
     }
 
@@ -577,7 +590,7 @@ class Hub implements WebsocketClientHandler
     private function render(array $chats, User $reader, array $mentionNames, bool $isHistory = false): string
     {
         return View::getTemplate('App/chat.html', [
-            'chats' => $chats,
+            'chats' => MessagesForReader::rowsOf($chats, $reader),
             'current_user' => $reader,
             'mention_names' => $mentionNames,
             'initial' => $isHistory,
@@ -623,14 +636,14 @@ class Hub implements WebsocketClientHandler
         foreach ($arrived as $email) {
             if (isset($people[$email])) {
                 $this->announced[$email] = $people[$email];
-                $this->sendToAll(['type' => 'presence', 'person' => static::personForPages($people[$email], true)]);
+                $this->sendToTabs($this->tabs, ['type' => MessageToPage::Presence, 'person' => static::personForPages($people[$email], true)]);
             }
         }
         foreach ($left as $email) {
             // A deleted guest has no row any more; the page drops them by id
-            $person = $people[$email] ?? $this->announced[$email] + ['is_deleted' => 1];
+            $person = $people[$email] ?? $this->announced[$email] + ['is_deleted' => true];
             unset($this->announced[$email]);
-            $this->sendToAll(['type' => 'presence', 'person' => static::personForPages($person, false)]);
+            $this->sendToTabs($this->tabs, ['type' => MessageToPage::Presence, 'person' => static::personForPages($person, false)]);
         }
     }
 
@@ -671,23 +684,9 @@ class Hub implements WebsocketClientHandler
     private static function personForPages(array $person, bool $isOnline): array
     {
         unset($person['email']);
-        $person['is_online'] = $isOnline ? 1 : 0;
+        $person['is_online'] = $isOnline;
 
         return $person;
-    }
-
-    /**
-     * Send a message to every page that said hello
-     *
-     * @param array<string, mixed> $message
-     */
-    private function sendToAll(array $message): void
-    {
-        foreach ($this->tabs as $tab) {
-            if ($tab->hasSaidHello) {
-                $tab->send($message);
-            }
-        }
     }
 
     /**
@@ -716,7 +715,7 @@ class Hub implements WebsocketClientHandler
      */
     private function getSessionIds(): array
     {
-        return array_values(array_unique(array_map(fn ($tab) => $tab->sessionId, $this->tabs)));
+        return array_values(array_unique(array_map(fn (Tab $tab): string => $tab->sessionId, $this->tabs)));
     }
 
     /**

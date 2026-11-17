@@ -41,7 +41,42 @@ class Profile extends Authenticated
             'place' => UserInfo::getPlace($this->user->email),
             'default_avatar' => Avatar::src($this->user->id, $this->user->name),
             'are_photo_uploads_on' => Config::arePhotoUploadsOn(),
+            'cloudinary_cloud_name' => Config::cloudinaryCloudName(),
+            'cloudinary_upload_preset' => Config::cloudinaryUploadPreset(),
+            'guest_time_left' => $this->user->is_guest ? $this->guestTimeLeft() : '',
+            'shown_password' => $this->user->hasKnownPassword() ? '••••••••' : 'Not set',
+            'password_field' => $this->passwordField(),
+            'asks_for_current_password' => !$this->user->is_guest && $this->user->hasPassword(),
         ]);
+    }
+
+    /**
+     * How long until the guest account is deleted, in words: "1 hour", "5 hours"
+     */
+    protected function guestTimeLeft(): string
+    {
+        $hoursLeft = $this->user->guestHoursLeft();
+
+        return $hoursLeft === 1 ? '1 hour' : "$hoursLeft hours";
+    }
+
+    /**
+     * The label and hint of the Account card's password field, which
+     * depend on what the account has now
+     *
+     * @return array{label: string, hint: string}
+     */
+    protected function passwordField(): array
+    {
+        if ($this->user->is_guest) {
+            return ['label' => 'Password', 'hint' => 'At least 6 characters, with a letter and a number, to keep your account.'];
+        }
+        // Made by signing in with Google, so there's no current password to ask for
+        if (!$this->user->hasPassword()) {
+            return ['label' => 'Password', 'hint' => 'Set one to log in with your email too.'];
+        }
+
+        return ['label' => 'New password', 'hint' => 'Leave blank to keep your current password.'];
     }
 
     /**
@@ -57,7 +92,7 @@ class Profile extends Authenticated
             // email, but keeping the account (setting a password) needs a real one
             if ($email === '') {
                 if ($password !== '') {
-                    $this->refuse('Enter your email to keep your account.');
+                    $this->refuse('Enter your email to keep your account.', '/profile/show');
                 }
                 $email = $this->user->email;
             }
@@ -65,7 +100,7 @@ class Profile extends Authenticated
             // Changing how you sign in needs your current password. An
             // account made with Google has none to give, and Google vouched for it
             if (!password_verify((string) ($_POST['current_password'] ?? ''), $this->user->password_hash)) {
-                $this->refuse('Your current password is not right.');
+                $this->refuse('Your current password is not right.', '/profile/show');
             }
         }
 
@@ -125,23 +160,12 @@ class Profile extends Authenticated
     {
         $password = (string) ($_POST['current_password'] ?? '');
         if ($this->user->hasKnownPassword() && !password_verify($password, $this->user->password_hash)) {
-            $this->refuse('Your password is not right. Your profile is kept.');
+            $this->refuse('Your password is not right. Your profile is kept.', '/profile/show');
         }
 
         $this->user->delete();
         Auth::logout();
 
         $this->redirect('/login/show-deleted-message');
-    }
-
-    /**
-     * Show why a change wasn't saved, back on the profile page
-     *
-     * @param string $message A full sentence
-     */
-    protected function refuse(string $message): never
-    {
-        Flash::addMessage($message, Flash::WARNING);
-        $this->redirect('/profile/show');
     }
 }

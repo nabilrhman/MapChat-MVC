@@ -4,6 +4,7 @@ namespace Tests;
 
 use App\Models\Bot;
 use App\Models\Chat;
+use App\Models\DemoChat;
 use PDO;
 use PHPUnit\Framework\TestCase;
 
@@ -86,8 +87,7 @@ class BotTest extends TestCase
         $this->db->beginTransaction();
 
         foreach ([self::ANN, self::BOB, self::CAT] as $email) {
-            $this->db->prepare("INSERT INTO users (name, email, password_hash, is_active, is_guest) VALUES (?, ?, '!', TRUE, ?)")
-                ->execute([ucfirst(strtok($email, '@')), $email, (int) ($email === self::CAT)]);
+            TestDb::createUser(ucfirst(strtok($email, '@')), $email, isGuest: $email === self::CAT);
             // Everyone has the chat open, so others could answer a visitor
             $this->db->prepare("INSERT INTO userinfo (email, ip, lat, lng, city, country, online_at) VALUES (?, '8.8.8.8', 1, 2, 'Dhaka', 'BD', NOW())")
                 ->execute([$email]);
@@ -128,8 +128,7 @@ class BotTest extends TestCase
     private function addDemoPerson(string $name, string $city): string
     {
         $email = strtolower(strtok($name, ' ')) . '@demo.mapchat.local';
-        $this->db->prepare("INSERT INTO users (name, email, password_hash, is_active) VALUES (?, ?, '!', TRUE)")
-            ->execute([$name, $email]);
+        TestDb::createUser($name, $email);
         $this->db->prepare("INSERT INTO userinfo (email, ip, lat, lng, city, country) VALUES (?, '0.0.0.0', 1, 2, ?, 'CA')")
             ->execute([$email, $city]);
 
@@ -157,7 +156,7 @@ class BotTest extends TestCase
         return $stmt->fetchAll(PDO::FETCH_NUM);
     }
 
-    public function testQuietRoomGreetsANewVisitor()
+    public function testQuietRoomGreetsANewVisitor(): void
     {
         TestBot::onArrival(self::ANN);
 
@@ -171,7 +170,7 @@ class BotTest extends TestCase
         $this->assertStringStartsWith('@Ann ', $said[0][1]);
     }
 
-    public function testBusyRoomGetsNoGreeting()
+    public function testBusyRoomGetsNoGreeting(): void
     {
         $this->send(self::BOB, 'anyone watching the match?');
         $this->send(self::CAT, 'me! 2-1 so far');
@@ -182,7 +181,7 @@ class BotTest extends TestCase
         $this->assertSame([], $this->botSaid());
     }
 
-    public function testDuplicateJoinsGreetOnce()
+    public function testDuplicateJoinsGreetOnce(): void
     {
         // Two tabs, then a reload
         TestBot::onArrival(self::ANN);
@@ -201,7 +200,7 @@ class BotTest extends TestCase
         $this->assertCount(2, $this->botSaid());
     }
 
-    public function testVisitorWhoSpeaksFirstGetsAReplyNotAGreeting()
+    public function testVisitorWhoSpeaksFirstGetsAReplyNotAGreeting(): void
     {
         TestBot::onArrival(self::ANN);
         $this->wait(5);
@@ -214,7 +213,7 @@ class BotTest extends TestCase
         $this->assertSame([[null, 'reply 1']], $this->botSaid());
     }
 
-    public function testVisitorAloneGetsAQuickReply()
+    public function testVisitorAloneGetsAQuickReply(): void
     {
         $this->db->prepare('UPDATE userinfo SET online_at = NULL WHERE email IN (?, ?)')->execute([self::BOB, self::CAT]);
         $this->send(self::ANN, 'hello? is anyone here');
@@ -224,7 +223,7 @@ class BotTest extends TestCase
         $this->assertSame([[null, 'reply 1']], $this->botSaid());
     }
 
-    public function testNoReplyWhenSomeoneAnswersDuringTheGracePeriod()
+    public function testNoReplyWhenSomeoneAnswersDuringTheGracePeriod(): void
     {
         $this->send(self::ANN, 'hello? is anyone here');
         $this->wait(10);
@@ -236,7 +235,7 @@ class BotTest extends TestCase
         $this->assertSame([], TestBot::$asked);
     }
 
-    public function testFollowUpIsAnsweredWithoutAMention()
+    public function testFollowUpIsAnsweredWithoutAMention(): void
     {
         $this->send(self::ANN, 'hello? is anyone here');
         $this->wait(Bot::GRACE_SECONDS);
@@ -248,7 +247,7 @@ class BotTest extends TestCase
         $this->assertStringContainsString("MapChat (you): reply 1\nAnn: oh hi, what is this place?", TestBot::$asked[1][1]);
     }
 
-    public function testGreetedVisitorWhoAnswersGetsAFollowUp()
+    public function testGreetedVisitorWhoAnswersGetsAFollowUp(): void
     {
         TestBot::onArrival(self::ANN);
         $this->wait(Bot::GREET_SECONDS);
@@ -260,7 +259,7 @@ class BotTest extends TestCase
         $this->assertSame('reply 1', $this->botSaid()[1][1]);
     }
 
-    public function testStopsWhilePeopleTalkToEachOther()
+    public function testStopsWhilePeopleTalkToEachOther(): void
     {
         $this->send(self::ANN, 'hello? is anyone here');
         $this->wait(Bot::GRACE_SECONDS);
@@ -272,7 +271,7 @@ class BotTest extends TestCase
         $this->assertSame([[null, 'reply 1']], $this->botSaid());
     }
 
-    public function testRepliesWaitForTheRoomCooldown()
+    public function testRepliesWaitForTheRoomCooldown(): void
     {
         TestBot::onArrival(self::ANN);
         TestBot::onArrival(self::BOB);
@@ -284,11 +283,10 @@ class BotTest extends TestCase
         $this->assertCount(2, $this->botSaid());
     }
 
-    public function testRoomRepliesLeaveTheDemoPeopleOut()
+    public function testRoomRepliesLeaveTheDemoPeopleOut(): void
     {
         $maya = 'maya@demo.mapchat.local';
-        $this->db->prepare("INSERT INTO users (name, email, password_hash, is_active) VALUES ('Maya', ?, '!', TRUE)")
-            ->execute([$maya]);
+        TestDb::createUser('Maya', $maya);
         $this->send($maya, 'i want to move to Null Island');
         $this->send(self::ANN, 'hello? is anyone here');
 
@@ -299,7 +297,7 @@ class BotTest extends TestCase
         $this->assertStringNotContainsString('Null Island', TestBot::$asked[0][1]);
     }
 
-    public function testBotAndDemoMessagesNeverMakeJobs()
+    public function testBotAndDemoMessagesNeverMakeJobs(): void
     {
         $this->send(Chat::BOT_EMAIL, 'Welcome to MapChat!');
         Bot::onMessage('maya@demo.mapchat.local', 1, null, '@MapChat hi');
@@ -309,7 +307,7 @@ class BotTest extends TestCase
         $this->assertSame(0, (int) $this->db->query('SELECT COUNT(*) FROM mapchat_jobs')->fetchColumn());
     }
 
-    public function testPrivateMessagesAreAnsweredInPrivate()
+    public function testPrivateMessagesAreAnsweredInPrivate(): void
     {
         $this->send(self::ANN, 'what can you do?', Chat::BOT_EMAIL);
 
@@ -318,7 +316,7 @@ class BotTest extends TestCase
         $this->assertSame([[self::ANN, 'reply 1']], $this->botSaid());
     }
 
-    public function testPublicAndPrivateConversationsStayApart()
+    public function testPublicAndPrivateConversationsStayApart(): void
     {
         $this->send(self::ANN, 'hello room');
         $this->send(self::ANN, 'ann secret for mapchat', Chat::BOT_EMAIL);
@@ -345,7 +343,7 @@ class BotTest extends TestCase
         $this->assertStringNotContainsString('ann secret', $chats['cat']);
     }
 
-    public function testMapChatIsOnlineWhileItCanChatBack()
+    public function testMapChatIsOnlineWhileItCanChatBack(): void
     {
         $people = array_column(\App\Models\UserInfo::getRecentPeople(), null, 'name');
         $this->assertEquals(1, $people['MapChat']['is_online']);
@@ -357,7 +355,7 @@ class BotTest extends TestCase
         $this->assertArrayNotHasKey('MapChat', $people);
     }
 
-    public function testRepliesHaveNoLongDashes()
+    public function testRepliesHaveNoLongDashes(): void
     {
         TestBot::useReply('Sure — the map shows cities – roughly.');
         $this->send(self::ANN, 'what is this?', Chat::BOT_EMAIL);
@@ -367,7 +365,7 @@ class BotTest extends TestCase
         $this->assertSame([[self::ANN, 'Sure, the map shows cities, roughly.']], $this->botSaid());
     }
 
-    public function testRepliesDontIntroduceThemselves()
+    public function testRepliesDontIntroduceThemselves(): void
     {
         TestBot::useReply('MapChat here, the AI for this map chat. The map shows pins for each city.');
         $this->send(self::ANN, 'what is this?', Chat::BOT_EMAIL);
@@ -377,7 +375,7 @@ class BotTest extends TestCase
         $this->assertSame([[self::ANN, 'The map shows pins for each city.']], $this->botSaid());
     }
 
-    public function testMentionIsAnsweredEvenWhilePeopleTalk()
+    public function testMentionIsAnsweredEvenWhilePeopleTalk(): void
     {
         $this->send(self::ANN, 'anyone watching the match?');
         $this->send(self::BOB, 'me! 2-1 so far');
@@ -390,7 +388,7 @@ class BotTest extends TestCase
         $this->assertStringEndsWith("Cat: @mapchat where is Null Island?", TestBot::$asked[0][1]);
     }
 
-    public function testPrivateMessagesDontNeedOrUseMentions()
+    public function testPrivateMessagesDontNeedOrUseMentions(): void
     {
         $this->send(self::ANN, '@MapChat hi', self::BOB);
         $this->send(self::ANN, 'hi', Chat::BOT_EMAIL);
@@ -400,11 +398,10 @@ class BotTest extends TestCase
         $this->assertSame([[self::ANN, 'reply 1']], $this->botSaid());
     }
 
-    public function testReplyIsTaggedOnlyWhenOtherMessagesCameBetween()
+    public function testReplyIsTaggedOnlyWhenOtherMessagesCameBetween(): void
     {
         $maya = 'maya@demo.mapchat.local';
-        $this->db->prepare("INSERT INTO users (name, email, password_hash, is_active) VALUES ('Maya', ?, '!', TRUE)")
-            ->execute([$maya]);
+        TestDb::createUser('Maya', $maya);
 
         $this->send(self::ANN, 'hello? is anyone here');
         $this->wait(Bot::GRACE_SECONDS);
@@ -415,7 +412,7 @@ class BotTest extends TestCase
         $this->assertSame([[null, 'reply 1'], [null, '@Ann reply 2']], $this->botSaid());
     }
 
-    public function testReplyThatMentionsThemIsntTaggedTwice()
+    public function testReplyThatMentionsThemIsntTaggedTwice(): void
     {
         TestBot::useReply('good question @ann!');
         $this->send(self::ANN, '@MapChat what is this?');
@@ -426,7 +423,7 @@ class BotTest extends TestCase
         $this->assertSame([[null, 'good question @ann!']], $this->botSaid());
     }
 
-    public function testTagsByNickname()
+    public function testTagsByNickname(): void
     {
         $this->db->prepare("UPDATE users SET nickname = 'annie' WHERE email = ?")->execute([self::ANN]);
         $this->send(self::ANN, '@MapChat hi');
@@ -438,7 +435,7 @@ class BotTest extends TestCase
         $this->assertStringContainsString('annie: @MapChat hi', TestBot::$asked[0][1]);
     }
 
-    public function testMentionedDemoPersonAnswersInCharacter()
+    public function testMentionedDemoPersonAnswersInCharacter(): void
     {
         $maya = $this->addDemoPerson('Maya Thompson', 'Toronto');
         $this->send(self::ANN, '@Maya how is Toronto today?');
@@ -451,7 +448,7 @@ class BotTest extends TestCase
         $this->assertStringContainsString("digital characters, written by AI", TestBot::$asked[0][0]);
     }
 
-    public function testGuestKeepsTalkingWithTheDemoPerson()
+    public function testGuestKeepsTalkingWithTheDemoPerson(): void
     {
         $maya = $this->addDemoPerson('Maya Thompson', 'Toronto');
         $this->send(self::ANN, '@Maya hi!');
@@ -464,7 +461,7 @@ class BotTest extends TestCase
         $this->assertStringContainsString("Maya (you): @Ann reply 1\nAnn: what do you do there?", TestBot::$asked[1][1]);
     }
 
-    public function testDemoPersonReadsTheSceneTheyWereSummonedInto()
+    public function testDemoPersonReadsTheSceneTheyWereSummonedInto(): void
     {
         $maya = $this->addDemoPerson('Maya Thompson', 'Toronto');
         $lukas = $this->addDemoPerson('Lukas Becker', 'Berlin');
@@ -480,7 +477,7 @@ class BotTest extends TestCase
         );
     }
 
-    public function testDemoPersonAnswersPrivatelyFromThatChatOnly()
+    public function testDemoPersonAnswersPrivatelyFromThatChatOnly(): void
     {
         $maya = $this->addDemoPerson('Maya Thompson', 'Toronto');
         $this->send(self::ANN, 'hello room');
@@ -504,7 +501,7 @@ class BotTest extends TestCase
         $this->assertStringNotContainsString('mapchat', $mayaToAnn[1]);
     }
 
-    public function testStoryWaitsWhileGuestsTalkWithDemoPeople()
+    public function testStoryWaitsWhileGuestsTalkWithDemoPeople(): void
     {
         $maya = $this->addDemoPerson('Maya Thompson', 'Toronto');
         $add = $this->db->prepare("INSERT INTO mapchat_jobs (kind, email, speaker, dedupe_key, due_at, created_at, done_at)
@@ -519,10 +516,10 @@ class BotTest extends TestCase
         // Two overlapping talks, each quiet CONVERSATION_MINUTES after the
         // last answer, then one still waiting for its answer
         $quiet = Bot::CONVERSATION_MINUTES * 60;
-        $this->assertEqualsWithDelta((-797 + $quiet) - (-1000) + 100, Bot::storyPausedSeconds(time() - 86400), 2);
+        $this->assertEqualsWithDelta((-797 + $quiet) - (-1000) + 100, DemoChat::storyPausedSeconds(time() - 86400), 2);
     }
 
-    public function testAShortNoClosesTheChatWithoutAnotherQuestion()
+    public function testAShortNoClosesTheChatWithoutAnotherQuestion(): void
     {
         $this->send(self::ANN, 'what is this place?', Chat::BOT_EMAIL);
         $this->wait(Bot::PRIVATE_SECONDS);
@@ -544,7 +541,7 @@ class BotTest extends TestCase
         }
     }
 
-    public function testDemoPersonKnowsTheirStoryFromHoursAgo()
+    public function testDemoPersonKnowsTheirStoryFromHoursAgo(): void
     {
         $emily = $this->addDemoPerson('Emily Carter', 'Boise');
         foreach ([['Aiko Tanaka', 'Tokyo'], ['Lukas Becker', 'Berlin'], ['Sofia Ramírez', 'Mexico City'], ['Jae-won Park', 'Seoul']] as [$name, $city]) {
@@ -578,7 +575,7 @@ class BotTest extends TestCase
         $this->assertStringNotContainsString('FIRST LOAF', $instructions);
     }
 
-    public function testDemoPersonKnowsTheirStoryInPrivateWithoutItsEnding()
+    public function testDemoPersonKnowsTheirStoryInPrivateWithoutItsEnding(): void
     {
         $tanvir = $this->addDemoPerson('Tanvir Hasan', 'Dhaka');
         $this->addDemoPerson('Sofia Ramírez', 'Mexico City');
@@ -603,7 +600,7 @@ class BotTest extends TestCase
         $this->assertStringNotContainsString('pancakes', $instructions);
     }
 
-    public function testEachDemoPersonHasTheirOwnVoice()
+    public function testEachDemoPersonHasTheirOwnVoice(): void
     {
         $emily = $this->addDemoPerson('Emily Carter', 'Boise');
         $tanvir = $this->addDemoPerson('Tanvir Hasan', 'Dhaka');
@@ -621,7 +618,7 @@ class BotTest extends TestCase
         $this->assertStringNotContainsString($voices['tanvir'], $emilys);
     }
 
-    public function testThanksGotItClosesTheChat()
+    public function testThanksGotItClosesTheChat(): void
     {
         $tanvir = $this->addDemoPerson('Tanvir Hasan', 'Dhaka');
         foreach (['thanks, got it', 'ok cool, makes sense 👍', 'Not really.', "i'm good, thank you so much!"] as $i => $closing) {
@@ -637,7 +634,7 @@ class BotTest extends TestCase
         }
     }
 
-    public function testPrivateReplyTakesAboutAsLongAsTypingIt()
+    public function testPrivateReplyTakesAboutAsLongAsTypingIt(): void
     {
         $tanvir = $this->addDemoPerson('Tanvir Hasan', 'Dhaka');
         TestBot::$typing = null;
@@ -659,7 +656,7 @@ class BotTest extends TestCase
         $this->assertCount(1, $this->answers());
     }
 
-    public function testDemoPersonComesOnlineAMomentLaterAndStaysWhileTalking()
+    public function testDemoPersonComesOnlineAMomentLaterAndStaysWhileTalking(): void
     {
         $wanjiru = $this->addDemoPerson('Wanjiru Kamau', 'Nairobi');
 

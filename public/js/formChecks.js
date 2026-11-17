@@ -33,16 +33,21 @@ const FIELD_CHECKS = {
 const EMAIL_CHECK_TIMEOUT = 8000;
 const emailFreeAnswers = new Map();
 
-async function isEmailFree(email, ownUserId) {
-    const query = new URLSearchParams({email, ignore_id: ownUserId});
-    if (!emailFreeAnswers.has(query.toString())) {
-        const answer = fetch(`/account/validate-email?${query}`, {signal: AbortSignal.timeout(EMAIL_CHECK_TIMEOUT)})
-            .then((response) => response.json())
-            // The server decides again on submit, so a failed check lets it through
-            .catch(() => true);
-        emailFreeAnswers.set(query.toString(), answer);
+// The server decides again on submit, so a failed check lets it through
+async function askIfEmailIsFree(query) {
+    try {
+        const response = await fetch(`/account/validate-email?${query}`, {signal: AbortSignal.timeout(EMAIL_CHECK_TIMEOUT)});
+        return await response.json();
+    } catch {
+        return true;
     }
-    return emailFreeAnswers.get(query.toString());
+}
+
+// Each email is asked about once; typing it again reuses the answer
+async function isEmailFree(email, ownUserId) {
+    const query = new URLSearchParams({email, ignore_id: ownUserId}).toString();
+    if (!emailFreeAnswers.has(query)) emailFreeAnswers.set(query, askIfEmailIsFree(query));
+    return emailFreeAnswers.get(query);
 }
 
 function setUpFormChecks(form, checksByFieldName) {

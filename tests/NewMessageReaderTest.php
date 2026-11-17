@@ -60,7 +60,7 @@ class NewMessageReaderTest extends TestCase
         return $id;
     }
 
-    public function testReadsNewIdsInOrder()
+    public function testReadsNewIdsInOrder(): void
     {
         $reader = new TestNewMessageReader($this->start);
         $ids = [$this->saveWithId(1), $this->saveWithId(2), $this->saveWithId(3)];
@@ -70,7 +70,7 @@ class NewMessageReaderTest extends TestCase
         $this->assertSame($ids[2], $reader->getLastReadId());
     }
 
-    public function testWaitsAtAMissingIdForTheMessageThatTookIt()
+    public function testWaitsAtAMissingIdForTheMessageThatTookIt(): void
     {
         $reader = new TestNewMessageReader($this->start);
         $first = $this->saveWithId(1);
@@ -85,7 +85,7 @@ class NewMessageReaderTest extends TestCase
         $this->assertSame([$second, $third], $reader->readNewIds(50));
     }
 
-    public function testReadsOnPastAnIdThatNeverComes()
+    public function testReadsOnPastAnIdThatNeverComes(): void
     {
         $reader = new TestNewMessageReader($this->start);
         $first = $this->saveWithId(1);
@@ -100,7 +100,7 @@ class NewMessageReaderTest extends TestCase
         $this->assertSame([$third], $reader->readNewIds(50));
     }
 
-    public function testStopsAtTheLimit()
+    public function testStopsAtTheLimit(): void
     {
         $reader = new TestNewMessageReader($this->start);
         $ids = [$this->saveWithId(1), $this->saveWithId(2), $this->saveWithId(3)];

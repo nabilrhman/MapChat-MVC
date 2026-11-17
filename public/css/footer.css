@@ -1,18 +1,33 @@
 /* One slim bar on every page inside the app: source link on the left,
    copyright on the right */
+:root
+{
+    --footer-height: 48px; /* the pages leave room for it */
+    --footer-surface: #333;
+}
+
+/* Phones leave it out, to give the page the room */
+@media (max-width: 700px)
+{
+    :root
+    {
+        --footer-height: 0px;
+    }
+}
+
 .site-footer
 {
     position: fixed;
     inset-inline: 0;
-    bottom: 0;
+    inset-block-end: 0;
     z-index: 999;
-    height: var(--footer-height); /* see styles.css */
+    height: var(--footer-height);
     padding: 0 24px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background-color: #333333;
-    color: rgba(255, 255, 255, 0.85);
+    background-color: var(--footer-surface);
+    color: var(--on-dark-text);
     font-size: 13px;
 }
 
@@ -20,7 +35,7 @@
 {
     .source
     {
-        color: #fff;
+        color: var(--md-on-primary);
         font-size: 16px;
 
         &:hover
@@ -35,7 +50,7 @@
 {
     .author
     {
-        color: #ffc107;
+        color: var(--brand-yellow);
     }
 
     /* Quiet beside the name: the footer's own colour */
@@ -54,7 +69,7 @@
     }
 }
 
-/* Phones leave it out (see styles.css) */
+/* Phones leave it out */
 @media (max-width: 700px)
 {
     .site-footer

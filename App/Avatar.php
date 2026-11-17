@@ -88,7 +88,7 @@ class Avatar
     public static function initials(string $name): string
     {
         $words = preg_split('/\s+/u', trim($name), -1, PREG_SPLIT_NO_EMPTY);
-        $words = array_values(array_filter($words, fn ($word) => preg_match('/^\p{L}/u', $word)));
+        $words = array_values(array_filter($words, fn (string $word): bool => preg_match('/^\p{L}/u', $word) === 1));
         $initials = '';
 
         foreach (array_slice($words, 0, 2) as $word) {
@@ -134,7 +134,7 @@ class Avatar
     public static function face(int $id, string $name): string
     {
         $look = static::LOOKS[$name] ?? null;
-        $pick = function (array $parts, string $part) use ($look, $id) {
+        $pick = function (array $parts, string $part) use ($look, $id): string {
             if ($look === null) {
                 // A separate hash per part, so neighbouring ids look nothing alike
                 return array_values($parts)[crc32($part . $id) % count($parts)];

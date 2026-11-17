@@ -11,30 +11,25 @@ use App\Models\User;
 class Mention
 {
     /**
-     * How someone is shown in the chat and what's typed after the @ for
-     * them: their nickname, or else their first name. Guests are always
-     * "Guest" and their number; they can't have a nickname
+     * How someone is shown in the chat (PersonName::shown), for the templates
      *
      * @param string|null $name Null for nobody, like the recipient of a room message, which shows as ''
      */
-    public static function shownName(?string $name, ?string $nickname = null, ?bool $isGuest = false): string
+    public static function shownName(?string $name, ?string $nickname = null, bool $isGuest = false): string
     {
         if ($name === null) {
             return '';
         }
-        if ($isGuest) {
-            return $name;
-        }
 
-        return $nickname ?: explode(' ', $name)[0];
+        return (new PersonName($name, $nickname, $isGuest))->shown();
     }
 
     /**
      * Whether the text mentions this person, by name or shown name
      */
-    public static function isMentionedIn(string $text, string $name, ?string $nickname = null, bool $isGuest = false): bool
+    public static function isMentionedIn(string $text, PersonName $person): bool
     {
-        return preg_match(static::pattern([$name, static::shownName($name, $nickname, $isGuest)]), $text) === 1;
+        return preg_match(static::pattern([$person->name, $person->shown()]), $text) === 1;
     }
 
     /**
@@ -47,15 +42,15 @@ class Mention
      */
     public static function namesIn(array $chats): array
     {
-        $bodies = array_filter(array_column($chats, 'body'), fn ($body) => str_contains($body, '@'));
+        $bodies = array_filter(array_column($chats, 'body'), fn (string $body): bool => str_contains($body, '@'));
         if (!$bodies) {
             return [];
         }
 
         $names = [];
         foreach (User::mentionedIn(implode("\n", $bodies)) as $person) {
-            $names[] = $person['name'];
-            $names[] = static::shownName($person['name'], $person['nickname'], (bool) $person['is_guest']);
+            $names[] = $person->name;
+            $names[] = $person->shown();
         }
 
         return array_values(array_unique($names));
@@ -67,7 +62,7 @@ class Mention
      *
      * @param string[] $names From namesIn()
      */
-    public static function mark(string $text, array $names, string $readerName, ?string $readerNickname = null, bool $readerIsGuest = false): string
+    public static function htmlWithChips(string $text, array $names, PersonName $reader): string
     {
         $html = htmlspecialchars($text, ENT_QUOTES, 'UTF-8');
         if (!$names) {
@@ -75,15 +70,15 @@ class Mention
         }
 
         // The text is escaped by now, so look for the names escaped the same way
-        $escape = fn ($name) => htmlspecialchars($name, ENT_QUOTES, 'UTF-8');
+        $escape = fn (string $name): string => htmlspecialchars($name, ENT_QUOTES, 'UTF-8');
         $readerNames = array_map(
-            fn ($name) => mb_strtolower($escape($name)),
-            [$readerName, static::shownName($readerName, $readerNickname, $readerIsGuest)]
+            fn (string $name): string => mb_strtolower($escape($name)),
+            [$reader->name, $reader->shown()]
         );
 
         return preg_replace_callback(
             static::pattern(array_map($escape, $names)),
-            function ($match) use ($readerNames) {
+            function (array $match) use ($readerNames): string {
                 $class = in_array(mb_strtolower($match[1]), $readerNames, true) ? 'mention me' : 'mention';
                 return '<span class="' . $class . '">' . $match[0] . '</span>';
             },
@@ -94,14 +89,14 @@ class Mention
     /**
      * Add each person's shown name as shown_name, for the scripts
      *
-     * @param array<array{name: string, nickname: ?string, is_guest: mixed}> $people
+     * @param array<array{name: string, nickname: ?string, is_guest: bool}> $people With is_guest cast where they were fetched
      *
      * @return array[]
      */
     public static function withShownNames(array $people): array
     {
         foreach ($people as &$person) {
-            $person['shown_name'] = static::shownName($person['name'], $person['nickname'], (bool) $person['is_guest']);
+            $person['shown_name'] = PersonName::fromRow($person)->shown();
         }
 
         return $people;
@@ -110,12 +105,13 @@ class Mention
     /**
      * A pattern for "@" and any of the names, whole, in any case. Longer
      * names go first, so "@Maya Thompson" isn't taken for "@Maya"
+     *
      * @param string[] $names
      */
     protected static function pattern(array $names): string
     {
-        usort($names, fn ($a, $b) => mb_strlen($b) - mb_strlen($a));
-        $alternatives = implode('|', array_map(fn ($name) => preg_quote($name, '/'), $names));
+        usort($names, fn (string $a, string $b): int => mb_strlen($b) - mb_strlen($a));
+        $alternatives = implode('|', array_map(fn (string $name): string => preg_quote($name, '/'), $names));
 
         return '/@(' . $alternatives . ')(?![\p{L}\p{N}])/iu';
     }

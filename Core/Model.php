@@ -39,7 +39,7 @@ abstract class Model
             // Times are stored and read as UTC; the browser shows them in local time
             $options = [PDO::MYSQL_ATTR_INIT_COMMAND => "SET time_zone = '+00:00'"];
             // Hosted MySQL services usually require TLS
-            if (Config::flag('DB_SSL')) {
+            if (Config::isOn('DB_SSL')) {
                 $options[PDO::MYSQL_ATTR_SSL_CA] = Config::get('DB_SSL_CA', '/etc/ssl/certs/ca-certificates.crt');
             }
 
@@ -68,6 +68,35 @@ abstract class Model
         }
 
         return ['(' . ($params ? implode(', ', array_keys($params)) : 'NULL') . ')', $params];
+    }
+
+    /**
+     * Rows as the database gives them (every value a string), with these
+     * columns made int or bool. A null stays null, as from a LEFT JOIN that
+     * found no row
+     *
+     * @param array[] $rows
+     * @param string[] $intColumns
+     * @param string[] $boolColumns
+     *
+     * @return array[]
+     */
+    protected static function typedRows(array $rows, array $intColumns = [], array $boolColumns = []): array
+    {
+        foreach ($rows as &$row) {
+            foreach ($intColumns as $column) {
+                if (isset($row[$column])) {
+                    $row[$column] = (int) $row[$column];
+                }
+            }
+            foreach ($boolColumns as $column) {
+                if (isset($row[$column])) {
+                    $row[$column] = (bool) $row[$column];
+                }
+            }
+        }
+
+        return $rows;
     }
 
     /**

@@ -1,3 +1,5 @@
+{# The password reset email, as plain text -#}
+{% types {url: 'string', name: 'string', app_url: 'string'} -%}
 Reset your password
 
 Hi {{ name }},

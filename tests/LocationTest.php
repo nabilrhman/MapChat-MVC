@@ -21,8 +21,7 @@ class LocationTest extends TestCase
         $this->db = TestDb::get();
         $this->db->beginTransaction();
 
-        $this->db->prepare("INSERT INTO users (name, email, password_hash, is_active) VALUES ('Ann', ?, '!', TRUE)")
-            ->execute([self::ANN]);
+        TestDb::createUser('Ann', self::ANN);
         $this->db->prepare("INSERT INTO userinfo (email, ip, online_at) VALUES (?, '8.8.8.8', NOW())")
             ->execute([self::ANN]);
     }
@@ -42,7 +41,7 @@ class LocationTest extends TestCase
         return $pins[0];
     }
 
-    public function testALookedUpLocationIsSavedToTheCity()
+    public function testALookedUpLocationIsSavedToTheCity(): void
     {
         UserInfo::saveLocation(self::ANN, ['lat' => 43.6532198, 'lng' => -79.3831843, 'city' => 'Toronto', 'country' => 'CA']);
 
@@ -52,7 +51,7 @@ class LocationTest extends TestCase
         $this->assertEquals(['lat' => 43.65, 'lng' => -79.38], array_map(floatval(...), $stmt->fetch(PDO::FETCH_ASSOC)));
     }
 
-    public function testAPinSavedBeforeRoundingIsServedToTheCity()
+    public function testAPinSavedBeforeRoundingIsServedToTheCity(): void
     {
         $this->db->prepare("UPDATE userinfo SET lat = 43.6532198, lng = -79.3831843, city = 'Toronto' WHERE email = ?")
             ->execute([self::ANN]);
@@ -64,14 +63,14 @@ class LocationTest extends TestCase
         $this->assertSame('43.65', (string) $pin['lat'], 'no more places than that');
     }
 
-    public function testTheHttpsLocationServicesAreAskedWithoutAnIpstackKey()
+    public function testTheHttpsLocationServicesAreAskedWithoutAnIpstackKey(): void
     {
         putenv('IPSTACK_API_KEY');
 
         $this->assertSame(['ipapi.co', 'ipwho.is', 'geojs'], array_keys(UserInfo::locationServiceUrls('8.8.8.8')));
     }
 
-    public function testIpstackIsAskedLastBecauseItsKeyGoesOverPlainHttp()
+    public function testIpstackIsAskedLastBecauseItsKeyGoesOverPlainHttp(): void
     {
         putenv('IPSTACK_API_KEY=test-key');
 
@@ -88,7 +87,7 @@ class LocationTest extends TestCase
         }
     }
 
-    public function testThePeopleListsLongitudeIsRoundedToo()
+    public function testThePeopleListsLongitudeIsRoundedToo(): void
     {
         $this->db->prepare("UPDATE userinfo SET lat = 43.6532198, lng = -79.3831843, city = 'Toronto' WHERE email = ?")
             ->execute([self::ANN]);
@@ -96,5 +95,38 @@ class LocationTest extends TestCase
         $people = array_values(array_filter(UserInfo::getRecentPeople(), fn ($person) => $person['name'] === 'Ann'));
 
         $this->assertSame('-79.38', (string) $people[0]['lng']);
+    }
+
+    /**
+     * The visitor's IP as getRealIP reads it, with these request details
+     *
+     * @param array<string, string> $server Entries of $_SERVER
+     */
+    private function realIpWith(array $server): string
+    {
+        $serverBefore = $_SERVER;
+        try {
+            unset($_SERVER['REMOTE_ADDR'], $_SERVER['HTTP_CF_CONNECTING_IP'], $_SERVER['HTTP_X_FORWARDED_FOR']);
+            $_SERVER = $server + $_SERVER;
+            return UserInfo::getRealIP();
+        } finally {
+            $_SERVER = $serverBefore;
+        }
+    }
+
+    public function testAVisitorConnectingDirectlyCannotChooseTheirIpWithHeaders(): void
+    {
+        $this->assertSame('203.0.113.9', $this->realIpWith([
+            'REMOTE_ADDR' => '203.0.113.9',
+            'HTTP_CF_CONNECTING_IP' => '8.8.8.8',
+            'HTTP_X_FORWARDED_FOR' => '8.8.4.4',
+        ]));
+    }
+
+    public function testBehindTheHostsProxyTheForwardedIpIsTheVisitors(): void
+    {
+        $this->assertSame('8.8.8.8', $this->realIpWith(['REMOTE_ADDR' => '10.1.2.3', 'HTTP_CF_CONNECTING_IP' => '8.8.8.8']));
+        $this->assertSame('8.8.4.4', $this->realIpWith(['REMOTE_ADDR' => '10.1.2.3', 'HTTP_X_FORWARDED_FOR' => '1.1.1.1, 8.8.4.4']));
+        $this->assertSame('10.1.2.3', $this->realIpWith(['REMOTE_ADDR' => '10.1.2.3']));
     }
 }

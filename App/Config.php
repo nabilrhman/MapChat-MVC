@@ -10,6 +10,9 @@ namespace App;
  */
 class Config
 {
+    /** Where links point while APP_URL is unset: the local site docker compose serves */
+    const LOCAL_URL = 'http://localhost:8080';
+
     /**
      * Read a setting from the environment
      *
@@ -26,27 +29,44 @@ class Config
     }
 
     /**
-     * Read a true/false setting from the environment
+     * Whether a true/false setting in the environment is on
      *
      * @param string $key Variable name
      */
-    public static function flag(string $key): bool
+    public static function isOn(string $key): bool
     {
         return filter_var(static::get($key, false), FILTER_VALIDATE_BOOLEAN);
     }
 
     /**
-     * Base URL of the site, used in links inside emails, e.g. https://mapchat.example.com
+     * Base URL of the site, used in links inside emails, e.g. https://mapchat.example.com.
+     * Never the request's Host header: anyone can send one, and a reset link
+     * built from it would hand the account's token to their site
      */
     public static function appUrl(): string
     {
         $url = static::get('APP_URL');
 
         if ($url === null) {
-            $url = (static::isHttpsRequest() ? 'https://' : 'http://') . ($_SERVER['HTTP_HOST'] ?? 'localhost');
+            static::warnOnceAppUrlIsUnset();
+            $url = static::LOCAL_URL;
         }
 
         return rtrim($url, '/');
+    }
+
+    /**
+     * Log, once per process, that APP_URL is unset, as a real site's email
+     * links then point at LOCAL_URL
+     */
+    protected static function warnOnceAppUrlIsUnset(): void
+    {
+        static $hasWarned = false;
+
+        if (!$hasWarned) {
+            error_log('APP_URL is not set, so links in emails point at ' . static::LOCAL_URL . ': set it to the site\'s address');
+            $hasWarned = true;
+        }
     }
 
     /**
@@ -63,7 +83,7 @@ class Config
      * Whether outgoing email is configured. Without it, new accounts are
      * activated straight away so the app still works as a demo
      */
-    public static function mailEnabled(): bool
+    public static function isMailEnabled(): bool
     {
         return static::get('MAILER_DSN') !== null;
     }

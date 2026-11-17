@@ -1,4 +1,5 @@
 {% extends 'base_email.html' %}
+{# The email that activates a new account, in HTML #}
 {% types {url: 'string', name: 'string'} %}
 
 {% block title %}Activate your account{% endblock %}
@@ -6,8 +7,7 @@
 {% block preheader %}One click and you're in the room.{% endblock %}
 
 {% block body %}
-<p style="margin: 0 0 16px; font-size: 32px; line-height: 1.2;" aria-label="Hi">👋</p>
-<p style="margin: 0 0 20px;"><strong style="color: #512da8; font-size: 20px;">{{ name }}</strong></p>
+{{ include('email_greeting.html', {name: name}, with_context = false) }}
 <p style="margin: 0;">Thanks for signing up. Activate your account to start chatting and to put your city on the map.</p>
 
 {{ include('email_button.html', {url: url, label: 'Activate account'}, with_context = false) }}

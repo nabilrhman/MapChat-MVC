@@ -84,14 +84,14 @@ class GoogleSignInTest extends TestCase
         return User::findByEmail($email);
     }
 
-    public function testAGoodIdTokenSaysWhoSignedIn()
+    public function testAGoodIdTokenSaysWhoSignedIn(): void
     {
         $account = $this->accountFrom($this->idToken());
 
         $this->assertEquals(new GoogleAccount('110248495921238986420', 'ann@gmail.test', 'Ann Lee'), $account);
     }
 
-    public function testAnIdTokenIsRefusedUnlessItIsForThisSiteThisSignInAndStillGood()
+    public function testAnIdTokenIsRefusedUnlessItIsForThisSiteThisSignInAndStillGood(): void
     {
         $refused = [
             'another site' => ['aud' => 'someone-else.apps.googleusercontent.com'],
@@ -111,14 +111,14 @@ class GoogleSignInTest extends TestCase
         $this->assertNull($this->accountFrom(''));
     }
 
-    public function testTheCodeChallengeIsTheOneInThePkceStandard()
+    public function testTheCodeChallengeIsTheOneInThePkceStandard(): void
     {
         // RFC 7636, appendix B
         $this->assertSame('E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM',
             Google::codeChallengeOf('dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk'));
     }
 
-    public function testTheFirstGoogleSignInMakesAnActiveAccountWithNoPassword()
+    public function testTheFirstGoogleSignInMakesAnActiveAccountWithNoPassword(): void
     {
         $user = User::signInWithGoogle(new GoogleAccount('google-1', 'new@gmail.test', 'New Person'));
 
@@ -130,14 +130,14 @@ class GoogleSignInTest extends TestCase
         $this->assertNull(User::authenticate('new@gmail.test', ''));
     }
 
-    public function testSomeoneWithNoNameOnGoogleGoesByTheirEmailsFirstPart()
+    public function testSomeoneWithNoNameOnGoogleGoesByTheirEmailsFirstPart(): void
     {
         $user = User::signInWithGoogle(new GoogleAccount('google-2', 'quiet.one@gmail.test', ''));
 
         $this->assertSame('quiet.one', $user->name);
     }
 
-    public function testSigningInAgainGetsTheSameAccountEvenAfterItsEmailChanged()
+    public function testSigningInAgainGetsTheSameAccountEvenAfterItsEmailChanged(): void
     {
         $first = User::signInWithGoogle(new GoogleAccount('google-3', 'old@gmail.test', 'Ann'));
         $this->db->prepare('UPDATE users SET email = ? WHERE id = ?')->execute(['changed@example.test', $first->id]);
@@ -147,7 +147,7 @@ class GoogleSignInTest extends TestCase
         $this->assertSame($first->id, $again->id);
     }
 
-    public function testAnAccountWithTheSameEmailIsLinkedAndKeepsItsPassword()
+    public function testAnAccountWithTheSameEmailIsLinkedAndKeepsItsPassword(): void
     {
         $existing = $this->passwordAccount('ann@gmail.test', isEmailProven: true);
 
@@ -158,7 +158,7 @@ class GoogleSignInTest extends TestCase
         $this->assertNotNull(User::authenticate('ann@gmail.test', 'secret123'));
     }
 
-    public function testAnUnactivatedAccountWithTheSameEmailLosesThePasswordSomeoneElseMayHaveSet()
+    public function testAnUnactivatedAccountWithTheSameEmailLosesThePasswordSomeoneElseMayHaveSet(): void
     {
         $existing = $this->passwordAccount('ann@gmail.test', isEmailProven: false);
 
@@ -182,7 +182,7 @@ class GoogleSignInTest extends TestCase
         return User::findByID($user->id)->avatar;
     }
 
-    public function testTheIdTokensPhotoIsKeptOnlyFromGooglesOwnImageHosts()
+    public function testTheIdTokensPhotoIsKeptOnlyFromGooglesOwnImageHosts(): void
     {
         $this->assertSame(self::SHARP_PHOTO, $this->accountFrom($this->idToken(['picture' => self::PHOTO]))->picture);
 
@@ -194,7 +194,7 @@ class GoogleSignInTest extends TestCase
         $this->assertNull($this->accountFrom($this->idToken())->picture);
     }
 
-    public function testSomeoneWithNoPhotoGetsTheirGooglePhotoAndItsNewerVersions()
+    public function testSomeoneWithNoPhotoGetsTheirGooglePhotoAndItsNewerVersions(): void
     {
         $user = User::signInWithGoogle(new GoogleAccount('google-photo', 'pic@gmail.test', 'Pic', self::SHARP_PHOTO));
         $this->assertSame(self::SHARP_PHOTO, $this->avatarOf($user));
@@ -204,7 +204,7 @@ class GoogleSignInTest extends TestCase
         $this->assertSame($newer, $this->avatarOf($user));
     }
 
-    public function testAnUploadedPhotoStaysOverTheGoogleOne()
+    public function testAnUploadedPhotoStaysOverTheGoogleOne(): void
     {
         $user = $this->passwordAccount('own@gmail.test', isEmailProven: true);
         $uploaded = 'https://res.cloudinary.com/mapchat/image/upload/own.jpg';
@@ -215,7 +215,7 @@ class GoogleSignInTest extends TestCase
         $this->assertSame($uploaded, $this->avatarOf($user));
     }
 
-    public function testARemovedPhotoStaysRemovedAfterSigningInWithGoogleAgain()
+    public function testARemovedPhotoStaysRemovedAfterSigningInWithGoogleAgain(): void
     {
         $user = User::signInWithGoogle(new GoogleAccount('google-gone', 'gone@gmail.test', 'Gone', self::SHARP_PHOTO));
         $this->assertTrue($user->updateAvatar(null));

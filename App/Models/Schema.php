@@ -180,7 +180,7 @@ class Schema extends \Core\Model
     protected static function dropDemoPictures(PDO $db): void
     {
         $db->exec("UPDATE users SET avatar = NULL
-                   WHERE " . DemoChat::isDemoSql('email') . " AND avatar LIKE '/res/avatars/%'");
+                   WHERE " . Characters::isDemoSql('email') . " AND avatar LIKE '/res/avatars/%'");
     }
 
     /**
