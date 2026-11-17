@@ -47,9 +47,18 @@ https://github.com/user-attachments/assets/06e03a84-0401-4cfb-89b0-be0756bc7f2e
 
 ![The chat room, with @mention chips in the messages and in a message being written, and a pin's label open in the middle of the map of who is chatting from where](docs/images/mapchat-app.png)
 
-| On a phone | The online list on a phone |
-|---|---|
-| ![The chat room on a phone, with a pin's label open in the middle of the map](docs/images/mapchat-phone.png) | ![The online list slid open over the chat on a phone](docs/images/mapchat-phone-online.png) |
+<div align="center">
+<table>
+  <tr>
+    <th>On a phone</th>
+    <th>The online list on a phone</th>
+  </tr>
+  <tr>
+    <td><img src="docs/images/mapchat-phone.png" width="300" alt="The chat room on a phone, with a pin's label open in the middle of the map"></td>
+    <td><img src="docs/images/mapchat-phone-online.png" width="300" alt="The online list slid open over the chat on a phone"></td>
+  </tr>
+</table>
+</div>
 
 | Login | Profile |
 |---|---|

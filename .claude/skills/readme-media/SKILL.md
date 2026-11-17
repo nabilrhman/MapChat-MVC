@@ -6,16 +6,16 @@ description: Retake the README's screenshots and tour video after a change peopl
 # README screenshots and tour
 
 The README plays a tour video, then shows a large main picture of the room,
-then two phone pictures side by side, then the login beside the profile,
-then the two emails. The tour and the room and phone pictures are recorded with
-Playwright against the app on :8080 (`docs/video/`; each script's header
-says what it needs). The app has to be up with the demo people online. The
-profile and email pictures stay as they are: the user wants only the room,
-phone and login pictures retaken.
+then two phone pictures side by side (shown 300px wide, from the full-size
+files), then the login beside the profile, then the two emails. The tour and
+the other pictures are recorded with Playwright against the app on :8080
+(`docs/video/`; each script's header says what it needs). The app has to be up with the demo people online. The
+email pictures stay as they are: the user wants only the room, phone, login
+and profile pictures retaken.
 
-## 1. The room, phone and login pictures
+## 1. The room, phone, login and profile pictures
 
-Run `npm run screenshots`. It writes four pictures to `docs/images/`, all
+Run `npm run screenshots`. It writes five pictures to `docs/images/`, all
 at 2x:
 
 - `mapchat-app.png`, 1440×900: the room, two private chats open as tabs, a
@@ -25,17 +25,20 @@ at 2x:
 - `mapchat-phone.png`, an iPhone's 393×852: the room with a pin panned to
   the middle of the map and its label open, as a tap opens it;
 - `mapchat-phone-online.png`: the same phone with the online list slid open;
+- `mapchat-profile.png`, 1440×900: a new guest's profile, one screen of it,
+  so it matches the login in size and they share their row evenly;
 - `mapchat-login.png`, 1440×900: the login page with Continue with Google.
   Without Google keys, the app is started again with placeholder ones for it,
   then as it was.
 
-Each run posts the guest's @mention to the local room. A guest's messages go
-with it after 24 hours, so a second run that day shows two: delete the
-earlier one from `chats` first.
+Each run signs its guests out when their pictures are done, and at the end
+takes what they said, and what was said to them, out of the room, so the
+next run's pictures don't show this one's.
 
-Done when you've looked at all three and they show the current app with all
+Done when you've looked at all five and they show the current app with all
 of that: the label's pin in the middle of the open map, the chips in the
-messages and the draft, the newest messages, Continue with Google, no row lit as if hovered, nothing half-loaded.
+messages and the draft, the newest messages, Continue with Google, no row lit
+as if hovered, nothing half-loaded.
 
 ## 2. Tour
 
