@@ -49,15 +49,16 @@
                     {# Without the site's own Cloudinary settings there's nowhere to upload to; removing still works #}
                     <div class="buttons">
                         {% if are_photo_uploads_on %}
-                        <label for="file-upload" class="button quiet small change">
+                        {# Opens the hidden file input below (profile.js) #}
+                        <button type="button" class="button quiet small change" id="change-photo" aria-describedby="photo-hint">
                             {{ icon('camera') }}Change photo
-                        </label>
+                        </button>
                         {% endif %}
                         <button type="button" class="link-button danger" id="remove-photo"
                                 {% if user.avatar is empty %}hidden{% endif %}>Remove</button>
                     </div>
                     {% if are_photo_uploads_on %}
-                    <p class="field-hint">JPG, PNG or GIF</p>
+                    <p class="field-hint" id="photo-hint">JPG, PNG or GIF</p>
                     <input id="file-upload" type="file" accept="image/png,image/gif,image/jpeg" hidden
                            data-cloud-name="{{ cloudinary_cloud_name|e('html_attr') }}"
                            data-upload-preset="{{ cloudinary_upload_preset|e('html_attr') }}">

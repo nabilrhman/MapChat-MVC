@@ -82,6 +82,7 @@ const avatar = document.getElementById('avatar');
 const photoFrame = document.getElementById('photo-frame');
 // Missing when the site has no Cloudinary settings, so uploads are off
 const photoUpload = document.getElementById('file-upload');
+const changePhotoButton = document.getElementById('change-photo');
 const removePhotoButton = document.getElementById('remove-photo');
 // A photo takes longer than a form to send on a slow connection
 const PHOTO_UPLOAD_TIMEOUT = 60000;
@@ -103,6 +104,9 @@ async function uploadPhoto(file) {
     const response = await axios.post(uploadUrl, formData, {timeout: PHOTO_UPLOAD_TIMEOUT});
     return response.data.secure_url;
 }
+
+// A button, not a label for the input, so a keyboard can reach it too
+changePhotoButton?.addEventListener('click', () => photoUpload.click());
 
 // Upload the photo, then save it; on any failure the old one stays
 photoUpload?.addEventListener('change', async () => {
