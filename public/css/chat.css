@@ -2307,11 +2307,11 @@ body
         animation: fade-in var(--dur-fast) var(--ease-out);
     }
 
-    /* The plane's weight sits up and right of its box's centre, by about
-       1px at this size, so it's moved back by that to look centred */
+    /* Heroicons' plane is level in its box, but its point is on the right
+       and its weight on the left, so it's moved 1px right to look centred */
     .send .icon
     {
-        translate: -1px 1px;
+        translate: 1px 0;
         font-size: 14px;
         line-height: 1;
         -webkit-font-smoothing: antialiased;
