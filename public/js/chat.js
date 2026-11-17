@@ -314,19 +314,21 @@ function openPrivateChat(userId, name) {
 }
 
 // The open chat's header. The room: what it is. A private chat: their photo
-// and name, then their flag, city and time there if they're here, or when
-// they were last seen. Their tab's dot says they're online
+// and name, then on the left whether they're online or when they were last
+// seen, and on the right their flag, city and time there when known
 const ROOM_STATUS = 'Chat with people worldwide';
 
 function showChatHeader() {
     const isPrivate = activeConversation !== EVERYONE;
     const photo = document.getElementById('chat-header-photo');
     const status = document.getElementById('chat-header-status');
+    const where = document.getElementById('chat-header-where');
 
     document.getElementById('chat-header-room-icon').hidden = isPrivate;
     photo.hidden = !isPrivate;
     document.getElementById('chat-header-tag').hidden = isPrivate;
     document.getElementById('chat-header-private-tag').hidden = !isPrivate;
+    where.replaceChildren();
 
     if (!isPrivate) {
         document.getElementById('chat-header-name').textContent = 'Everyone';
@@ -338,16 +340,17 @@ function showChatHeader() {
     photo.src = getPhotoSrc(activeConversation);
     document.getElementById('chat-header-name').textContent = getTabName(activeConversation);
 
-    if (!isUserOnline(activeConversation)) {
+    if (isUserOnline(activeConversation)) {
+        status.replaceChildren('Online');
+    } else {
         status.replaceChildren(person ? `Seen ${getTimeAgo(person)}` : 'Away');
-        return;
     }
-    status.replaceChildren();
-    if (!person) return;
+
+    if (!person?.city && !person?.country) return;
     const placeAndTime = [createPlace(person.city, person.country)];
     // Hidden with their place when they don't share their location
     if (person.lng !== null && person.lng !== undefined) placeAndTime.push(createLocalTime(person));
-    status.append(...createFlipToCountry(placeAndTime, person));
+    where.append(...createFlipToCountry(placeAndTime, person));
 }
 
 // Their city and time, which flip up together to show their country on

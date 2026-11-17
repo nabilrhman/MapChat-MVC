@@ -659,8 +659,10 @@ body
         min-width: 0;
     }
 
-    /* The name, with Public or Private at the far right of its line */
-    .top
+    /* The name with Public or Private, then online or last seen with
+       their city and time, each pair at the two ends of its line */
+    .top,
+    .bottom
     {
         display: flex;
         align-items: center;
@@ -682,11 +684,10 @@ body
         white-space: nowrap;
     }
 
-    .status
+    .status,
+    .where
     {
         display: flex;
-        align-self: flex-start; /* only as wide as its text, so only that is hoverable */
-        max-width: 100%;
         align-items: center;
         gap: 8px;
         overflow: hidden;
@@ -694,6 +695,21 @@ body
         font-size: 11px; /* same as the messages' times */
         line-height: 16px;
         white-space: nowrap;
+    }
+
+    /* Just text now, so a block, which can end in an ellipsis */
+    .status
+    {
+        display: block;
+        min-width: 0;
+        text-overflow: ellipsis;
+    }
+
+    /* Only as wide as its text, so only that is hoverable */
+    .where
+    {
+        flex: none;
+        max-width: 70%;
     }
 
     .time
@@ -704,13 +720,8 @@ body
         gap: var(--icon-gap);
     }
 
-    /* City and time on one line, the country on the next; hovering either
-       flips the whole line up to the country (chat.js) */
-    .flip .track
-    {
-        align-items: flex-start;
-    }
-
+    /* City and time on one line, the country on the next, both kept to the
+       right; hovering either flips the whole line up to the country (chat.js) */
     .flip .line:first-child
     {
         gap: 8px;
