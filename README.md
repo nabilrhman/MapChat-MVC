@@ -314,7 +314,8 @@ database/        init.sql (schema and welcome messages), demo.sql (optional
 tests/           PHPUnit tests; tests/browser/ the Playwright checks (npm run a11y)
 docs/images/     The video, screenshots and diagram in this README
 docs/diagrams/   Draws the diagram: node docs/diagrams/draw.ts
-docs/video/      Records the tour at the top with Playwright (npm run tour) and
+docs/video/      Records the tour at the top with Playwright (npm run tour), at
+                 2880×1800 and 60fps through a small tab-capture extension, and
                  takes the main picture (npm run screenshots)
 docs/live-chat.md How the live chat works
 docs/notifications.md How notifications and Web Push work

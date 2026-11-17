@@ -15,8 +15,14 @@
  * a tab dragged into another place and closed, and the profile.
  * The pointer moves and types like a person (person.ts). Headless Chrome
  * draws no pointer, so the page gets one, a hand over anything clickable
- * (pointer.ts). Chrome sends a frame for each repaint, which ffmpeg turns
- * into 60fps, with any stretch where nothing moves cut to a second.
+ * (pointer.ts).
+ *
+ * The tab is recorded at 2880×1800 and 60fps through a small extension
+ * (capture-extension/): Chrome captures the tab itself and encodes it with its
+ * real-time VP8, streaming it here over a WebSocket (websocket.ts). ffmpeg
+ * then drops repeated frames, cuts any stretch where nothing moves to a
+ * second, and encodes 60fps H.264 on the GPU. Chrome's screencast, the old
+ * way, couldn't keep up at that size: about 40fps, for a JPEG per frame.
  *
  * The replies are real, so it needs GROQ_API_KEY in .env. The chat worker is
  * paused while it records, so the demo people don't talk over the tour (with
@@ -24,18 +30,29 @@
  * instead, as the worker would. The worker is let go again however the run
  * ends, Ctrl+C included.
  *
- * Needs Chrome and ffmpeg. MAPCHAT_SCALE is below; MAPCHAT_URL, MAPCHAT_ROOT
+ * The login page shows Continue with Google, as the live site does: when
+ * the local app has no Google keys, the app container is started again for
+ * the recording with placeholder ones (the tour never clicks it), and once
+ * more afterwards as it was.
+ *
+ * It prints the rate the recording kept while things moved. Needs
+ * Playwright's Chromium (npx playwright install chromium; branded Chrome won't
+ * load the extension), ffmpeg, and NVIDIA's NVENC for the GPU encode (x264
+ * otherwise). MAPCHAT_SCALE is below; MAPCHAT_CHROMIUM, MAPCHAT_URL, MAPCHAT_ROOT
  * (set it when recording from a git worktree), MAPCHAT_GPU and
  * MAPCHAT_CHROME_FLAGS are in chrome.ts
  */
-import {mkdtempSync, rmSync, writeFileSync} from 'node:fs';
+import {appendFileSync, mkdtempSync, rmSync, writeFileSync} from 'node:fs';
+import {createServer} from 'node:http';
+import type {AddressInfo} from 'node:net';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import type {Browser, Locator, Page} from 'playwright';
+import type {BrowserContext, Locator, Page} from 'playwright';
 
-import {app, launchChrome, printRenderer, REPO, run, signInAsNewGuest, sql, URL, USES_GPU} from './chrome.ts';
+import {app, compose, launchChrome, launchWithExtension, printRenderer, REPO, run, signInAsNewGuest, sql, URL, USES_GPU} from './chrome.ts';
 import {Person, type Point, SeededRandom, waitSeconds} from './person.ts';
 import {drawPointer, readThemeCursors} from './pointer.ts';
+import {receiveBinaryMessages} from './websocket.ts';
 
 /** The guest the tour signs in as: their session cookie and email */
 type Guest = {session: string, email: string};
@@ -47,15 +64,26 @@ const GIVEN_GUEST: Guest = {
 const OUT = join(REPO, 'docs/images/mapchat-tour.mp4');
 const WIDTH = 1440;
 const HEIGHT = 900;
-// Pixels per CSS pixel; 2 is a Retina screen, and the video is WIDTH×HEIGHT times this
+// Pixels per CSS pixel, and the video is WIDTH×HEIGHT times this; 2 is a Retina screen
 const SCALE = Number(process.env.MAPCHAT_SCALE ?? 2);
+const CAPTURE_EXTENSION = join(import.meta.dirname, 'capture-extension');
+// Chrome's VP8 is only the way out of the browser: high enough that the GPU's
+// encode, which makes the video, starts from near what was on screen
+const CAPTURE_BITS_PER_SECOND = 60_000_000;
 const FPS = 60;
 // A frame unchanged for longer than this is shown for only this long
 const LONGEST_STILL_SECONDS = 1.0;
 const SEED = 7;
 
-/** A frame from Chrome's screencast: when it was drawn, in seconds, and its file */
-type Frame = {drawnAt: number, file: string};
+// The app container's environment for the recording, when it has no Google keys
+const PLACEHOLDER_GOOGLE_KEYS = `services:
+  app:
+    environment:
+      GOOGLE_CLIENT_ID: tour-recording
+      GOOGLE_CLIENT_SECRET: tour-recording
+`;
+// A gap between two frames shorter than this is the page moving, not resting
+const MOTION_GAP_SECONDS = 0.1;
 
 let isWorkerPaused = false;
 
@@ -132,6 +160,55 @@ async function signInNewGuest(): Promise<Guest> {
     }
 }
 
+/** Whether the login page offers Continue with Google */
+async function isGoogleSignInShown(): Promise<boolean> {
+    const loginPage = await fetch(`${URL}/login`).then((response) => response.text()).catch(() => '');
+    return loginPage.includes('href="/login/google"');
+}
+
+/** Waits for the restarted app to answer, with the Google button or without */
+async function waitForApp(isGoogleWanted: boolean): Promise<void> {
+    const isReady = async () => {
+        const isAnswering = await fetch(`${URL}/login`).then((response) => response.ok).catch(() => false);
+        return isAnswering && await isGoogleSignInShown() === isGoogleWanted;
+    };
+    if (!await waitFor(isReady, 90)) {
+        throw new Error(`The app didn't come back ${isGoogleWanted ? 'with' : 'without'} the Google button`);
+    }
+}
+
+/**
+ * Starts the app again with placeholder Google keys when it has none, so
+ * the login page shows the button
+ *
+ * @returns Whether it did, so the app is started again as it was afterwards
+ */
+async function showGoogleSignIn(workDir: string): Promise<boolean> {
+    if (await isGoogleSignInShown()) {
+        return false;
+    }
+    const overrideFile = join(workDir, 'google-keys.yml');
+    writeFileSync(overrideFile, PLACEHOLDER_GOOGLE_KEYS);
+    await compose(['up', '-d', '--no-deps', 'app'], [overrideFile]);
+    await waitForApp(true);
+    return true;
+}
+
+/** Starts the app again with its own .env, as it was before the recording */
+async function restoreApp(): Promise<void> {
+    await compose(['up', '-d', '--no-deps', 'app']);
+    await waitForApp(false);
+}
+
+/** The frames a second a video has while its picture moves, from when each frame shows */
+async function motionFps(video: string): Promise<number> {
+    const {stdout} = await run('ffprobe', ['-v', 'error', '-select_streams', 'v', '-show_entries', 'frame=pts_time', '-of', 'csv=p=0', video], {maxBuffer: 64 * 1024 * 1024});
+    const times = stdout.split('\n').map(Number).filter((time) => !Number.isNaN(time) && time > 0);
+    const gaps = times.slice(1).map((time, i) => time - times[i]).filter((gap) => gap > 0 && gap < MOTION_GAP_SECONDS);
+    const seconds = gaps.reduce((total, gap) => total + gap, 0);
+    return seconds ? gaps.length / seconds : 0;
+}
+
 /** Polls a quarter of a second at a time until it's true; false if it never was */
 async function waitFor(isDone: () => Promise<boolean>, seconds = 40): Promise<boolean> {
     const deadline = Date.now() + seconds * 1000;
@@ -161,7 +238,7 @@ async function requiredCentreOf(element: Locator): Promise<Point> {
 }
 
 /** The tour itself, step by step, while the screencast saves each frame */
-async function tour(page: Page, person: Person, guest: Guest, startScreencast: () => Promise<void>, stopScreencast: () => Promise<void>): Promise<void> {
+async function tour(page: Page, person: Person, guest: Guest, startCapture: () => Promise<void>, stopCapture: () => Promise<void>): Promise<void> {
     const onlinePerson = (name: string) => page.locator('[data-part="person"]', {hasText: name}).first();
     const chatTab = (name: string) => page.locator('[data-part="tab"]', {hasText: name}).first();
     const composer = page.locator('#textarea-send');
@@ -206,7 +283,7 @@ async function tour(page: Page, person: Person, guest: Guest, startScreencast: (
     // The login page
     await page.goto(`${URL}/login`);
     await waitSeconds(2.5);
-    await startScreencast();
+    await startCapture();
     await waitSeconds(1.2);
     await person.moveTo(await requiredCentreOf(page.locator('#guestForm button')));
     await waitSeconds(1);
@@ -257,7 +334,11 @@ async function tour(page: Page, person: Person, guest: Guest, startScreencast: (
     const fromLukas = await messagesFrom('Lukas');
     await person.click(await requiredCentreOf(composer));
     await waitSeconds(0.3);
-    await person.type('@Luk');
+    // @ on its own first, so the list of everyone online shows, then it
+    // narrows to Lukas
+    await person.type('@');
+    await waitSeconds(1.4);
+    await person.type('Luk');
     await waitSeconds(0.8);
     // Lukas picked from the @ list with the pointer, so its hover shows
     const lukasOption = page.locator('#mention-picker [role="option"]', {hasText: 'Lukas'}).first();
@@ -344,7 +425,7 @@ async function tour(page: Page, person: Person, guest: Guest, startScreencast: (
         await waitSeconds(1.5);
     }
 
-    await stopScreencast();
+    await stopCapture();
     await waitSeconds(0.3);
 }
 
@@ -357,41 +438,63 @@ async function encoderFlags(): Promise<string[]> {
     return ['-c:v', 'libx264', '-preset', 'slow', '-crf', '26'];
 }
 
-/** Each frame for as long as it was on screen, then 60fps for the video */
-async function encode(frames: Frame[], workDir: string): Promise<void> {
-    const lastFrame = frames.at(-1);
-    if (!lastFrame) {
-        throw new Error('Chrome sent no frames');
-    }
-    const lines: string[] = [];
-    frames.forEach((frame, i) => {
-        // The last frame stays a moment
-        const nextDrawnAt = frames[i + 1]?.drawnAt ?? frame.drawnAt + 0.8;
-        const seconds = Math.min(nextDrawnAt - frame.drawnAt, LONGEST_STILL_SECONDS);
-        lines.push(`file '${frame.file}'`, `duration ${seconds.toFixed(4)}`);
-    });
-    // ffmpeg's concat needs the last file again for its duration to count
-    lines.push(`file '${lastFrame.file}'`);
-    const listing = join(workDir, 'frames.txt');
-    writeFileSync(listing, `${lines.join('\n')}\n`);
+/**
+ * The recording made into the video: repeated frames dropped, any stretch
+ * where nothing moves cut to LONGEST_STILL_SECONDS (each gap between frames
+ * capped, by setpts against the frame before), then 60fps on the GPU
+ */
+async function encode(recording: string): Promise<void> {
+    const capGaps = `setpts='if(eq(N,0),0,PREV_OUTPTS+min(PTS-PREV_INPTS,${LONGEST_STILL_SECONDS}/TB))'`;
     await run('ffmpeg', [
-        '-hide_banner', '-loglevel', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', listing,
-        '-vf', `fps=${FPS},format=yuv420p`, ...await encoderFlags(),
-        '-movflags', '+faststart', OUT,
+        '-hide_banner', '-loglevel', 'error', '-y', '-i', recording,
+        '-vf', `mpdecimate,${capGaps},fps=${FPS},format=yuv420p`, ...await encoderFlags(),
+        '-an', '-movflags', '+faststart', OUT,
     ]);
 }
 
+/**
+ * Starts recording the tour's tab through the capture extension, its file
+ * streamed to `recording`
+ *
+ * @returns Stops the recording, settling once the whole file has arrived
+ */
+async function startRecording(context: BrowserContext, recording: string): Promise<() => Promise<void>> {
+    const receiver = createServer();
+    const received = receiveBinaryMessages(receiver, (piece) => appendFileSync(recording, piece));
+    await new Promise<void>((resolve) => receiver.listen(0, '127.0.0.1', resolve));
+    const socketUrl = `ws://127.0.0.1:${(receiver.address() as AddressInfo).port}/recording`;
+
+    const extension = context.serviceWorkers()[0] ?? await context.waitForEvent('serviceworker');
+    const started = await extension.evaluate(
+        ([appUrl, url, width, height, bitsPerSecond]) => self.startRecording(appUrl, url, width, height, bitsPerSecond),
+        [URL, socketUrl, WIDTH * SCALE, HEIGHT * SCALE, CAPTURE_BITS_PER_SECOND] as const,
+    );
+    if (!started?.ok) {
+        receiver.close();
+        throw new Error(`The tab's recording didn't start: ${started?.error}`);
+    }
+
+    return async () => {
+        await extension.evaluate(() => self.stopRecording());
+        await received;
+        receiver.close();
+    };
+}
+
 async function main(): Promise<void> {
+    const workDir = mkdtempSync(join(tmpdir(), 'mapchat-tour-'));
+    const recording = join(workDir, 'tour.webm');
+    // Sessions live in the database, so a guest's outlasts the app starting again
+    const hasPlaceholderGoogle = await showGoogleSignIn(workDir);
     const guest = GIVEN_GUEST.session ? GIVEN_GUEST : await signInNewGuest();
-    const workDir = mkdtempSync(join(tmpdir(), 'mapchat-frames-'));
-    const frames: Frame[] = [];
-    let browser: Browser | undefined;
+    let context: BrowserContext | undefined;
 
     // An interrupted run still closes Chrome and lets the worker go
     for (const signal of ['SIGINT', 'SIGTERM'] as const) {
         process.once(signal, async () => {
-            await browser?.close().catch(() => {});
+            await context?.close().catch(() => {});
             await resumeWorker().catch(() => {});
+            if (hasPlaceholderGoogle) await restoreApp().catch(() => {});
             rmSync(workDir, {recursive: true, force: true});
             process.exit(130);
         });
@@ -402,44 +505,29 @@ async function main(): Promise<void> {
     const jobs = new JobRunner();
     try {
         // The handlers above close it and let the worker go
-        browser = await launchChrome(
-            [`--window-size=${WIDTH},${HEIGHT}`, '--hide-scrollbars', `--force-device-scale-factor=${SCALE}`],
-            {handlesSignals: true},
-        );
-        const context = await browser.newContext({viewport: {width: WIDTH, height: HEIGHT}, deviceScaleFactor: SCALE});
+        context = await launchWithExtension(CAPTURE_EXTENSION, {width: WIDTH, height: HEIGHT, scale: SCALE}, {handlesSignals: true});
         await context.addInitScript(drawPointer, readThemeCursors(SCALE));
-        const page = await context.newPage();
+        const page = context.pages()[0] ?? await context.newPage();
         await printRenderer(page);
 
-        // Every repaint, with when it was drawn, as Chrome sends it
-        const devTools = await context.newCDPSession(page);
-        devTools.on('Page.screencastFrame', ({data, metadata, sessionId}) => {
-            // Acknowledged first, so Chrome sends the next frame as soon as it has one
-            devTools.send('Page.screencastFrameAck', {sessionId}).catch(() => {});
-            const file = join(workDir, `${String(frames.length).padStart(5, '0')}.jpg`);
-            writeFileSync(file, Buffer.from(data, 'base64'));
-            frames.push({drawnAt: metadata.timestamp ?? 0, file});
-        });
-        const startScreencast = async () => {
-            await devTools.send('Page.startScreencast', {
-                format: 'jpeg', quality: 92, maxWidth: Math.round(WIDTH * SCALE), maxHeight: Math.round(HEIGHT * SCALE), everyNthFrame: 1,
-            });
+        let stopRecording: () => Promise<void> = async () => {};
+        const startCapture = async () => {
+            stopRecording = await startRecording(context!, recording);
         };
-        const stopScreencast = async () => {
-            await devTools.send('Page.stopScreencast');
-        };
+        const stopCapture = () => stopRecording();
 
         const person = new Person(page, new SeededRandom(SEED), [WIDTH * 0.55, HEIGHT * 0.6]);
-        await tour(page, person, guest, startScreencast, stopScreencast);
+        await tour(page, person, guest, startCapture, stopCapture);
     } finally {
-        await browser?.close();
+        await context?.close();
         await jobs.stop();
         await resumeWorker();
+        if (hasPlaceholderGoogle) await restoreApp();
     }
 
-    await encode(frames, workDir);
+    await encode(recording);
+    console.log(`${OUT}: ${(await motionFps(recording)).toFixed(1)}fps recorded while moving, at ${WIDTH * SCALE}×${HEIGHT * SCALE}`);
     rmSync(workDir, {recursive: true, force: true});
-    console.log(`${OUT}: ${frames.length} frames`);
 }
 
 await main();

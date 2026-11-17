@@ -24,17 +24,31 @@ half-loaded.
 
 ## 2. Tour
 
+Once, if it's missing: `npx playwright install chromium`. The tour runs in
+Playwright's Chromium, as branded Chrome won't load the capture extension.
+
 Run `npm run tour` in the background: it signs in its own guest, pauses the
 chat worker while it records real Groq replies, and takes a few minutes.
+Without Google keys in `.env`, it starts the app container again with
+placeholder ones so the login page shows Continue with Google, as the live
+site does, and restarts it as it was afterwards. It records the tab at
+2880×1800 through `docs/video/capture-extension/` (Chrome's own tab capture
+and real-time VP8), and NVENC makes the 60fps H.264. It ends by printing the
+frame rate the recording kept while the page moved.
 
-Done when frames pulled at each step (for example
-`ffmpeg -ss <second> -i docs/images/mapchat-tour.mp4 -frames:v 1 …`,
-stacked into a grid) show every step doing what it's there to show: the
-hovered person's pin pointed out, the clicked city's pin flown to the middle
-of the map, Lukas's answer arriving, the private chats' replies, the tab
-moved and closed, the profile. A frame that only looks current isn't
-enough: a city click once landed on MapChat's Null Island, which has no
-pin, so the map never moved.
+Done when:
+
+- that printed rate is about 60fps at 2880×1800. The user wants 2× at a
+  true 60fps; Chrome's screencast, the old way, managed only about 40 at
+  that size;
+- frames pulled at each step (for example
+  `ffmpeg -ss <second> -i docs/images/mapchat-tour.mp4 -frames:v 1 …`,
+  stacked into a grid) show every step doing what it's there to show: the
+  login page with Continue with Google, the hovered person's pin pointed
+  out, the clicked city's pin flown to the middle of the map, Lukas's answer
+  arriving, the private chats' replies, the tab moved and closed, the
+  profile. A frame that only looks current isn't enough: a city click once
+  landed on MapChat's Null Island, which has no pin, so the map never moved.
 
 ## 3. The video the README plays
 

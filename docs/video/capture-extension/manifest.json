@@ -1,0 +1,8 @@
+{
+  "manifest_version": 3,
+  "name": "MapChat tour recorder",
+  "description": "Records the tour's tab for docs/video/record.ts",
+  "version": "1.0",
+  "permissions": ["tabCapture", "offscreen", "tabs"],
+  "background": {"service_worker": "background.js"}
+}
