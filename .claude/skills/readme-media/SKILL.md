@@ -5,22 +5,29 @@ description: Retake the README's screenshots and tour video after a change peopl
 
 # README screenshots and tour
 
-The README plays a tour video, then shows a main picture of the room, then
-the profile and the two emails. The tour and the main picture are recorded
-with Playwright against the app on :8080 (`docs/video/`; each script's
-header says what it needs). The app has to be up with the demo people
-online. The profile and email pictures stay as they are: the user wants only
-the main picture retaken.
+The README plays a tour video, then shows a large main picture of the room,
+then the profile beside the activation email, then two phone pictures side
+by side. The tour and the room and phone pictures are recorded with
+Playwright against the app on :8080 (`docs/video/`; each script's header
+says what it needs). The app has to be up with the demo people online. The
+profile and email pictures stay as they are: the user wants only the room
+and phone pictures retaken.
 
-## 1. The main picture
+## 1. The room and phone pictures
 
-Run `npm run screenshots`. It writes `docs/images/mapchat-app.png`: the
-room, two private chats open as tabs, a message being written in the box,
-and the label of the pin nearest the middle of the map open.
+Run `npm run screenshots`. It writes three pictures to `docs/images/`, all
+at 2x:
 
-Done when you've looked at it and it shows the current app with all of
-that: the pin's label open near the middle, the draft in the box, nothing
-half-loaded.
+- `mapchat-app.png`, 1440×900: the room, two private chats open as tabs, a
+  message being written in the box, and the pin nearest the middle panned
+  to the middle of the map with its label open;
+- `mapchat-phone.png`, an iPhone's 393×852: the room with a pin panned to
+  the middle of the map and its label open, as a tap opens it;
+- `mapchat-phone-online.png`: the same phone with the online list slid open.
+
+Done when you've looked at all three and they show the current app with all
+of that: the label's pin in the middle of the open map, the draft in the
+box, the newest messages, no row lit as if hovered, nothing half-loaded.
 
 ## 2. Tour
 

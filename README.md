@@ -45,11 +45,15 @@ https://github.com/user-attachments/assets/06e03a84-0401-4cfb-89b0-be0756bc7f2e
 
 <sub>A quick tour of MapChat.</sub>
 
-![The chat room, with a message being written and a pin's label open on the map of who is chatting from where](docs/images/mapchat-app.png)
+![The chat room, with a message being written and a pin's label open in the middle of the map of who is chatting from where](docs/images/mapchat-app.png)
 
-| Profile | Account activation email | Password reset email |
-|---|---|---|
-| ![Profile page](docs/images/mapchat-profile.png) | ![Account activation email](docs/images/mapchat-email-activation.png) | ![Password reset email](docs/images/mapchat-email-reset.png) |
+| Profile | Account activation email |
+|---|---|
+| ![Profile page](docs/images/mapchat-profile.png) | ![Account activation email](docs/images/mapchat-email-activation.png) |
+
+| On a phone | The online list on a phone |
+|---|---|
+| ![The chat room on a phone, with a pin's label open in the middle of the map](docs/images/mapchat-phone.png) | ![The online list slid open over the chat on a phone](docs/images/mapchat-phone-online.png) |
 
 ## Features
 
