@@ -1,25 +1,29 @@
 /**
- * Takes the README's main picture and its two phone pictures, at 2x, from the
- * app running locally (docker compose up).
+ * Takes the README's main picture, its two phone pictures and the login
+ * page, at 2x, from the app running locally (docker compose up).
  *
  *   npm run screenshots
  *
  * The README's profile and email pictures stay as they are.
  *
- * - mapchat-app.png: a new guest opens two private chats as tabs, then the
- *   room is shown with a message being written in the box, and the pin
+ * - mapchat-app.png: a new guest opens two private chats as tabs and sends
+ *   the room a message that @mentions someone, then the room is shown with a
+ *   message being written in the box that @mentions someone, and the pin
  *   nearest the middle of the map panned to the middle with its label open,
  *   as hovering it shows.
  * - mapchat-phone.png: the room on a phone, with a pin in the middle of the
  *   map and its label open as a tap opens it.
  * - mapchat-phone-online.png: the same phone with the online list slid open.
+ * - mapchat-login.png: the login page, with Continue with Google.
  *
  * The environment is chrome.ts's
  */
+import {mkdtempSync, rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import type {Browser, Page} from 'playwright';
 
-import {launchChrome, printRenderer, REPO, signInAsNewGuest, URL} from './chrome.ts';
+import {launchChrome, printRenderer, REPO, restoreApp, showGoogleSignIn, signInAsNewGuest, URL} from './chrome.ts';
 import {waitSeconds} from './person.ts';
 
 const DESKTOP = {width: 1440, height: 900};
@@ -30,8 +34,11 @@ const PHONE_LEAST_ZOOM = 1.5;
 // The README wants sharp pictures on high-density screens
 const PIXEL_RATIO = 2;
 const IMAGES = join(REPO, 'docs/images');
-// Being written in the box, as if the guest were about to send it
-const DRAFT = 'anyone else still up? 🌙 what time is it where you are?';
+// Being written in the box, as if the guest were about to send it, with a mention's chip
+const draftFor = (person: ListedPerson): string => `@${person.shown_name} anyone else still up? 🌙 what time is it where you are?`;
+
+/** What the guest sends to the first demo person, so a mention chip shows */
+const mentionFor = (person: ListedPerson): string => `@${person.shown_name} what's the weather like where you are? ☀️`;
 
 /** A person in the online list, as people.js has them */
 type ListedPerson = {id: number, shown_name: string};
@@ -127,14 +134,15 @@ async function takeDesktopPicture(browser: Browser): Promise<void> {
     for (const person of demoPeople.slice(0, 2)) {
         await openPrivateChat(page, person);
     }
-    await page.evaluate(() => {
-        showConversation('everyone');
-        scrollToNewest('instant');
-    });
+    await page.evaluate(() => showConversation('everyone'));
+
+    // A message that @mentions someone, so a mention chip shows among the newest
+    await page.locator('#textarea-send').fill(mentionFor(demoPeople[0]));
+    await page.locator('#button-send').click();
     await waitSeconds(4);
 
     // A message being written, and a pin's label open in the middle of the map
-    await page.locator('#textarea-send').fill(DRAFT);
+    await page.locator('#textarea-send').fill(draftFor(demoPeople[1]));
     // The demo keeps talking: a message that came in since is shown whole
     await page.evaluate(() => scrollToNewest('instant'));
     const pinCentre = await centreMiddlePin(page);
@@ -157,9 +165,9 @@ async function takePhonePictures(browser: Browser): Promise<void> {
     await waitSeconds(2);
     await page.evaluate(() => scrollToNewest('instant'));
 
-    await tapMiddlePinUntilLabelShows(page);
+    // Scrolled before the tap, as scrolling the messages closes a pin's label
     await page.evaluate(() => scrollToNewest('instant'));
-    await waitSeconds(0.5);
+    await tapMiddlePinUntilLabelShows(page);
     await savePicture(page, 'mapchat-phone.png');
 
     // Long enough for a row that has just come online to stop flashing
@@ -170,6 +178,28 @@ async function takePhonePictures(browser: Browser): Promise<void> {
     await waitSeconds(0.5);
     await savePicture(page, 'mapchat-phone-online.png');
     await context.close();
+}
+
+/**
+ * The login page with Continue with Google, as the live site has it. Without
+ * Google keys the app is started again with placeholder ones, then as it was
+ */
+async function takeLoginPicture(browser: Browser): Promise<void> {
+    const workDir = mkdtempSync(join(tmpdir(), 'mapchat-screenshots-'));
+    const hasPlaceholderGoogle = await showGoogleSignIn(workDir);
+    try {
+        const context = await browser.newContext({viewport: DESKTOP, deviceScaleFactor: PIXEL_RATIO});
+        const page = await context.newPage();
+        await page.goto(`${URL}/login`);
+        await waitSeconds(2);
+        await savePicture(page, 'mapchat-login.png');
+        await context.close();
+    } finally {
+        if (hasPlaceholderGoogle) {
+            await restoreApp();
+        }
+        rmSync(workDir, {recursive: true, force: true});
+    }
 }
 
 /** Saves the page as it shows now to docs/images */
@@ -184,6 +214,8 @@ async function main(): Promise<void> {
     try {
         await takeDesktopPicture(browser);
         await takePhonePictures(browser);
+        // Last, as it may start the app again
+        await takeLoginPicture(browser);
     } finally {
         await browser.close();
     }

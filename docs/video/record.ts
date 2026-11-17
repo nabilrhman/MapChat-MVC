@@ -42,14 +42,16 @@
  * (set it when recording from a git worktree), MAPCHAT_GPU and
  * MAPCHAT_CHROME_FLAGS are in chrome.ts
  */
-import {appendFileSync, mkdtempSync, rmSync, writeFileSync} from 'node:fs';
+import {appendFileSync, mkdtempSync, rmSync} from 'node:fs';
 import {createServer} from 'node:http';
 import type {AddressInfo} from 'node:net';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import type {BrowserContext, Locator, Page} from 'playwright';
 
-import {app, compose, launchChrome, launchWithExtension, printRenderer, REPO, run, signInAsNewGuest, sql, URL, USES_GPU} from './chrome.ts';
+import {
+    app, launchChrome, launchWithExtension, printRenderer, REPO, restoreApp, run, showGoogleSignIn, signInAsNewGuest, sql, URL, USES_GPU, waitFor,
+} from './chrome.ts';
 import {Person, type Point, SeededRandom, waitSeconds} from './person.ts';
 import {drawPointer, readThemeCursors} from './pointer.ts';
 import {receiveBinaryMessages} from './websocket.ts';
@@ -75,13 +77,6 @@ const FPS = 60;
 const LONGEST_STILL_SECONDS = 1.0;
 const SEED = 7;
 
-// The app container's environment for the recording, when it has no Google keys
-const PLACEHOLDER_GOOGLE_KEYS = `services:
-  app:
-    environment:
-      GOOGLE_CLIENT_ID: tour-recording
-      GOOGLE_CLIENT_SECRET: tour-recording
-`;
 // A gap between two frames shorter than this is the page moving, not resting
 const MOTION_GAP_SECONDS = 0.1;
 
@@ -160,46 +155,6 @@ async function signInNewGuest(): Promise<Guest> {
     }
 }
 
-/** Whether the login page offers Continue with Google */
-async function isGoogleSignInShown(): Promise<boolean> {
-    const loginPage = await fetch(`${URL}/login`).then((response) => response.text()).catch(() => '');
-    return loginPage.includes('href="/login/google"');
-}
-
-/** Waits for the restarted app to answer, with the Google button or without */
-async function waitForApp(isGoogleWanted: boolean): Promise<void> {
-    const isReady = async () => {
-        const isAnswering = await fetch(`${URL}/login`).then((response) => response.ok).catch(() => false);
-        return isAnswering && await isGoogleSignInShown() === isGoogleWanted;
-    };
-    if (!await waitFor(isReady, 90)) {
-        throw new Error(`The app didn't come back ${isGoogleWanted ? 'with' : 'without'} the Google button`);
-    }
-}
-
-/**
- * Starts the app again with placeholder Google keys when it has none, so
- * the login page shows the button
- *
- * @returns Whether it did, so the app is started again as it was afterwards
- */
-async function showGoogleSignIn(workDir: string): Promise<boolean> {
-    if (await isGoogleSignInShown()) {
-        return false;
-    }
-    const overrideFile = join(workDir, 'google-keys.yml');
-    writeFileSync(overrideFile, PLACEHOLDER_GOOGLE_KEYS);
-    await compose(['up', '-d', '--no-deps', 'app'], [overrideFile]);
-    await waitForApp(true);
-    return true;
-}
-
-/** Starts the app again with its own .env, as it was before the recording */
-async function restoreApp(): Promise<void> {
-    await compose(['up', '-d', '--no-deps', 'app']);
-    await waitForApp(false);
-}
-
 /** The frames a second a video has while its picture moves, from when each frame shows */
 async function motionFps(video: string): Promise<number> {
     const {stdout} = await run('ffprobe', ['-v', 'error', '-select_streams', 'v', '-show_entries', 'frame=pts_time', '-of', 'csv=p=0', video], {maxBuffer: 64 * 1024 * 1024});
@@ -207,19 +162,6 @@ async function motionFps(video: string): Promise<number> {
     const gaps = times.slice(1).map((time, i) => time - times[i]).filter((gap) => gap > 0 && gap < MOTION_GAP_SECONDS);
     const seconds = gaps.reduce((total, gap) => total + gap, 0);
     return seconds ? gaps.length / seconds : 0;
-}
-
-/** Polls a quarter of a second at a time until it's true; false if it never was */
-async function waitFor(isDone: () => Promise<boolean>, seconds = 40): Promise<boolean> {
-    const deadline = Date.now() + seconds * 1000;
-    while (Date.now() < deadline) {
-        // A page that's navigating can't answer yet
-        if (await isDone().catch(() => false)) {
-            return true;
-        }
-        await waitSeconds(0.25);
-    }
-    return false;
 }
 
 /** The middle of an element, or null when it isn't on the page */

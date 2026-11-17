@@ -6,28 +6,36 @@ description: Retake the README's screenshots and tour video after a change peopl
 # README screenshots and tour
 
 The README plays a tour video, then shows a large main picture of the room,
-then the profile beside the activation email, then two phone pictures side
-by side. The tour and the room and phone pictures are recorded with
+then two phone pictures side by side, then the login beside the profile,
+then the two emails. The tour and the room and phone pictures are recorded with
 Playwright against the app on :8080 (`docs/video/`; each script's header
 says what it needs). The app has to be up with the demo people online. The
-profile and email pictures stay as they are: the user wants only the room
-and phone pictures retaken.
+profile and email pictures stay as they are: the user wants only the room,
+phone and login pictures retaken.
 
-## 1. The room and phone pictures
+## 1. The room, phone and login pictures
 
-Run `npm run screenshots`. It writes three pictures to `docs/images/`, all
+Run `npm run screenshots`. It writes four pictures to `docs/images/`, all
 at 2x:
 
 - `mapchat-app.png`, 1440×900: the room, two private chats open as tabs, a
-  message being written in the box, and the pin nearest the middle panned
-  to the middle of the map with its label open;
+  message the guest sent that @mentions a demo person (who answers), a
+  message being written in the box that @mentions another, and the pin
+  nearest the middle panned to the middle of the map with its label open;
 - `mapchat-phone.png`, an iPhone's 393×852: the room with a pin panned to
   the middle of the map and its label open, as a tap opens it;
-- `mapchat-phone-online.png`: the same phone with the online list slid open.
+- `mapchat-phone-online.png`: the same phone with the online list slid open;
+- `mapchat-login.png`, 1440×900: the login page with Continue with Google.
+  Without Google keys, the app is started again with placeholder ones for it,
+  then as it was.
+
+Each run posts the guest's @mention to the local room. A guest's messages go
+with it after 24 hours, so a second run that day shows two: delete the
+earlier one from `chats` first.
 
 Done when you've looked at all three and they show the current app with all
-of that: the label's pin in the middle of the open map, the draft in the
-box, the newest messages, no row lit as if hovered, nothing half-loaded.
+of that: the label's pin in the middle of the open map, the chips in the
+messages and the draft, the newest messages, Continue with Google, no row lit as if hovered, nothing half-loaded.
 
 ## 2. Tour
 
@@ -82,8 +90,8 @@ upload, and the comment box is empty.
 
 ## 4. The words around them
 
-Check the README's Features and the About page against what the app does
-now, and update them with it; after changing the About page, run
-`npm run a11y`.
+Check the README's Features, `docs/features.md` and the About page against
+what the app does now, and update them with it; after changing the About
+page, run `npm run a11y`.
 
 Then ship it all with the `ship` skill.
