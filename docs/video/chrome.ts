@@ -9,9 +9,12 @@
  * MAPCHAT_GPU=0 draws without the GPU, and MAPCHAT_CHROME_FLAGS adds flags
  */
 import {execFile} from 'node:child_process';
-import {resolve} from 'node:path';
+import {createHash} from 'node:crypto';
+import {existsSync, mkdtempSync, readdirSync} from 'node:fs';
+import {homedir, tmpdir} from 'node:os';
+import {join, resolve} from 'node:path';
 import {promisify} from 'node:util';
-import {type Browser, chromium, type Page} from 'playwright';
+import {type Browser, type BrowserContext, chromium, type Page} from 'playwright';
 
 export const run = promisify(execFile);
 
@@ -31,6 +34,12 @@ const CHROME_FLAGS = [
 export async function app(...command: string[]): Promise<string> {
     const {stdout} = await run('docker', ['compose', 'exec', '-T', 'app', ...command], {cwd: COMPOSE_ROOT});
     return stdout;
+}
+
+/** Runs docker compose for the app's project, with more compose files laid over its own */
+export async function compose(args: string[], extraFiles: string[] = []): Promise<void> {
+    const files = extraFiles.length ? ['-f', 'docker-compose.yml', ...extraFiles.flatMap((file) => ['-f', file])] : [];
+    await run('docker', ['compose', ...files, ...args], {cwd: COMPOSE_ROOT});
 }
 
 /** Runs a statement on the app's database */
@@ -73,6 +82,62 @@ export async function signInAsNewGuest(page: Page): Promise<{id: number, email: 
     const id = Number(await page.evaluate('myUserId'));
     const email = await app('php', '-r', EMAIL_OF_USER_PHP, '--', String(id));
     return {id, email};
+}
+
+/**
+ * Playwright's own Chromium, the newest installed (npx playwright install
+ * chromium), or MAPCHAT_CHROMIUM. Branded Chrome stopped loading unpacked
+ * extensions in version 137, so the tour's recorder needs this one
+ */
+function playwrightChromium(): string {
+    if (process.env.MAPCHAT_CHROMIUM) {
+        return process.env.MAPCHAT_CHROMIUM;
+    }
+    const browsers = join(homedir(), '.cache/ms-playwright');
+    const builds = readdirSync(browsers)
+        .filter((name) => /^chromium-\d+$/.test(name))
+        .sort((a, b) => Number(b.split('-')[1]) - Number(a.split('-')[1]));
+    const executable = builds.map((build) => join(browsers, build, 'chrome-linux64/chrome')).find((path) => existsSync(path));
+    if (!executable) {
+        throw new Error('No Playwright Chromium: run npx playwright install chromium');
+    }
+    return executable;
+}
+
+/** An unpacked extension's id: the SHA-256 of its folder, the first 32 hex digits written a to p */
+function extensionIdOf(folder: string): string {
+    const hex = createHash('sha256').update(folder).digest('hex').slice(0, 32);
+    return [...hex].map((digit) => String.fromCharCode('a'.charCodeAt(0) + parseInt(digit, 16))).join('');
+}
+
+/**
+ * Starts Playwright's Chromium, headless, with the extension in `extensionFolder`
+ * loaded and let capture a tab without being clicked
+ */
+export function launchWithExtension(
+    extensionFolder: string,
+    {width, height, scale}: {width: number, height: number, scale: number},
+    {handlesSignals = false} = {},
+): Promise<BrowserContext> {
+    const folder = resolve(extensionFolder);
+    return chromium.launchPersistentContext(mkdtempSync(join(tmpdir(), 'mapchat-chromium-')), {
+        executablePath: playwrightChromium(),
+        headless: true,
+        viewport: {width, height},
+        deviceScaleFactor: scale,
+        handleSIGINT: !handlesSignals,
+        handleSIGTERM: !handlesSignals,
+        args: [
+            `--disable-extensions-except=${folder}`,
+            `--load-extension=${folder}`,
+            `--allowlisted-extension-id=${extensionIdOf(folder)}`,
+            '--auto-accept-this-tab-capture',
+            `--window-size=${width},${height}`,
+            `--force-device-scale-factor=${scale}`,
+            '--hide-scrollbars',
+            ...CHROME_FLAGS,
+        ],
+    });
 }
 
 /** Prints what the page draws with, so a run without the GPU shows */

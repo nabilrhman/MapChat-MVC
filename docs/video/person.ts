@@ -71,13 +71,20 @@ export class Person {
         this.at = at;
     }
 
-    /** Moves along a path, given as the point at each moment from 0 to 1 */
+    /**
+     * Moves along a path, given as the point at each moment from 0 to 1.
+     * Each move goes out on the clock, its wait less the time the move took to
+     * reach Chrome, so the pointer really moves MOVES_PER_SECOND times a second
+     * and the recording has a new frame for each
+     */
     async glide(pointAt: (t: number) => Point, seconds: number): Promise<void> {
         const steps = Math.max(6, Math.floor(seconds * MOVES_PER_SECOND));
+        const startedAt = performance.now();
         for (let step = 1; step <= steps; step++) {
             const [x, y] = pointAt(step / steps);
             await this.page.mouse.move(x, y);
-            await waitSeconds(seconds / steps);
+            const dueAt = startedAt + (step / steps) * seconds * 1000;
+            await sleep(Math.max(0, dueAt - performance.now()));
         }
         this.at = pointAt(1);
     }
