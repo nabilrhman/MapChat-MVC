@@ -27,6 +27,7 @@ const chatPanel = document.getElementById('chat');
 const chatTabs = document.getElementById('chat-tabs');
 const chatList = document.getElementById('chat-list');
 const composerForm = document.getElementById('input-container-form');
+const composerField = document.getElementById('composer-field');
 const messageInput = document.getElementById('textarea-send');
 const sendButton = document.getElementById('button-send');
 
@@ -235,7 +236,7 @@ function showConversation(conversation) {
     const isPrivate = activeConversation !== EVERYONE;
 
     showChatHeader();
-    messageInput.placeholder = isPrivate ? `Message ${getTabName(activeConversation)}` : 'Type your message';
+    messageInput.placeholder = isPrivate ? `Message ${getTabName(activeConversation)}` : 'Your message';
     addDayDividers();
     scrollToNewest('instant');
     newMessagesWhileScrolledUp = 0;
@@ -330,6 +331,9 @@ function showChatHeader() {
     document.getElementById('chat-header-private-tag').hidden = !isPrivate;
     where.replaceChildren();
 
+    const isOnline = isPrivate && isUserOnline(activeConversation);
+    document.getElementById('chat-header').classList.toggle('is-online', isOnline);
+
     if (!isPrivate) {
         document.getElementById('chat-header-name').textContent = 'Everyone';
         status.replaceChildren(ROOM_STATUS);
@@ -340,7 +344,7 @@ function showChatHeader() {
     photo.src = getPhotoSrc(activeConversation);
     document.getElementById('chat-header-name').textContent = getTabName(activeConversation);
 
-    if (isUserOnline(activeConversation)) {
+    if (isOnline) {
         status.replaceChildren('Online');
     } else {
         status.replaceChildren(person ? `Seen ${getTimeAgo(person)}` : 'Away');
@@ -366,6 +370,7 @@ function createFlipToCountry(placeAndTime, person) {
     const track = createElement('span', 'track');
     track.append(cityLine, countryLine);
     const flip = createElement('span', 'swap flip');
+    flip.dataset.swaps = '';
     flip.append(track);
     return [flip];
 }
@@ -413,7 +418,7 @@ chatTabs.addEventListener('click', (event) => {
     event.preventDefault();
     if (isEndingTabDrag) return;
     // A tab of a folded chat brings the chat back up
-    if (isChatFolded()) moveSheetTo('half');
+    if (isChatFolded()) moveSheetTo('chosen');
 
     if (event.target.closest('[data-part="tab-close"]')) {
         closeTab(tab);
@@ -730,7 +735,7 @@ chatList.addEventListener('click', (event) => {
     // Moving the sheet starts the map loading (map.js). The pin waits for
     // the sheet to settle, as the room it leaves sets where the middle of
     // the map is
-    moveSheetTo('half');
+    moveSheetTo('chosen');
     // Its own slide: the tapped city's swap ends inside it first
     const onChatSlid = (slide) => {
         if (slide.target !== chatPanel || slide.propertyName !== 'top') return;
@@ -740,6 +745,37 @@ chatList.addEventListener('click', (event) => {
     chatPanel.addEventListener('transitionend', onChatSlid);
 });
 
+/* Touch screens have no hover: a tap slides a two-line window (.swap in
+   chat.css) to its second line, and it slides back by itself */
+
+const SWAP_BACK_DELAY = 2000;
+const hasNoHover = matchMedia('(hover: none)');
+const swapBackTimers = new WeakMap();
+
+document.addEventListener('click', (event) => {
+    if (!hasNoHover.matches) return;
+    const swap = event.target.closest('[data-swaps]');
+    if (!swap) return;
+
+    clearTimeout(swapBackTimers.get(swap));
+    swap.classList.add('is-swapped');
+    swapBackTimers.set(swap, setTimeout(() => swap.classList.remove('is-swapped'), SWAP_BACK_DELAY));
+});
+
+/* Phones: the chat header is one line, and a tap on it slides up the
+   second (online or last seen, their city and time), which slides back by
+   itself. Not after a drag, as the header moves the sheet too */
+
+const chatHeader = document.getElementById('chat-header');
+let headerSlideBackTimer = null;
+
+chatHeader.addEventListener('click', () => {
+    if (!phoneScreen.matches || isEndingSheetDrag) return;
+    clearTimeout(headerSlideBackTimer);
+    chatHeader.classList.add('is-showing-where');
+    headerSlideBackTimer = setTimeout(() => chatHeader.classList.remove('is-showing-where'), SWAP_BACK_DELAY);
+});
+
 chatList.addEventListener('click', (event) => {
     const senderName = event.target.closest('[data-part="name-button"]');
     if (senderName) {
@@ -747,19 +783,32 @@ chatList.addEventListener('click', (event) => {
     }
 });
 
-/* Phones: the chat is a sheet over the map, as in a maps app. It rests at
-   one of three stops, and dragging its handle or header moves it */
+/* Phones: the chat is a sheet over the map, as in a maps app. Dragging its
+   handle or header sets its height, between limits: above them it goes all
+   the way up, below them it folds down to its tabs. Tapping the handle then
+   switches between all the way up and the height you chose */
 
 const sheetHandle = document.getElementById('sheet-handle');
 const SHEET_STOP_KEY = 'sheetStop';
-// Top to bottom: up to the header, halfway, down to its tabs
-const SHEET_STOP_ORDER = ['full', 'half', 'tabs'];
+const SHEET_CHOSEN_SHARE_KEY = 'sheetChosenShare';
+// Top to bottom: up to the header, the height you chose, down to its tabs
+const SHEET_STOP_ORDER = ['full', 'chosen', 'tabs'];
 // What a tap on the handle does at each stop, and what it says it does
 const SHEET_TAPS = {
-    full: {nextStop: 'half', label: 'Show the map'},
-    half: {nextStop: 'full', label: 'Show all of the chat'},
-    tabs: {nextStop: 'half', label: 'Show the chat'},
+    full: {nextStop: 'chosen', label: 'Show the map'},
+    chosen: {nextStop: 'full', label: 'Show all of the chat'},
+    tabs: {nextStop: 'full', label: 'Show the chat'},
 };
+// The highest a chosen height goes, as a share of the run: let go above
+// it, the sheet goes all the way up
+const SHEET_HIGHEST_CHOSEN_SHARE = 0.125;
+// Until you choose, the sheet rests a little under halfway
+const SHEET_FIRST_CHOSEN_SHARE = 0.45;
+// The lowest a chosen height goes shows this many messages of about this
+// height (px): a name, a line or two, and its place. Let go below it, the
+// sheet folds
+const SHEET_MESSAGE_HEIGHT = 103;
+const SHEET_LOWEST_MESSAGES = 1;
 // How far a finger moves (px) before a press becomes a drag, so a tap stays a tap
 const SHEET_DRAG_THRESHOLD = 6;
 // Let go faster than this (px per ms), the sheet goes on to the next stop
@@ -770,22 +819,37 @@ const SHEET_FLICK_SPEED = 0.4;
 const SHEET_SPEED_STRETCH = 50;
 const SHEET_REST_TIME = SHEET_SPEED_STRETCH * 3;
 
-let sheetStop = 'half';
+let sheetStop = 'chosen';
+// The chosen height's top as a share of the run, so it keeps its place
+// when the screen's height changes
+let sheetChosenShare = SHEET_FIRST_CHOSEN_SHARE;
 let sheetDrag = null;
 let isEndingSheetDrag = false;
 
 const isChatFolded = () => sheetStop === 'tabs';
 
-// A stop's distance below the header, in px. The map fills the room
-// between the header and the footer, so its height is the sheet's whole run
+// The map fills the room between the header and the footer, so its height
+// is the sheet's whole run
+const sheetRunHeight = () => document.getElementById('map').clientHeight;
+
+// A stop's distance below the header, in px
 function sheetTopOf(stop) {
-    const runHeight = document.getElementById('map').clientHeight;
+    const runHeight = sheetRunHeight();
+    const tabsTop = runHeight - sheetHandle.offsetHeight - chatTabs.offsetHeight;
     const tops = {
         full: 0,
-        half: Math.round(runHeight * 0.45),
-        tabs: runHeight - sheetHandle.offsetHeight - chatTabs.offsetHeight,
+        // No lower than the lowest, after the screen's height changed
+        chosen: Math.min(Math.round(runHeight * sheetChosenShare), lowestChosenTop(tabsTop)),
+        tabs: tabsTop,
     };
     return tops[stop];
+}
+
+// The lowest chosen height's top (px): room under it for the chat's header,
+// the lowest messages and the message box, above the tabs stop at `tabsTop`
+function lowestChosenTop(tabsTop) {
+    const messagesHeight = SHEET_MESSAGE_HEIGHT * SHEET_LOWEST_MESSAGES;
+    return tabsTop - chatHeader.offsetHeight - messagesHeight - composerForm.offsetHeight;
 }
 
 // chat.css places the sheet and the map's credits from this
@@ -813,6 +877,12 @@ function moveSheetTo(stop) {
     document.dispatchEvent(new Event('sheet-moved'));
 }
 
+// Makes `top` px the chosen height, remembered for next time
+function chooseSheetHeight(top) {
+    sheetChosenShare = top / sheetRunHeight();
+    writeStored(SHEET_CHOSEN_SHARE_KEY, String(sheetChosenShare));
+}
+
 // The stop nearest where the sheet was let go
 function nearestSheetStop(top) {
     const distanceTo = (stop) => Math.abs(sheetTopOf(stop) - top);
@@ -820,14 +890,21 @@ function nearestSheetStop(top) {
 }
 
 // Where a drag lets the sheet settle: after a flick, the next stop the way
-// it was going; otherwise the nearest
+// it was going. Otherwise all the way up above the highest chosen height,
+// folded below the lowest, and anywhere between becomes the chosen height
 function sheetStopAfterDrag(top, speed) {
-    if (Math.abs(speed) < SHEET_FLICK_SPEED) return nearestSheetStop(top);
-    const isGoingDown = speed > 0;
-    const stopsThatWay = isGoingDown
-        ? SHEET_STOP_ORDER.filter((stop) => sheetTopOf(stop) > top)
-        : SHEET_STOP_ORDER.filter((stop) => sheetTopOf(stop) < top).reverse();
-    return stopsThatWay[0] ?? nearestSheetStop(top);
+    if (Math.abs(speed) >= SHEET_FLICK_SPEED) {
+        const isGoingDown = speed > 0;
+        const stopsThatWay = isGoingDown
+            ? SHEET_STOP_ORDER.filter((stop) => sheetTopOf(stop) > top)
+            : SHEET_STOP_ORDER.filter((stop) => sheetTopOf(stop) < top).reverse();
+        return stopsThatWay[0] ?? nearestSheetStop(top);
+    }
+
+    if (top < sheetRunHeight() * SHEET_HIGHEST_CHOSEN_SHARE) return 'full';
+    if (top > lowestChosenTop(sheetTopOf('tabs'))) return 'tabs';
+    chooseSheetHeight(top);
+    return 'chosen';
 }
 
 function onSheetPress(event) {
@@ -891,7 +968,7 @@ function onSheetLetGo(event) {
     });
 }
 
-for (const sheetGrip of [sheetHandle, document.getElementById('chat-header')]) {
+for (const sheetGrip of [sheetHandle, chatHeader]) {
     sheetGrip.addEventListener('pointerdown', onSheetPress);
 }
 window.addEventListener('pointermove', onSheetDrag);
@@ -903,9 +980,11 @@ sheetHandle.addEventListener('click', () => {
     moveSheetTo(SHEET_TAPS[sheetStop].nextStop);
 });
 
-// Without storage, or the first time, it starts halfway
+// Without storage, or the first time, it starts at the first chosen height
 const storedSheetStop = readStored(SHEET_STOP_KEY);
-if (phoneScreen.matches) moveSheetTo(Object.hasOwn(SHEET_TAPS, String(storedSheetStop)) ? storedSheetStop : 'half');
+const storedChosenShare = Number(readStored(SHEET_CHOSEN_SHARE_KEY));
+if (storedChosenShare >= SHEET_HIGHEST_CHOSEN_SHARE && storedChosenShare < 1) sheetChosenShare = storedChosenShare;
+if (phoneScreen.matches) moveSheetTo(Object.hasOwn(SHEET_TAPS, String(storedSheetStop)) ? storedSheetStop : 'chosen');
 
 // The stops move with the screen's height (turning the phone, its keyboard)
 window.addEventListener('resize', () => {
@@ -927,21 +1006,39 @@ phoneScreen.addEventListener('change', () => {
 const jumpButton = document.getElementById('jump-latest');
 const jumpLabel = document.getElementById('jump-latest-text');
 
+// The count's number, which rolls up as messages come in (countTo in dom.js)
+const jumpCount = createElement('span');
+jumpCount.dataset.part = 'jump-count';
+// What the label shows: 0 for "Latest", or how many new messages
+let shownJumpCount = 0;
 
-function getJumpLabelText() {
-    if (newMessagesWhileScrolledUp === 0) return 'Latest';
-    if (newMessagesWhileScrolledUp === 1) return '1 new message';
-    return `${newMessagesWhileScrolledUp} new messages`;
+// "Latest", or the count and "new message(s)". A count shown afresh
+// appears at once; a count already showing rolls to the new number
+function showJumpCount(count, {shouldRoll}) {
+    shownJumpCount = count;
+    if (count === 0) {
+        jumpLabel.textContent = 'Latest';
+        return;
+    }
+
+    if (!jumpLabel.contains(jumpCount)) {
+        jumpLabel.replaceChildren(jumpCount, '');
+    }
+    if (!shouldRoll) {
+        delete jumpCount.dataset.count;
+    }
+    countTo(jumpCount, count);
+    jumpLabel.lastChild.textContent = count === 1 ? ' new message' : ' new messages';
 }
 
 // The pill eases to the new label's width instead of jumping: it starts
 // scaled to the old width (--pill-scale, .jump-latest::before in chat.css)
 // and grows to the new. Going from "Latest" to a count, the words fade in;
 // after that only the number changes, so nothing fades and nothing flickers
-function changeJumpLabel(text) {
-    const wasLatest = jumpLabel.textContent === 'Latest';
+function changeJumpLabel(count) {
+    const wasLatest = shownJumpCount === 0;
     const widthBefore = jumpButton.offsetWidth;
-    jumpLabel.textContent = text;
+    showJumpCount(count, {shouldRoll: !wasLatest});
     const widthAfter = jumpButton.offsetWidth;
 
     jumpButton.classList.remove('is-resizing');
@@ -960,16 +1057,16 @@ function updateJumpButton() {
         return;
     }
 
-    const text = getJumpLabelText();
+    const count = newMessagesWhileScrolledUp;
     const wasHidden = jumpButton.hidden || jumpButton.classList.contains('is-leaving');
     jumpButton.classList.remove('is-leaving');
     jumpButton.hidden = false;
 
-    if (wasHidden || jumpLabel.textContent === text) {
-        jumpLabel.textContent = text;
+    if (wasHidden) {
+        showJumpCount(count, {shouldRoll: false});
         return;
     }
-    changeJumpLabel(text);
+    if (count !== shownJumpCount) changeJumpLabel(count);
 }
 
 // Eases out down where it is, as it eased in. Its label stays as it was
@@ -982,7 +1079,7 @@ function hideJumpButton() {
         if (!jumpButton.classList.contains('is-leaving')) return;
         jumpButton.classList.remove('is-leaving');
         jumpButton.hidden = true;
-        jumpLabel.textContent = getJumpLabelText();
+        showJumpCount(newMessagesWhileScrolledUp, {shouldRoll: false});
     };
 
     jumpButton.classList.add('is-leaving');
@@ -1156,12 +1253,25 @@ function updateSendButton() {
     sendButton.disabled = isSending || messageInput.value.trim() === '';
 }
 
-// The box grows with what's typed, up to its CSS max-height
+// The box sits in one row with its buttons while the text fits there; once
+// it wraps, the text gets the whole width and grows, up to its CSS max-height
 function fitMessageInputToText() {
+    // Measured in the one-row layout, or text that fits there would never go back
+    composerField.classList.remove('is-multiline');
+    messageInput.style.height = 'auto';
+    const {lineHeight, paddingTop, paddingBottom} = getComputedStyle(messageInput);
+    const oneLineHeight = parseFloat(lineHeight) + parseFloat(paddingTop) + parseFloat(paddingBottom);
+    // Half a line's slack: a scaled screen rounds one line a pixel taller
+    const isWrapped = messageInput.scrollHeight > oneLineHeight + parseFloat(lineHeight) / 2;
+    composerField.classList.toggle('is-multiline', isWrapped);
+
     messageInput.style.height = 'auto';
     // scrollHeight leaves out the border, which the box's height includes
     const borderHeight = messageInput.offsetHeight - messageInput.clientHeight;
-    messageInput.style.height = `${messageInput.scrollHeight + borderHeight}px`;
+    const neededHeight = messageInput.scrollHeight + borderHeight;
+    const maxHeight = parseFloat(getComputedStyle(messageInput).maxHeight);
+    messageInput.classList.toggle('is-full', neededHeight > maxHeight);
+    messageInput.style.height = `${neededHeight}px`;
 }
 
 function showCharacterCount() {
@@ -1203,6 +1313,9 @@ composerForm.addEventListener('submit', async (event) => {
 // choosing a name with Enter doesn't send the message too
 setUpMentions(messageInput, () => activeConversation === EVERYONE, getPeopleToMention);
 
+setUpEmojiPicker(messageInput, document.getElementById('emoji-toggle'), document.getElementById('emoji-picker'));
+setUpVoiceTyping(messageInput, document.getElementById('voice-button'), sendButton);
+
 // Enter sends, Shift+Enter starts a new line
 messageInput.addEventListener('keydown', (event) => {
     if (event.key !== 'Enter' || event.shiftKey || event.isComposing) return;
@@ -1219,6 +1332,9 @@ messageInput.addEventListener('input', () => {
     showCharacterCount();
     noteTyping();
 });
+
+// A wider or narrower box can fit more or less on one row
+window.addEventListener('resize', fitMessageInputToText);
 
 /* Typing: in a private chat, the other person sees "Typing..." while you
    write to them. Only that you are, never what */

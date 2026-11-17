@@ -10,11 +10,12 @@
 :root
 {
     --chat-surface: #fafafa; /* the panels and the messages */
+    --edge-fade: 24px; /* how far a list fades out at an end with more past it */
     --composer-surface: #faf9fd;
     --lavender: #ede7f6; /* the tab strip, hovered rows, a photo loading */
     --lavender-hover: #e1d7f2;
     --lavender-tint: #f5f1fb;
-    --lavender-line: #d1c4e9; /* focus rings, scrollbars, unread counts */
+    --lavender-line: #d1c4e9; /* focus rings, unread counts; styles.css's scrollbars match */
     --lavender-line-hover: #b39ddb;
     --purple-deep: #5e35b1;
     --purple-soft: #7e57c2;
@@ -28,8 +29,7 @@
     --danger: #e53935; /* close buttons on hover, a count near its limit */
     --daylight-day: #ffa000; /* the sun beside a local time */
     --daylight-night: #5c6bc0; /* the moon */
-    --scrollbar-track: #f5f5f5;
-    --deep-shadow: rgba(0, 0, 0, 0.3); /* the pin label, scroll bar insets */
+    --deep-shadow: rgba(0, 0, 0, 0.3); /* the pin label */
     --panel-shadow: rgba(0, 0, 0, 0.12);
     --edge-shadow: rgba(0, 0, 0, 0.08); /* the chat header and composer */
     --raised-shadow: rgba(0, 0, 0, 0.2); /* menus and a dragged tab */
@@ -192,6 +192,54 @@ body
         &.is-switching
         {
             animation: fade-in var(--dur) var(--ease-out);
+        }
+    }
+
+    /* The messages fade out at an end with more past it: a band stuck to
+       each end, shown while the list can scroll that way. Browsers without
+       scroll-state queries (Safari, Firefox) show no fade */
+    @supports (container-type: scroll-state)
+    {
+        .list
+        {
+            container-type: scroll-state;
+        }
+
+        .list::before,
+        .list::after
+        {
+            content: '';
+            display: block;
+            position: sticky;
+            z-index: 1;
+            height: var(--edge-fade);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity var(--dur-fast) var(--ease-out);
+        }
+
+        .list::before
+        {
+            top: 0;
+            margin-bottom: calc(-1 * var(--edge-fade));
+            background: linear-gradient(var(--chat-surface), transparent);
+        }
+
+        .list::after
+        {
+            bottom: 0;
+            margin-top: calc(-1 * var(--edge-fade));
+            background: linear-gradient(transparent, var(--chat-surface));
+        }
+
+        @container scroll-state(scrollable: top)
+        {
+            .list::before { opacity: 1; }
+        }
+
+        @container scroll-state(scrollable: bottom)
+        {
+            .list::after { opacity: 1; }
         }
     }
 }
@@ -389,45 +437,50 @@ body
     background-color: var(--lavender);
 }
 
-/* A thin scrollbar whenever the tabs don't all fit, darker on hover.
-   Chrome ignores the ::-webkit-scrollbar rules once scrollbar-width is set,
-   so the standard properties are only for browsers without them (Firefox) */
-@supports not selector(::-webkit-scrollbar)
+/* The strip fades out at an end with more tabs past it, as the messages do */
+@supports (container-type: scroll-state)
 {
     .chat-tabs
     {
-        scrollbar-width: thin;
-        scrollbar-color: var(--lavender-line) transparent;
+        container-type: scroll-state;
     }
 
-    .chat-tabs:hover
+    .chat-tabs::before,
+    .chat-tabs::after
     {
-        scrollbar-color: var(--lavender-line-hover) transparent;
+        content: '';
+        position: sticky;
+        z-index: 1;
+        flex: none;
+        width: var(--edge-fade);
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity var(--dur-fast) var(--ease-out);
     }
-}
 
-.chat-tabs::-webkit-scrollbar
-{
-    height: 4px;
-    background: transparent;
-}
+    .chat-tabs::before
+    {
+        left: 0;
+        margin-right: calc(-1 * var(--edge-fade));
+        background: linear-gradient(to right, var(--lavender), transparent);
+    }
 
-.chat-tabs::-webkit-scrollbar-track
-{
-    background: transparent;
-    box-shadow: none;
-}
+    .chat-tabs::after
+    {
+        right: 0;
+        margin-left: calc(-1 * var(--edge-fade));
+        background: linear-gradient(to left, var(--lavender), transparent);
+    }
 
-.chat-tabs::-webkit-scrollbar-thumb
-{
-    border-radius: 0;
-    background: var(--lavender-line);
-    box-shadow: none;
-}
+    @container scroll-state(scrollable: left)
+    {
+        .chat-tabs::before { opacity: 1; }
+    }
 
-.chat-tabs:hover::-webkit-scrollbar-thumb
-{
-    background: var(--lavender-line-hover);
+    @container scroll-state(scrollable: right)
+    {
+        .chat-tabs::after { opacity: 1; }
+    }
 }
 
 /* A private-chat tab grows in when opened and shrinks out when closed; so
@@ -628,6 +681,19 @@ body
         object-fit: cover;
     }
 
+    /* Green dot before Online, the size of the tab's dot above */
+    :scope.is-online .status::before
+    {
+        content: '';
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        margin-right: 6px;
+        border-radius: 50%;
+        background-color: var(--online);
+        vertical-align: middle;
+    }
+
     .room-icon
     {
         display: flex;
@@ -752,6 +818,54 @@ body
     {
         --icon-nudge: 0px;
         font-size: 12px;
+    }
+
+    /* Phones: one line, as tall as the tabs above: the name, and Public or
+       Private at the right end. The second line waits under it, and a tap
+       slides it up for a moment (chat.js): online or last seen, and their
+       city and time */
+    @media (max-width: 700px)
+    {
+        :scope
+        {
+            box-sizing: border-box;
+            height: 48px;
+            padding-block: 0;
+            gap: 10px;
+        }
+
+        .photo,
+        .room-icon
+        {
+            width: 28px;
+            height: 28px;
+        }
+
+        .room-icon
+        {
+            font-size: 15px;
+        }
+
+        .who
+        {
+            gap: 0;
+            height: 20px;
+            overflow: clip;
+        }
+
+        .top,
+        .bottom
+        {
+            flex: none;
+            height: 20px;
+            transition: transform var(--dur) var(--ease-out);
+        }
+
+        :scope.is-showing-where .top,
+        :scope.is-showing-where .bottom
+        {
+            transform: translateY(-20px);
+        }
     }
 }
 
@@ -967,20 +1081,6 @@ body
 
 @scope (.people) to (.person)
 {
-    /* A button drawn as the text it holds; the rule below gives it its look */
-    .close
-    {
-        margin: 0;
-        padding: 0;
-        border: none;
-        background: none;
-        color: inherit;
-        font: inherit;
-        letter-spacing: inherit;
-        text-align: inherit;
-        text-shadow: inherit;
-        text-transform: inherit;
-    }
 
     .list
     {
@@ -1027,18 +1127,38 @@ body
         gap: 12px;
     }
 
+    /* A square icon button, as the emoji picker's; its X lines up with the
+       heading's edge */
     .close
     {
+        width: 24px;
+        height: 24px;
         margin-left: auto;
-        color: var(--text-faint);
-        font-size: 22px;
-        font-weight: 400;
-        line-height: 1;
+        margin-right: -5px;
+        /* Half a pixel up, level with the middle of "ONLINE"'s capitals,
+           which sit that much above the line's own middle */
+        margin-bottom: 1px;
+        padding: 0;
+        border: none;
+        border-radius: 4px;
+        background-color: transparent;
+        color: var(--md-on-surface-variant);
         cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background-color var(--dur-fast) var(--ease-out),
+                    color var(--dur-fast) var(--ease-out);
 
         &:hover
         {
-            color: var(--danger);
+            background-color: color-mix(in srgb, var(--md-primary) var(--md-hover), transparent);
+            color: var(--md-primary);
+        }
+
+        & .icon
+        {
+            font-size: 14px; /* about the weight of the 13px heading beside it */
         }
     }
 
@@ -1144,8 +1264,8 @@ body
     {
         content: '';
         position: absolute;
-        right: -1px;
-        bottom: -1px;
+        top: 2px;
+        right: -4px;
         width: 9px;
         height: 9px;
         border: 2px solid var(--chat-surface);
@@ -1373,6 +1493,7 @@ body
     {
         width: 32px;
         height: 4px;
+        border-radius: 2px; /* half its height: round ends, as the scrollbars have */
         background-color: var(--lavender-line-hover);
     }
 }
@@ -1470,7 +1591,9 @@ body
     {
         position: fixed;
         top: calc((var(--header-height) - 4px - 36px) / 2); /* centred, above the yellow line */
-        right: 60px; /* 12px from the 44px menu button, 4px from the edge */
+        /* Against the 44px menu button, 4px from the edge: its lines sit
+           inside that box, so this leaves about 14px to them */
+        right: 48px;
         z-index: 111;
         height: 36px;
         padding: 0 8px;
@@ -1511,12 +1634,14 @@ body
         display: none;
     }
 
-    /* Over the part of the map the sheet leaves showing */
+    /* Over the part of the map the sheet leaves showing. Clipped, so with
+       the sheet all the way up (and the map not loading) none spill out */
     .map-loading
     {
         left: 0;
         bottom: auto;
         height: var(--sheet-top);
+        overflow: clip;
     }
 
     /* The map's credits sit just above the sheet, small, and ride with it.
@@ -1766,7 +1891,8 @@ body
 }
 
 /* Two lines in a one-line window: the reader's time then the sender's, or the
-   city then the country. Hovering slides the second line into view */
+   city then the country. Hovering slides the second line into view; on a
+   touch screen a tap does, for a moment (chat.js) */
 .swap
 {
     display: block;
@@ -1795,7 +1921,16 @@ body
         height: 16px;
     }
 
-    :scope:hover .track
+    /* Only with a mouse: a tap would leave a touch screen's hover stuck */
+    @media (hover: hover)
+    {
+        :scope:hover .track
+        {
+            transform: translateY(-16px);
+        }
+    }
+
+    :scope.is-swapped .track
     {
         transform: translateY(-16px);
     }
@@ -1850,9 +1985,6 @@ body
 /* The message box */
 .chat-composer
 {
-    display: flex;
-    align-items: flex-end;
-    gap: 10px;
     padding: 10px 16px; /* same side padding as the messages above */
     background-color: #fff;
     border-top: 1px solid var(--line);
@@ -1861,12 +1993,44 @@ body
     box-shadow: 0 -2px 6px var(--edge-shadow);
 }
 
-@scope (.chat-composer) to (.mention-picker)
+@scope (.chat-composer) to (.mention-picker, .emoji-picker)
 {
+    /* One bordered box around the text and its tools; purple while you type.
+       One row while the text fits: emoji, text, mic, Send. Once it wraps
+       (chat.js), the text takes the whole width and the tools go under it */
+    .field
+    {
+        --input-padding: 5px 6px 5px 0; /* the grid's gap is the space after the emoji */
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto auto;
+        grid-template-areas: "emoji box voice send";
+        align-items: center;
+        column-gap: 6px;
+        padding: 5px 6px;
+        border: 1px solid #ddd6ee;
+        border-radius: 4px;
+        background-color: var(--composer-surface);
+        transition: border-color var(--dur-fast) var(--ease-out);
+
+        &:focus-within
+        {
+            border-color: var(--purple-soft);
+        }
+
+        &.is-multiline
+        {
+            --input-padding: 6px 6px 6px 0; /* room above and below, and between the text and its scrollbar */
+            grid-template-areas:
+                "box box box box"
+                "emoji . voice send";
+            row-gap: 6px; /* between the text and the buttons under it */
+            padding-block: 0 6px;
+        }
+    }
+
     .box
     {
-        flex: 1;
-        min-width: 0;
+        grid-area: box;
         position: relative;
     }
 
@@ -1881,27 +2045,41 @@ body
         white-space: nowrap;
     }
 
-    /* A field that grows with the text up to five lines, then scrolls */
+    /* A field that grows with the text up to five lines, then scrolls. Its
+       border stays, see-through, so the mention chips line up with its text */
     .input
     {
-        display: block; /* no inline gap under it, so it lines up with Send */
+        display: block;
         box-sizing: border-box;
         width: 100%;
-        height: 42px; /* matches Send; typing grows it (chat.js) */
-        min-height: 42px;
+        height: 32px; /* one line; typing grows it (chat.js) */
+        min-height: 0;
         max-height: 120px;
         margin: 0;
-        padding: 10px 12px;
-        border: 1px solid #ddd6ee;
+        padding: var(--input-padding);
+        border: 1px solid transparent;
         border-radius: 4px;
         background-color: var(--composer-surface);
         line-height: 20px;
-        font-size: 14px;
+        font-size: 13px; /* the messages' size, so what you type looks as it will when sent */
         resize: none;
-        overflow-y: auto !important;
+        /* Scrolls only when full (chat.js): below that, a scaled screen's
+           rounding left a sliver to scroll and a needless scrollbar */
+        overflow-y: hidden !important;
         overflow-wrap: anywhere;
         box-shadow: none;
-        transition: border-color var(--dur-fast) var(--ease-out);
+
+        &.is-full
+        {
+            overflow-y: auto !important;
+        }
+
+        &:focus
+        {
+            border-color: transparent;
+            outline: none; /* the field's purple border shows focus */
+            box-shadow: none;
+        }
     }
 
     /* With chips drawn behind it (mentions.js): the box's text is see-through
@@ -1929,12 +2107,12 @@ body
         position: absolute;
         inset: 0;
         box-sizing: border-box;
-        padding: 10px 12px;
+        padding: var(--input-padding);
         border: 1px solid transparent;
         border-radius: 4px;
         background-color: var(--composer-surface);
         color: #000;
-        font-size: 14px;
+        font-size: 13px;
         line-height: 20px;
         white-space: pre-wrap;
         overflow-wrap: anywhere;
@@ -1942,6 +2120,7 @@ body
         scrollbar-gutter: stable;
         pointer-events: none;
     }
+
 
     /* The text can't move, so no padding here: a shadow in the chip's own
        colour stands in for it */
@@ -1951,7 +2130,9 @@ body
         box-shadow: 0 0 0 2px color-mix(in srgb, var(--md-primary) var(--md-hover), transparent);
     }
 
-    /* Phones: Safari on iPhone zooms in on a field whose text is under 16px */
+    /* Phones: Safari on iPhone zooms in on a field whose text is under 16px.
+       Four lines at most before it scrolls, as a phone has less room: 20px
+       lines, the wrapped box's 6px above and below, and its border */
     @media (max-width: 700px)
     {
         .input,
@@ -1959,13 +2140,11 @@ body
         {
             font-size: 16px;
         }
-    }
 
-    .input:focus
-    {
-        border: 1px solid var(--purple-soft);
-        outline: none; /* the purple border shows focus */
-        box-shadow: none;
+        .input
+        {
+            max-height: 94px;
+        }
     }
 
     /* Characters left, shown only when close to the limit */
@@ -1973,7 +2152,7 @@ body
     {
         position: absolute;
         right: 14px;
-        top: -18px;
+        top: -28px;
         font-size: 11px;
         color: var(--text-faint);
 
@@ -1983,11 +2162,110 @@ body
         }
     }
 
+    /* Its buttons sit in the field's own grid, so they can share the text's row */
+    .tools
+    {
+        display: contents;
+    }
+
+
+    .emoji-toggle { grid-area: emoji; }
+    .voice { grid-area: voice; }
+    .send { grid-area: send; }
+
+    .emoji-toggle,
+    .voice
+    {
+        width: 30px;
+        height: 30px;
+        padding: 0;
+        border: none;
+        border-radius: 4px; /* square, as Send and the other buttons are */
+        background-color: transparent;
+        color: var(--md-on-surface-variant);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background-color var(--dur-fast) var(--ease-out),
+                    color var(--dur-fast) var(--ease-out);
+
+        /* MapChat's purple hover, as on the @mention chips */
+        &:hover,
+        &.is-open
+        {
+            background-color: color-mix(in srgb, var(--md-primary) var(--md-hover), transparent);
+            color: var(--md-primary);
+        }
+
+        & .icon
+        {
+            font-size: 16px;
+        }
+    }
+
+    /* Hidden where the browser can't listen (voice.js); a scoped display
+       would beat [hidden] */
+    .voice[hidden]
+    {
+        display: none;
+    }
+
+    .voice
+    {
+        position: relative;
+
+        /* Listening: the mic turns into a purple wave, as on an iPhone's
+           Dynamic Island, with no square behind it */
+        &.is-listening,
+        &.is-listening:hover
+        {
+            background-color: transparent;
+            color: var(--md-primary);
+            cursor: default; /* only Send stops it */
+        }
+
+        /* With no square behind it, the wave sits a little nearer Stop */
+        &.is-listening
+        {
+            margin-inline-end: -2px;
+        }
+
+        &.is-listening .icon
+        {
+            display: none;
+        }
+
+        /* voice.js sizes it to fit the bars, up to the mic icon's 16px height */
+        & .wave
+        {
+            display: none;
+            height: 16px;
+        }
+
+        &.is-listening .wave
+        {
+            display: block;
+            animation: fade-in var(--dur) var(--ease-out);
+        }
+
+        /* Waiting for the words: the mic breathes */
+        &.is-transcribing
+        {
+            cursor: progress;
+        }
+
+        &.is-transcribing .icon
+        {
+            animation: transcribing-breath 1s var(--ease-in-out) infinite alternate;
+        }
+    }
+
     .send
     {
         flex: none;
-        width: 42px;
-        height: 42px; /* same as a one-line message box */
+        width: 30px;
+        height: 30px; /* the mic's size, beside it */
         padding: 0;
         border: none;
         border-radius: 4px;
@@ -2013,20 +2291,140 @@ body
         }
     }
 
-    /* Alone in its button, the arrow keeps its whole box, and looks centred
-       nudged right */
+    /* While the mic records, Send is its stop button (voice.js): a stop
+       square in the plane's place */
+    .send .icon[data-icon="stop"],
+    .tools:has(.voice.is-listening) .send .icon[data-icon="plain"]
+    {
+        display: none;
+    }
+
+    .tools:has(.voice.is-listening) .send .icon[data-icon="stop"]
+    {
+        display: block;
+        translate: none; /* a square's weight sits in its middle */
+        animation: fade-in var(--dur-fast) var(--ease-out);
+    }
+
+    /* The plane's weight sits up and right of its box's centre, by about
+       1px at this size, so it's moved back by that to look centred */
     .send .icon
     {
-        margin-inline: 2px 0;
-        translate: none;
-        font-size: 20px;
+        translate: -1px 1px;
+        font-size: 14px;
         line-height: 1;
         -webkit-font-smoothing: antialiased;
     }
 }
 
-/* Names to @mention, just above the message box (mentions.js). A white
-   card like the account menu's, with tighter rows */
+@keyframes transcribing-breath
+{
+    from { opacity: 1; }
+    to { opacity: 0.35; }
+}
+
+/* The emoji grid, floating over the messages above the box (emojiPicker.js) */
+.emoji-picker
+{
+    position: absolute;
+    inset-inline-start: 16px;
+    bottom: calc(100% - 4px);
+    z-index: 2;
+    box-sizing: border-box;
+    width: min(288px, calc(100% - 32px));
+    background-color: #fff;
+    box-shadow: 0 6px 20px var(--raised-shadow);
+    animation: fade-in-up var(--dur) var(--ease-out);
+}
+
+@scope (.emoji-picker)
+{
+    /* Its name and a close button, staying put while the emoji scroll */
+    .top
+    {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 6px 7px 0 12px; /* the X sits as far in as the title */
+    }
+
+    .title
+    {
+        margin: 0;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-strong);
+    }
+
+    .close
+    {
+        width: 24px;
+        height: 24px;
+        padding: 0;
+        border: none;
+        border-radius: 4px;
+        background-color: transparent;
+        color: var(--md-on-surface-variant);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background-color var(--dur-fast) var(--ease-out),
+                    color var(--dur-fast) var(--ease-out);
+
+        &:hover
+        {
+            background-color: color-mix(in srgb, var(--md-primary) var(--md-hover), transparent);
+            color: var(--md-primary);
+        }
+
+        & .icon
+        {
+            font-size: 14px;
+        }
+    }
+
+    .groups
+    {
+        max-height: 186px; /* about 220px with its top bar */
+        overflow-y: auto;
+        padding: 0 8px 8px;
+    }
+
+    .heading
+    {
+        margin: 4px 4px 2px;
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text-faint);
+    }
+
+    .grid
+    {
+        display: grid;
+        grid-template-columns: repeat(8, 1fr);
+    }
+
+    .emoji
+    {
+        aspect-ratio: 1;
+        padding: 0;
+        border: none;
+        border-radius: 4px;
+        background-color: transparent;
+        font-size: 20px;
+        line-height: 1;
+        cursor: pointer;
+        transition: background-color var(--dur-fast) var(--ease-out);
+
+        &:hover,
+        &:focus-visible
+        {
+            background-color: var(--lavender-tint);
+        }
+    }
+}
+
 .mention-picker
 {
     position: absolute;
@@ -2072,27 +2470,6 @@ body
     }
 }
 
-/* Scroll bars */
-::-webkit-scrollbar-track
-{
-    border-radius: 10px;
-    background-color: var(--scrollbar-track);
-    box-shadow: inset 0 0 6px var(--deep-shadow);
-}
-
-::-webkit-scrollbar
-{
-    width: 8px;
-    background-color: var(--scrollbar-track);
-}
-
-::-webkit-scrollbar-thumb
-{
-    border-radius: 10px;
-    background-color: var(--lavender-line);
-    box-shadow: inset 0 0 6px var(--deep-shadow);
-}
-
 /* Fallback map: overlap tiles by a pixel so no hairline seams show */
 .map .leaflet-tile
 {
@@ -2100,10 +2477,12 @@ body
     height: 257px !important;
 }
 
-/* Beyond the edge of the world (zoomed far out), show water rather than grey */
+/* Behind tiles still loading, and beyond the edge of the world, show water
+   rather than grey: map.js's THEME.water, the sea's colour in the tiles, so
+   a tile arriving doesn't show as a block of another purple */
 .map.leaflet-container
 {
-    background: #c6b9ff;
+    background: #d2c5fd;
 }
 
 /* Montserrat's tabular figures: every digit the same width, so counts and

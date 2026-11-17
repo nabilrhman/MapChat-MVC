@@ -1,5 +1,5 @@
 {% extends 'base_chat.html' %}
-{% types {chats: 'array', last_chat_id: 'int', conversations: 'array', build_id: 'string'} %}
+{% types {chats: 'array', last_chat_id: 'int', conversations: 'array', build_id: 'string', can_transcribe: 'bool'} %}
 {% block chats %}
 {{ include('App/chat.html', {chats: chats, initial: true}, with_context = false) }}
 {% endblock %}

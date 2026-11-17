@@ -37,7 +37,7 @@
     <div class="content">
         {% if can_message %}
         <h3 class="name" data-part="sender-name"><button class="name-button" type="button" data-part="name-button" data-user-id="{{ chat.user_id }}" data-user-name="{{ sender_name }}"
-            title="Chat privately with {{ sender_name }}">{{ sender_name }}</button></h3>
+            title="Message {{ sender_name }}">{{ sender_name }}</button></h3>
         {% else %}
         <h3 class="name" data-part="sender-name">{{ sender_name }}</h3>
         {% endif %}
@@ -45,7 +45,7 @@
            hovering it slides to the sender's own time, with a sun or moon; a
            private chat's header already shows theirs #}
         {% set shows_sender_time = chat.lng is not null and conversation == 'everyone' %}
-        <span class="time{% if shows_sender_time %} swap{% endif %}" data-part="time"
+        <span class="time{% if shows_sender_time %} swap{% endif %}" data-part="time"{% if shows_sender_time %} data-swaps{% endif %}
               data-timezone="{{ chat.timezone }}" data-lng="{{ chat.lng }}" data-country="{{ chat.country }}">
             <span class="track">
                 <time class="line" datetime="{{ chat.timestamp|date('c') }}"></time>
@@ -66,7 +66,7 @@
         {# On hover the city slides to the country's flag and name; a click
            shows the sender's pin on the map (chat.js) #}
         <span class="location">
-            <button class="city{% if chat.country %} swap{% endif %}" type="button" data-part="city">
+            <button class="city{% if chat.country %} swap{% endif %}" type="button" data-part="city"{% if chat.country %} data-swaps{% endif %}>
                 <span class="track">
                     <span class="line">{{ icon('map-point', 'place-icon') }}{{ chat.city }}</span>
                     {% if chat.country %}

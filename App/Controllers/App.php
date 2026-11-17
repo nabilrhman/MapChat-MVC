@@ -4,6 +4,8 @@ namespace App\Controllers;
 
 use App\Auth;
 use App\Config;
+use App\Groq;
+use App\VoiceClip;
 use Core\View;
 use App\Models\Bot;
 use App\Models\Chat;
@@ -32,7 +34,8 @@ class App extends Authenticated
             'chats' => $chats,
             'last_chat_id' => $lastChatId,
             'conversations' => Chat::getConversations(Auth::getEmail(), $lastChatId),
-            'build_id' => Config::buildId()
+            'build_id' => Config::buildId(),
+            'can_transcribe' => Groq::isEnabled(),
         ]);
     }
 
@@ -114,6 +117,33 @@ class App extends Authenticated
         }
 
         $this->json(['id' => $result['id']]);
+    }
+
+    /**
+     * Turn the mic button's recording into text for the message box (for
+     * AJAX). The person reads it over before sending
+     */
+    public function transcribeAction(): void
+    {
+        if (!Groq::isEnabled()) {
+            $this->json(['error' => 'Voice typing is off.'], 503);
+            return;
+        }
+
+        $clip = VoiceClip::fromUpload($_FILES['audio'] ?? null);
+        if (is_string($clip)) {
+            $this->json(['error' => $clip], 422);
+            return;
+        }
+
+        $text = Groq::transcribe($clip);
+        if ($text === null) {
+            // voice.js hears this and has the browser listen instead
+            $this->json(['error' => 'Voice typing is busy.'], 503);
+            return;
+        }
+
+        $this->json(['text' => $text]);
     }
 
     /**

@@ -67,7 +67,7 @@ function createPersonRow(person) {
     row.classList.toggle('can-message', !isMe);
     row.dataset.part = 'person';
     row.dataset.userId = userId;
-    row.title = isMe ? '' : `Chat privately with ${person.shown_name}`;
+    row.title = isMe ? '' : `Message ${person.shown_name}`;
     row.dataset.tipSide = 'left'; // over the map, not the rows above
 
     const avatarFrame = createElement('span', 'avatar');

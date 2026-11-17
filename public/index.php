@@ -89,6 +89,7 @@ $router->get('/avatar/{id:\d+}', [Avatar::class, 'showAction']);
 $router->post('/app/get', [App::class, 'getAction']);
 $router->post('/app/get-older', [App::class, 'getOlderAction']);
 $router->post('/app/send', [App::class, 'sendAction']);
+$router->post('/app/transcribe', [App::class, 'transcribeAction']);
 $router->post('/app/mark-read', [App::class, 'markReadAction']);
 $router->post('/app/get-people', [App::class, 'getPeopleAction']);
 $router->post('/app/get-locations', [App::class, 'getLocationsAction']);

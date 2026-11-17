@@ -6,6 +6,7 @@
     last_chat_id: 'int',
     conversations?: 'array',
     build_id?: 'string',
+    can_transcribe?: 'bool',
 } -%}
 
 {% block title %}Chat{% endblock %}
@@ -110,17 +111,54 @@
     </div>
 
     <form class="chat-composer" method="post" id="input-container-form">
-        <div class="box">
-            <label class="label" for="textarea-send">Your message</label>
-            <span class="count" id="char-count" hidden></span>
-            <textarea name="message" placeholder="Type your message" rows="1" class="input" id="textarea-send"
-                      maxlength="{{ constant('App\\Models\\Chat::MAX_LENGTH') }}" required autofocus></textarea>
+        {# One bordered field: the text and its tools in one row, or the tools
+           under the text once it wraps (chat.js) #}
+        <div class="field" id="composer-field">
+            <div class="box">
+                <label class="label" for="textarea-send">Your message</label>
+                <span class="count" id="char-count" hidden></span>
+                <textarea name="message" placeholder="Your message" rows="1" class="input" id="textarea-send"
+                          maxlength="{{ constant('App\\Models\\Chat::MAX_LENGTH') }}" required autofocus></textarea>
+            </div>
+
+            <div class="tools">
+                {# Opens a grid of emoji that go in at the cursor (emojiPicker.js) #}
+                <button class="emoji-toggle" id="emoji-toggle" type="button" aria-controls="emoji-picker"
+                        aria-expanded="false" aria-label="Add an emoji" title="Add an emoji">
+                    {{ icon('smile-circle-linear') }}
+                </button>
+
+                {# Speaks a message, beside Send, when this browser can listen.
+                   Groq turns it into text, or the browser does without a key (voice.js) #}
+                <button class="voice" id="voice-button" type="button" aria-pressed="false"
+                        aria-label="Voice typing" title="Voice typing"
+                        data-can-transcribe="{{ (can_transcribe ?? false) ? 'true' : 'false' }}" hidden>
+                    {{ icon('microphone-linear') }}
+                    {# In the mic's place while it records, as on an iPhone's Dynamic
+                       Island: four bars that move with the voice, drawn in the
+                       screen's own pixels so their gaps stay even (voice.js) #}
+                    <canvas class="wave" data-part="voice-wave" aria-hidden="true"></canvas>
+                </button>
+
+                {# A stop button while the mic records (voice.js) #}
+                <button name="send" class="send" id="button-send" type="submit"
+                        aria-label="Send" title="Send" disabled>
+                    {{ icon('plain') }}
+                    {{ icon('stop') }}
+                </button>
+            </div>
         </div>
 
-        <button name="send" class="send" id="button-send" type="submit"
-                aria-label="Send" title="Send" disabled>
-            {{ icon('plain') }}
-        </button>
+        <section class="emoji-picker" id="emoji-picker" aria-labelledby="emoji-picker-title" hidden>
+            <div class="top">
+                <h2 class="title" id="emoji-picker-title">Emoji</h2>
+                <button class="close" type="button" data-part="emoji-close" aria-label="Close the emoji" title="Close">
+                    {{ icon('close') }}
+                </button>
+            </div>
+            {# The groups of emoji, filled on first open (emojiPicker.js) #}
+            <div class="groups" data-part="emoji-groups"></div>
+        </section>
     </form>
 
 </main>
@@ -128,7 +166,9 @@
 <aside class="people" id="people">
     <h2 class="heading top">
         <span class="title"><span class="count" id="online-count">0</span>Online</span>
-        <button class="close" id="people-close" type="button" title="Close the list">&times;</button>
+        <button class="close" id="people-close" type="button" aria-label="Close the people list" title="Close">
+            {{ icon('close') }}
+        </button>
     </h2>
 
     <div class="list">
@@ -148,6 +188,8 @@
 {% block footer %}
 <script nonce="{{ csp_nonce }}" src="{{ asset('/js/people.js') }}"></script>
 <script nonce="{{ csp_nonce }}" src="{{ asset('/js/mentions.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/emojiPicker.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/voice.js') }}"></script>
 <script nonce="{{ csp_nonce }}" src="{{ asset('/js/messages.js') }}"></script>
 <script nonce="{{ csp_nonce }}" src="{{ asset('/js/notifications.js') }}"></script>
 <script nonce="{{ csp_nonce }}" src="{{ asset('/js/chat.js') }}"></script>

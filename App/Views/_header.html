@@ -11,7 +11,14 @@
     {# Phones fold the links into this menu #}
     <button type="button" class="menu-button" id="menu-button"
             aria-controls="site-nav" aria-expanded="false" aria-label="Menu">
-        {{ icon('hamburger-menu') }}
+        {# Three lines that turn into an X while the menu is open (header.css):
+           Heroicons' bars-3, as strokes, which keep one thickness at any
+           screen scale where boxes round to 2 or 3 pixels #}
+        <svg class="bars" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+            <path class="bar" d="M3.75 6.75h16.5"/>
+            <path class="bar" d="M3.75 12h16.5"/>
+            <path class="bar" d="M3.75 17.25h16.5"/>
+        </svg>
     </button>
 
     <nav class="nav" id="site-nav">

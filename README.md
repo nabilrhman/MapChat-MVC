@@ -65,6 +65,11 @@ https://github.com/user-attachments/assets/06384a18-cd12-4e27-8cf0-530ab2463569
   Each opens with a header showing who you're talking to, and their city and
   local time.
 - @mentions: type @ to pick someone; mentions show as chips.
+- Emoji from the smile button under the message box.
+- Voice typing: the mic beside an empty box listens, and what you said goes
+  into the box to read over before sending. Groq's Whisper writes it out; when
+  Groq is off or its free plan is used up for the minute, the browser's own
+  speech recognition listens instead (Chrome, Safari and Edge).
 - Notifications for private messages and @mentions, even with MapChat closed
   (Web Push). Turn them on from the chat or your profile. They're per
   browser, and logging out turns them off there.
@@ -84,7 +89,7 @@ https://github.com/user-attachments/assets/06384a18-cd12-4e27-8cf0-530ab2463569
 - Continue with Google on the login page, which makes the account the first
   time, or links it to the account with the same email. Someone with no photo
   of their own gets their Google photo.
-- Works on phones, where the chat is a sheet you drag up over the map or down out of its way.
+- Works on phones, where the chat is a sheet over the map: drag it to the height you like, and tap its handle to switch between all of the chat and that height.
 
 ## AI chat
 
@@ -115,6 +120,11 @@ recent messages, and a private reply only that chat. That text is sent to
 Groq, which [says](https://console.groq.com/docs/your-data) it doesn't train
 on what's sent to its API. The code is in `App/Models/Bot.php`.
 
+The same key turns voice messages into text with Groq's
+`whisper-large-v3-turbo` (`App/Groq.php`, `public/js/voice.js`). Its free plan
+allows 2,000 recordings a day and 20 a minute for the whole site; past that,
+the page has the browser listen instead. MapChat doesn't keep the recordings.
+
 ## How it's built
 
 ![A request goes from public/index.php to the router and a controller, which reads from MySQL through a model and answers with a Twig view or JSON. The browser then opens a WebSocket at /ws, which Apache passes to the chat socket's Hub, which also hears from the chat worker](docs/images/request-path.svg)
@@ -141,9 +151,8 @@ on what's sent to its API. The code is in `App/Models/Bot.php`.
   shown by a service worker, `public/sw.js`. Signed with VAPID keys; without
   them, only an open page notifies. How it all works, and setting it up, is in
   [docs/notifications.md](docs/notifications.md).
-- **Icons:** the Bold weight of the [Solar icon set](https://www.figma.com/community/file/1166831539721848736)
-  by 480 Design, under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/),
-  in one sprite, `public/icons.svg`. The GitHub mark is from Simple Icons.
+- **Icons:** the Solid weight of [Heroicons](https://heroicons.com) by
+  Tailwind Labs, under the MIT licence, in one sprite, `public/icons.svg`. The GitHub mark is from Simple Icons.
 - **Map:** MapLibre with OpenStreetMap data from OpenFreeMap, styled to match
   MapChat's colours. Browsers without WebGL get OpenStreetMap tiles through
   Leaflet instead, recoloured to the same theme in the browser. No API key is
@@ -254,7 +263,7 @@ explanations. The main ones:
 | `DEV_FAKE_IP` | Used in place of any private or reserved IP, in any environment. Locally every visitor has one, so this public IP puts them on the map. Leave it empty on a host |
 | `DEMO_TIMEZONE` | Optional. Where the demo people's day starts at midnight. Default `America/Toronto` |
 | `DEMO_SPEED` | Optional, for watching the demo chat locally: `60` plays the whole day in 24 minutes. Leave empty on a real site |
-| `GROQ_API_KEY` | Optional. Lets MapChat and the demo people chat back, through Groq's free plan (console.groq.com). Without it, MapChat only greets |
+| `GROQ_API_KEY` | Optional. Lets MapChat and the demo people chat back, and writes out voice messages, through Groq's free plan (console.groq.com). Without it, MapChat only greets, and the browser writes out voice messages where it can |
 | `MAPCHAT_MODEL` | Optional. The Groq model they write with. Default `openai/gpt-oss-120b` |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Optional. An OAuth client (Web application) from console.cloud.google.com/apis/credentials, with `APP_URL/login/google/callback` as its redirect URI. With both, the login page offers Continue with Google |
 | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_UPLOAD_PRESET` | The Cloudinary account and unsigned upload preset photo uploads go to. Both are needed for uploads, with no default: with either empty, uploads are off and the profile says so. Removing a photo still works |
@@ -285,13 +294,15 @@ App/*.php        Config (settings), Auth (who's logged in), Google (signing in
                  with Google), Mail, Token, Flash
                  (one-time messages), Avatar (drawn faces), Mention (@mentions,
                  and how each person's name is shown), Push (Web Push: whose
-                 browsers each new message goes to, and sending it)
+                 browsers each new message goes to, and sending it), Groq
+                 (AI replies and voice to text), VoiceClip (checks a recording)
 App/ChatSocket/  The live chat: who's let in (Handshake), and what each page
                  gets (Hub)
 bin/             chat-socket.php and chat-worker.php, run by docker/start.sh
 App/Views/       Twig templates
 public/          Web root: index.php, CSS, JavaScript (messages.js talks to the
                  chat socket, mentions.js is the @ list and chips,
+                 emojiPicker.js the emoji grid, voice.js voice typing,
                  notifications.js turns notifications on), sw.js (shows Web
                  Push notifications), images and icons.svg
 database/        init.sql (schema and welcome messages), demo.sql (optional
