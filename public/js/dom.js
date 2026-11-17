@@ -41,6 +41,9 @@ function createPlace(city, country) {
     return place;
 }
 
+// Phones, where the chat is a sheet over the map (matches chat.css)
+const phoneScreen = window.matchMedia('(max-width: 700px)');
+
 // Asked for less motion in the system's settings; it can change while the
 // page is open, so read .matches when it's needed
 const prefersLessMotion = window.matchMedia('(prefers-reduced-motion: reduce)');

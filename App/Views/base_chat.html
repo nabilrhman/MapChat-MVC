@@ -12,7 +12,7 @@
 
 {% block head %}
 <link rel="stylesheet" href="{{ asset('/css/chat.css') }}">
-{# map.js loads MapLibre itself, on phones only once the map is opened; wider screens fetch it at once #}
+{# map.js loads MapLibre itself, on phones only once the chat sheet leaves some map showing; wider screens fetch it at once #}
 <link rel="preload" as="script" nonce="{{ csp_nonce }}" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js" media="(min-width: 701px)">
 <link rel="preload" as="style" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" media="(min-width: 701px)">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flag-icons@7.2.3/css/flag-icons.min.css">
@@ -25,11 +25,6 @@
 <div class="map-loading" id="map-loading">
     <span class="loading-dots" role="status" aria-label="Loading the map"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
 </div>
-
-<!-- Shows the map on phones, where it starts hidden to give the chat the room -->
-<button class="map-toggle" id="map-toggle" type="button" aria-pressed="false" aria-label="Show the map" title="Show the map">
-    {{ icon('map') }}
-</button>
 
 <!-- Opens the people list on screens too narrow to show it beside the map -->
 <button class="people-toggle" id="people-toggle" type="button" title="Who's online"
@@ -45,6 +40,13 @@
      data-conversations="{{ (conversations ?? [])|json_encode|e('html_attr') }}"
      data-build="{{ (build_id ?? '')|e('html_attr') }}">
 
+    {# Phones: the chat is a sheet over the map. Dragging this or the chat
+       header moves it between the map and the chat; a tap steps it (chat.js) #}
+    <button class="sheet-handle" id="sheet-handle" type="button" aria-controls="chat"
+            aria-label="Show all of the chat" title="Show all of the chat">
+        <span class="grip" aria-hidden="true"></span>
+    </button>
+
     {# Each tab: a button that opens its chat, and on a private chat one that
        closes it (chat.js) #}
     <div class="chat-tabs" id="chat-tabs">
@@ -52,12 +54,6 @@
             <button class="open" type="button"><span class="name" data-part="tab-name"># Everyone</span><span class="unread" data-part="tab-unread" hidden></span></button>
         </div>
     </div>
-
-    {# Phones with the map open: folds the chat down to its tabs (chat.js) #}
-    <button class="chat-fold" id="chat-fold" type="button" aria-controls="chat-list" aria-expanded="true"
-            aria-label="Fold the chat away" title="Fold the chat away">
-        {{ icon('alt-arrow-down') }}
-    </button>
 
     {# What's open: the room, or who you're talking to privately, where they
        are and their time there (chat.js) #}

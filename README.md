@@ -82,7 +82,7 @@ https://github.com/user-attachments/assets/06384a18-cd12-4e27-8cf0-530ab2463569
 - Continue with Google on the login page, which makes the account the first
   time, or links it to the account with the same email. Someone with no photo
   of their own gets their Google photo.
-- Works on phones, where the map folds away to give the chat the room.
+- Works on phones, where the chat is a sheet you drag up over the map or down out of its way.
 
 ## AI chat
 

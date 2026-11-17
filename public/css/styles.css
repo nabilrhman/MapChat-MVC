@@ -70,8 +70,6 @@ textarea
 /* Alone in a button, an icon keeps its whole box, so it stays centred */
 .site-header .menu-button .icon,
 .password-toggle .icon,
-.map-toggle .icon,
-.chat-fold .icon,
 .site-footer .source .icon
 {
     margin-inline: 0;

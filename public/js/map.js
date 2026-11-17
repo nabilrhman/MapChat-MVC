@@ -7,8 +7,6 @@
 
 const STYLE_URL = 'https://tiles.openfreemap.org/styles/positron';
 const MAPLIBRE_URL = 'https://unpkg.com/maplibre-gl@4.7.1/dist/';
-// Phones, where the map can start closed (matches chat.css)
-const PHONE_SCREEN = '(max-width: 700px)';
 
 // Where the map starts (Boise), until the pins are in
 const START = {lat: 43.4599, lng: -116.244, zoom: 3};
@@ -845,27 +843,23 @@ function initializeMap() {
     initializeVectorMap().catch(initializeFallback);
 }
 
-// Wider screens always show the map; phones only once the map button opens it.
-// The map stays laid out under the chat while closed, so isShown can't tell
+// Wider screens always show the map; phones unless the chat sheet is all
+// the way up (chat.js). The map stays laid out under the chat, so isShown can't tell
 function isMapOpen() {
-    return !window.matchMedia(PHONE_SCREEN).matches || document.body.classList.contains('is-map-open');
+    return !phoneScreen.matches || sheetStop !== 'full';
 }
 
-// Phones with the map closed don't load it until the map button opens it,
-// so the chat gets the connection to itself. Once started, it stays
+// Phones with the chat all the way up don't load the map until the sheet
+// comes down, so the chat gets the connection to itself. Once started, it stays
 function initializeMapWhenOpen() {
-    const phoneScreen = window.matchMedia(PHONE_SCREEN);
-    const mapToggle = document.getElementById('map-toggle');
-
     function startIfOpen() {
         if (!isMapOpen()) return;
-        mapToggle.removeEventListener('click', startIfOpen);
+        document.removeEventListener('sheet-moved', startIfOpen);
         phoneScreen.removeEventListener('change', startIfOpen);
         initializeMap();
     }
 
-    // chat.js loads first, so its click handler has already opened the map
-    mapToggle.addEventListener('click', startIfOpen);
+    document.addEventListener('sheet-moved', startIfOpen);
     // Turning a phone or widening the window past the breakpoint shows it too
     phoneScreen.addEventListener('change', startIfOpen);
     startIfOpen();
