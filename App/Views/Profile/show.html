@@ -184,6 +184,35 @@
         </div>
     </section>
 
+    {# The button opens the dialog below, which asks first (profile.js) #}
+    <section class="settings-card appear-down">
+        <div class="head">
+            <h2 class="title">Delete profile</h2>
+        </div>
+
+        <div class="privacy-setting">
+            <p class="field-hint">Deletes your profile, your messages and your place on the map for good.</p>
+            <button type="button" class="button danger small control" id="delete-profile">Delete</button>
+        </div>
+    </section>
+
+    {# Cancel closes it without sending; Delete posts the form #}
+    <dialog class="delete-dialog" id="delete-profile-dialog" aria-labelledby="delete-profile-title">
+        <form action="/profile/delete" method="post">
+            <h2 class="title" id="delete-profile-title">Delete your profile?</h2>
+            <p class="note">Your messages, private chats and place on the map go with it. This can't be undone.</p>
+            {# A guest's password is random, and an account made with Google has none #}
+            {% if user.hasKnownPassword() %}
+            {{ text_field({id: 'inputDeletePassword', name: 'current_password', type: 'password', label: 'Your password',
+                           required: true, autocomplete: 'current-password'}) }}
+            {% endif %}
+            <div class="actions">
+                <button type="submit" class="link-button" formmethod="dialog" formnovalidate>Cancel</button>
+                <button type="submit" class="button danger small">Delete profile</button>
+            </div>
+        </form>
+    </dialog>
+
 </section>
 
 {% endblock %}

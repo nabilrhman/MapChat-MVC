@@ -95,10 +95,16 @@ class User extends \Core\Model
     }
 
     /**
-     * Delete this account, e.g. a sign-up whose activation email never went out
+     * Delete this account for good, e.g. a sign-up whose activation email
+     * never went out, or someone deleting their profile. Their messages, the
+     * private ones to them, their place, push subscriptions and MapChat's
+     * jobs for them go with it (those tables cascade on delete); remembered
+     * logins point at the id instead, so they're deleted here
      */
     public function delete(): void
     {
+        $this->forgetRememberedLogins();
+
         $stmt = static::getDB()->prepare('DELETE FROM users WHERE id = :id');
         $stmt->bindValue(':id', $this->id, PDO::PARAM_INT);
         $stmt->execute();
@@ -258,6 +264,15 @@ class User extends \Core\Model
     public function hasPassword(): bool
     {
         return $this->password_hash !== '';
+    }
+
+    /**
+     * Whether the account has a password its owner knows, to ask for before
+     * deleting it. A guest's is random, made so nobody can log in with it
+     */
+    public function hasKnownPassword(): bool
+    {
+        return !$this->is_guest && $this->hasPassword();
     }
 
     /**

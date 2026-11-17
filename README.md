@@ -79,6 +79,8 @@ https://github.com/user-attachments/assets/06384a18-cd12-4e27-8cf0-530ab2463569
 - Try it as a guest without signing up. A guest account lasts 24 hours
   unless kept, then it's logged out and deleted.
 - Accounts with email activation, password reset, nicknames and avatars.
+- Delete your profile from the profile page, after a dialog asks first. Your
+  messages, private chats, location and notifications go with it.
 - Continue with Google on the login page, which makes the account the first
   time, or links it to the account with the same email. Someone with no photo
   of their own gets their Google photo.

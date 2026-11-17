@@ -15,6 +15,8 @@ class AccountTest extends TestCase
 {
     const EMAIL = 'account@test.local';
     const PASSWORD = 'secret123';
+    /** Someone else, for a private message to the test's user */
+    const OTHER_EMAIL = 'other@test.local';
 
     /** The built-in server, shared by the tests in this class */
     private static $server;
@@ -70,7 +72,7 @@ class AccountTest extends TestCase
     protected function tearDown(): void
     {
         $this->db->prepare('DELETE FROM userinfo WHERE email = ?')->execute([self::EMAIL]);
-        $this->db->prepare('DELETE FROM users WHERE email = ?')->execute([self::EMAIL]);
+        $this->db->prepare('DELETE FROM users WHERE email IN (?, ?)')->execute([self::EMAIL, self::OTHER_EMAIL]);
     }
 
     /**
@@ -354,7 +356,7 @@ class AccountTest extends TestCase
 
     public function testPostOnlyUrlsRefuseGet()
     {
-        foreach (['/login/guest', '/signup/create', '/password/request-reset', '/password/reset-password', '/app/get', '/app/send', '/app/get-locations', '/profile/update-avatar'] as $path) {
+        foreach (['/login/guest', '/signup/create', '/password/request-reset', '/password/reset-password', '/app/get', '/app/send', '/app/get-locations', '/profile/update-avatar', '/profile/delete'] as $path) {
             $this->assertRefusedMethod($this->request('GET', $path), 'POST');
         }
     }
@@ -412,6 +414,91 @@ class AccountTest extends TestCase
         $stmt = $this->db->prepare('SELECT endpoint FROM push_subscriptions WHERE email = ?');
         $stmt->execute([self::EMAIL]);
         $this->assertSame([$otherBrowser], $stmt->fetchAll(PDO::FETCH_COLUMN));
+    }
+
+    /**
+     * How many rows of a table belong to the test's user
+     *
+     * @param string $column The column holding their email, or their id for user_id
+     */
+    private function countOwnRows(string $table, string $column = 'email'): int
+    {
+        $owner = $column === 'user_id' ? '(SELECT id FROM users WHERE email = ?)' : '?';
+        $stmt = $this->db->prepare("SELECT COUNT(*) FROM $table WHERE $column = $owner");
+        $stmt->execute([self::EMAIL]);
+
+        return (int) $stmt->fetchColumn();
+    }
+
+    public function testTheProfilePageOffersToDeleteTheProfileWithThePassword()
+    {
+        $this->logIn();
+
+        $page = $this->request('GET', '/profile/show')['body'];
+
+        $this->assertStringContainsString('<dialog class="delete-dialog" id="delete-profile-dialog"', $page);
+        $this->assertStringContainsString('action="/profile/delete" method="post"', $page);
+        $this->assertStringContainsString('id="inputDeletePassword" name="current_password"', $page);
+    }
+
+    public function testDeletingTheProfileDeletesEverythingOfTheirsAndSignsOut()
+    {
+        $this->db->prepare("INSERT INTO users (name, email, password_hash, is_active) VALUES ('Bob', ?, '!', TRUE)")
+            ->execute([self::OTHER_EMAIL]);
+        $this->db->prepare("INSERT INTO chats (email, to_email, body) VALUES (?, NULL, 'Hello room'), (?, ?, 'Hi Ann')")
+            ->execute([self::EMAIL, self::OTHER_EMAIL, self::EMAIL]);
+        $this->db->prepare("INSERT INTO userinfo (email, ip, city) VALUES (?, '127.0.0.1', 'Dhaka')")->execute([self::EMAIL]);
+        $this->db->prepare("INSERT INTO push_subscriptions (email, endpoint, endpoint_hash, p256dh, auth) VALUES (?, 'https://push.example.com/ann', ?, 'key', 'secret')")
+            ->execute([self::EMAIL, hash('sha256', 'https://push.example.com/ann')]);
+        $userId = (int) $this->db->query("SELECT id FROM users WHERE email = '" . self::EMAIL . "'")->fetchColumn();
+        $this->request('POST', '/login/create', ['email' => self::EMAIL, 'password' => self::PASSWORD, 'remember_me' => '1']);
+        $this->assertSame(1, $this->countOwnRows('remembered_logins', 'user_id'));
+
+        $response = $this->request('POST', '/profile/delete', ['current_password' => self::PASSWORD]);
+
+        $this->assertRedirect('/login/show-deleted-message', $response);
+        $this->assertRedirect('/', $this->request('GET', '/login/show-deleted-message'));
+        $this->assertStringContainsString('Your profile is deleted.', $this->request('GET', '/login')['body']);
+        $this->assertFalse($this->isSignedIn());
+
+        $this->assertSame(0, $this->countOwnRows('users'));
+        $this->assertSame(0, $this->countOwnRows('chats'));
+        $this->assertSame(0, $this->countOwnRows('chats', 'to_email'));
+        $this->assertSame(0, $this->countOwnRows('userinfo'));
+        $this->assertSame(0, $this->countOwnRows('push_subscriptions'));
+        $stmt = $this->db->prepare('SELECT COUNT(*) FROM remembered_logins WHERE user_id = ?');
+        $stmt->execute([$userId]);
+        $this->assertSame(0, (int) $stmt->fetchColumn());
+    }
+
+    public function testDeletingTheProfileWithAWrongPasswordKeepsIt()
+    {
+        $this->logIn();
+
+        $this->assertRedirect('/profile/show', $this->request('POST', '/profile/delete', ['current_password' => 'wrong123']));
+
+        $this->assertSame(1, $this->countOwnRows('users'));
+        $this->assertTrue($this->isSignedIn());
+    }
+
+    public function testDeletingTheProfileFromAnotherSiteIsRefused()
+    {
+        $this->logIn();
+
+        $response = $this->request('POST', '/profile/delete', ['current_password' => self::PASSWORD], ['Origin' => 'https://elsewhere.example']);
+
+        $this->assertSame(403, $response['status']);
+        $this->assertSame(1, $this->countOwnRows('users'));
+    }
+
+    public function testAGuestDeletesTheirProfileWithoutAPassword()
+    {
+        $this->request('POST', '/login/guest');
+        $this->assertTrue($this->isSignedIn());
+        $this->assertStringNotContainsString('id="inputDeletePassword"', $this->request('GET', '/profile/show')['body']);
+
+        $this->assertRedirect('/login/show-deleted-message', $this->request('POST', '/profile/delete'));
+        $this->assertFalse($this->isSignedIn());
     }
 
     public function testAResetRequestWithEmailOffSaysSoWhateverTheEmail()

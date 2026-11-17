@@ -223,3 +223,16 @@ window.addEventListener('beforeunload', (event) => {
         event.preventDefault();
     }
 });
+
+/* Deleting the profile: the dialog asks first, and its form does the rest */
+
+const deleteProfileDialog = document.getElementById('delete-profile-dialog');
+
+document.getElementById('delete-profile').addEventListener('click', () => {
+    deleteProfileDialog.showModal();
+});
+
+// Closed with Cancel or Escape, so a typed password doesn't wait there for the next opening
+deleteProfileDialog.addEventListener('close', () => {
+    deleteProfileDialog.querySelector('form').reset();
+});

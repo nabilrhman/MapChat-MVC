@@ -11,8 +11,8 @@ use App\Models\User;
 use App\Models\UserInfo;
 
 /**
- * The profile page: name, nickname, photo, email and password, and whether
- * you're on the map
+ * The profile page: name, nickname, photo, email and password, whether
+ * you're on the map, and deleting the profile
  */
 class Profile extends Authenticated
 {
@@ -115,6 +115,23 @@ class Profile extends Authenticated
         $this->user->setLocationSharing($isShared);
 
         $this->json(['share_location' => $isShared]);
+    }
+
+    /**
+     * Delete the account and everything in it, then sign out. An account
+     * with a password needs it, as changing the email does
+     */
+    public function deleteAction(): void
+    {
+        $password = (string) ($_POST['current_password'] ?? '');
+        if ($this->user->hasKnownPassword() && !password_verify($password, $this->user->password_hash)) {
+            $this->refuse('Your password is not right. Your profile is kept.');
+        }
+
+        $this->user->delete();
+        Auth::logout();
+
+        $this->redirect('/login/show-deleted-message');
     }
 
     /**
