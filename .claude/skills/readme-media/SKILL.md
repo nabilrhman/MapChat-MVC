@@ -5,28 +5,36 @@ description: Retake the README's screenshots and tour video after a change peopl
 
 # README screenshots and tour
 
-The README shows four screenshots from `docs/images/` and plays a tour
-video. Both are recorded with Playwright against the app on :8080
-(`docs/video/`; each script's header says what it needs). The app has to be
-up with the demo people online.
+The README plays a tour video, then shows a main picture of the room, then
+the profile and the two emails. The tour and the main picture are recorded
+with Playwright against the app on :8080 (`docs/video/`; each script's
+header says what it needs). The app has to be up with the demo people
+online. The profile and email pictures stay as they are: the user wants only
+the main picture retaken.
 
-## 1. Screenshots
+## 1. The main picture
 
-Run `npm run screenshots`. It writes `docs/images/mapchat-login.jpg` and
-`mapchat-{app,private,profile}.png`.
+Run `npm run screenshots`. It writes `docs/images/mapchat-app.png`: the
+room, two private chats open as tabs, a message being written in the box,
+and the label of the pin nearest the middle of the map open.
 
-Done when you've looked at all four and each shows the current app: nothing
-half-loaded, no stray focus ring, the chat and map filled in.
+Done when you've looked at it and it shows the current app with all of
+that: the pin's label open near the middle, the draft in the box, nothing
+half-loaded.
 
 ## 2. Tour
 
 Run `npm run tour` in the background: it signs in its own guest, pauses the
 chat worker while it records real Groq replies, and takes a few minutes.
 
-Done when frames pulled from across the video (for example
-`ffmpeg -ss <second> -i docs/images/mapchat-tour.mp4 -frames:v 1 …` at six
-points, stacked into one grid) show each step of the tour in the current
-design.
+Done when frames pulled at each step (for example
+`ffmpeg -ss <second> -i docs/images/mapchat-tour.mp4 -frames:v 1 …`,
+stacked into a grid) show every step doing what it's there to show: the
+hovered person's pin pointed out, the clicked city's pin flown to the middle
+of the map, Lukas's answer arriving, the private chats' replies, the tab
+moved and closed, the profile. A frame that only looks current isn't
+enough: a city click once landed on MapChat's Null Island, which has no
+pin, so the map never moved.
 
 ## 3. The video the README plays
 

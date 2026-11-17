@@ -45,17 +45,11 @@ https://github.com/user-attachments/assets/ed3f9b35-5678-4b34-b6f7-963f74e54da9
 
 <sub>A quick tour of MapChat.</sub>
 
-| The chat room | A private chat |
-|---|---|
-| ![The chat room with the map of who is chatting from where](docs/images/mapchat-app.png) | ![A private chat with a demo person, showing their city and local time](docs/images/mapchat-private.png) |
+![The chat room, with a message being written and a pin's label open on the map of who is chatting from where](docs/images/mapchat-app.png)
 
-| Log in, or try it as a guest | Profile |
-|---|---|
-| ![Login page](docs/images/mapchat-login.jpg) | ![Profile page](docs/images/mapchat-profile.png) |
-
-| Account activation email | Password reset email |
-|---|---|
-| ![Account activation email](docs/images/mapchat-email-activation.png) | ![Password reset email](docs/images/mapchat-email-reset.png) |
+| Profile | Account activation email | Password reset email |
+|---|---|---|
+| ![Profile page](docs/images/mapchat-profile.png) | ![Account activation email](docs/images/mapchat-email-activation.png) | ![Password reset email](docs/images/mapchat-email-reset.png) |
 
 ## Features
 
@@ -321,7 +315,7 @@ tests/           PHPUnit tests; tests/browser/ the Playwright checks (npm run a1
 docs/images/     The video, screenshots and diagram in this README
 docs/diagrams/   Draws the diagram: node docs/diagrams/draw.ts
 docs/video/      Records the tour at the top with Playwright (npm run tour) and
-                 takes the screenshots (npm run screenshots)
+                 takes the main picture (npm run screenshots)
 docs/live-chat.md How the live chat works
 docs/notifications.md How notifications and Web Push work
 docs/deploy.md   How to deploy it for free

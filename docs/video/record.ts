@@ -232,17 +232,25 @@ async function tour(page: Page, person: Person, guest: Guest, startScreencast: (
     await person.moveTo(await requiredCentreOf(onlinePerson('Maya')));
     await waitSeconds(1.8);
 
-    // A message's city does the same, and a click brings the pin to the middle
-    const cityLine = page.locator('[data-part="city"]').filter({hasNotText: /Toronto|Mountain View/}).last();
-    const city = await centreOf(cityLine);
-    if (city) {
-        await person.moveTo(city);
-        await waitSeconds(1.3);
-        await person.click(city);
-        await waitSeconds(1.2);
-        await waitForMap();
-        await waitSeconds(1);
+    // A message's city does the same, and a click brings the pin to the
+    // middle. The newest city whose sender has a pin, so the map flies:
+    // MapChat greets the guest from Null Island, which has none
+    const pinnedCityIndex = await page.evaluate(() => [...document.querySelectorAll('[data-part="city"]')].findLastIndex((cityButton) => {
+        const senderId = cityButton.closest('[data-part="message"]').dataset.senderId;
+        return pinLabelsByUserId.has(senderId) && !/Toronto|Mountain View/.test(cityButton.textContent);
+    }));
+    if (pinnedCityIndex < 0) {
+        throw new Error('No message in the room from someone with a pin: is the demo running?');
     }
+    const cityLine = page.locator('[data-part="city"]').nth(pinnedCityIndex);
+    await cityLine.scrollIntoViewIfNeeded();
+    const city = await requiredCentreOf(cityLine);
+    await person.moveTo(city);
+    await waitSeconds(1.3);
+    await person.click(city);
+    await waitSeconds(1.2);
+    await waitForMap();
+    await waitSeconds(1);
 
     // In Everyone: @ brings up who's online, and Lukas answers in the room,
     // tagging the guest back
