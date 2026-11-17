@@ -8,6 +8,13 @@
 const STYLE_URL = 'https://tiles.openfreemap.org/styles/positron';
 const MAPLIBRE_URL = 'https://unpkg.com/maplibre-gl@4.7.1/dist/';
 
+// The furthest out each map can go: MapLibre draws the world smaller than
+// its tiles, while Leaflet has no tiles below zoom 0
+const LOWEST_VECTOR_ZOOM = -2;
+const LOWEST_TILE_ZOOM = 0;
+// The top and bottom of the world, as far as the map draws it
+const WORLD_BOUNDS = [[-85, -Infinity], [85, Infinity]];
+
 // Where the map starts (Boise), until the pins are in
 const START = {lat: 43.4599, lng: -116.244, zoom: 3};
 // Fitting the pins never zooms in closer than a city
@@ -177,11 +184,25 @@ const latLngOf = (location) => [parseFloat(location.lat), parseFloat(location.ln
 
 /* Fitting the map */
 
+// The part of the map you can see: on phones, the room the chat sheet
+// leaves above it (chat.js)
+function visibleMapHeight() {
+    if (phoneScreen.matches) return sheetTopOf(sheetStop);
+    return document.getElementById('map').clientHeight;
+}
+
 // The furthest out you can zoom: the world (a square tileSize pixels tall at
-// zoom 0) must be at least as tall as the map, so it never ends mid-screen
-function minZoomToFill(tileSize) {
-    const mapHeight = document.getElementById('map').clientHeight;
-    return Math.max(0, Math.log2(mapHeight / tileSize));
+// zoom 0) must be at least as tall as the part of the map you can see, so it
+// never ends mid-screen. Never further out than lowestZoom
+function minZoomToFill(tileSize, lowestZoom) {
+    return Math.max(lowestZoom, Math.log2(visibleMapHeight() / tileSize));
+}
+
+// Keeps that furthest zoom right as the window or the chat sheet moves
+function keepMinZoomFilled(map, tileSize, lowestZoom) {
+    const fillVisibleMap = () => map.setMinZoom(minZoomToFill(tileSize, lowestZoom));
+    window.addEventListener('resize', fillVisibleMap);
+    document.addEventListener('sheet-moved', fillVisibleMap);
 }
 
 // Room around the pins when zooming to fit them, so no pin ends up behind the
@@ -558,13 +579,12 @@ async function initializeVectorMap() {
         style,
         center: [START.lng, START.lat],
         zoom: START.zoom,
-        minZoom: minZoomToFill(512),
+        minZoom: minZoomToFill(512, LOWEST_VECTOR_ZOOM),
         attributionControl: false,
     });
     vectorMap = map;
     addVectorCredits(map);
-
-    window.addEventListener('resize', () => map.setMinZoom(minZoomToFill(512)));
+    keepMinZoomFilled(map, 512, LOWEST_VECTOR_ZOOM);
 
     map.on('load', () => {
         addNightShade(map);
@@ -801,6 +821,13 @@ function fitTilePins(map, locations) {
     });
 }
 
+// Wider screens stop dragging past the top and bottom of the world. Phones
+// don't, as the chat sheet covers the map's bottom and the bounds would
+// keep the south under it
+function boundTileMapToWorld(map) {
+    map.setMaxBounds(phoneScreen.matches ? null : WORLD_BOUNDS);
+}
+
 async function initializeTileMap() {
     const leafletUrl = 'https://unpkg.com/leaflet@1.9.4/dist/';
     loadAsset('link', {rel: 'stylesheet', href: `${leafletUrl}leaflet.css`});
@@ -811,13 +838,13 @@ async function initializeTileMap() {
         attributionControl: false,
         worldCopyJump: true,
         zoomSnap: 0.25,
-        minZoom: minZoomToFill(256),
-        // Stop dragging past the top and bottom of the world
-        maxBounds: [[-85, -Infinity], [85, Infinity]],
+        minZoom: minZoomToFill(256, LOWEST_TILE_ZOOM),
         maxBoundsViscosity: 1,
     }).setView([START.lat, START.lng], START.zoom);
 
-    window.addEventListener('resize', () => map.setMinZoom(minZoomToFill(256)));
+    keepMinZoomFilled(map, 256, LOWEST_TILE_ZOOM);
+    boundTileMapToWorld(map);
+    phoneScreen.addEventListener('change', () => boundTileMapToWorld(map));
     addTileCredits(map);
     createThemedTileLayer().addTo(map);
 
