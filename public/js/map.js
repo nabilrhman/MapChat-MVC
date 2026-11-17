@@ -728,7 +728,7 @@ function createThemedTileLayer() {
 }
 
 // Credits beside the people list (see chat.css); the tiles add theirs to it.
-// On phones it's an "i" that opens on tap, like MapLibre's
+// It's an "i" that opens on a click, like MapLibre's
 function addTileCredits(map) {
     map.attributionControl = L.control.attribution({position: 'bottomright', prefix: false}).addTo(map);
 
