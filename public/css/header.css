@@ -22,7 +22,7 @@
     align-items: center;
     justify-content: space-between;
     background-color: var(--md-primary);
-    border-bottom: 4px solid #ffd54f; /* the yellow line is the only edge, on every page; pale, so the loading bar shows on it */
+    border-bottom: 4px solid #ffc107; /* the yellow line is the only edge, on every page; the loading bar runs along it in deep orange */
 }
 
 @scope (.site-header) to (.account-menu)

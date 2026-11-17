@@ -437,53 +437,103 @@ h4
 }
 
 /* The thin bar across the top while the next page loads (loadingBar.js).
-   It jumps a little straight away so the click feels answered, then slows,
-   as it can't know how long is left; the next page fills the rest. It
-   grows by scaling from its left end */
+   It fades in and grows out from the middle toward both edges along one
+   curve: easing in, quickly a third across, then ever slower, as it can't
+   know how long is left. The next page fills the rest */
 .loading-bar
 {
     position: fixed;
     inset-block-start: 0;
     inset-inline: 0;
     z-index: 10000;
-    height: 4px; /* as thick as the header's yellow line */
-    background-color: #ffc107;
+    --loading-bar-edge: #ffca28;
+    --loading-bar-middle: #ff9100;
+    height: 3px;
+    /* Deepest in the middle, where it grows from, lighter toward the edges */
+    background-image: linear-gradient(to right, var(--loading-bar-edge), var(--loading-bar-middle), var(--loading-bar-edge));
+    border-radius: 999px;
+    /* The ends fade out instead of stopping square; the mask scales with
+       the bar, so the fade stays the same share of it as it grows */
+    mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent);
     opacity: 0;
     transform: scaleX(0);
-    transform-origin: left;
+    transform-origin: center;
     pointer-events: none;
+
+    /* Two glints of pale yellow that run once from the middle to both ends
+       as it appears; they scale with the bar, so they always run from its
+       middle to its ends. They wait a moment, so the bar is wide enough to
+       show them */
+    &::before,
+    &::after
+    {
+        content: '';
+        position: absolute;
+        inset-block: 0;
+        inset-inline-start: 40%;
+        width: 20%;
+        background-image: linear-gradient(to right, transparent, #ffe082, transparent);
+        opacity: 0;
+    }
+
+    &.is-running
+    {
+        opacity: 1;
+        animation: loading-bar-grow var(--dur-loading-bar) var(--ease-loading-bar) forwards,
+                   fade-in var(--dur) var(--ease-out);
+
+        &::before { animation: loading-bar-glint-left var(--dur-loading-bar-glint) var(--ease-out) var(--dur-slow); }
+        &::after { animation: loading-bar-glint-right var(--dur-loading-bar-glint) var(--ease-out) var(--dur-slow); }
+    }
+
+    /* The next page fills it from where the last one left it (loadingBar.js),
+       solid right to both edges, and only then fades it out */
+    &.is-finishing
+    {
+        opacity: 1;
+        mask-image: none;
+        animation: loading-bar-fill var(--dur-slow) var(--ease-out) forwards,
+                   fade-out var(--dur) var(--ease-in) var(--dur-slow) forwards;
+    }
+
+    /* Under the header it runs along the header's yellow line in deeper
+       orange, which shows on the yellow without shouting */
+    &.under-header
+    {
+        top: calc(var(--header-height) - 4px);
+        z-index: 111; /* just above the header */
+        --loading-bar-edge: #ff8f00;
+        --loading-bar-middle: #e65100;
+        height: 4px; /* as thick as the header's yellow line */
+    }
 }
 
-.loading-bar.is-running
-{
-    opacity: 1;
-    animation: loading-bar-grow var(--dur-loading-bar) linear forwards;
-}
-
-/* The next page fills it from where the last one left it (loadingBar.js),
-   then fades it out */
-.loading-bar.is-finishing
-{
-    opacity: 1;
-    animation: loading-bar-fill var(--dur) var(--ease-out) forwards,
-               fade-out var(--dur) var(--ease-in) var(--dur) forwards;
-}
-
-/* Under the header it fills the header's yellow line in amber, which shows
-   on the yellow without shouting */
-.loading-bar.under-header
-{
-    top: calc(var(--header-height) - 4px);
-    z-index: 111; /* just above the header */
-    background-color: #ffa000;
-}
-
+/* One keyframe pair, so the easing runs over the whole crawl; steps in
+   between would each ease to a stop and make the bar stutter */
 @keyframes loading-bar-grow
 {
-    0%   { transform: scaleX(0); }
-    3%   { transform: scaleX(0.3); }
-    20%  { transform: scaleX(0.6); }
-    100% { transform: scaleX(0.9); }
+    from { transform: scaleX(0); }
+    to { transform: scaleX(0.92); }
+}
+
+@keyframes loading-bar-glint-left
+{
+    from { opacity: 1; transform: translateX(0); }
+    to { opacity: 0; transform: translateX(-200%); }
+}
+
+@keyframes loading-bar-glint-right
+{
+    from { opacity: 1; transform: translateX(0); }
+    to { opacity: 0; transform: translateX(200%); }
+}
+
+/* The bar still grows for people who ask for less motion, as it's the only
+   sign the page is coming; the glints along it don't run */
+@media (prefers-reduced-motion: reduce)
+{
+    .loading-bar.is-running::before,
+    .loading-bar.is-running::after { animation: none; }
 }
 
 @keyframes loading-bar-fill
