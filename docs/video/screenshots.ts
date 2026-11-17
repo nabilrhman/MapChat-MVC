@@ -1,23 +1,34 @@
 /**
- * Takes the README's main picture, docs/images/mapchat-app.png, from the app
- * running locally (docker compose up).
+ * Takes the README's main picture and its two phone pictures, at 2x, from the
+ * app running locally (docker compose up).
  *
  *   npm run screenshots
  *
- * Only this one is retaken; the README's profile and email pictures stay as
- * they are. A new guest signs in and opens two private chats as tabs, then
- * the room is shown with a message being written in the box and the label of
- * the pin nearest the middle of the map open, as hovering it shows. The
- * environment is chrome.ts's
+ * The README's profile and email pictures stay as they are.
+ *
+ * - mapchat-app.png: a new guest opens two private chats as tabs, then the
+ *   room is shown with a message being written in the box, and the pin
+ *   nearest the middle of the map panned to the middle with its label open,
+ *   as hovering it shows.
+ * - mapchat-phone.png: the room on a phone, with a pin in the middle of the
+ *   map and its label open as a tap opens it.
+ * - mapchat-phone-online.png: the same phone with the online list slid open.
+ *
+ * The environment is chrome.ts's
  */
 import {join} from 'node:path';
-import type {Page} from 'playwright';
+import type {Browser, Page} from 'playwright';
 
 import {launchChrome, printRenderer, REPO, signInAsNewGuest, URL} from './chrome.ts';
 import {waitSeconds} from './person.ts';
 
-const WIDTH = 1440;
-const HEIGHT = 900;
+const DESKTOP = {width: 1440, height: 900};
+// An iPhone 15's screen in CSS pixels
+const PHONE = {width: 393, height: 852};
+// Close enough in for a phone's map to pan a pin to its middle, and still show a continent or two
+const PHONE_LEAST_ZOOM = 1.5;
+// The README wants sharp pictures on high-density screens
+const PIXEL_RATIO = 2;
 const IMAGES = join(REPO, 'docs/images');
 // Being written in the box, as if the guest were about to send it
 const DRAFT = 'anyone else still up? 🌙 what time is it where you are?';
@@ -30,65 +41,149 @@ async function openPrivateChat(page: Page, person: ListedPerson): Promise<void> 
     await page.evaluate(({id, shown_name}) => openPrivateChat(id, shown_name), person);
 }
 
-/** Hovers the pin nearest the middle of the map between the chat and the people list, so its label opens */
-async function hoverMiddlePin(page: Page): Promise<void> {
+/** The centre of the pin nearest the middle of the map's open part: between the chat and the people list where both show */
+async function middlePinCentre(page: Page): Promise<{x: number, y: number}> {
     const pinCentre = await page.evaluate(() => {
-        const left = document.getElementById('chat').getBoundingClientRect().right;
-        const right = document.getElementById('people').getBoundingClientRect().left;
         const map = document.getElementById('map').getBoundingClientRect();
-        const middle = {x: (left + right) / 2, y: map.top + map.height / 2};
+        const chat = document.getElementById('chat').getBoundingClientRect();
+        const people = document.getElementById('people').getBoundingClientRect();
+        // On a phone the chat sits under the map and the list is a closed drawer
+        const left = chat.right < map.right ? chat.right : map.left;
+        const right = people.left > left && people.width > 0 ? people.left : map.right;
+        const bottom = chat.top > map.top ? Math.min(map.bottom, chat.top) : map.bottom;
+        const middle = {x: (left + right) / 2, y: (map.top + bottom) / 2};
 
         const centres = [...document.querySelectorAll('[data-part="map-pin"]')].map((pin) => {
             const box = pin.getBoundingClientRect();
             return {x: box.left + box.width / 2, y: box.top + box.height / 2};
-        }).filter(({x}) => x > left && x < right);
+        }).filter(({x, y}) => x > left && x < right && y > map.top && y < bottom);
         const distanceToMiddle = ({x, y}) => Math.hypot(x - middle.x, y - middle.y);
         return centres.sort((a, b) => distanceToMiddle(a) - distanceToMiddle(b))[0] ?? null;
     });
     if (!pinCentre) {
-        throw new Error('No pin on the map between the chat and the people list: is the demo running?');
+        throw new Error('No pin in the open part of the map: is the demo running?');
     }
+    return pinCentre;
+}
+
+/**
+ * Pans the map so the pin nearest the middle of its open part sits right in
+ * the middle, and returns where that pin now is
+ *
+ * @param leastZoom zooms in to this first if the map is further out: on a
+ *   phone the whole world only just fills the map's height, so it can't pan
+ *   north or south at all
+ */
+async function centreMiddlePin(page: Page, leastZoom = 0): Promise<{x: number, y: number}> {
+    const pinCentre = await middlePinCentre(page);
+    await page.evaluate(({x, y, leastZoom}) => {
+        const map = document.getElementById('map').getBoundingClientRect();
+        const pinLngLat = vectorMap.unproject([x - map.left, y - map.top]);
+        const zoom = Math.max(vectorMap.getZoom(), leastZoom);
+        vectorMap.jumpTo({center: pinLngLat, zoom, padding: getMapPadding()});
+    }, {...pinCentre, leastZoom});
+    await waitSeconds(1.5);
+    return middlePinCentre(page);
+}
+
+/** Taps the pin nearest the middle until its label shows: a tap while the map is still settling misses */
+async function tapMiddlePinUntilLabelShows(page: Page): Promise<void> {
+    const label = page.locator('.maplibregl-popup');
+    for (let attempt = 1; attempt <= 5; attempt++) {
+        const pinCentre = await centreMiddlePin(page, PHONE_LEAST_ZOOM);
+        await page.touchscreen.tap(pinCentre.x, pinCentre.y);
+        await waitSeconds(1);
+        if (await label.isVisible()) {
+            return;
+        }
+    }
+    throw new Error('Tapping a pin never opened its label');
+}
+
+/** Signs in a new guest, as anyone trying it would be, and closes the offer of notifications */
+async function signInFresh(page: Page): Promise<void> {
+    await page.goto(`${URL}/login`);
+    await signInAsNewGuest(page);
+    await waitSeconds(4);
+
+    const closeNotificationsOffer = page.locator('#notify-prompt-dismiss');
+    if (await closeNotificationsOffer.isVisible()) {
+        await closeNotificationsOffer.click();
+    }
+}
+
+/** The room with two private chats open as tabs, a draft in the box and a pin's label open */
+async function takeDesktopPicture(browser: Browser): Promise<void> {
+    const context = await browser.newContext({viewport: DESKTOP, deviceScaleFactor: PIXEL_RATIO});
+    const page = await context.newPage();
+    await printRenderer(page);
+    await signInFresh(page);
+
+    // Two private chats open as tabs, then back to the room
+    const demoPeople: ListedPerson[] = await page.evaluate(() => getPeopleToMention().filter((p) => Number(p.is_demo) && p.isOnline));
+    if (demoPeople.length < 2) {
+        throw new Error('Fewer than two demo people online: is the demo running?');
+    }
+    for (const person of demoPeople.slice(0, 2)) {
+        await openPrivateChat(page, person);
+    }
+    await page.evaluate(() => {
+        showConversation('everyone');
+        scrollToNewest('instant');
+    });
+    await waitSeconds(4);
+
+    // A message being written, and a pin's label open in the middle of the map
+    await page.locator('#textarea-send').fill(DRAFT);
+    // The demo keeps talking: a message that came in since is shown whole
+    await page.evaluate(() => scrollToNewest('instant'));
+    const pinCentre = await centreMiddlePin(page);
     await page.mouse.move(pinCentre.x, pinCentre.y, {steps: 5});
+    await waitSeconds(1);
+    await savePicture(page, 'mapchat-app.png');
+    await context.close();
+}
+
+/** The room on a phone with a pin's label open, then with the online list slid open */
+async function takePhonePictures(browser: Browser): Promise<void> {
+    const context = await browser.newContext({
+        viewport: PHONE,
+        deviceScaleFactor: PIXEL_RATIO,
+        isMobile: true,
+        hasTouch: true,
+    });
+    const page = await context.newPage();
+    await signInFresh(page);
+    await waitSeconds(2);
+    await page.evaluate(() => scrollToNewest('instant'));
+
+    await tapMiddlePinUntilLabelShows(page);
+    await page.evaluate(() => scrollToNewest('instant'));
+    await waitSeconds(0.5);
+    await savePicture(page, 'mapchat-phone.png');
+
+    // Long enough for a row that has just come online to stop flashing
+    await page.locator('#people-toggle').tap();
+    await waitSeconds(4);
+    // Chrome leaves a row under its emulated pointer hovered, which a finger wouldn't
+    await page.mouse.move(1, 1);
+    await waitSeconds(0.5);
+    await savePicture(page, 'mapchat-phone-online.png');
+    await context.close();
+}
+
+/** Saves the page as it shows now to docs/images */
+async function savePicture(page: Page, name: string): Promise<void> {
+    const path = join(IMAGES, name);
+    await page.screenshot({path});
+    console.log(path);
 }
 
 async function main(): Promise<void> {
     const browser = await launchChrome();
     try {
-        const context = await browser.newContext({viewport: {width: WIDTH, height: HEIGHT}, deviceScaleFactor: 1});
-        const page = await context.newPage();
-        await printRenderer(page);
-
-        // A new guest, as anyone trying it would be
-        await page.goto(`${URL}/login`);
-        await signInAsNewGuest(page);
-        await waitSeconds(4);
-
-        const closeNotificationsOffer = page.locator('#notify-prompt-dismiss');
-        if (await closeNotificationsOffer.isVisible()) {
-            await closeNotificationsOffer.click();
-        }
-
-        // Two private chats open as tabs, then back to the room
-        const demoPeople: ListedPerson[] = await page.evaluate(() => getPeopleToMention().filter((p) => Number(p.is_demo) && p.isOnline));
-        if (demoPeople.length < 2) {
-            throw new Error('Fewer than two demo people online: is the demo running?');
-        }
-        for (const person of demoPeople.slice(0, 2)) {
-            await openPrivateChat(page, person);
-        }
-        await page.evaluate(() => {
-            showConversation('everyone');
-            scrollToNewest('instant');
-        });
-        await waitSeconds(4);
-
-        // A message being written, and a pin's label open in the middle of the map
-        await page.locator('#textarea-send').fill(DRAFT);
-        await hoverMiddlePin(page);
-        await waitSeconds(1);
-        await page.screenshot({path: join(IMAGES, 'mapchat-app.png')});
-
-        console.log(`${IMAGES}/mapchat-app.png`);
+        await takeDesktopPicture(browser);
+        await takePhonePictures(browser);
     } finally {
         await browser.close();
     }
