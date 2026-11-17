@@ -64,8 +64,10 @@ https://github.com/user-attachments/assets/06384a18-cd12-4e27-8cf0-530ab2463569
 - Private chats in tabs of their own, with unread counts and "Typing...".
   Each opens with a header showing who you're talking to, and their city and
   local time.
+- A message box that stays one line, its buttons beside it, until what you
+  write wraps; then it grows to five lines (four on a phone) and scrolls.
 - @mentions: type @ to pick someone; mentions show as chips.
-- Emoji from the smile button under the message box.
+- Emoji from the smile button in the message box.
 - Voice typing: the mic beside an empty box listens, and what you said goes
   into the box to read over before sending. Groq's Whisper writes it out; when
   Groq is off or its free plan is used up for the minute, the browser's own
@@ -78,6 +80,8 @@ https://github.com/user-attachments/assets/06384a18-cd12-4e27-8cf0-530ab2463569
   sun or moon.
 - Hover someone, or a message's city, to point out their pin; click the city
   to fly the map to it. The night side of the world is shaded.
+- Hover a message's time to see the sender's own time, or its city to see
+  their country. On a phone, tap it.
 - Anyone can hide their pin and city from the map.
 - MapChat, the room's AI, and AI characters who chat back: see
   [AI chat](#ai-chat).
@@ -89,7 +93,10 @@ https://github.com/user-attachments/assets/06384a18-cd12-4e27-8cf0-530ab2463569
 - Continue with Google on the login page, which makes the account the first
   time, or links it to the account with the same email. Someone with no photo
   of their own gets their Google photo.
-- Works on phones, where the chat is a sheet over the map: drag it to the height you like, and tap its handle to switch between all of the chat and that height.
+- Works on phones, where the chat is a sheet over the map: drag it to the
+  height you like, and tap its handle to switch between all of the chat and
+  that height. The chat's header is one line there; tap it for their status
+  and place. Enter starts a new line, and Send sends.
 
 ## AI chat
 
