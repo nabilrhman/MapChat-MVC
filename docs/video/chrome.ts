@@ -174,12 +174,12 @@ function extensionIdOf(folder: string): string {
 
 /**
  * Starts Playwright's Chromium, headless, with the extension in `extensionFolder`
- * loaded and let capture a tab without being clicked
+ * loaded and let capture a tab without being clicked; `extraFlags` add to its own
  */
 export function launchWithExtension(
     extensionFolder: string,
     {width, height, scale}: {width: number, height: number, scale: number},
-    {handlesSignals = false} = {},
+    {handlesSignals = false, extraFlags = [] as string[]} = {},
 ): Promise<BrowserContext> {
     const folder = resolve(extensionFolder);
     return chromium.launchPersistentContext(mkdtempSync(join(tmpdir(), 'mapchat-chromium-')), {
@@ -197,6 +197,7 @@ export function launchWithExtension(
             `--window-size=${width},${height}`,
             `--force-device-scale-factor=${scale}`,
             '--hide-scrollbars',
+            ...extraFlags,
             ...CHROME_FLAGS,
         ],
     });
