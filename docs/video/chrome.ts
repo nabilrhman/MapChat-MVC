@@ -1,7 +1,7 @@
 /**
  * What the tour and the screenshots share: where the app is, the commands
- * run in its containers, headless Chrome drawing on the GPU, and signing a
- * new guest in.
+ * run in its containers, showing Continue with Google without real keys,
+ * headless Chrome drawing on the GPU, and signing a new guest in.
  *
  * MAPCHAT_URL is the app's address (default http://localhost:8080).
  * MAPCHAT_ROOT is the checkout whose docker compose project runs the app
@@ -10,9 +10,10 @@
  */
 import {execFile} from 'node:child_process';
 import {createHash} from 'node:crypto';
-import {existsSync, mkdtempSync, readdirSync} from 'node:fs';
+import {existsSync, mkdtempSync, readdirSync, writeFileSync} from 'node:fs';
 import {homedir, tmpdir} from 'node:os';
 import {join, resolve} from 'node:path';
+import {setTimeout as sleep} from 'node:timers/promises';
 import {promisify} from 'node:util';
 import {type Browser, type BrowserContext, chromium, type Page} from 'playwright';
 
@@ -50,6 +51,67 @@ export async function sql(statement: string): Promise<string> {
         {cwd: COMPOSE_ROOT},
     );
     return stdout.trim();
+}
+
+/** Polls a quarter of a second at a time until it's true; false if it never was */
+export async function waitFor(isDone: () => Promise<boolean>, seconds = 40): Promise<boolean> {
+    const deadline = Date.now() + seconds * 1000;
+    while (Date.now() < deadline) {
+        // A page that's navigating can't answer yet
+        if (await isDone().catch(() => false)) {
+            return true;
+        }
+        await sleep(250);
+    }
+    return false;
+}
+
+// The app container's environment for a recording, when it has no Google keys
+const PLACEHOLDER_GOOGLE_KEYS = `services:
+  app:
+    environment:
+      GOOGLE_CLIENT_ID: tour-recording
+      GOOGLE_CLIENT_SECRET: tour-recording
+`;
+
+/** Whether the login page offers Continue with Google */
+async function isGoogleSignInShown(): Promise<boolean> {
+    const loginPage = await fetch(`${URL}/login`).then((response) => response.text()).catch(() => '');
+    return loginPage.includes('href="/login/google"');
+}
+
+/** Waits for the restarted app to answer, with the Google button or without */
+async function waitForApp(isGoogleWanted: boolean): Promise<void> {
+    const isReady = async () => {
+        const isAnswering = await fetch(`${URL}/login`).then((response) => response.ok).catch(() => false);
+        return isAnswering && await isGoogleSignInShown() === isGoogleWanted;
+    };
+    if (!await waitFor(isReady, 90)) {
+        throw new Error(`The app didn't come back ${isGoogleWanted ? 'with' : 'without'} the Google button`);
+    }
+}
+
+/**
+ * Starts the app again with placeholder Google keys when it has none, so
+ * the login page shows the button, as the live site's does
+ *
+ * @returns Whether it did, so the app is started again as it was afterwards
+ */
+export async function showGoogleSignIn(workDir: string): Promise<boolean> {
+    if (await isGoogleSignInShown()) {
+        return false;
+    }
+    const overrideFile = join(workDir, 'google-keys.yml');
+    writeFileSync(overrideFile, PLACEHOLDER_GOOGLE_KEYS);
+    await compose(['up', '-d', '--no-deps', 'app'], [overrideFile]);
+    await waitForApp(true);
+    return true;
+}
+
+/** Starts the app again with its own .env, as it was before */
+export async function restoreApp(): Promise<void> {
+    await compose(['up', '-d', '--no-deps', 'app']);
+    await waitForApp(false);
 }
 
 /**
