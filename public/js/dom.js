@@ -237,3 +237,11 @@ function readStoredJson(key, fallback) {
 }
 
 const writeStoredJson = (key, value) => writeStored(key, JSON.stringify(value));
+
+// Puts text in a field where the cursor is, then tells the field's listeners.
+// setRangeText skips maxlength, so text past it is left out
+function putTextAtCursor(input, text) {
+    if (input.value.length + text.length > input.maxLength) return;
+    input.setRangeText(text, input.selectionStart, input.selectionEnd, 'end');
+    input.dispatchEvent(new Event('input'));
+}

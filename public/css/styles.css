@@ -58,17 +58,15 @@ textarea
 
 .icon[data-icon="user"] { --icon-bearing: 4; }
 .icon[data-icon="map-point"] { --icon-bearing: 5; } /* its sides curve away, so it looks narrower */
-.icon[data-icon="alt-arrow-down"] { --icon-bearing: 4.5; }
-.icon[data-icon="arrow-down"] { --icon-bearing: 4.5; }
-.icon[data-icon="sun"] { --icon-bearing: 1.2; }
-.icon[data-icon="eye-closed"] { --icon-bearing: 1; }
+.icon[data-icon="alt-arrow-down"] { --icon-bearing: 4; }
+.icon[data-icon="arrow-down"] { --icon-bearing: 4; }
+.icon[data-icon="eye-closed"] { --icon-bearing: 1.5; }
+.icon[data-icon="users-group-rounded"] { --icon-bearing: 1.5; }
 .icon[data-icon="github"] { --icon-bearing: 0; }
-.icon[data-icon="users-group-rounded"] { margin-inline-end: calc(-3em / 24); }
 /* A pin's round head is its middle to the eye, above the middle of its box */
 .icon[data-icon="map-point"] { --icon-nudge: -0.04em; }
 
 /* Alone in a button, an icon keeps its whole box, so it stays centred */
-.site-header .menu-button .icon,
 .password-toggle .icon,
 .site-footer .source .icon
 {
@@ -115,4 +113,68 @@ body
     {
         font-size: 16px;
     }
+}
+
+/* Scroll bars: thin, lavender and round-ended everywhere, darker over their
+   area, and thicker under the mouse. They float short of their panel's ends.
+   Chrome ignores the ::-webkit-scrollbar rules once scrollbar-width is set,
+   so the standard properties are only for browsers without them (Firefox) */
+:root
+{
+    --scrollbar-thumb: #d1c4e9; /* chat.css's --lavender-line */
+    --scrollbar-thumb-hover: #b39ddb;
+}
+
+@supports not selector(::-webkit-scrollbar)
+{
+    *
+    {
+        scrollbar-width: thin;
+        scrollbar-color: var(--scrollbar-thumb) transparent;
+    }
+}
+
+::-webkit-scrollbar
+{
+    width: 8px;
+    height: 8px;
+    background: transparent;
+}
+
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner
+{
+    background: transparent;
+}
+
+::-webkit-scrollbar-track:vertical
+{
+    margin-block: 6px;
+}
+
+::-webkit-scrollbar-track:horizontal
+{
+    margin-inline: 6px;
+}
+
+/* Drawn 4px wide in its 8px slot, the clear border making up the rest, so
+   it can grow to 6px on hover without moving anything. Browsers can't
+   animate a scrollbar, so the step is kept small */
+::-webkit-scrollbar-thumb
+{
+    border: 2px solid transparent;
+    border-radius: 4px;
+    background: var(--scrollbar-thumb) padding-box;
+}
+
+/* Written out: nesting can't hang :hover on a pseudo-element */
+::-webkit-scrollbar-thumb:hover,
+::-webkit-scrollbar-thumb:active
+{
+    border-width: 1px;
+}
+
+:hover::-webkit-scrollbar-thumb
+{
+    background-color: var(--scrollbar-thumb-hover);
 }

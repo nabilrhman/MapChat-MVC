@@ -132,11 +132,6 @@
             color: #fff;
             cursor: pointer;
 
-            & .icon
-            {
-                font-size: 24px;
-            }
-
             &:focus
             {
                 background: none;
@@ -147,6 +142,39 @@
                 outline: none;
                 box-shadow: 0 0 0 3px var(--focus-ring-on-purple);
             }
+        }
+
+        /* The hamburger: three lines 5.25px apart. Opening the menu turns the
+           outer two to cross in the middle, and the middle one fades */
+        .bars
+        {
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 1.5;
+            stroke-linecap: round;
+        }
+
+        .bar
+        {
+            transform-box: fill-box;
+            transform-origin: center;
+            transition: transform var(--dur) var(--ease-out),
+                        opacity var(--dur-fast) var(--ease-out);
+        }
+
+        :scope.is-menu-open .bar:first-child
+        {
+            transform: translateY(5.25px) rotate(45deg);
+        }
+
+        :scope.is-menu-open .bar:nth-child(2)
+        {
+            opacity: 0;
+        }
+
+        :scope.is-menu-open .bar:last-child
+        {
+            transform: translateY(-5.25px) rotate(-45deg);
         }
 
         .nav

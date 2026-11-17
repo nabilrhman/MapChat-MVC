@@ -7,13 +7,12 @@
 // before it goes on without it
 const LOGOUT_PUSH_WAIT = 1000;
 
-function setUpMenu(menu, button, openClass, onToggle) {
+function setUpMenu(menu, button, openClass) {
     if (!menu || !button) return;
 
     function setOpen(isOpen) {
         menu.classList.toggle(openClass, isOpen);
         button.setAttribute('aria-expanded', String(isOpen));
-        onToggle?.(isOpen);
     }
 
     button.addEventListener('click', () => {
@@ -30,10 +29,8 @@ function setUpMenu(menu, button, openClass, onToggle) {
 }
 
 function setUpMenus() {
-    const menuButton = document.getElementById('menu-button');
-    setUpMenu(document.getElementById('site-header'), menuButton, 'is-menu-open', (isOpen) => {
-        setIcon(menuButton.querySelector('svg'), isOpen ? 'close' : 'hamburger-menu');
-    });
+    // Its three lines turn into an X with the open class (header.css)
+    setUpMenu(document.getElementById('site-header'), document.getElementById('menu-button'), 'is-menu-open');
 
     setUpMenu(document.getElementById('account-menu'), document.getElementById('account-menu-button'), 'is-open');
 }

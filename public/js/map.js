@@ -821,11 +821,23 @@ function fitTilePins(map, locations) {
     });
 }
 
-// Wider screens stop dragging past the top and bottom of the world. Phones
-// don't, as the chat sheet covers the map's bottom and the bounds would
-// keep the south under it
+// Dragging stops at the top and bottom of the world. On phones the chat
+// sheet covers the map's bottom, so there the world's south edge stops at
+// the sheet instead: the bound goes that many pixels further south, which
+// is a different latitude at each zoom
 function boundTileMapToWorld(map) {
-    map.setMaxBounds(phoneScreen.matches ? null : WORLD_BOUNDS);
+    if (!phoneScreen.matches) {
+        map.setMaxBounds(WORLD_BOUNDS);
+        return;
+    }
+
+    const coveredHeight = document.getElementById('map').clientHeight - visibleMapHeight();
+    const zoom = map.getZoom();
+    const [south, west] = WORLD_BOUNDS[0];
+    const [north, east] = WORLD_BOUNDS[1];
+    const southEdgeUnderSheet = map.project([south, 0], zoom).add([0, coveredHeight]);
+    const southUnderSheet = map.unproject(southEdgeUnderSheet, zoom).lat;
+    map.setMaxBounds([[southUnderSheet, west], [north, east]]);
 }
 
 async function initializeTileMap() {
@@ -843,8 +855,12 @@ async function initializeTileMap() {
     }).setView([START.lat, START.lng], START.zoom);
 
     keepMinZoomFilled(map, 256, LOWEST_TILE_ZOOM);
-    boundTileMapToWorld(map);
-    phoneScreen.addEventListener('change', () => boundTileMapToWorld(map));
+    const boundToWorld = () => boundTileMapToWorld(map);
+    boundToWorld();
+    map.on('zoomend', boundToWorld);
+    document.addEventListener('sheet-moved', boundToWorld);
+    window.addEventListener('resize', boundToWorld);
+    phoneScreen.addEventListener('change', boundToWorld);
     addTileCredits(map);
     createThemedTileLayer().addTo(map);
 

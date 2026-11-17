@@ -126,7 +126,11 @@ function setUpTooltips() {
     // Typing means the mouse is resting, not pointing; something opening
     // under it (the @ list) mustn't have a tooltip showing through
     document.addEventListener('keydown', hideTooltip);
-    document.addEventListener('scroll', hideTooltip, true);
+    // Only a scroll that moves the thing hides its tooltip: a new message
+    // scrolling the chat leaves the emoji button where it was
+    document.addEventListener('scroll', (event) => {
+        if (tipTarget && event.target.contains(tipTarget)) hideTooltip();
+    }, true);
     window.addEventListener('blur', hideTooltip);
 }
 
