@@ -54,8 +54,8 @@ https://github.com/user-attachments/assets/2c33f93d-1182-4175-8c6c-f154264544d0
     <th>The online list on a phone</th>
   </tr>
   <tr>
-    <td><img src="docs/images/mapchat-phone.png" width="300" alt="The chat room on a phone, with a pin's label open in the middle of the map"></td>
-    <td><img src="docs/images/mapchat-phone-online.png" width="300" alt="The online list slid open over the chat on a phone"></td>
+    <td><img src="docs/images/mapchat-phone.png" width="220" alt="The chat room on a phone, with a pin's label open in the middle of the map"></td>
+    <td><img src="docs/images/mapchat-phone-online.png" width="220" alt="The online list slid open over the chat on a phone"></td>
   </tr>
 </table>
 </div>

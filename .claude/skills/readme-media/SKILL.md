@@ -6,7 +6,7 @@ description: Retake the README's screenshots and tour video after a change peopl
 # README screenshots and tour
 
 The README plays a tour video, then shows a large main picture of the room,
-then two phone pictures side by side (shown 300px wide, from the full-size
+then two phone pictures side by side (shown 220px wide, from the full-size
 files), then the login beside the profile, then the two emails. The tour and
 the other pictures are recorded with Playwright against the app on :8080
 (`docs/video/`; each script's header says what it needs). The app has to be up with the demo people online. The
