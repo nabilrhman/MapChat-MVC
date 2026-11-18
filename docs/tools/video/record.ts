@@ -340,7 +340,7 @@ async function tour(page: Page, person: Person, guest: Guest, startCapture: () =
     // English. The pins take turns, so it waits for one that has just
     // started, and the hello plays out on the recording
     await page.locator('#login-map.is-shown').waitFor({state: 'attached', timeout: 20_000});
-    await page.locator('.bubble.is-shown[lang^="en"]').first().waitFor({state: 'attached', timeout: 90_000});
+    await page.locator('.bubble.is-shown:has(.message[lang^="en"])').first().waitFor({state: 'attached', timeout: 90_000});
     await startCapture();
     await waitSeconds(1.2);
     await person.moveTo(await requiredCentreOf(page.locator('#guest-form button')));
