@@ -33,10 +33,10 @@
  * instead, as the worker would. The worker is let go again however the run
  * ends, Ctrl+C included.
  *
- * The app container is started again for the recording with DEMO_AWAY,
- * and with placeholder Google keys when it has none, so the login page
- * shows Continue with Google as the live site does (the tour never clicks
- * it); then once more afterwards as it was.
+ * The app container is started again for the recording with DEMO_AWAY
+ * and DEMO_HERE, and with placeholder Google keys when it has none, so the
+ * login page shows Continue with Google as the live site does (the tour
+ * never clicks it); then once more afterwards as it was.
  *
  * It prints each stage as it starts, after the time the run has taken so
  * far, as a run takes a few minutes and waits on real replies; then the rate
@@ -64,6 +64,9 @@ import {receiveBinaryMessages} from './websocket.ts';
 
 // The demo person the tour calls into the room, kept away till then
 const AWAY_DEMO_PERSON = 'emily';
+// The demo people the tour opens private chats with, kept online with their
+// pins, as the map flies to the pin of whoever's chat opens
+const HERE_DEMO_PEOPLE = 'maya,rafael';
 const OUT = join(REPO, 'docs/images/mapchat-tour.mp4');
 const WIDTH = 1440;
 const HEIGHT = 900;
@@ -438,10 +441,16 @@ async function tour(page: Page, person: Person, account: AlexAccount, startCaptu
     await waitForReply('Emily', fromEmily, 60);
     await waitSeconds(3);
 
-    printProgress('a private chat with Maya');
-    // A private chat with Maya
+    printProgress('a private chat with Maya, the map flown to her pin');
+    // A private chat with Maya, opened from the online list, which flies
+    // the map to her pin too
+    const pinBeforeMaya = await firstPinAt();
     await openChat(onlinePerson, 'Maya');
     await waitSeconds(1);
+    const pinAfterMaya = await firstPinAt();
+    if (pinBeforeMaya?.x === pinAfterMaya?.x && pinBeforeMaya?.y === pinAfterMaya?.y) {
+        throw new Error("Opening Maya's chat didn't move the map: is she online?");
+    }
     let fromMaya = await messagesFrom('Maya');
     await person.click(await requiredCentreOf(composer));
     await writeMessage(page, person, composer, 'hey maya! still up in toronto? 🌙');
@@ -620,7 +629,7 @@ async function main(): Promise<void> {
     const recording = join(workDir, 'tour.webm');
     printProgress("setting up: the app, Alex's account, the paused worker");
     const hasGoogleKeys = await isGoogleSignInShown();
-    await startAppForRecording(workDir, {DEMO_AWAY: AWAY_DEMO_PERSON});
+    await startAppForRecording(workDir, {DEMO_AWAY: AWAY_DEMO_PERSON, DEMO_HERE: HERE_DEMO_PEOPLE});
     // Once, though Ctrl-C and the run's own ending both ask: two at a time
     // left the app's container made but not started
     let puttingAppBack: Promise<void> | null = null;

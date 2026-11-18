@@ -75,6 +75,7 @@ class DemoChatTest extends TestCase
     {
         putenv('DEMO_SPEED');
         putenv('DEMO_AWAY');
+        putenv('DEMO_HERE');
         TestDemoChat::$isStampedOnDemoClock = false;
     }
 
@@ -92,6 +93,18 @@ class DemoChatTest extends TestCase
         putenv('DEMO_AWAY=' . strtok($firstLine['email'], '@'));
 
         $this->assertNotContains($firstLine['email'], TestDemoChat::presentNow());
+    }
+
+    public function testSomeoneDemoHereNamesIsAlwaysInTheRoom(): void
+    {
+        // Two days past today's script, so nobody in it is around
+        TestDemoChat::$demoNow = strtotime(TestDemoChat::today() . ' UTC') + 2 * 86400;
+        $mayaEmail = 'maya' . Characters::DEMO_DOMAIN;
+        $this->assertNotContains($mayaEmail, TestDemoChat::presentNow());
+
+        putenv('DEMO_HERE=maya');
+
+        $this->assertContains($mayaEmail, TestDemoChat::presentNow());
     }
 
     public function testRealTimeIsTheDemoTimeAtNormalSpeed(): void

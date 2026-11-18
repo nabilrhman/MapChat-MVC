@@ -313,7 +313,8 @@ class DemoChat extends \Core\Model
      * The demo people who are in the room right now: those about to speak,
      * speaking, or who spoke a little while ago. Anyone DEMO_AWAY names is
      * left out, so the README's tour can call one in from away (markSeen
-     * leaves them out too)
+     * leaves them out too), and anyone DEMO_HERE names is always in, so the
+     * tour's private chats open on someone with a pin
      *
      * @return string[] Their emails
      */
@@ -321,7 +322,7 @@ class DemoChat extends \Core\Model
     {
         $now = static::now();
         $awayEmails = static::awayEmails();
-        $present = [];
+        $present = array_fill_keys(static::demoEmailsIn('DEMO_HERE'), true);
 
         foreach (static::schedule(static::today()) as ['time' => $time, 'email' => $email]) {
             $at = strtotime($time . ' UTC');
@@ -343,7 +344,19 @@ class DemoChat extends \Core\Model
      */
     protected static function awayEmails(): array
     {
-        $names = array_filter(array_map(trim(...), explode(',', strtolower((string) Config::get('DEMO_AWAY', '')))));
+        return static::demoEmailsIn('DEMO_AWAY');
+    }
+
+    /**
+     * The demo people a setting names, by first name, comma separated
+     *
+     * @param string $setting DEMO_AWAY or DEMO_HERE
+     *
+     * @return string[] Their emails
+     */
+    protected static function demoEmailsIn(string $setting): array
+    {
+        $names = array_filter(array_map(trim(...), explode(',', strtolower((string) Config::get($setting, '')))));
 
         return array_map(fn (string $name): string => $name . Characters::DEMO_DOMAIN, $names);
     }
