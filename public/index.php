@@ -94,7 +94,7 @@ $router->post('/app/mark-read', [Room::class, 'markReadAction']);
 $router->post('/app/get-people', [Room::class, 'getPeopleAction']);
 $router->post('/app/get-locations', [Room::class, 'getLocationsAction']);
 
-// Web Push for this browser (public/js/notifications.js)
+// Web Push for this browser (public/js/notify/notifications.js)
 $router->post('/push/subscribe', [Push::class, 'subscribeAction']);
 $router->post('/push/unsubscribe', [Push::class, 'unsubscribeAction']);
 

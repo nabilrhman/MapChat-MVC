@@ -15,12 +15,12 @@
 
 {% block head %}
 {# The chat page's tokens and shared parts first; each part after it #}
-<link rel="stylesheet" href="{{ asset('/css/chat.css') }}">
-<link rel="stylesheet" href="{{ asset('/css/chat-map.css') }}">
-<link rel="stylesheet" href="{{ asset('/css/chat-panel.css') }}">
-<link rel="stylesheet" href="{{ asset('/css/chat-messages.css') }}">
-<link rel="stylesheet" href="{{ asset('/css/chat-people.css') }}">
-<link rel="stylesheet" href="{{ asset('/css/chat-composer.css') }}">
+<link rel="stylesheet" href="{{ asset('/css/chat/chat.css') }}">
+<link rel="stylesheet" href="{{ asset('/css/chat/chat-map.css') }}">
+<link rel="stylesheet" href="{{ asset('/css/chat/chat-panel.css') }}">
+<link rel="stylesheet" href="{{ asset('/css/chat/chat-messages.css') }}">
+<link rel="stylesheet" href="{{ asset('/css/chat/chat-people.css') }}">
+<link rel="stylesheet" href="{{ asset('/css/chat/chat-composer.css') }}">
 {# map.js loads MapLibre itself, on phones only once the chat sheet leaves some map showing; wider screens fetch it at once #}
 <link rel="preload" as="script" nonce="{{ csp_nonce }}" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js" media="(min-width: 701px)">
 <link rel="preload" as="style" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" media="(min-width: 701px)">
@@ -196,15 +196,15 @@
 {% endblock %}
 
 {% block footer %}
-<script nonce="{{ csp_nonce }}" src="{{ asset('/js/people.js') }}"></script>
-<script nonce="{{ csp_nonce }}" src="{{ asset('/js/mentions.js') }}"></script>
-<script nonce="{{ csp_nonce }}" src="{{ asset('/js/emoji-picker.js') }}"></script>
-<script nonce="{{ csp_nonce }}" src="{{ asset('/js/voice.js') }}"></script>
-<script nonce="{{ csp_nonce }}" src="{{ asset('/js/messages.js') }}"></script>
-<script nonce="{{ csp_nonce }}" src="{{ asset('/js/notifications.js') }}"></script>
-<script nonce="{{ csp_nonce }}" src="{{ asset('/js/chat.js') }}"></script>
-<script nonce="{{ csp_nonce }}" src="{{ asset('/js/tab-dragging.js') }}"></script>
-<script nonce="{{ csp_nonce }}" src="{{ asset('/js/chat-sheet.js') }}"></script>
-<script nonce="{{ csp_nonce }}" src="{{ asset('/js/map-style.js') }}"></script>
-<script nonce="{{ csp_nonce }}" src="{{ asset('/js/map.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/chat/people.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/messages/mentions.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/messages/emoji-picker.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/messages/voice.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/messages/messages.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/notify/notifications.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/chat/chat.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/chat/tab-dragging.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/chat/chat-sheet.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/map/map-style.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/map/map.js') }}"></script>
 {% endblock %}

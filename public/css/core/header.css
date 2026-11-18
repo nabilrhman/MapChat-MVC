@@ -45,7 +45,7 @@
         flex: none;
         width: 170px;
         height: 52px; /* the logo's own proportions at this width */
-        background-image: url("../res/logo-mapchat-white.svg");
+        background-image: url("../../res/logo-mapchat-white.svg");
         background-repeat: no-repeat;
         background-size: contain;
         /* The wordmark's "p" hangs below the line; nudge it up so the letters,

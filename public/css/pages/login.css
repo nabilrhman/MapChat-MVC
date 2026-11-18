@@ -21,7 +21,7 @@
 body
 {
     min-height: 100vh;
-    background: var(--map-backdrop) url("../res/login-map.webp") no-repeat center / max(100vw, 110vh) auto fixed;
+    background: var(--map-backdrop) url("../../res/login-map.webp") no-repeat center / max(100vw, 110vh) auto fixed;
 }
 
 /* The world map behind everything (login-map.js), faded in once drawn */
@@ -175,7 +175,7 @@ body
         width: 290px;
         max-width: 80%;
         height: 89px;
-        background: url("../res/logo-mapchat-white.svg") no-repeat center / contain;
+        background: url("../../res/logo-mapchat-white.svg") no-repeat center / contain;
     }
 
     /* Page title above the card */

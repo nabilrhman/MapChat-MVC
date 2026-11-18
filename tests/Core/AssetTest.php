@@ -26,9 +26,9 @@ class AssetTest extends TestCase
 
     public function testVersionIsTheFilesContentHash(): void
     {
-        $file = dirname(__DIR__, 2) . '/public/css/ui.css';
+        $file = dirname(__DIR__, 2) . '/public/css/core/ui.css';
 
-        $this->assertSame('/css/ui.css?v=' . hash_file('crc32b', $file), Asset::url('/css/ui.css'));
+        $this->assertSame('/css/core/ui.css?v=' . hash_file('crc32b', $file), Asset::url('/css/core/ui.css'));
     }
 
     public function testChangedFileGetsANewLink(): void

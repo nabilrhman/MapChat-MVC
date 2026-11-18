@@ -10,7 +10,7 @@ namespace Core;
 class Asset
 {
     /**
-     * The path with a short hash of the file's contents, e.g. /css/ui.css?v=1a2b3c4d
+     * The path with a short hash of the file's contents, e.g. /css/core/ui.css?v=1a2b3c4d
      *
      * @param string $path The file's path under public/, starting with /
      */

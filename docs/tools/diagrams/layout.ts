@@ -16,7 +16,7 @@ import { ICONS } from './icons.ts'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 
-/** MapChat's Material 3 colours, as public/css/base.css names them. */
+/** MapChat's Material 3 colours, as public/css/core/base.css names them. */
 const COLOR = {
   backdrop: '#f2ecf4', // surface-container
   surface: '#ffffff', // surface-container-lowest
