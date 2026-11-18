@@ -155,7 +155,8 @@ class AccountTest extends TestCase
 
         $response = $this->request('GET', '/login/show-logout-message');
         $this->assertSame('/login', $response['headers']['location']);
-        $this->assertStringContainsString('Logged out', $this->request('GET', '/login')['body']);
+        // A toast's message, in its data-messages attribute
+        $this->assertStringContainsString('Logged out', html_entity_decode($this->request('GET', '/login')['body'], ENT_QUOTES | ENT_HTML5));
 
         $this->assertFalse($this->isSignedIn());
     }
@@ -364,7 +365,8 @@ class AccountTest extends TestCase
 
         $this->assertRedirect('/login/show-deleted-message', $response);
         $this->assertRedirect('/', $this->request('GET', '/login/show-deleted-message'));
-        $this->assertStringContainsString('Your profile is deleted.', $this->request('GET', '/login')['body']);
+        // A toast's message, in its data-messages attribute
+        $this->assertStringContainsString('Your profile is deleted.', html_entity_decode($this->request('GET', '/login')['body'], ENT_QUOTES | ENT_HTML5));
         $this->assertFalse($this->isSignedIn());
 
         $this->assertSame(0, $this->countOwnRows('users'));
@@ -460,7 +462,8 @@ class AccountTest extends TestCase
 
         $this->assertRedirect('/signup/activated', $this->request('GET', "/signup/activate/$token"));
         $this->assertRedirect('/login', $this->request('GET', '/signup/activated'));
-        $this->assertStringContainsString('Your account is active', $this->request('GET', '/login')['body']);
+        // A toast's message, in its data-messages attribute
+        $this->assertStringContainsString('Your account is active', html_entity_decode($this->request('GET', '/login')['body'], ENT_QUOTES | ENT_HTML5));
 
         $this->assertSame(1, (int) $this->db->query("SELECT is_active FROM users WHERE email = '" . self::EMAIL . "'")->fetchColumn());
     }

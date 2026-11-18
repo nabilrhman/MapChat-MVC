@@ -12,8 +12,8 @@
  * message's city, an @mention in Everyone that brings Emily in from away to
  * answer (the app runs with DEMO_AWAY=emily, so she isn't online till then), then a private
  * chat with Maya, one with Rafael while Maya's answer comes in, back to Maya,
- * a tab dragged into another place and closed, and the profile, scrolled to
- * its bottom. Each emoji in a message is picked from the emoji menu, and one
+ * Rafael's tab dragged into another place, a thank-you to him, then his tab
+ * closed, and the profile, scrolled to its bottom. Each emoji in a message is picked from the emoji menu, and one
  * message to Rafael is voice typed: Chrome plays docs/tools/video/voice-line.wav as
  * the microphone (npm run voice-line makes it), and Whisper writes it out.
  * The pointer moves and types like a person (person.ts). Headless Chrome
@@ -471,7 +471,8 @@ async function tour(page: Page, person: Person, account: AlexAccount, startCaptu
     await waitForReply('Rafael', fromRafael);
     await waitSeconds(3.5);
     printProgress('a question voice typed');
-    // And a question back, by voice
+    // And a question back, by voice; his answer waits on his tab
+    const fromRafaelBeforeQuestion = await messagesFrom('Rafael');
     await speakMessage(page, person, composer);
     await waitSeconds(2);
 
@@ -489,10 +490,22 @@ async function tour(page: Page, person: Person, account: AlexAccount, startCaptu
     await waitForReply('Maya', fromMaya);
     await waitSeconds(3);
 
-    printProgress('a tab dragged and closed');
-    // Tabs can be dragged into another order, and closed
+    printProgress('a tab dragged, a reply, then the tab closed');
+    // Tabs can be dragged into another order
     await person.drag(await requiredCentreOf(chatTab('Rafael')), await requiredCentreOf(chatTab('Maya')));
     await waitSeconds(1.2);
+    // Then Rafael's tab, to read his answer to the question and thank him
+    await waitForReply('Rafael', fromRafaelBeforeQuestion, 20);
+    await openChat(chatTab, 'Rafael');
+    await waitSeconds(3);
+    await person.click(await requiredCentreOf(composer));
+    await writeMessage(page, person, composer, 'perfect, thank you! 🙏');
+    await waitSeconds(0.4);
+    await person.pressEnter();
+    // Closed straight after: his answer takes longer than the tour stays on
+    // the page, which matters as a message in a closed chat opens its tab
+    // again
+    await waitSeconds(1);
     // Rafael's ×, measured again on arrival as the tabs settle after the drag
     const closeRafael = chatTab('Rafael').locator('[data-part="tab-close"]');
     await person.moveTo(await requiredCentreOf(closeRafael));

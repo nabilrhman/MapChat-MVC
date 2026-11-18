@@ -1,0 +1,6 @@
+{# One-time messages ("Logged out." etc.) for toast.js to show as toasts
+   that fade on their own #}
+{% types {messages: 'array'} %}
+{% if messages %}
+<template id="toast-messages" data-messages="{{ messages|json_encode|e('html_attr') }}"></template>
+{% endif %}

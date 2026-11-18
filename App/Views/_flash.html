@@ -1,7 +1,0 @@
-{# One-time messages ("Logout successful" etc.) for toast.js to show as
-   toasts that fade on their own #}
-{% types {} %}
-{% set flash_messages = flash_messages() %}
-{% if flash_messages %}
-<template id="flash-messages" data-messages="{{ flash_messages|json_encode|e('html_attr') }}"></template>
-{% endif %}

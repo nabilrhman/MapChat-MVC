@@ -383,8 +383,8 @@ h4
     }
 }
 
-/* Toasts (toast.js): Material 3 snackbars, as in Beer CSS, with an icon
-   for the type. Bottom right, just above the footer; on phones, centred
+/* Toasts (toast.js): white cards with the type's icon in a tinted square,
+   a close button and a line running down the time left. Bottom right, just above the footer; on phones, centred
    just under the header, clear of the keyboard and the message box */
 .toasts
 {
@@ -418,46 +418,143 @@ h4
 
 .toast
 {
+    /* The type's tint, behind its icon, and its colour, on the icon and the
+       time line */
+    --toast-tint: var(--md-primary-container);
+    --toast-tone: var(--md-primary);
+    position: relative;
     display: flex;
     align-items: center;
-    gap: var(--icon-gap);
-    padding: 14px 16px;
-    border-radius: 4px;
-    background-color: var(--md-inverse-surface);
-    box-shadow: var(--md-elevation-3);
-    color: var(--md-inverse-on-surface);
+    gap: 12px;
+    padding: 10px 8px 10px 10px;
+    border: 1px solid var(--md-outline-variant);
+    background-color: var(--md-surface-container-lowest);
+    box-shadow: var(--md-elevation-2);
+    color: var(--md-on-surface);
     font-size: 14px;
     line-height: 1.4;
+    overflow: hidden; /* keeps the time line inside */
     cursor: pointer; /* a tap closes it */
-    animation: fade-in-up var(--dur) var(--ease-out);
+    /* In from the corner's edge and back out to it: far enough to be seen
+       arriving, as a few pixels' rise went unnoticed */
+    --toast-from: translateX(32px);
+    animation: toast-in var(--dur-slow) var(--ease-emphasized) var(--delay-first-paint) backwards;
+
+    &.success
+    {
+        --toast-tint: var(--success-container);
+        --toast-tone: var(--success);
+    }
+
+    &.warning
+    {
+        --toast-tint: var(--warning-container);
+        --toast-tone: var(--warning);
+    }
 
     &.is-leaving
     {
-        animation: fade-out var(--dur-fast) var(--ease-in) forwards;
+        /* Even, not ease-in, which sat still then vanished */
+        animation: toast-out var(--dur-slow) var(--ease-in-out) forwards;
     }
 }
 
-/* Coming down from the header on phones */
+/* Down from the header on phones, and back up into it */
 @media (max-width: 700px)
 {
     .toast
     {
-        animation-name: fade-in-down;
+        --toast-from: translateY(-24px);
     }
 }
 
-/* Light tones that read on the dark snackbar */
+@keyframes toast-in
+{
+    from
+    {
+        opacity: 0;
+        transform: var(--toast-from);
+    }
+}
+
+@keyframes toast-out
+{
+    to
+    {
+        opacity: 0;
+        transform: var(--toast-from);
+    }
+}
+
+/* A white card like the chat's: the icon in a square of the type's tint */
 @scope (.toast)
 {
-    .icon
+    .type-icon
     {
         flex-shrink: 0;
+        box-sizing: content-box;
+        padding: 6px;
+        background-color: var(--toast-tint);
         font-size: 20px;
-        color: var(--md-inverse-primary);
+        color: var(--toast-tone);
     }
 
-    :scope.success .icon { color: var(--success-on-dark); }
-    :scope.warning .icon { color: var(--warning-on-dark); }
+    .text
+    {
+        flex: 1;
+    }
+
+    .close
+    {
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        border: none;
+        border-radius: 4px;
+        background-color: transparent;
+        color: var(--md-on-surface-variant);
+        font-size: 16px;
+        cursor: pointer;
+        opacity: 0.8;
+        transition: background-color var(--dur-fast) var(--ease-out),
+                    opacity var(--dur-fast) var(--ease-out);
+
+        &:hover,
+        &:focus-visible
+        {
+            background-color: color-mix(in srgb, currentColor 12%, transparent);
+            opacity: 1;
+        }
+    }
+
+    /* The time left, running down from full width; its end closes the
+       toast (toast.js). Pointing at the toast or tabbing into it holds it */
+    .time-left
+    {
+        position: absolute;
+        inset-inline: 0;
+        inset-block-end: 0;
+        height: 2px;
+        background-color: var(--toast-tone);
+        transform-origin: left;
+        animation: toast-time-left 4.5s linear forwards;
+    }
+
+    :scope:hover .time-left,
+    :scope:focus-within .time-left
+    {
+        animation-play-state: paused;
+    }
+}
+
+@keyframes toast-time-left
+{
+    from { transform: scaleX(1); }
+    to { transform: scaleX(0); }
 }
 
 /* The thin bar across the top while the next page loads (loading-bar.js).

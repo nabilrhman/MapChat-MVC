@@ -15,6 +15,7 @@
     --dur-count-far: 60ms; /* a count passing numbers while it's still far off */
     --dur-linger: 1.5s; /* a highlight fading off something that just arrived */
     --delay-loading: 200ms; /* before a loading sign shows, so a quick load never flashes it */
+    --delay-first-paint: 150ms; /* before a new page's arrivals move, as their start would pass while it's first drawn */
     --dur-pulse: 1.4s; /* a loading dot's pulse */
     --dur-pulse-step: 0.16s; /* from one loading dot to the next */
     --dur-loading-bar: 10s; /* the loading bar's crawl; the next page fills the rest */
@@ -192,11 +193,12 @@
 }
 
 /* Movement off for people who ask for less; the loading dots and the
-   loading bar keep moving, as they're the only sign something is happening.
+   loading bar keep moving, as they're the only sign something is happening,
+   and so does a toast's time line, as its end is what closes the toast.
    !important, to beat every component's own timings at once */
 @media (prefers-reduced-motion: reduce)
 {
-    *:not(.loading-dots .dot):not(.loading-bar),
+    *:not(.loading-dots .dot):not(.loading-bar):not(.toast .time-left),
     *::before,
     *::after
     {
