@@ -46,7 +46,7 @@ const GREETINGS_BY_LANGUAGE = {
     'ko': ['안녕하세요', '반가워요', '잘 지내요?'],
     'ja': ['こんにちは', 'はじめまして', '元気?'],
     'hi': ['नमस्ते', 'कैसे हो?', 'सब ठीक?'],
-    'bn': ['হ্যালো', 'নমস্কার', 'কেমন আছো?'],
+    'bn': ['হ্যালো', 'কেমন আছো?', 'কী খবর?'],
     'th': ['สวัสดี', 'สบายดีไหม?'],
     'fil': ['Kumusta!', 'Magandang araw!'],
     'id': ['Halo!', 'Apa kabar?', 'Selamat pagi!'],
@@ -96,12 +96,14 @@ const PIN_COUNT_BY_WIDTH = [
     {narrowerThan: 1400, pinCount: 5},
     {narrowerThan: Infinity, pinCount: 7},
 ];
-// How the pins change: every step one zone's pin leaves, and a new one in
-// the same zone arrives and says hello, so the layout stays as it was
+// How the pins change: one zone's pin leaves, and a new one in the same
+// zone arrives and says hello. The next comes only once that bubble is gone
 const PIN_CHAT_TIMING = {
-    stepMs: 3500,
     helloDelayMs: 400,
     bubbleShownMs: 4000,
+    betweenHellosMs: 1000,
+    fadeOutMs: 300, // a little over login.css's bubble fade, --dur-fast
+    hiddenTabCheckMs: 1000,
 };
 // Where a pin may stand, in px, so it and its bubble stay clear of the form,
 // the screen's edges and each other
@@ -149,15 +151,20 @@ function addChattingPin(map, place) {
     bubble.lang = place.language;
     pin.append(bubble);
     const marker = new maplibregl.Marker({element: pin, anchor: 'bottom'}).setLngLat(place).addTo(map);
-    return {place, pin, bubble, marker, isSpeaking: false, arrivedAt: performance.now()};
+    return {place, pin, bubble, marker};
 }
 
-async function sayHello(chattingPin) {
-    chattingPin.isSpeaking = true;
-    chattingPin.bubble.classList.add('is-shown');
+// Shows the pin's bubble for a while; done once it's hidden again
+async function sayHello({bubble}) {
+    bubble.classList.add('is-shown');
     await waitFor(PIN_CHAT_TIMING.bubbleShownMs);
-    chattingPin.bubble.classList.remove('is-shown');
-    chattingPin.isSpeaking = false;
+    bubble.classList.remove('is-shown');
+    // Till its fade out ends, so the next hello starts on an empty map. A
+    // fade that never ends, as in a tab out of sight, doesn't hold it up
+    await Promise.race([
+        new Promise((resolve) => onTransitionEnd(bubble, resolve)),
+        waitFor(PIN_CHAT_TIMING.fadeOutMs),
+    ]);
 }
 
 function removeChattingPin({pin, marker}) {
@@ -276,25 +283,26 @@ async function keepPinsChatting(map) {
     const firstPins = [...pinsByZone.values()];
     if (firstPins.length > 0) {
         await waitFor(PIN_CHAT_TIMING.helloDelayMs);
-        sayHello(firstPins[Math.floor(Math.random() * firstPins.length)]);
+        await sayHello(firstPins[Math.floor(Math.random() * firstPins.length)]);
     }
 
+    // Then one hello at a time: each new pin speaks only once the last
+    // bubble has gone, so two never show together
     let stepCount = 0;
-    setInterval(async () => {
-        if (document.hidden) return;
+    while (true) {
+        await waitFor(PIN_CHAT_TIMING.betweenHellosMs);
+        while (document.hidden) await waitFor(PIN_CHAT_TIMING.hiddenTabCheckMs);
         keepPinCount();
 
         const zonesWithPins = zonesInOrderOf(map).filter((zone) => pinsByZone.has(zone));
         const zone = zonesWithPins[stepCount % zonesWithPins.length];
         stepCount++;
-        // A pin still speaking stays till it's done; its zone waits a round
-        if (!zone || pinsByZone.get(zone).isSpeaking) return;
+        const arrivingPin = zone ? changePinIn(zone) : null;
+        if (!arrivingPin) continue;
 
-        const arrivingPin = changePinIn(zone);
-        if (!arrivingPin) return;
         await waitFor(PIN_CHAT_TIMING.helloDelayMs);
-        sayHello(arrivingPin);
-    }, PIN_CHAT_TIMING.stepMs);
+        await sayHello(arrivingPin);
+    }
 }
 
 // With less motion asked for, the pins just stand there, as many as the
