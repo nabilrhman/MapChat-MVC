@@ -15,13 +15,14 @@ const LOWEST_LOGIN_MAP_ZOOM = -2;
 // login.css sizes the picture shown before the map by the same 1.1
 const LOGIN_MAP_HEIGHT_MARGIN = 1.1;
 // One day of night going round the world, in the animated wave
-const DAY_ANIMATION_SECONDS = 90;
+const DAY_ANIMATION_MS = 90 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
-// How far round the night wave has slid, from 0 to 1 of a day; it stays 0
-// when the night keeps still
-let nightTurnedPart = 0;
+// The night wave's slide, once it moves; null while the night keeps still
+let nightSlide = null;
+// How far round the night wave has slid, from 0 to 1 of a day
+const nightTurnedPartOf = (slide) => ((slide?.currentTime ?? 0) / DAY_ANIMATION_MS) % 1;
 // The time the map shows: now, moved on by the day the wave has turned
-const slidingMapTime = () => new Date(Date.now() + nightTurnedPart * DAY_MS);
+const slidingMapTime = () => new Date(Date.now() + nightTurnedPartOf(nightSlide) * DAY_MS);
 // The login map is the chat's map gone dark, in the deep purples of the
 // old street-map picture the login pages had. The land is a step brighter
 // than the water and the borders are a dimmed take on the picture's violet
@@ -368,69 +369,56 @@ function fitTheWorld(map) {
     map.jumpTo({center: LOGIN_MAP_CENTER, zoom: worldFillingZoomOf(map.getContainer())});
 }
 
-// The shade for now, drawn twice side by side, so a window one world wide
-// can slide along it for a whole day
-async function drawDoubleNightShade(look) {
+// The shade for now, drawn three times side by side, so a window one world
+// wide can slide along it for a whole day with a world either side of it
+async function drawTripleNightShade(look) {
     const shade = new Image();
     shade.src = drawNightShade(new Date(), look);
     await shade.decode();
 
-    const canvas = document.createElement('canvas');
-    canvas.width = shade.width * 2;
+    const canvas = createElement('canvas', 'night-strip');
+    canvas.width = shade.width * 3;
     canvas.height = shade.height;
     const context = canvas.getContext('2d');
-    context.drawImage(shade, 0, 0);
-    context.drawImage(shade, shade.width, 0);
+    for (const copy of [0, 1, 2]) context.drawImage(shade, copy * shade.width, 0);
     return canvas;
 }
 
-// Draws one frame of the sliding night over the map: the window of the
-// double shade for this moment, stretched over the world where the map
-// shows it, and over the world's copies either side
-function drawNightFrame(map, nightCanvas, doubleShade, turnedPart) {
-    const pixelRatio = window.devicePixelRatio;
-    const {clientWidth, clientHeight} = map.getCanvas();
-    if (nightCanvas.width !== clientWidth * pixelRatio || nightCanvas.height !== clientHeight * pixelRatio) {
-        nightCanvas.width = clientWidth * pixelRatio;
-        nightCanvas.height = clientHeight * pixelRatio;
-    }
-
-    const context = nightCanvas.getContext('2d');
-    context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
-    context.clearRect(0, 0, clientWidth, clientHeight);
-
+// Lays the strip over the world where the map shows it, its middle copy on
+// the world, and has it slide one world west in a day. The slide keeps its
+// place in the day when the screen changes size
+function fitNightStrip(map, strip) {
     const northWest = map.project([-180, MERCATOR_MAX_LAT]);
     const southEast = map.project([180, -MERCATOR_MAX_LAT]);
     const worldWidthOnScreen = southEast.x - northWest.x;
-    const shadeWidth = doubleShade.width / 2;
-    // The sun going west means each place gets the night from east of it
-    const windowStart = turnedPart * shadeWidth;
 
-    for (const worldCopy of [-1, 0, 1]) {
-        context.drawImage(
-            doubleShade, windowStart, 0, shadeWidth, doubleShade.height,
-            northWest.x + worldCopy * worldWidthOnScreen, northWest.y, worldWidthOnScreen, southEast.y - northWest.y,
-        );
-    }
+    Object.assign(strip.style, {
+        left: `${northWest.x - worldWidthOnScreen}px`,
+        top: `${northWest.y}px`,
+        width: `${worldWidthOnScreen * 3}px`,
+        height: `${southEast.y - northWest.y}px`,
+    });
+    // The sun going west means each place gets the night from east of it
+    nightSlide.effect.setKeyframes([
+        {transform: 'translateX(0)'},
+        {transform: `translateX(${-worldWidthOnScreen}px)`},
+    ]);
 }
 
 // Night as it is now, then sliding west as the sun does, round and round.
-// Drawn on a canvas of its own over the map, under the pins: MapLibre can't
-// move an image past the edge of the world, and its canvas source loses the
-// shade's see-through parts. Each frame copies a window of the shade drawn
-// once, as working it out again every frame would be too slow
+// Over the map, under the pins: MapLibre can't move an image past the edge
+// of the world. The shade is drawn once and the browser slides it, off the
+// page's own thread, so it stays smooth while tiles and pins load (redrawn
+// every frame by script, it stuttered, most of all in the README's video)
 async function addMovingNightShade(map, look) {
-    const doubleShade = await drawDoubleNightShade(look);
-    const nightCanvas = createElement('canvas', 'night-shade');
-    map.getCanvas().after(nightCanvas);
+    const strip = await drawTripleNightShade(look);
+    const nightShade = createElement('div', 'night-shade');
+    nightShade.append(strip);
+    map.getCanvas().after(nightShade);
 
-    const startTime = performance.now();
-    function slideNight(now) {
-        nightTurnedPart = ((now - startTime) / 1000 / DAY_ANIMATION_SECONDS) % 1;
-        drawNightFrame(map, nightCanvas, doubleShade, nightTurnedPart);
-        requestAnimationFrame(slideNight);
-    }
-    requestAnimationFrame(slideNight);
+    nightSlide = strip.animate([], {duration: DAY_ANIMATION_MS, iterations: Infinity, easing: 'linear'});
+    fitNightStrip(map, strip);
+    map.on('resize', () => fitNightStrip(map, strip));
 }
 
 async function showLoginMap() {

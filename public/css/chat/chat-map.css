@@ -43,34 +43,85 @@
     }
 }
 
-/* Pin tooltip: the name, the flag and city, then their local time, centred
-   over the pin. The place inside is createPlace's (dom.js) */
+/* Pin tooltip, the login map's hello bubble in white: the face beside the
+   name, and the flag and city, then their local time, under it. The place
+   inside is createPlace's (dom.js) */
 .pin-label
 {
-    text-align: center;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    white-space: nowrap;
 }
 
 @scope (.pin-label) to (.place > *)
 {
-    .name
+    .avatar
+    {
+        position: relative;
+        flex: none;
+    }
+
+    .face
     {
         display: block;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+    }
+
+    /* The green dot of someone online, as on the people list's faces */
+    .avatar::after
+    {
+        content: '';
+        position: absolute;
+        inset-block-start: 2px;
+        inset-inline-end: -4px;
+        width: 9px;
+        height: 9px;
+        border: 2px solid white; /* the label's box, maplibre-gl.css's white */
+        border-radius: 50%;
+        background-color: var(--online);
+    }
+
+    .text
+    {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+    }
+
+    /* Tight lines, so the name sits close over its place and time and the
+       two centre on the face; Beer's 20px line leaves space under 11px text */
+    .name,
+    .details
+    {
+        line-height: 1.2;
+    }
+
+    .name
+    {
         color: var(--text-strong);
         font-size: 13px;
         font-weight: 600;
     }
 
-    /* Under the name: the flag and place, then the time */
+    /* The place on the left and the time on the right, quieter than the name */
+    .details
+    {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        color: var(--text-soft);
+        font-size: 11px; /* same as the messages' times */
+    }
+
     .place,
     .time
     {
         display: flex;
         align-items: center;
-        justify-content: center;
         gap: var(--icon-gap);
-        margin-block-start: 2px;
-        color: var(--text-soft);
-        font-size: 11px; /* same as the messages' times */
     }
 
     /* Sun or moon, as on a message's sender time */
@@ -102,14 +153,14 @@
     cursor: default; /* hovering shows the name; clicking does nothing */
 }
 
-/* Name shown when hovering a pin, like the old Google info window. Three
-   classes, to beat maplibre-gl.css's corner rules, which load later */
+/* The box round a pin's label, as the login map's bubble. Three classes,
+   to beat maplibre-gl.css's corner rules, which load later */
 .map .maplibregl-popup .maplibregl-popup-content
 {
     font-family: inherit;
-    padding: 8px 12px;
+    padding: 8px 10px;
     border-radius: 2px;
-    box-shadow: 0 2px 7px 1px var(--deep-shadow);
+    box-shadow: var(--md-elevation-2);
 }
 
 @scope (.map-pin)

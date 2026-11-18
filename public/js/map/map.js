@@ -27,14 +27,27 @@ const SHOW_MAP_TIMEOUT = 4000;
 // Their local time in a pin's label moves on while it's open
 const PIN_TIME_INTERVAL = 30000;
 
-// Shown when hovering a pin: the name, the flag and city, then their local
-// time with a sun or moon, as a message shows its sender's
+// Shown when hovering a pin, like a hello on the login map: their face
+// beside the name, and under it the flag and city, then their local time
+// with a sun or moon
 function createPinLabel(personLocation) {
     const label = createElement('div', 'pin-label');
-    label.append(createElement('strong', 'name', personLocation.shown_name ?? ''));
 
+    if (personLocation.avatar_src) {
+        const face = createElement('img', 'face');
+        face.src = personLocation.avatar_src;
+        face.alt = '';
+        face.width = 32;
+        face.height = 32;
+        // A pin means they're online, so the face has the list's green dot
+        const avatar = createElement('span', 'avatar');
+        avatar.append(face);
+        label.append(avatar);
+    }
+
+    const details = createElement('div', 'details');
     if (personLocation.city || personLocation.country) {
-        label.append(createPlace(personLocation.city, personLocation.country));
+        details.append(createPlace(personLocation.city, personLocation.country));
     }
 
     const time = createElement('span', 'time');
@@ -42,7 +55,11 @@ function createPinLabel(personLocation) {
     time.dataset.timezone = personLocation.timezone ?? '';
     time.dataset.lng = personLocation.lng;
     showPinTime(time);
-    label.append(time);
+    details.append(time);
+
+    const text = createElement('div', 'text');
+    text.append(createElement('strong', 'name', personLocation.shown_name ?? ''), details);
+    label.append(text);
 
     return label;
 }

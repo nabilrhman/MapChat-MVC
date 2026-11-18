@@ -150,17 +150,21 @@ function createEnteringRow(person) {
     return row;
 }
 
-// Only what changed moves: people new to the section ease in, those gone
+// Only what changed moves: people new to the list ease in, those gone
 // ease out where they were, a changed row is swapped in place, and the rest
-// slide to their new places. Moving between online and recent counts as
-// leaving one and joining the other, so the green dot fades with the row
-function fillPeople(section, people) {
+// slide to their new places. Someone going between online and recent slides
+// from their old place to their new one, and their green dot fades
+//
+// topsBefore: where each row in either part was, by user id
+// listedIds: everyone in either part now, so a row moving out of this part
+// goes at once rather than easing out
+function fillPeople(section, people, topsBefore, listedIds) {
     // The loading dots, the first time
     section.querySelectorAll(':scope > :not([data-part="person"])').forEach((element) => element.remove());
-    const topsBefore = getRowTops(section);
     const oldRows = new Map();
     section.querySelectorAll(':scope > [data-part="person"]:not(.is-leaving)').forEach((row) => oldRows.set(row.dataset.userId, row));
 
+    const rowsMovingIn = [];
     const rows = people.map((person) => {
         const content = rowContentOf(person);
         const oldRow = oldRows.get(String(person.id));
@@ -169,7 +173,13 @@ function fillPeople(section, people) {
             return oldRow;
         }
 
-        const row = oldRow ? createPersonRow(person) : createEnteringRow(person);
+        const isMovingIn = !oldRow && topsBefore.has(String(person.id));
+        const row = oldRow || isMovingIn ? createPersonRow(person) : createEnteringRow(person);
+        if (isMovingIn) {
+            // Drawn as it was first, so its dot and photo fade to the new look
+            row.classList.toggle('is-online', !person.isOnline);
+            rowsMovingIn.push({row, isOnline: person.isOnline});
+        }
         row.dataset.content = content;
         oldRow?.replaceWith(row);
         return row;
@@ -181,8 +191,14 @@ function fillPeople(section, people) {
     let next = section.firstElementChild;
     const passRowsNotKept = () => {
         while (next && !keptRows.has(next)) {
-            if (next.dataset.part === 'person' && !next.classList.contains('is-leaving')) easeOutRow(section, next);
+            const row = next;
             next = next.nextElementSibling;
+            if (row.dataset.part !== 'person' || row.classList.contains('is-leaving')) continue;
+            if (listedIds.has(row.dataset.userId)) {
+                row.remove();
+            } else {
+                easeOutRow(section, row);
+            }
         }
     };
     rows.forEach((row) => {
@@ -196,6 +212,8 @@ function fillPeople(section, people) {
     passRowsNotKept();
 
     slideToNewPlaces(section, topsBefore);
+    // slideToNewPlaces has the browser draw them first, so these fade
+    rowsMovingIn.forEach(({row, isOnline}) => row.classList.toggle('is-online', isOnline));
 }
 
 function showPeople(people) {
@@ -212,9 +230,15 @@ function showPeople(people) {
 
     countTo(document.getElementById('online-count'), onlinePeople.length);
     countTo(document.getElementById('people-toggle-count'), onlinePeople.length);
-    fillPeople(document.getElementById('people-online'), onlinePeople);
+    // Measured in both parts before either changes, so a row going from
+    // one to the other slides there, and recent rows slide as online grows
+    const onlineSection = document.getElementById('people-online');
+    const recentSection = document.getElementById('people-recent');
+    const topsBefore = new Map([...getRowTops(onlineSection), ...getRowTops(recentSection)]);
+    const listedIds = new Set(people.map((person) => String(person.id)));
+    fillPeople(onlineSection, onlinePeople, topsBefore, listedIds);
     document.getElementById('recent-heading').hidden = recentPeople.length === 0;
-    fillPeople(document.getElementById('people-recent'), recentPeople);
+    fillPeople(recentSection, recentPeople, topsBefore, listedIds);
     fadeInPhotos(peoplePanel.querySelectorAll('[data-part="person-photo"]'));
 }
 

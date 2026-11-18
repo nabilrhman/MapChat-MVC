@@ -4,13 +4,13 @@
  *
  *   npm run tour
  *
- * It signs a new guest in first. To record as a guest you already have, set
- * MAPCHAT_SESSION to their PHPSESSID cookie and MAPCHAT_GUEST_EMAIL to their
- * email; their earlier private chats with Maya and Rafael are cleared.
+ * It makes an account for Alex Morgan first, and deletes it with what Alex
+ * said once the video is made.
  *
- * It drives headless Chrome with Playwright: the login page, the
+ * It drives headless Chrome with Playwright: Alex logging in, the
  * notifications offer closed, pins pointed out from the online list and a
- * message's city, an @mention in Everyone that Lukas answers, then a private
+ * message's city, an @mention in Everyone that brings Emily in from away to
+ * answer (the app runs with DEMO_AWAY=emily, so she isn't online till then), then a private
  * chat with Maya, one with Rafael while Maya's answer comes in, back to Maya,
  * a tab dragged into another place and closed, and the profile, scrolled to
  * its bottom. Each emoji in a message is picked from the emoji menu, and one
@@ -33,10 +33,10 @@
  * instead, as the worker would. The worker is let go again however the run
  * ends, Ctrl+C included.
  *
- * The login page shows Continue with Google, as the live site does: when
- * the local app has no Google keys, the app container is started again for
- * the recording with placeholder ones (the tour never clicks it), and once
- * more afterwards as it was.
+ * The app container is started again for the recording with DEMO_AWAY,
+ * and with placeholder Google keys when it has none, so the login page
+ * shows Continue with Google as the live site does (the tour never clicks
+ * it); then once more afterwards as it was.
  *
  * It prints each stage as it starts, after the time the run has taken so
  * far, as a run takes a few minutes and waits on real replies; then the rate
@@ -47,6 +47,7 @@
  * (set it when recording from a git worktree), MAPCHAT_GPU and
  * MAPCHAT_CHROME_FLAGS are in chrome.ts
  */
+import {randomBytes} from 'node:crypto';
 import {appendFileSync, existsSync, mkdtempSync, rmSync} from 'node:fs';
 import {createServer} from 'node:http';
 import type {AddressInfo} from 'node:net';
@@ -55,20 +56,20 @@ import {join} from 'node:path';
 import type {BrowserContext, Locator, Page} from 'playwright';
 
 import {
-    app, launchChrome, launchWithExtension, printRenderer, REPO, restoreApp, run, showGoogleSignIn, signInAsNewGuest, sql, URL, USES_GPU, waitFor,
+    app, isGoogleSignInShown, launchWithExtension, printRenderer, REPO, restoreApp, run, sql, startAppForRecording, URL, USES_GPU, waitFor,
 } from './chrome.ts';
 import {Person, type Point, SeededRandom, waitSeconds} from './person.ts';
 import {drawPointer, readThemeCursors} from './pointer.ts';
 import {VOICE_LINE_FILE} from './voice-line.ts';
 import {receiveBinaryMessages} from './websocket.ts';
 
-/** The guest the tour signs in as: their session cookie and email */
-type Guest = {session: string, email: string};
+/** The account the tour logs in as, made for the run */
+type TourAccount = {email: string, password: string};
 
-const GIVEN_GUEST: Guest = {
-    session: process.env.MAPCHAT_SESSION ?? '',
-    email: (process.env.MAPCHAT_GUEST_EMAIL ?? '').replaceAll("'", ''),
-};
+const TOUR_NAME = 'Alex Morgan';
+const TOUR_EMAIL = 'alex.morgan@example.com';
+// The demo person the tour calls into the room, kept away till then
+const AWAY_DEMO_PERSON = 'emily';
 const OUT = join(REPO, 'docs/images/mapchat-tour.mp4');
 const WIDTH = 1440;
 const HEIGHT = 900;
@@ -144,37 +145,53 @@ class JobRunner {
 }
 
 /**
- * Takes a tour guest's private chats with Maya and Rafael, and what they said
- * in the room with the answers to it, out of the chat: before a run, so a
- * given guest starts afresh, and after, so the next pictures don't show this
- * run's. Without an email there's nothing to clear
+ * Takes the tour account's private chats with Maya and Rafael, and what
+ * they said in the room with the answers to it, out of the chat, so the
+ * next pictures don't show this run's
  */
-async function clearTourMessages(guestEmail: string): Promise<void> {
-    if (!guestEmail) {
-        return;
-    }
+async function clearTourMessages(email: string): Promise<void> {
     for (const character of ['maya', 'rafael']) {
         const demoEmail = `${character}@demo.mapchat.local`;
-        await sql(`DELETE FROM chats WHERE (email = '${guestEmail}' AND to_email = '${demoEmail}') OR (email = '${demoEmail}' AND to_email = '${guestEmail}')`);
+        await sql(`DELETE FROM chats WHERE (email = '${email}' AND to_email = '${demoEmail}') OR (email = '${demoEmail}' AND to_email = '${email}')`);
     }
     // And what they said in the room, with the answers to it
-    await sql(`DELETE FROM chats WHERE id IN (SELECT posted_id FROM mapchat_jobs WHERE email = '${guestEmail}' AND posted_id IS NOT NULL)`);
-    await sql(`DELETE FROM chats WHERE email = '${guestEmail}' AND to_email IS NULL`);
+    await sql(`DELETE FROM chats WHERE id IN (SELECT posted_id FROM mapchat_jobs WHERE email = '${email}' AND posted_id IS NOT NULL)`);
+    await sql(`DELETE FROM chats WHERE email = '${email}' AND to_email IS NULL`);
 }
 
-/** A new guest, signed in from the login page in a browser of its own */
-async function signInNewGuest(): Promise<Guest> {
-    const browser = await launchChrome();
-    try {
-        const context = await browser.newContext();
-        const page = await context.newPage();
-        await page.goto(`${URL}/login`);
-        const {email} = await signInAsNewGuest(page);
-        const session = (await context.cookies()).find((cookie) => cookie.name === 'PHPSESSID')?.value ?? '';
-        return {session, email};
-    } finally {
-        await browser.close();
-    }
+// Run in the app's container with the email, name and password as
+// arguments, so none of them is read as PHP. An account left by a run that
+// stopped part way goes first
+const MAKE_TOUR_ACCOUNT_PHP = `require 'vendor/autoload.php';
+App\\Models\\User::findByEmail($argv[1])?->delete();
+$user = new App\\Models\\User(['email' => $argv[1], 'name' => $argv[2], 'password' => $argv[3]]);
+if (!$user->save()) { fwrite(STDERR, json_encode($user->errors)); exit(1); }`;
+
+const DELETE_TOUR_ACCOUNT_PHP = `require 'vendor/autoload.php';
+App\\Models\\User::findByEmail($argv[1])?->delete();`;
+
+/** Alex's account, new and active, with a password made for this run */
+async function makeTourAccount(): Promise<TourAccount> {
+    const password = `tour${randomBytes(9).toString('hex')}7`;
+    await clearTourMessages(TOUR_EMAIL);
+    await app('php', '-r', MAKE_TOUR_ACCOUNT_PHP, '--', TOUR_EMAIL, TOUR_NAME, password);
+    // Active without the emailed link, which a local app may send
+    await sql(`UPDATE users SET is_active = 1 WHERE email = '${TOUR_EMAIL}'`);
+    return {email: TOUR_EMAIL, password};
+}
+
+async function deleteTourAccount(): Promise<void> {
+    await clearTourMessages(TOUR_EMAIL);
+    await app('php', '-r', DELETE_TOUR_ACCOUNT_PHP, '--', TOUR_EMAIL);
+}
+
+/**
+ * Has the away demo person last seen a few minutes ago, past the app's
+ * minute online, so the @ list offers them under Recently here. Once the
+ * worker is paused, as a line of theirs it posts marks them seen again
+ */
+async function sendAwayDemoPersonAway(): Promise<void> {
+    await sql(`UPDATE userinfo SET online_at = NOW() - INTERVAL 3 MINUTE WHERE email = '${AWAY_DEMO_PERSON}@demo.mapchat.local'`);
 }
 
 /** The frames a second a video has while its picture moves, from when each frame shows */
@@ -291,7 +308,7 @@ async function requiredCentreOf(element: Locator): Promise<Point> {
 }
 
 /** The tour itself, step by step, while the screencast saves each frame */
-async function tour(page: Page, person: Person, guest: Guest, startCapture: () => Promise<void>, stopCapture: () => Promise<void>): Promise<void> {
+async function tour(page: Page, person: Person, account: TourAccount, startCapture: () => Promise<void>, stopCapture: () => Promise<void>): Promise<void> {
     const onlinePerson = (name: string) => page.locator('[data-part="person"]', {hasText: name}).first();
     const chatTab = (name: string) => page.locator('[data-part="tab"]', {hasText: name}).first();
     const composer = page.locator('#textarea-send');
@@ -343,13 +360,18 @@ async function tour(page: Page, person: Person, guest: Guest, startCapture: () =
     await page.locator('.bubble.is-shown:has(.message[lang^="en"])').first().waitFor({state: 'attached', timeout: 90_000});
     await startCapture();
     await waitSeconds(1.2);
-    await person.moveTo(await requiredCentreOf(page.locator('#guest-form button')));
-    await waitSeconds(1);
+    // Alex logs in
+    await person.click(await requiredCentreOf(page.locator('#email-input')));
+    await person.type(account.email);
+    await waitSeconds(0.3);
+    await person.click(await requiredCentreOf(page.locator('#password-input')));
+    await person.type(account.password);
+    await waitSeconds(0.4);
+    await person.click(await requiredCentreOf(page.locator('form[action="/login/create"] button[type="submit"]')));
 
     printProgress('the room');
-    // Signed in: the room, the map and who's online
-    await page.context().addCookies([{name: 'PHPSESSID', value: guest.session, url: URL}]);
-    await page.goto(`${URL}/app`);
+    // Logged in: the room, the map and who's online
+    await page.waitForURL('**/app', {timeout: 15_000});
     await waitForMap();
     await waitSeconds(1.5);
 
@@ -372,7 +394,7 @@ async function tour(page: Page, person: Person, guest: Guest, startCapture: () =
     printProgress('a city clicked, its pin flown to the middle');
     // A message's city does the same, and a click brings the pin to the
     // middle. The newest city whose sender has a pin, so the map flies:
-    // MapChat greets the guest from Null Island, which has none
+    // MapChat greets newcomers from Null Island, which has none
     const pinnedCityIndex = await page.evaluate(() => [...document.querySelectorAll('[data-part="city"]')].findLastIndex((cityButton) => {
         const senderId = cityButton.closest('[data-part="message"]').dataset.senderId;
         return pinLabelsByUserId.has(senderId) && !/Toronto|Mountain View/.test(cityButton.textContent);
@@ -406,34 +428,34 @@ async function tour(page: Page, person: Person, guest: Guest, startCapture: () =
     }
     await waitSeconds(1);
 
-    printProgress('an @mention that Lukas answers');
-    // In Everyone: @ brings up who's online, and Lukas answers in the room,
-    // tagging the guest back
-    const fromLukas = await messagesFrom('Lukas');
+    printProgress('an @mention that brings Emily in');
+    // In Everyone: @ brings up who's around, and Emily, away till now,
+    // comes online and answers in the room, tagging Alex back
+    const fromEmily = await messagesFrom('Emily');
     await person.click(await requiredCentreOf(composer));
     await waitSeconds(0.3);
-    // @ on its own first, so the list of everyone online shows, then it
-    // narrows to Lukas
+    // @ on its own first, so the list of everyone around shows, then it
+    // narrows to Emily
     await person.type('@');
     await waitSeconds(1.4);
-    await person.type('Luk');
+    await person.type('Emi');
     await waitSeconds(0.8);
-    // Lukas picked from the @ list with the pointer, so its hover shows
-    const lukasOption = page.locator('#mention-picker [role="option"]', {hasText: 'Lukas'}).first();
-    if (await waitFor(async () => await lukasOption.count() > 0, 3)) {
-        await person.moveTo(await requiredCentreOf(lukasOption));
+    // Emily picked from the @ list with the pointer, so its hover shows
+    const emilyOption = page.locator('#mention-picker [role="option"]', {hasText: 'Emily'}).first();
+    if (await waitFor(async () => await emilyOption.count() > 0, 3)) {
+        await person.moveTo(await requiredCentreOf(emilyOption));
         await waitSeconds(0.7);
-        await person.click(await requiredCentreOf(lukasOption));
+        await person.click(await requiredCentreOf(emilyOption));
     } else {
         await person.pressEnter();
     }
     await waitSeconds(0.4);
     // Typing goes on after the mention, wherever the click left the caret
     await caretToEnd(composer);
-    await writeMessage(page, person, composer, "how's berlin this morning? ☕");
+    await writeMessage(page, person, composer, "what are you up to in boise? ☕");
     await waitSeconds(0.5);
     await person.pressEnter();
-    await waitForReply('Lukas', fromLukas, 45);
+    await waitForReply('Emily', fromEmily, 60);
     await waitSeconds(3);
 
     printProgress('a private chat with Maya');
@@ -616,10 +638,17 @@ async function main(): Promise<void> {
     }
     const workDir = mkdtempSync(join(tmpdir(), 'mapchat-tour-'));
     const recording = join(workDir, 'tour.webm');
-    printProgress('setting up: the app, a guest, the paused worker');
-    // Sessions live in the database, so a guest's outlasts the app starting again
-    const hasPlaceholderGoogle = await showGoogleSignIn(workDir);
-    const guest = GIVEN_GUEST.session ? GIVEN_GUEST : await signInNewGuest();
+    printProgress("setting up: the app, Alex's account, the paused worker");
+    const hasGoogleKeys = await isGoogleSignInShown();
+    await startAppForRecording(workDir, {DEMO_AWAY: AWAY_DEMO_PERSON});
+    // Once, though Ctrl-C and the run's own ending both ask: two at a time
+    // left the app's container made but not started
+    let puttingAppBack: Promise<void> | null = null;
+    const putAppBack = () => {
+        puttingAppBack ??= restoreApp(hasGoogleKeys);
+        return puttingAppBack;
+    };
+    const account = await makeTourAccount();
     let context: BrowserContext | undefined;
 
     // An interrupted run still closes Chrome and lets the worker go
@@ -627,14 +656,15 @@ async function main(): Promise<void> {
         process.once(signal, async () => {
             await context?.close().catch(() => {});
             await resumeWorker().catch(() => {});
-            if (hasPlaceholderGoogle) await restoreApp().catch(() => {});
+            await deleteTourAccount().catch(() => {});
+            await putAppBack().catch(() => {});
             rmSync(workDir, {recursive: true, force: true});
             process.exit(130);
         });
     }
 
-    await clearTourMessages(GIVEN_GUEST.email);
     await pauseWorker();
+    await sendAwayDemoPersonAway();
     const jobs = new JobRunner();
     try {
         // The handlers above close it and let the worker go
@@ -655,17 +685,17 @@ async function main(): Promise<void> {
         const stopCapture = () => stopRecording();
 
         const person = new Person(page, new SeededRandom(SEED), [WIDTH * 0.55, HEIGHT * 0.6]);
-        await tour(page, person, guest, startCapture, stopCapture);
+        await tour(page, person, account, startCapture, stopCapture);
     } finally {
         await context?.close();
         await jobs.stop();
         await resumeWorker();
-        if (hasPlaceholderGoogle) await restoreApp();
+        await putAppBack();
     }
 
     printProgress('encoding the video');
     await encode(recording);
-    await clearTourMessages(guest.email);
+    await deleteTourAccount();
     console.log(`${OUT}: ${(await motionFps(recording)).toFixed(1)}fps recorded while moving, at ${WIDTH * SCALE}×${HEIGHT * SCALE}`);
     printProgress('done');
     rmSync(workDir, {recursive: true, force: true});
