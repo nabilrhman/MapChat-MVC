@@ -59,6 +59,19 @@
     }
 }
 
+/* Grows in when it comes and shrinks out when it goes: a private-chat tab
+   and its green dot, and the map pins. scale, not transform, which would
+   undo the tab's flip and the map's placing of a pin */
+@keyframes grow-in
+{
+    from { opacity: 0; scale: 0.6; }
+}
+
+@keyframes shrink-out
+{
+    to { opacity: 0; scale: 0.6; }
+}
+
 /* Going to another page on the site cross-fades from the old page to the
    new one, instead of the window blanking in between. The header and
    footer are named so they stay put while the content changes */

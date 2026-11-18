@@ -47,19 +47,6 @@ body
     overflow: hidden;
 }
 
-/* A private-chat tab grows in when opened and shrinks out when closed; so
-   does its green dot when the person comes or goes. scale, not transform,
-   which would undo the tab's flip */
-@keyframes grow-in
-{
-    from { opacity: 0; scale: 0.6; }
-}
-
-@keyframes shrink-out
-{
-    to { opacity: 0; scale: 0.6; }
-}
-
 /* Flag and city, from createPlace in dom.js; a long city ends in an ellipsis */
 .place
 {
