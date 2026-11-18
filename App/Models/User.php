@@ -2,14 +2,14 @@
 
 namespace App\Models;
 
-use PDO;
-use App\Google;
-use App\GoogleAccount;
-use App\Token;
-use App\Mail;
-use Core\View;
 use App\Config;
+use App\Notify\Mail;
 use App\PersonName;
+use App\SignIn\GoogleAccount;
+use App\SignIn\GoogleSignIn;
+use App\SignIn\Token;
+use Core\View;
+use PDO;
 
 /**
  * A person's account: signing up, logging in, their profile, and the
@@ -300,7 +300,7 @@ class User extends \Core\Model
      */
     protected function takeGooglePhoto(?string $picture): void
     {
-        $hasOwnPhoto = $this->avatar !== null && !Google::isPhoto($this->avatar);
+        $hasOwnPhoto = $this->avatar !== null && !GoogleSignIn::isPhoto($this->avatar);
         if ($picture === null || $picture === $this->avatar || $hasOwnPhoto || $this->google_photo_declined) {
             return;
         }

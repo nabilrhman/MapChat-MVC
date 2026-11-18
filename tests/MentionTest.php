@@ -2,7 +2,7 @@
 
 namespace Tests;
 
-use App\Mention;
+use App\Messages\Mention;
 use App\PersonName;
 use PHPUnit\Framework\TestCase;
 

@@ -2,13 +2,13 @@
 
 namespace App\Controllers;
 
-use Core\View;
-use App\Auth;
-use App\Avatar;
+use App\AvatarPicture;
 use App\Config;
 use App\Flash;
 use App\Models\User;
-use App\Models\UserInfo;
+use App\Models\Whereabouts;
+use App\SignIn\Auth;
+use Core\View;
 
 /**
  * The profile page: name, nickname, photo, email and password, whether
@@ -38,8 +38,8 @@ class Profile extends Authenticated
     {
         View::renderTemplate('Profile/show.html', [
             'user' => $this->user,
-            'place' => UserInfo::getPlace($this->user->email),
-            'default_avatar' => Avatar::src($this->user->id, $this->user->name),
+            'place' => Whereabouts::getPlace($this->user->email),
+            'default_avatar' => AvatarPicture::src($this->user->id, $this->user->name),
             'are_photo_uploads_on' => Config::arePhotoUploadsOn(),
             'cloudinary_cloud_name' => Config::cloudinaryCloudName(),
             'cloudinary_upload_preset' => Config::cloudinaryUploadPreset(),

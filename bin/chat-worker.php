@@ -9,7 +9,7 @@
  * docker/start.sh runs it and starts it again if it stops. Pages on the
  * HTTP fallback still run the replies and the demo lines from their polls;
  * locks in each keep two from running at once. Each round it also sends
- * Web Push for the messages saved since the last (App\Push), from
+ * Web Push for the messages saved since the last (App\Notify\PushNotifications), from
  * whichever way they came
  */
 
@@ -19,7 +19,7 @@ use App\Models\Bot;
 use App\Models\Chat;
 use App\Models\DemoChat;
 use App\Models\User;
-use App\Push;
+use App\Notify\PushNotifications;
 
 require dirname(__DIR__) . '/vendor/autoload.php';
 
@@ -54,10 +54,10 @@ while (!$isStopping) {
         // Bot replies signal as they're saved (Chat::save); the demo's go in by SQL
         Signal::newMessages();
 
-        if (Push::isEnabled()) {
+        if (PushNotifications::isEnabled()) {
             $messagesToPush ??= new NewMessageReader(Chat::getNewestId());
             // Moved on before sending, so a failing message isn't pushed again every round
-            Push::sendFor(Chat::getByIds($messagesToPush->readNewIds(PUSH_BATCH)));
+            PushNotifications::sendFor(Chat::getByIds($messagesToPush->readNewIds(PUSH_BATCH)));
         }
     } catch (PDOException $e) {
         error_log('Chat worker: database error, reconnecting: ' . $e->getMessage());

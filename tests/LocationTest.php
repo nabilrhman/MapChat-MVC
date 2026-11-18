@@ -2,7 +2,7 @@
 
 namespace Tests;
 
-use App\Models\UserInfo;
+use App\Models\Whereabouts;
 use PDO;
 use PHPUnit\Framework\TestCase;
 
@@ -36,14 +36,14 @@ class LocationTest extends TestCase
      */
     private function annsPin(): array
     {
-        $pins = array_values(array_filter(UserInfo::getAllLocations(), fn ($pin) => $pin['name'] === 'Ann'));
+        $pins = array_values(array_filter(Whereabouts::getAllLocations(), fn ($pin) => $pin['name'] === 'Ann'));
 
         return $pins[0];
     }
 
     public function testALookedUpLocationIsSavedToTheCity(): void
     {
-        UserInfo::saveLocation(self::ANN, ['lat' => 43.6532198, 'lng' => -79.3831843, 'city' => 'Toronto', 'country' => 'CA']);
+        Whereabouts::saveLocation(self::ANN, ['lat' => 43.6532198, 'lng' => -79.3831843, 'city' => 'Toronto', 'country' => 'CA']);
 
         $stmt = $this->db->prepare('SELECT lat, lng FROM userinfo WHERE email = ?');
         $stmt->execute([self::ANN]);
@@ -67,7 +67,7 @@ class LocationTest extends TestCase
     {
         putenv('IPSTACK_API_KEY');
 
-        $this->assertSame(['ipapi.co', 'ipwho.is', 'geojs'], array_keys(UserInfo::locationServiceUrls('8.8.8.8')));
+        $this->assertSame(['ipapi.co', 'ipwho.is', 'geojs'], array_keys(Whereabouts::locationServiceUrls('8.8.8.8')));
     }
 
     public function testIpstackIsAskedLastBecauseItsKeyGoesOverPlainHttp(): void
@@ -75,7 +75,7 @@ class LocationTest extends TestCase
         putenv('IPSTACK_API_KEY=test-key');
 
         try {
-            $services = UserInfo::locationServiceUrls('8.8.8.8');
+            $services = Whereabouts::locationServiceUrls('8.8.8.8');
         } finally {
             putenv('IPSTACK_API_KEY');
         }
@@ -92,7 +92,7 @@ class LocationTest extends TestCase
         $this->db->prepare("UPDATE userinfo SET lat = 43.6532198, lng = -79.3831843, city = 'Toronto' WHERE email = ?")
             ->execute([self::ANN]);
 
-        $people = array_values(array_filter(UserInfo::getRecentPeople(), fn ($person) => $person['name'] === 'Ann'));
+        $people = array_values(array_filter(Whereabouts::getRecentPeople(), fn ($person) => $person['name'] === 'Ann'));
 
         $this->assertSame('-79.38', (string) $people[0]['lng']);
     }
@@ -108,7 +108,7 @@ class LocationTest extends TestCase
         try {
             unset($_SERVER['REMOTE_ADDR'], $_SERVER['HTTP_CF_CONNECTING_IP'], $_SERVER['HTTP_X_FORWARDED_FOR']);
             $_SERVER = $server + $_SERVER;
-            return UserInfo::getRealIP();
+            return Whereabouts::getRealIP();
         } finally {
             $_SERVER = $serverBefore;
         }

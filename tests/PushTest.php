@@ -4,7 +4,7 @@ namespace Tests;
 
 use App\Controllers\Push as PushController;
 use App\Models\PushSubscription;
-use App\Push;
+use App\Notify\PushNotifications;
 use PDO;
 use PHPUnit\Framework\TestCase;
 
@@ -60,7 +60,7 @@ class PushTest extends TestCase
     {
         $chat = ['email' => self::ANN, 'to_email' => self::BOB, 'body' => 'hi @Cat'];
 
-        $this->assertSame([self::BOB], $this->emailsOf(Push::recipientsOf($chat, $this->subscribeEveryone())));
+        $this->assertSame([self::BOB], $this->emailsOf(PushNotifications::recipientsOf($chat, $this->subscribeEveryone())));
     }
 
     public function testARoomMessageGoesToWhoeverItMentions(): void
@@ -68,17 +68,17 @@ class PushTest extends TestCase
         $subscriptions = $this->subscribeEveryone();
 
         $mentionsCat = ['email' => self::ANN, 'to_email' => null, 'body' => 'what do you think, @cat?'];
-        $this->assertSame([self::CAT], $this->emailsOf(Push::recipientsOf($mentionsCat, $subscriptions)));
+        $this->assertSame([self::CAT], $this->emailsOf(PushNotifications::recipientsOf($mentionsCat, $subscriptions)));
 
         $mentionsNobody = ['email' => self::ANN, 'to_email' => null, 'body' => 'hello all'];
-        $this->assertSame([], Push::recipientsOf($mentionsNobody, $subscriptions));
+        $this->assertSame([], PushNotifications::recipientsOf($mentionsNobody, $subscriptions));
     }
 
     public function testNobodyIsPushedTheirOwnMessage(): void
     {
         $chat = ['email' => self::ANN, 'to_email' => null, 'body' => 'talking to myself, @Ann'];
 
-        $this->assertSame([], Push::recipientsOf($chat, $this->subscribeEveryone()));
+        $this->assertSame([], PushNotifications::recipientsOf($chat, $this->subscribeEveryone()));
     }
 
     public function testTheNotificationNamesTheSenderAndOpensTheirChat(): void
@@ -88,14 +88,14 @@ class PushTest extends TestCase
             'to_email' => self::BOB, 'body' => str_repeat('a', 200),
         ];
 
-        $private = Push::payloadOf($chat, []);
+        $private = PushNotifications::payloadOf($chat, []);
         $this->assertSame('Ann', $private['title']);
         $this->assertSame('7', $private['conversation']);
         $this->assertSame('chat-7', $private['tag']);
-        $this->assertSame(Push::BODY_LENGTH, mb_strlen($private['body']));
+        $this->assertSame(PushNotifications::BODY_LENGTH, mb_strlen($private['body']));
         $this->assertStringEndsWith('…', $private['body']);
 
-        $mention = Push::payloadOf(['to_email' => null] + $chat, []);
+        $mention = PushNotifications::payloadOf(['to_email' => null] + $chat, []);
         $this->assertSame('Ann mentioned you', $mention['title']);
         $this->assertSame('everyone', $mention['conversation']);
     }

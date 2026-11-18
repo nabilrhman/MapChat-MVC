@@ -1,7 +1,7 @@
 // The chat page: messages, tabs for private chats, and the composer. Talking
 // to the server about messages is in messages.js, the people list in
-// people.js, dragging tabs in tabDragging.js and the phone's sheet in
-// chatSheet.js. The server's values come from data attributes on #chat (see
+// people.js, dragging tabs in tab-dragging.js and the phone's sheet in
+// chat-sheet.js. The server's values come from data attributes on #chat (see
 // base_chat.html)
 
 // Scrolling down to new messages; none for people who ask for less motion

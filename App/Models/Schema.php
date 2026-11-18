@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Bot\Characters;
 use PDO;
 
 /**
@@ -175,7 +176,7 @@ class Schema extends \Core\Model
 
     /**
      * The demo people used to have picture files; now they get drawn faces
-     * (Avatar::face), which only show when no picture is stored
+     * (AvatarPicture::face), which only show when no picture is stored
      */
     protected static function dropDemoPictures(PDO $db): void
     {

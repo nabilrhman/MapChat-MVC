@@ -5,9 +5,9 @@
  */
 
 require dirname(__DIR__) . '/vendor/autoload.php';
-require __DIR__ . '/TestDb.php';
-require __DIR__ . '/DrivesTheSite.php';
-require __DIR__ . '/SocketClient.php';
+require __DIR__ . '/Support/TestDb.php';
+require __DIR__ . '/Support/DrivesTheSite.php';
+require __DIR__ . '/Support/SocketClient.php';
 
 use App\Config;
 

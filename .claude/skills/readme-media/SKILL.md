@@ -9,7 +9,7 @@ The README plays a tour video, then shows a large main picture of the room,
 then two phone pictures side by side (shown 220px wide, from the full-size
 files), then the login beside the profile, then the two emails. The tour and
 the other pictures are recorded with Playwright against the app on :8080
-(`docs/video/`; each script's header says what it needs). The app has to be up with the demo people online. The
+(`docs/tools/video/`; each script's header says what it needs). The app has to be up with the demo people online. The
 email pictures stay as they are: the user wants only the room, phone, login
 and profile pictures retaken.
 
@@ -46,7 +46,7 @@ Once, if they're missing:
 
 - `npx playwright install chromium`: the tour runs in Playwright's Chromium,
   as branded Chrome won't load the capture extension.
-- `docs/video/voice-line.wav`, the line the tour says into the voice-typing
+- `docs/tools/video/voice-line.wav`, the line the tour says into the voice-typing
   mic: `npm run voice-line` makes it with Groq's Orpheus text to speech,
   once its terms are accepted for the Groq org (the user's to do, at the
   link the script's header gives), or the user records one. The tour stops
@@ -57,7 +57,7 @@ chat worker while it records real Groq replies, and takes a few minutes.
 Without Google keys in `.env`, it starts the app container again with
 placeholder ones so the login page shows Continue with Google, as the live
 site does, and restarts it as it was afterwards. It records the tab at
-2880×1800 through `docs/video/capture-extension/` (Chrome's own tab capture
+2880×1800 through `docs/tools/video/capture-extension/` (Chrome's own tab capture
 and real-time VP8), and NVENC makes the 60fps H.264. It ends by printing the
 frame rate the recording kept while the page moved.
 

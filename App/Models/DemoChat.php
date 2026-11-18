@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
-use PDO;
+use App\Bot\BotJobKind;
+use App\Bot\Characters;
 use App\Config;
+use PDO;
 
 /**
  * The demo people talk in the room through the day: a few running stories

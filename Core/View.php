@@ -2,14 +2,14 @@
 
 namespace Core;
 
-use App\Auth;
-use App\Avatar;
+use App\AvatarPicture;
 use App\Config;
 use App\Flash;
-use App\Google;
-use App\Mention;
+use App\Messages\Mention;
+use App\Notify\PushNotifications;
 use App\PersonName;
-use App\Push;
+use App\SignIn\Auth;
+use App\SignIn\GoogleSignIn;
 use Twig\Environment;
 use Twig\Loader\FilesystemLoader;
 use Twig\TwigFunction;
@@ -57,11 +57,11 @@ class View
         $twig->addGlobal('current_user', Auth::getUser());
         // A function, so only the page that shows messages uses them up
         $twig->addFunction(new TwigFunction('flash_messages', Flash::getMessages(...)));
-        $twig->addFunction(new TwigFunction('avatar_src', Avatar::src(...)));
+        $twig->addFunction(new TwigFunction('avatar_src', AvatarPicture::src(...)));
         // Links to files in public/ that change when the file does (see Asset)
         $twig->addFunction(new TwigFunction('asset', Asset::url(...)));
         $twig->addFunction(new TwigFunction('icon', Icon::svg(...), ['is_safe' => ['html']]));
-        // @mentions in the open room, as chips (see App\Mention)
+        // @mentions in the open room, as chips (see App\Messages\Mention)
         $twig->addFunction(new TwigFunction('shown_name', Mention::shownName(...)));
         $twig->addFunction(new TwigFunction('mentioned_names', Mention::namesIn(...)));
         $twig->addFunction(new TwigFunction('mark_mentions', static::htmlWithMentionChips(...), ['is_safe' => ['html']]));
@@ -70,9 +70,9 @@ class View
         // For marking the current page in the header
         $twig->addGlobal('current_path', parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH));
         // The login page offers Google only when the site has a client for it
-        $twig->addGlobal('is_google_sign_in_on', Google::isEnabled());
-        // Empty while Web Push isn't set up, so pages don't offer it (see App\Push)
-        $twig->addGlobal('push_public_key', Push::isEnabled() ? Push::publicKey() : '');
+        $twig->addGlobal('is_google_sign_in_on', GoogleSignIn::isEnabled());
+        // Empty while Web Push isn't set up, so pages don't offer it (see App\Notify\PushNotifications)
+        $twig->addGlobal('push_public_key', PushNotifications::isEnabled() ? PushNotifications::publicKey() : '');
 
         return $twig;
     }

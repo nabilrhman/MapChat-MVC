@@ -147,7 +147,7 @@ body
     font-variant-numeric: tabular-nums;
 }
 
-/* Phones: the chat is a sheet over the map (chat-panel.css). chatSheet.js
+/* Phones: the chat is a sheet over the map (chat-panel.css). chat-sheet.js
    sets --sheet-top, the sheet's distance below the header; the map's
    loading dots and credits follow it (chat-map.css) */
 @media (max-width: 700px)
@@ -155,7 +155,7 @@ body
     :root
     {
         --sheet-handle-height: 20px;
-        /* Halfway down the map, as chatSheet.js puts it, so nothing moves when it takes over */
+        /* Halfway down the map, as chat-sheet.js puts it, so nothing moves when it takes over */
         --sheet-top: calc((100dvh - var(--header-height) - var(--footer-height)) * 0.45);
     }
 }

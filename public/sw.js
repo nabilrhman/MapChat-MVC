@@ -1,5 +1,5 @@
 // MapChat's service worker: shows Web Push notifications for private
-// messages and @mentions (App\Push sends them). While the chat is in view,
+// messages and @mentions (App\Notify\PushNotifications sends them). While the chat is in view,
 // that tab shows its own (notifications.js, through this worker where the
 // browser has no other way), so a push stays quiet; other pages, like the
 // profile, don't show any

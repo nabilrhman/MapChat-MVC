@@ -1,4 +1,4 @@
-/* The messages in the chat panel (App/chat.html), the day between them,
+/* The messages in the chat panel (Room/chat.html), the day between them,
    and the @mentions in them */
 
 .chat
@@ -18,7 +18,7 @@
         display: none;
     }
 
-    /* A message from the poll eases in (see App/chat.html) */
+    /* A message from the poll eases in (see Room/chat.html) */
     &.is-entering
     {
         animation: fade-in-up var(--dur) var(--ease-out) backwards;

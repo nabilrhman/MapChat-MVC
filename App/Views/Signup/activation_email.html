@@ -7,10 +7,10 @@
 {% block preheader %}One click and you're in the room.{% endblock %}
 
 {% block body %}
-{{ include('email_greeting.html', {name: name}, with_context = false) }}
+{{ include('_email_greeting.html', {name: name}, with_context = false) }}
 <p style="margin: 0;">Thanks for signing up. Activate your account to start chatting and to put your city on the map.</p>
 
-{{ include('email_button.html', {url: url, label: 'Activate account'}, with_context = false) }}
+{{ include('_email_button.html', {url: url, label: 'Activate account'}, with_context = false) }}
 
 <p style="margin: 0; color: #7a7489; font-size: 13px;">Didn't sign up for MapChat? You can ignore this email.</p>
 {% endblock %}

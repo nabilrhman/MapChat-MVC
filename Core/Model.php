@@ -2,8 +2,8 @@
 
 namespace Core;
 
-use PDO;
 use App\Config;
+use PDO;
 
 /**
  * What every model shares: the database connection and query helpers

@@ -2,11 +2,11 @@
 
 namespace App\Controllers;
 
-use App\Auth;
 use App\Flash;
-use App\Google as GoogleSignIn;
 use App\Models\User;
-use App\Models\UserInfo;
+use App\Models\Whereabouts;
+use App\SignIn\Auth;
+use App\SignIn\GoogleSignIn;
 
 /**
  * Signing in with Google: off to Google, and back with who it says you are.
@@ -66,7 +66,7 @@ class Google extends \Core\Controller
         // Google keeps people signed in, so MapChat does too
         Auth::login($user, isRemembered: true);
         Flash::addMessage('Logged in.');
-        UserInfo::locate($user->email, UserInfo::getRealIP());
+        Whereabouts::locate($user->email, Whereabouts::getRealIP());
 
         $this->redirect(Auth::getReturnToPage());
     }

@@ -1,6 +1,6 @@
 /* Voice typing: the mic button beside the message box listens, and what
    was said goes into the box to read over before sending. Groq writes it
-   out (App::transcribeAction); when Groq is off or busy, the browser's own
+   out (Room::transcribeAction); when Groq is off or busy, the browser's own
    speech recognition listens instead, where the browser has one */
 
 // Under VoiceClip::MAX_BYTES in any browser's format

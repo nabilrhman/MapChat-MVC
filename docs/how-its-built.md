@@ -40,7 +40,7 @@ Each part of MapChat and what it's made with. Back to the
   then ipstack when `IPSTACK_API_KEY` is set. The place is stored and shown
   rounded to two decimal places, about a kilometre.
 - **Email:** Symfony Mailer, sending through any SMTP provider or Brevo's API.
-- **Signing in with Google:** OpenID Connect, by hand in `App/Google.php`,
+- **Signing in with Google:** OpenID Connect, by hand in `App/SignIn/GoogleSignIn.php`,
   with a state, a nonce and PKCE. The ID token comes straight from Google's
   token endpoint, so its claims are checked but not its signature, as the
   standard allows.

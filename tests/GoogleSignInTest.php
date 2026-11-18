@@ -2,9 +2,9 @@
 
 namespace Tests;
 
-use App\Google;
-use App\GoogleAccount;
 use App\Models\User;
+use App\SignIn\GoogleAccount;
+use App\SignIn\GoogleSignIn;
 use PDO;
 use PHPUnit\Framework\TestCase;
 
@@ -62,11 +62,11 @@ class GoogleSignInTest extends TestCase
     }
 
     /**
-     * Who Google::accountFromIdToken says signed in with this token
+     * Who GoogleSignIn::accountFromIdToken says signed in with this token
      */
     private function accountFrom(string $idToken): ?GoogleAccount
     {
-        return Google::accountFromIdToken($idToken, self::NONCE, self::NOW);
+        return GoogleSignIn::accountFromIdToken($idToken, self::NONCE, self::NOW);
     }
 
     /**
@@ -115,7 +115,7 @@ class GoogleSignInTest extends TestCase
     {
         // RFC 7636, appendix B
         $this->assertSame('E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM',
-            Google::codeChallengeOf('dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk'));
+            GoogleSignIn::codeChallengeOf('dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk'));
     }
 
     public function testTheFirstGoogleSignInMakesAnActiveAccountWithNoPassword(): void

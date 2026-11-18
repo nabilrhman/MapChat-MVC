@@ -1,4 +1,4 @@
-// Web Push for this browser (App\Push): subscribing it to the signed-in
+// Web Push for this browser (App\Notify\PushNotifications): subscribing it to the signed-in
 // person's notifications, so public/sw.js shows them with MapChat closed,
 // and letting it go again. notifications.js decides when; header.js lets
 // it go on logging out. On every page with the header, for the logout

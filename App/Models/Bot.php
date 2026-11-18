@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
-use PDO;
+use App\Bot\BotInstructions;
+use App\Bot\BotJobKind;
+use App\Bot\Characters;
+use App\Bot\Groq;
 use App\ChatSocket\Signal;
-use App\Groq;
-use App\Mention;
+use App\Messages\Mention;
 use App\PersonName;
+use PDO;
 
 /**
  * The MapChat account chats back: it greets a visitor who walks into a quiet
@@ -323,7 +326,7 @@ class Bot extends \Core\Model
             ->execute([':posted' => $postedId, ':id' => $job->id]);
 
         // A demo person who just spoke is in the room
-        UserInfo::markOnline($job->speaker);
+        Whereabouts::markOnline($job->speaker);
     }
 
     /**
@@ -595,7 +598,7 @@ class Bot extends \Core\Model
         $stmt = static::getDB()->prepare('SELECT COUNT(*) FROM userinfo
                                           WHERE email <> :email AND online_at > :since'
                                           . Characters::peopleOnlySql('userinfo.email'));
-        $stmt->execute([':email' => $email, ':since' => static::databaseTime(-UserInfo::ONLINE_SECONDS)]);
+        $stmt->execute([':email' => $email, ':since' => static::databaseTime(-Whereabouts::ONLINE_SECONDS)]);
 
         return $stmt->fetchColumn() > 0;
     }

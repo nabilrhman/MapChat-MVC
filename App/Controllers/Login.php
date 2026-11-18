@@ -2,12 +2,12 @@
 
 namespace App\Controllers;
 
-use App\Models\PushSubscription;
-use App\Models\UserInfo;
-use Core\View;
-use App\Models\User;
-use App\Auth;
 use App\Flash;
+use App\Models\PushSubscription;
+use App\Models\User;
+use App\Models\Whereabouts;
+use App\SignIn\Auth;
+use Core\View;
 
 /**
  * Logging in, as yourself or as a guest, and logging out
@@ -45,7 +45,7 @@ class Login extends \Core\Controller
 
             Flash::addMessage('Logged in.');
 
-            UserInfo::locate($user->email, UserInfo::getRealIP());
+            Whereabouts::locate($user->email, Whereabouts::getRealIP());
 
             $this->redirect(Auth::getReturnToPage());
         }
@@ -74,7 +74,7 @@ class Login extends \Core\Controller
         }
 
         Auth::login($user, isRemembered: false);
-        UserInfo::locate($user->email, UserInfo::getRealIP());
+        Whereabouts::locate($user->email, Whereabouts::getRealIP());
 
         $this->redirect('/app');
     }

@@ -228,7 +228,7 @@ h4
     text-align: start;
 }
 
-/* Eye button inside password fields (see passwordToggle.js). all: unset
+/* Eye button inside password fields (see password-toggle.js). all: unset
    drops Beer CSS's button look, which reaches it inside the field */
 .password-toggle
 {
@@ -460,7 +460,7 @@ h4
     :scope.warning .icon { color: var(--warning-on-dark); }
 }
 
-/* The thin bar across the top while the next page loads (loadingBar.js).
+/* The thin bar across the top while the next page loads (loading-bar.js).
    It fades in and grows out from the middle toward both edges along one
    curve: easing in, quickly a third across, then ever slower, as it can't
    know how long is left. The next page fills the rest */
@@ -511,7 +511,7 @@ h4
         &::after { animation: loading-bar-glint-right var(--dur-loading-bar-glint) var(--ease-out) var(--dur-slow); }
     }
 
-    /* The next page fills it from where the last one left it (loadingBar.js),
+    /* The next page fills it from where the last one left it (loading-bar.js),
        solid right to both edges, and only then fades it out */
     &.is-finishing
     {

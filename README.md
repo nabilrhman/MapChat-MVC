@@ -178,20 +178,24 @@ creating the database to the optional email, avatar and AI settings, are in
 ## Project layout
 
 ```
-Core/            The framework: router, base controller and model, views, errors
-App/Controllers/ One class per page or action
-App/Models/      Database access, and Bot: when MapChat and the demo people answer
-App/*.php        Settings, login, Google sign-in, email, avatars, mentions, Web Push, Groq
-App/ChatSocket/  The live chat: who's let in (Handshake), what each page gets (Hub)
-App/Views/       Twig templates
-bin/             The chat socket and the chat worker, run by docker/start.sh
-public/          Web root: index.php, CSS, JavaScript, sw.js, images, icons.svg
-database/        The schema, the demo people and their day, and migrate.php
-tests/           PHPUnit tests; tests/browser/ the Playwright checks (npm run a11y)
-docs/            How each part works, deploying, and the load test
-docs/images/     The video, screenshots and diagram in this README
-docs/video/      Records the tour (npm run tour) and takes the pictures (npm run screenshots)
-AGENTS.md        The coding rules, for people and AI agents alike
+Core/              The framework: router, base controller and model, views, errors
+App/Controllers/   One class per page or action; Room is the chat page
+App/Models/        Database access, and Bot: when MapChat and the demo people answer
+App/Bot/           What the bot is told, who isn't a real person, and Groq, which writes the replies
+App/Messages/      A message's conversation, @mentions, voice clips, and rows for one reader
+App/SignIn/        Who is logged in, Google sign-in, and the tokens in links and cookies
+App/Notify/        Email, and Web Push to closed browsers
+App/*.php          Settings, flash messages, names and avatar pictures
+App/ChatSocket/    The live chat: who's let in (Handshake), what each page gets (Hub)
+App/Views/         Twig templates; a partial's name starts with _
+bin/               The chat socket and the chat worker, run by docker/start.sh
+public/            Web root: index.php, CSS, JavaScript, sw.js, images, icons.svg
+database/          The schema, the demo people and their day, and migrate.php
+tests/             PHPUnit tests; tests/Support/ their helpers; tests/browser/ the Playwright checks (npm run a11y)
+docs/              How each part works, deploying, and the load test
+docs/images/       The video, screenshots and diagram in this README
+docs/tools/        The tools behind the docs: the tour and screenshots (npm run tour, npm run screenshots), the diagrams and the load test
+AGENTS.md          The coding rules, for people and AI agents alike
 ```
 
 ## Author

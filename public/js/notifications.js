@@ -1,7 +1,7 @@
 // System notifications for private messages and @mentions you haven't seen.
 // chat.js starts it with setUpNotifications and hands it new messages; the
 // profile's switch turns them on and off for this browser. With Web Push
-// set up (App\Push), this browser also subscribes (push.js), so public/sw.js
+// set up (App\Notify\PushNotifications), this browser also subscribes (push.js), so public/sw.js
 // shows them while no MapChat tab is in view, even with MapChat closed
 
 const NOTIFY_BODY_LENGTH = 120;

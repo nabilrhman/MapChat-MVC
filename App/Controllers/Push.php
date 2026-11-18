@@ -2,8 +2,8 @@
 
 namespace App\Controllers;
 
-use App\Auth;
 use App\Models\PushSubscription;
+use App\SignIn\Auth;
 
 /**
  * Turning Web Push on and off for this browser (public/js/notifications.js)

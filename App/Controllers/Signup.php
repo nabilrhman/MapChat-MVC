@@ -2,10 +2,10 @@
 
 namespace App\Controllers;
 
-use Core\View;
-use App\Models\User;
-use App\Flash;
 use App\Config;
+use App\Flash;
+use App\Models\User;
+use Core\View;
 
 /**
  * Signing up, and activating the account from the emailed link

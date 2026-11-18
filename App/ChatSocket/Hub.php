@@ -7,12 +7,12 @@ use Amp\Http\Server\Response;
 use Amp\Websocket\Server\WebsocketClientHandler;
 use Amp\Websocket\WebsocketClient;
 use App\Config;
-use App\Mention;
-use App\MessagesForReader;
+use App\Messages\Conversation;
+use App\Messages\Mention;
+use App\Messages\MessagesForReader;
 use App\Models\Chat;
-use App\Models\Conversation;
 use App\Models\User;
-use App\Models\UserInfo;
+use App\Models\Whereabouts;
 use Core\DatabaseSessionHandler;
 use Core\View;
 use Revolt\EventLoop;
@@ -46,7 +46,7 @@ class Hub implements WebsocketClientHandler
     /** How often to look for presence changes not seen as they happen (demo people, polling tabs) */
     const PRESENCE_SECONDS = 5;
 
-    /** How often to mark everyone with a socket open as online in the database (UserInfo::ONLINE_SECONDS is 60) */
+    /** How often to mark everyone with a socket open as online in the database (Whereabouts::ONLINE_SECONDS is 60) */
     const MARK_ONLINE_SECONDS = 30;
 
     /** How often to check that each page's session is still logged in */
@@ -95,14 +95,14 @@ class Hub implements WebsocketClientHandler
     public function start(): void
     {
         $this->newMessages = new NewMessageReader(Chat::getNewestId());
-        foreach (UserInfo::getPeople(UserInfo::getOnlineEmails()) as $person) {
+        foreach (Whereabouts::getPeople(Whereabouts::getOnlineEmails()) as $person) {
             $this->announced[$person['email']] = $person;
         }
 
         EventLoop::repeat(static::TAIL_SECONDS, fn () => $this->safely($this->readNewMessages(...)));
         EventLoop::repeat(1, fn () => $this->safely($this->expireTyping(...)));
         EventLoop::repeat(static::PRESENCE_SECONDS, fn () => $this->safely($this->updatePresence(...)));
-        EventLoop::repeat(static::MARK_ONLINE_SECONDS, fn () => $this->safely(fn () => UserInfo::markOnlineNow(array_keys($this->tabsByEmail))));
+        EventLoop::repeat(static::MARK_ONLINE_SECONDS, fn () => $this->safely(fn () => Whereabouts::markOnlineNow(array_keys($this->tabsByEmail))));
         EventLoop::repeat($this->sessionCheckSeconds, fn () => $this->safely($this->closeLoggedOutTabs(...)));
         EventLoop::repeat(static::SESSION_TOUCH_SECONDS, fn () => $this->safely(fn () => DatabaseSessionHandler::touch($this->getSessionIds())));
     }
@@ -207,7 +207,7 @@ class Hub implements WebsocketClientHandler
         $this->tabsByEmail[$email][$tab->getId()] = $tab;
 
         if ($isFirstTab && !isset($this->graceUntil[$email])) {
-            $this->safely(fn () => UserInfo::markOnlineNow([$email]));
+            $this->safely(fn () => Whereabouts::markOnlineNow([$email]));
             $this->queuePresenceUpdate();
         }
         unset($this->graceUntil[$email]);
@@ -238,7 +238,7 @@ class Hub implements WebsocketClientHandler
             }
             unset($this->graceUntil[$email]);
             $this->safely(function () use ($email) {
-                UserInfo::markGone($email);
+                Whereabouts::markGone($email);
                 $this->updatePresence();
             });
         });
@@ -297,7 +297,7 @@ class Hub implements WebsocketClientHandler
         }
 
         // So others can see your local time
-        UserInfo::saveTimezone($tab->user->email, $message['timezone'] ?? null);
+        Whereabouts::saveTimezone($tab->user->email, $message['timezone'] ?? null);
 
         $tab->sayHello($message['after']);
 
@@ -589,7 +589,7 @@ class Hub implements WebsocketClientHandler
      */
     private function render(array $chats, User $reader, array $mentionNames, bool $isHistory = false): string
     {
-        return View::getTemplate('App/chat.html', [
+        return View::getTemplate('Room/chat.html', [
             'chats' => MessagesForReader::rowsOf($chats, $reader),
             'current_user' => $reader,
             'mention_names' => $mentionNames,
@@ -613,7 +613,7 @@ class Hub implements WebsocketClientHandler
     /**
      * Tell every page who came online and who went. Online is: a socket
      * open (or closed less than the grace period ago), or online as the
-     * people list counts it (UserInfo::getOnlineEmails): a page on the HTTP
+     * people list counts it (Whereabouts::getOnlineEmails): a page on the HTTP
      * fallback, a demo person in the room, or MapChat
      */
     private function updatePresence(): void
@@ -623,7 +623,7 @@ class Hub implements WebsocketClientHandler
         $online = array_fill_keys(array_merge(
             array_keys($this->tabsByEmail),
             array_keys($this->graceUntil),
-            UserInfo::getOnlineEmails()
+            Whereabouts::getOnlineEmails()
         ), true);
         $arrived = array_keys(array_diff_key($online, $this->announced));
         $left = array_keys(array_diff_key($this->announced, $online));
@@ -631,7 +631,7 @@ class Hub implements WebsocketClientHandler
             return;
         }
 
-        $people = array_column(UserInfo::getPeople(array_merge($arrived, $left)), null, 'email');
+        $people = array_column(Whereabouts::getPeople(array_merge($arrived, $left)), null, 'email');
 
         foreach ($arrived as $email) {
             if (isset($people[$email])) {
@@ -658,7 +658,7 @@ class Hub implements WebsocketClientHandler
         $onlineIds = array_flip(array_column($this->announced, 'id'));
         $people = [];
 
-        foreach (UserInfo::getRecentPeople() as $person) {
+        foreach (Whereabouts::getRecentPeople() as $person) {
             $isOnline = isset($onlineIds[$person['id']]);
             unset($onlineIds[$person['id']]);
             $people[] = static::personForPages($person, $isOnline);

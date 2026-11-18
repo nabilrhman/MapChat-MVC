@@ -370,7 +370,7 @@
             transition: translate var(--dur) var(--ease-out);
         }
 
-        /* A private tab being dragged into a new place (tabDragging.js) rides above the rest */
+        /* A private tab being dragged into a new place (tab-dragging.js) rides above the rest */
         &.is-dragging
         {
             position: relative;
@@ -925,7 +925,7 @@
 
 /* Phones: as in a maps app, the map fills the screen and the chat is a
    sheet over it, dragged between three stops: down to its tabs, halfway,
-   and up to the header (chatSheet.js; --sheet-top is in chat.css) */
+   and up to the header (chat-sheet.js; --sheet-top is in chat.css) */
 @media (max-width: 700px)
 {
     /* top, not translate: the sheet's height changes with it, so its

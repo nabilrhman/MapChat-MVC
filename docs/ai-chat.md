@@ -31,6 +31,6 @@ Groq, which [says](https://console.groq.com/docs/your-data) it doesn't train
 on what's sent to its API. The code is in `App/Models/Bot.php`.
 
 The same key turns voice messages into text with Groq's
-`whisper-large-v3-turbo` (`App/Groq.php`, `public/js/voice.js`). Its free plan
+`whisper-large-v3-turbo` (`App/Bot/Groq.php`, `public/js/voice.js`). Its free plan
 allows 2,000 recordings a day and 20 a minute for the whole site; past that,
 the page has the browser listen instead. MapChat doesn't keep the recordings.

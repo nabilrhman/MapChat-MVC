@@ -212,8 +212,8 @@ For the comparison of polling with the chat socket, steps 1 and 2 below,
 then (PORT if the stack isn't on 8080; STATS names the containers to sample):
 
 ```bash
-STATS="mapchat-mvc-app-1 mapchat-mvc-db-1" python3 docs/load-test.py --pairs 100 120 cookies 3
-STATS="mapchat-mvc-app-1 mapchat-mvc-db-1" python3 docs/load-test.py --pairs --socket 100 120 cookies 3
+STATS="mapchat-mvc-app-1 mapchat-mvc-db-1" python3 docs/tools/load-test.py --pairs 100 120 cookies 3
+STATS="mapchat-mvc-app-1 mapchat-mvc-db-1" python3 docs/tools/load-test.py --pairs --socket 100 120 cookies 3
 ```
 
 For the polling steps:
@@ -229,7 +229,7 @@ For the polling steps:
    room's messages per second; leave it off for a quiet room):
 
    ```bash
-   python3 docs/load-test.py 100 60 cookies "$(docker compose exec -T db mysql -uroot -pmapchat mapchat -N -e 'select max(id) from chats' 2>/dev/null)" 3
+   python3 docs/tools/load-test.py 100 60 cookies "$(docker compose exec -T db mysql -uroot -pmapchat mapchat -N -e 'select max(id) from chats' 2>/dev/null)" 3
    ```
 
 4. Delete the guests afterwards, with the highest user id from before the

@@ -2,9 +2,12 @@
 
 namespace App\Models;
 
-use PDO;
+use App\Bot\Characters;
 use App\ChatSocket\Signal;
-use App\Mention;
+use App\Messages\Conversation;
+use App\Messages\Mention;
+use App\Messages\SendResult;
+use PDO;
 
 /**
  * Chat messages: the open room and private messages
@@ -442,7 +445,7 @@ class Chat extends \Core\Model
     {
         return 'SELECT chats.id, chats.body, chats.timestamp, chats.to_email, users.id AS user_id, users.name, users.email, users.avatar,
                        ' . Characters::isDemoSql() . ' AS is_demo, users.nickname, users.is_guest,
-                       ' . UserInfo::sharedPlaceSql() . ',
+                       ' . Whereabouts::sharedPlaceSql() . ',
                        recipients.id AS to_user_id, recipients.name AS to_name,
                        recipients.nickname AS to_nickname, recipients.is_guest AS to_is_guest
                 FROM chats
