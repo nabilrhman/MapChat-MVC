@@ -27,8 +27,14 @@
 </head>
 
 <body>
-{# The world map behind the page, drawn by login-map.js #}
-<div id="login-map" class="login-map" aria-hidden="true"></div>
+{# A screenshot of the map, shown while it loads and in its place without
+   WebGL. An img, not a CSS background, so asset() changes its address
+   each time it's retaken and browsers don't keep the old one #}
+<img class="login-map-picture" src="{{ asset('/images/login-map.webp') }}" alt="" width="3840" height="3492">
+
+{# The world map behind the page, drawn by login-map.js, with the faces of
+   the made-up people saying hello on it #}
+<div id="login-map" class="login-map" aria-hidden="true" data-faces="{{ demo_face_srcs()|json_encode|e('html_attr') }}"></div>
 
 <main class="auth-page">
     <div class="center">

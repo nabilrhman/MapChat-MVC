@@ -66,6 +66,10 @@
         --text-faint: #737373; /* the lightest grey small text can be and still read (4.5:1 on the cards) */
         --text-label: #9e9e9e;
 
+        /* The sun or moon beside a local time, in the chat and on the login map */
+        --daylight-day: #ffa000;
+        --daylight-night: #5c6bc0;
+
         /* White text on the purple or another dark ground, quieter */
         --on-dark-text: color-mix(in srgb, var(--md-on-primary) 85%, transparent);
         --on-dark-muted: color-mix(in srgb, var(--md-on-primary) 70%, transparent);

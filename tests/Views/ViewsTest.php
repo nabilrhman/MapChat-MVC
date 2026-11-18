@@ -2,6 +2,7 @@
 
 namespace Tests\Views;
 
+use App\AvatarPicture;
 use App\Models\User;
 use Core\View;
 use PHPUnit\Framework\TestCase;
@@ -44,5 +45,16 @@ class ViewsTest extends TestCase
         foreach ($pages as $template => $args) {
             $this->assertStringContainsString('</html>', View::getTemplate($template, $args), $template);
         }
+    }
+
+    public function testTheLoginMapGetsADrawnFaceForEachDemoPerson(): void
+    {
+        $html = View::getTemplate('Login/new.html', ['email' => '', 'remember_me' => false]);
+
+        preg_match('/data-faces="([^"]*)"/', $html, $match);
+        $faces = json_decode(html_entity_decode($match[1] ?? ''), true);
+
+        $this->assertCount(count(AvatarPicture::LOOKS), $faces);
+        $this->assertStringStartsWith('data:image/svg+xml;base64,', $faces[0]);
     }
 }

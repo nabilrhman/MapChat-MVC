@@ -14,14 +14,25 @@
     --pin-dot: var(--pin-bubble-surface); /* the dark grey of its bubble */
 }
 
+body
+{
+    min-height: 100vh;
+    background-color: var(--map-backdrop);
+}
+
 /* A screenshot of the live map, without the form, pins or night, shown
    while the map loads over it, and in its place without WebGL. Sized as
    login-map.js sizes the map: the world as wide as the screen, or 1.1
    times its height if that's more. Retake it if the map's look changes */
-body
+.login-map-picture
 {
-    min-height: 100vh;
-    background: var(--map-backdrop) url("../../images/login-map.webp") no-repeat center / max(100vw, 110vh) auto fixed;
+    position: fixed;
+    inset-block-start: 50%;
+    inset-inline-start: 50%;
+    width: max(100vw, 110vh);
+    height: auto;
+    translate: -50% -50%;
+    pointer-events: none;
 }
 
 /* The world map behind everything (login-map.js), faded in once drawn */
@@ -41,10 +52,12 @@ body
 
 @scope (.login-map)
 {
-    /* The box MapLibre draws in, the size of the screen */
+    /* The box MapLibre draws in, the size of the screen. MapLibre sets its
+       own Helvetica on it; the bubbles use the page's font */
     .map-box
     {
         height: 100%;
+        font-family: inherit;
     }
 
     /* The sliding night, over the map and under its pins. It comes in
@@ -86,19 +99,22 @@ body
         animation: shrink-out var(--dur-fast) var(--ease-in) forwards;
     }
 
-    /* A small chat bubble with its tail on the pin, like a message */
+    /* A small chat bubble with its tail on the pin, like a message: a face
+       beside the hello, and the city and the time there under it */
     .bubble
     {
         position: absolute;
         inset-block-end: calc(100% + 6px);
         inset-inline-start: 50%;
-        padding: 6px 10px;
+        display: flex;
+        width: max-content; /* else it shrinks to the narrow pin it hangs from */
+        align-items: center;
+        gap: 10px;
+        padding: 8px 10px;
         border-radius: 2px;
         background-color: var(--pin-bubble-surface);
         box-shadow: var(--md-elevation-2);
         color: var(--pin-bubble-text);
-        font-size: 13px;
-        font-weight: 600;
         white-space: nowrap;
         opacity: 0;
         translate: -50% 6px;
@@ -128,6 +144,69 @@ body
             translate: -50% 0;
             border: 5px solid transparent;
             border-block-start-color: var(--pin-bubble-surface);
+        }
+    }
+
+    .face
+    {
+        flex: none;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+    }
+
+    .text
+    {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+    }
+
+    /* Tight lines, so the hello sits close over its city and time and the
+       two centre on the face; Beer's 20px line leaves space under 11px text */
+    .message,
+    .details
+    {
+        line-height: 1.2;
+    }
+
+    .message
+    {
+        margin: 0;
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    /* The city on the left and its time on the right, quieter than the hello */
+    .details
+    {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        color: var(--on-dark-muted);
+        font-size: 11px;
+    }
+
+    .city,
+    .time
+    {
+        display: flex;
+        align-items: center;
+        gap: var(--icon-gap);
+    }
+
+    /* The size of the place icon beside it, and the moon a shade lighter
+       than the chat's, as the bubble is dark */
+    .daylight
+    {
+        &.day
+        {
+            color: var(--daylight-day);
+        }
+
+        &.night
+        {
+            color: color-mix(in srgb, var(--daylight-night), white 35%);
         }
     }
 }

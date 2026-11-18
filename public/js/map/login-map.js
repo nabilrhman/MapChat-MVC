@@ -16,16 +16,26 @@ const LOWEST_LOGIN_MAP_ZOOM = -2;
 const LOGIN_MAP_HEIGHT_MARGIN = 1.1;
 // One day of night going round the world, in the animated wave
 const DAY_ANIMATION_SECONDS = 90;
+const DAY_MS = 24 * 60 * 60 * 1000;
+// How far round the night wave has slid, from 0 to 1 of a day; it stays 0
+// when the night keeps still
+let nightTurnedPart = 0;
+// The time the map shows: now, moved on by the day the wave has turned
+const slidingMapTime = () => new Date(Date.now() + nightTurnedPart * DAY_MS);
 // The login map is the chat's map gone dark, in the deep purples of the
-// old street-map picture the login pages had
+// old street-map picture the login pages had. The land is a step brighter
+// than the water and the borders are a dimmed take on the picture's violet
+// roads: enough to tell the continents apart, not so much they pull the eye
+// from the form
 const DARK_MAP = {
     water: '#1e0839',
-    land: '#331467',
-    border: '#5b3aa6',
-    road: '#45208a',
+    land: '#3a1678',
+    border: '#5f24b0',
+    road: '#4a2196',
 };
-// Night on the dark map: near black, and stronger, so it still shows
-const DARK_NIGHT_LOOK = {colour: '#0a0219', opacity: 0.55};
+// Night on the dark map: near black, and stronger, so it still shows, but
+// light enough that the land under it stays clear of the water
+const DARK_NIGHT_LOOK = {colour: '#0a0219', opacity: 0.45};
 // The dark map's colour for each layer, by id or kind; the first match wins
 const DARK_LAYER_COLOURS = [
     {isLayer: ({id}) => id === 'background', paint: {'background-color': DARK_MAP.land}},
@@ -35,53 +45,55 @@ const DARK_LAYER_COLOURS = [
     {isLayer: ({type}) => type === 'fill', paint: {'fill-color': DARK_MAP.land, 'fill-outline-color': DARK_MAP.land}},
     {isLayer: ({type}) => type === 'line', paint: {'line-color': DARK_MAP.road}},
 ];
-// What a pin says, by language: short hellos, picked at random
+// What a pin says, by language: a short line to open a chat, picked at
+// random. Plain words, no emoji, and none tied to a time of day, as the
+// clock beside it may say night
 const GREETINGS_BY_LANGUAGE = {
-    'en': ['Hello!', 'Hi, all', 'Hey there', "How's it going?", 'Morning!'],
-    'en-AU': ["G'day!", 'Hiya!', 'How ya going?'],
-    'en-SG': ['Hello lah!', 'Hi, all', 'Makan already?'],
-    'es': ['¡Hola!', '¿Qué tal?', '¡Buenas!', '¿Cómo están?'],
-    'pt-BR': ['Olá!', 'Oi, gente!', 'Tudo bem?'],
-    'zh': ['你好', '大家好', '你好吗?'],
-    'ko': ['안녕하세요', '반가워요', '잘 지내요?'],
-    'ja': ['こんにちは', 'はじめまして', '元気?'],
-    'hi': ['नमस्ते', 'कैसे हो?', 'सब ठीक?'],
-    'bn': ['হ্যালো', 'কেমন আছো?', 'কী খবর?'],
-    'th': ['สวัสดี', 'สบายดีไหม?'],
-    'fil': ['Kumusta!', 'Magandang araw!'],
-    'id': ['Halo!', 'Apa kabar?', 'Selamat pagi!'],
-    'mi': ['Kia ora!', 'Tēnā koutou'],
+    'en': ['Hello!', 'Hi, all', 'Hey there', "How's it going?", 'Anyone around?', 'Just joined', 'Nice to meet you!', 'Who else is up?'],
+    'en-AU': ["G'day!", 'Hiya!', 'How ya going?', "G'day, legends", "How's things?"],
+    'en-SG': ['Hello lah!', 'Hi, all', 'Makan already?', 'Can chat or not?', 'Wah, so many people'],
+    'es': ['¡Hola!', '¿Qué tal?', '¡Buenas!', '¿Cómo están?', '¡Hola a todos!', '¿Alguien por aquí?', '¡Mucho gusto!', 'Saludos'],
+    'pt-BR': ['Olá!', 'Oi, gente!', 'Tudo bem?', 'E aí, pessoal?', 'Alguém por aí?', 'Prazer!'],
+    'zh': ['你好', '大家好', '你好吗?', '有人在吗?', '很高兴认识你', '来聊天吧', '吃了吗?'],
+    'ko': ['안녕하세요', '반가워요', '잘 지내요?', '누구 있어요?', '같이 얘기해요', '밥 먹었어요?'],
+    'ja': ['こんにちは', 'はじめまして', '元気?', '誰かいる?', 'よろしくね!', 'お疲れさま!'],
+    'hi': ['नमस्ते', 'कैसे हो?', 'सब ठीक?', 'कोई है?', 'मिलकर अच्छा लगा', 'चलो बात करें'],
+    'bn': ['হ্যালো', 'কেমন আছো?', 'কী খবর?', 'কেউ আছো?', 'আড্ডা হবে নাকি?', 'চা খাবে?'],
+    'th': ['สวัสดี', 'สบายดีไหม?', 'มีใครอยู่ไหม?', 'ยินดีที่ได้รู้จัก', 'กินข้าวหรือยัง?'],
+    'fil': ['Kumusta!', 'Musta na?', 'Uy, kumusta kayo?', 'May tao ba dito?'],
+    'id': ['Halo!', 'Apa kabar?', 'Halo semua!', 'Ada orang?', 'Salam kenal!', 'Lagi apa?'],
+    'mi': ['Kia ora!', 'Tēnā koutou', 'Kia ora koutou', 'Kei te pēhea koe?'],
 };
 // Big cities where a pin pops up and says hello in the language spoken
 // there, to show what the map is for. Nobody's real place or words. Each
 // belongs to a zone: four down each side of the form, as Europe and Africa
-// sit behind it
+// sit behind it. Its time zone sets the clock in its bubble
 const CHATTING_PLACES = [
-    {zone: 'americas-west', lng: -123.1, lat: 49.3, language: 'en'},
-    {zone: 'americas-west', lng: -122.4, lat: 37.8, language: 'en'},
-    {zone: 'americas-west', lng: -118.2, lat: 34.05, language: 'en'},
-    {zone: 'americas-east', lng: -87.6, lat: 41.9, language: 'en'},
-    {zone: 'americas-east', lng: -79.4, lat: 43.7, language: 'en'},
-    {zone: 'americas-east', lng: -74.0, lat: 40.7, language: 'en'},
-    {zone: 'americas-middle', lng: -99.1, lat: 19.4, language: 'es'},
-    {zone: 'americas-middle', lng: -82.4, lat: 23.1, language: 'es'},
-    {zone: 'americas-middle', lng: -79.5, lat: 9.0, language: 'es'},
-    {zone: 'americas-south', lng: -77.0, lat: -12.0, language: 'es'},
-    {zone: 'americas-south', lng: -70.7, lat: -33.4, language: 'es'},
-    {zone: 'americas-south', lng: -58.4, lat: -34.6, language: 'es'},
-    {zone: 'americas-south', lng: -46.6, lat: -23.5, language: 'pt-BR'},
-    {zone: 'asia-north', lng: 116.4, lat: 39.9, language: 'zh'},
-    {zone: 'asia-north', lng: 127.0, lat: 37.6, language: 'ko'},
-    {zone: 'asia-north', lng: 139.7, lat: 35.7, language: 'ja'},
-    {zone: 'asia-south', lng: 77.2, lat: 28.6, language: 'hi'},
-    {zone: 'asia-south', lng: 90.4, lat: 23.8, language: 'bn'},
-    {zone: 'asia-south', lng: 100.5, lat: 13.75, language: 'th'},
-    {zone: 'asia-islands', lng: 121.0, lat: 14.6, language: 'fil'},
-    {zone: 'asia-islands', lng: 103.8, lat: 1.35, language: 'en-SG'},
-    {zone: 'asia-islands', lng: 106.8, lat: -6.2, language: 'id'},
-    {zone: 'oceania', lng: 115.9, lat: -31.95, language: 'en-AU'},
-    {zone: 'oceania', lng: 151.2, lat: -33.9, language: 'en-AU'},
-    {zone: 'oceania', lng: 174.8, lat: -36.8, language: 'mi'},
+    {zone: 'americas-west', lng: -123.1, lat: 49.3, language: 'en', city: 'Vancouver', timeZone: 'America/Vancouver'},
+    {zone: 'americas-west', lng: -122.4, lat: 37.8, language: 'en', city: 'San Francisco', timeZone: 'America/Los_Angeles'},
+    {zone: 'americas-west', lng: -118.2, lat: 34.05, language: 'en', city: 'Los Angeles', timeZone: 'America/Los_Angeles'},
+    {zone: 'americas-east', lng: -87.6, lat: 41.9, language: 'en', city: 'Chicago', timeZone: 'America/Chicago'},
+    {zone: 'americas-east', lng: -79.4, lat: 43.7, language: 'en', city: 'Toronto', timeZone: 'America/Toronto'},
+    {zone: 'americas-east', lng: -74.0, lat: 40.7, language: 'en', city: 'New York', timeZone: 'America/New_York'},
+    {zone: 'americas-middle', lng: -99.1, lat: 19.4, language: 'es', city: 'Mexico City', timeZone: 'America/Mexico_City'},
+    {zone: 'americas-middle', lng: -82.4, lat: 23.1, language: 'es', city: 'Havana', timeZone: 'America/Havana'},
+    {zone: 'americas-middle', lng: -79.5, lat: 9.0, language: 'es', city: 'Panama City', timeZone: 'America/Panama'},
+    {zone: 'americas-south', lng: -77.0, lat: -12.0, language: 'es', city: 'Lima', timeZone: 'America/Lima'},
+    {zone: 'americas-south', lng: -70.7, lat: -33.4, language: 'es', city: 'Santiago', timeZone: 'America/Santiago'},
+    {zone: 'americas-south', lng: -58.4, lat: -34.6, language: 'es', city: 'Buenos Aires', timeZone: 'America/Argentina/Buenos_Aires'},
+    {zone: 'americas-south', lng: -46.6, lat: -23.5, language: 'pt-BR', city: 'São Paulo', timeZone: 'America/Sao_Paulo'},
+    {zone: 'asia-north', lng: 116.4, lat: 39.9, language: 'zh', city: 'Beijing', timeZone: 'Asia/Shanghai'},
+    {zone: 'asia-north', lng: 127.0, lat: 37.6, language: 'ko', city: 'Seoul', timeZone: 'Asia/Seoul'},
+    {zone: 'asia-north', lng: 139.7, lat: 35.7, language: 'ja', city: 'Tokyo', timeZone: 'Asia/Tokyo'},
+    {zone: 'asia-south', lng: 77.2, lat: 28.6, language: 'hi', city: 'Delhi', timeZone: 'Asia/Kolkata'},
+    {zone: 'asia-south', lng: 90.4, lat: 23.8, language: 'bn', city: 'Dhaka', timeZone: 'Asia/Dhaka'},
+    {zone: 'asia-south', lng: 100.5, lat: 13.75, language: 'th', city: 'Bangkok', timeZone: 'Asia/Bangkok'},
+    {zone: 'asia-islands', lng: 121.0, lat: 14.6, language: 'fil', city: 'Manila', timeZone: 'Asia/Manila'},
+    {zone: 'asia-islands', lng: 103.8, lat: 1.35, language: 'en-SG', city: 'Singapore', timeZone: 'Asia/Singapore'},
+    {zone: 'asia-islands', lng: 106.8, lat: -6.2, language: 'id', city: 'Jakarta', timeZone: 'Asia/Jakarta'},
+    {zone: 'oceania', lng: 115.9, lat: -31.95, language: 'en-AU', city: 'Perth', timeZone: 'Australia/Perth'},
+    {zone: 'oceania', lng: 151.2, lat: -33.9, language: 'en-AU', city: 'Sydney', timeZone: 'Australia/Sydney'},
+    {zone: 'oceania', lng: 174.8, lat: -36.8, language: 'mi', city: 'Auckland', timeZone: 'Pacific/Auckland'},
 ];
 // Each side's zones, in the order a wider screen adds them: top and bottom
 // first, so even two pins a side look balanced
@@ -110,8 +122,8 @@ const PIN_CHAT_TIMING = {
 const PIN_ROOM = {
     formHalfWidth: 200, // half the card's max-width in login.css
     formGap: 32,
-    bubbleHalfWidth: 64,
-    bubbleAndPinHeight: 80,
+    bubbleHalfWidth: 108, // the longest hello with its face, and a long city with its time
+    bubbleAndPinHeight: 96,
     screenGap: 12,
     betweenPins: 140,
 };
@@ -142,20 +154,54 @@ function createLoginPin() {
     return pin;
 }
 
-// A pin on the map, growing in, with its hello bubble hidden for now
-function addChattingPin(map, place) {
-    const pin = createLoginPin();
-    const greetings = GREETINGS_BY_LANGUAGE[place.language];
-    const bubble = createElement('span', 'bubble', greetings[Math.floor(Math.random() * greetings.length)]);
+const randomItemOf = (items) => items[Math.floor(Math.random() * items.length)];
+
+// The demo people's drawn faces, from the page (AvatarPicture::demoFaceSrcs)
+function loginFacesOf(container) {
+    return JSON.parse(container.dataset.faces || '[]');
+}
+
+// A message bubble as the chat shows one: a face beside the hello, and under
+// it the city and the time there with its sun or moon. The time is filled
+// in when the bubble shows
+function createHelloBubble(place, faceSrc) {
+    const bubble = createElement('div', 'bubble');
+
+    const face = createElement('img', 'face');
+    face.src = faceSrc;
+    face.alt = '';
+    face.width = 32;
+    face.height = 32;
+
+    const message = createElement('p', 'message', randomItemOf(GREETINGS_BY_LANGUAGE[place.language]));
     // So the browser picks the right font for its script
-    bubble.lang = place.language;
+    message.lang = place.language;
+
+    const cityLine = createElement('span', 'city');
+    cityLine.append(createIcon('map-point'), createElement('span', '', place.city));
+    const timeLine = createElement('span', 'time');
+    const details = createElement('div', 'details');
+    details.append(cityLine, timeLine);
+
+    const text = createElement('div', 'text');
+    text.append(message, details);
+    bubble.append(...(faceSrc ? [face] : []), text);
+    return {bubble, timeLine};
+}
+
+// A pin on the map, growing in, with its hello bubble hidden for now
+function addChattingPin(map, place, faceSrc) {
+    const pin = createLoginPin();
+    const {bubble, timeLine} = createHelloBubble(place, faceSrc);
     pin.append(bubble);
     const marker = new maplibregl.Marker({element: pin, anchor: 'bottom'}).setLngLat(place).addTo(map);
-    return {place, pin, bubble, marker};
+    return {place, pin, bubble, timeLine, marker};
 }
 
 // Shows the pin's bubble for a while; done once it's hidden again
-async function sayHello({bubble}) {
+async function sayHello({place, bubble, timeLine}) {
+    // The time where the night wave has got to, so a pin in its shade shows the moon
+    showLocalTime(timeLine, localTimeOf(slidingMapTime(), place.timeZone, place.lng));
     bubble.classList.add('is-shown');
     await waitFor(PIN_CHAT_TIMING.bubbleShownMs);
     bubble.classList.remove('is-shown');
@@ -238,7 +284,7 @@ function zonesInOrderOf(map) {
 // zone, so they sit evenly round the form. Every step one changes for a
 // new one in its zone that says hello. A screen with no room beside the
 // form (a phone) shows none
-async function keepPinsChatting(map) {
+async function keepPinsChatting(map, faces) {
     const pinsByZone = new Map();
     const lastShownTimes = new Map();
     const pinsBesides = (zone) => [...pinsByZone].filter(([pinZone]) => pinZone !== zone).map(([, chattingPin]) => chattingPin);
@@ -251,7 +297,7 @@ async function keepPinsChatting(map) {
         if (!place) return null;
 
         lastShownTimes.set(place, performance.now());
-        const arrivingPin = addChattingPin(map, place);
+        const arrivingPin = addChattingPin(map, place, randomItemOf(faces));
         pinsByZone.set(zone, arrivingPin);
         if (leavingPin) removeChattingPin(leavingPin);
         return arrivingPin;
@@ -380,8 +426,8 @@ async function addMovingNightShade(map, look) {
 
     const startTime = performance.now();
     function slideNight(now) {
-        const turnedPart = ((now - startTime) / 1000 / DAY_ANIMATION_SECONDS) % 1;
-        drawNightFrame(map, nightCanvas, doubleShade, turnedPart);
+        nightTurnedPart = ((now - startTime) / 1000 / DAY_ANIMATION_SECONDS) % 1;
+        drawNightFrame(map, nightCanvas, doubleShade, nightTurnedPart);
         requestAnimationFrame(slideNight);
     }
     requestAnimationFrame(slideNight);
@@ -418,7 +464,7 @@ async function showLoginMap() {
             addStillPins(map);
         } else {
             await addMovingNightShade(map, DARK_NIGHT_LOOK);
-            keepPinsChatting(map);
+            keepPinsChatting(map, loginFacesOf(container));
         }
         container.classList.add('is-shown');
     });

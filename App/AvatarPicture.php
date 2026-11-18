@@ -115,6 +115,19 @@ class AvatarPicture
     }
 
     /**
+     * Image addresses for the demo people's faces, inline, for the made-up
+     * people saying hello on the login map
+     *
+     * @return list<string>
+     */
+    public static function demoFaceSrcs(): array
+    {
+        $faceSrcOf = fn (string $name): string => 'data:image/svg+xml;base64,' . base64_encode(static::face(0, $name));
+
+        return array_map($faceSrcOf, array_keys(static::LOOKS));
+    }
+
+    /**
      * The drawn avatar as SVG: a demo person's face, or anyone else's initials
      */
     public static function drawn(int $id, string $name, bool $isDemo): string
