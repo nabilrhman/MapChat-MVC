@@ -5,6 +5,9 @@ with plain-script JavaScript and CSS in `public/`, a live chat socket and a
 worker in `bin/`, and MySQL. README.md: Run it locally and Project layout say
 where everything lives; docs/live-chat.md how the live chat works.
 
+This checkout is shared: several sessions work in it at once, so
+`git status` and the test database hold other sessions' work beside yours.
+
 ## Rules
 
 ### Write plain code
@@ -14,8 +17,8 @@ expressions, the codebase's existing pattern over a new one. Copy the
 neighbouring file's shape before writing (a controller like
 `App/Controllers/Room.php`, a model like `App/Models/Chat.php`). Something
 clever earns its place only when the plain version is wrong or too slow, and
-its comment says which. A nested ternary is out: a third case is an `if` or a
-lookup.
+its comment says which. A ternary picks between two values; a third case is
+an `if` or a lookup.
 
 A block written out for three or more fields that differ only in data becomes
 a table the code loops over, so a new field is one row. Two cases stay
@@ -39,11 +42,12 @@ A function is named for its effect:
 A boolean, in PHP and JS alike, reads as a question too: `isPrivate`,
 `shouldSnap`.
 
-Files are named like what they hold. A PHP class's file is the class's name
-(`PushNotifications.php`), in a folder for what it's part of (`App/Notify/`).
-Scripts and styles are kebab-case (`chat-sheet.js`, `chat-panel.css`), as
-they are URLs with no imports. A Twig partial starts with `_`
-(`_email_button.html`), and a layout with `base_`.
+A PHP class lives in a title-case folder for the part it belongs to, matching
+its namespace (`App/Notify/PushNotifications.php`); a view folder is named
+for its controller (`Views/Room/`), and a test sits in the same folder as what
+it mostly covers (`tests/Notify/PushTest.php`). Scripts and styles are kebab-case, as
+they're URLs with no imports (`chat-sheet.js`). A Twig partial starts with
+`_`, a layout with `base_`. Every other folder is lowercase.
 
 ### Comments
 
@@ -82,8 +86,8 @@ The scripts run as they are, with no build step, sharing globals in the order
   timeout (`AbortSignal.timeout`, or the same limit on a socket request).
 - The DOM's own methods: `append`, `replaceChildren`, `closest`,
   `classList.toggle(name, isOn)`, `addEventListener(…, {once: true})`.
-- A helper that exists (`readFlag`, `createPlace`, `fadeInPhotos`) is called,
-  not written again.
+- Look for the helper first and call it (`readFlag`, `createPlace`,
+  `fadeInPhotos`).
 
 ### Modern HTML
 
@@ -92,7 +96,7 @@ The Twig views write HTML5 that says what each part is:
 - Landmarks and sections for what they hold (`header`, `nav`, `main`,
   `aside`, `section` with a heading, `footer`); a `div` only for layout.
 - A `button` for anything that acts on the page and an `a` for anything that
-  goes somewhere; a click handler on a `span` or `div` is out. A file picker
+  goes somewhere. A file picker
   is a `button` that opens its hidden `input type="file"` from script, as
   the keyboard can't reach a `label` for it.
 - Every field has a `label`; forms use the browser's own checks (`required`,
@@ -101,7 +105,7 @@ The Twig views write HTML5 that says what each part is:
   `loading="lazy"` and `width`/`height` on images below the fold, `alt` on
   every image (empty when it's decoration).
 - ARIA only where HTML has no element for it (`aria-live` for a status,
-  `aria-expanded` on a menu button), never to repeat what an element says.
+  `aria-expanded` on a menu button).
 
 ### Modern Twig
 
@@ -117,8 +121,7 @@ Twig 3 shows what the controller worked out; deciding happens in PHP.
 - `??` and `?:` for fallbacks; `|filter`, `|map` and `|reduce` with arrow
   functions over a `for` with an `if` inside.
 - Data a script reads goes in `data-*` attributes (`data-user-id="{{ id }}"`,
-  `|json_encode|e('html_attr')` for a list), not in a `<script>` that sets a
-  variable.
+  `|json_encode|e('html_attr')` for a list).
 
 ### CSS
 
@@ -156,15 +159,15 @@ is one line.
 
 ### Commits
 
-Commits are authored as the repo's owner, with no AI attribution line in the
-message, PR or code. Shipping, from branch to merged PR in this shared
-checkout: `.claude/skills/ship/SKILL.md`.
+Commits are authored as the repo's owner, and the message, PR and code credit
+only them: no AI attribution line. Shipping your own changes from the shared
+checkout, branch to merged PR: `.claude/skills/ship/SKILL.md`.
 
 ## Check your work
 
 | Changed | Do |
 | --- | --- |
-| Anything | `docker compose run --rm --build test`: every PHPUnit test. In a worktree, add `-p <worktree name>` so its database is its own |
+| Anything | `docker compose -p <name> run --rm --build test`: every PHPUnit test, on a database named for your worktree or task. Two runs on one database fail each other at random |
 | `App/ChatSocket/`, `bin/`, or a model they use | `docker compose restart app`: the socket and worker keep the code they started with |
 | `composer.json`, the `Dockerfile` | `docker compose up --build` |
 | Anything a person sees | Open http://localhost:8080 and look, in the chat and on a phone width: a cramped gap or a wrong size shows only there |

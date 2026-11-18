@@ -38,10 +38,10 @@ hand-written PHP.
 In 2026 I came back to it to bring parts of it up to date.
 
 [MapChat](https://mapchat.swiftsolve.net) runs on Render's free plan, which
-sleeps when nobody visits; a GitHub Actions workflow visits it every 10 minutes
-so it stays awake.
+sleeps when nobody visits, so the first visit after a quiet spell takes about
+a minute to load.
 
-https://github.com/user-attachments/assets/f94f8ef8-92e7-48d4-8e5b-c9500ddfd19f
+https://github.com/user-attachments/assets/6c60af77-554a-453e-a412-0c88e6592202
 
 <sub>A quick tour of MapChat.</sub>
 
@@ -191,7 +191,7 @@ App/Views/         Twig templates; a partial's name starts with _
 bin/               The chat socket and the chat worker, run by docker/start.sh
 public/            Web root: index.php, CSS, JavaScript, sw.js, images, icons.svg
 database/          The schema, the demo people and their day, and migrate.php
-tests/             PHPUnit tests; tests/Support/ their helpers; tests/browser/ the Playwright checks (npm run a11y)
+tests/             PHPUnit tests, in folders like App/'s and Core/'s; tests/Support/ their helpers; tests/browser/ the Playwright checks (npm run a11y)
 docs/              How each part works, deploying, and the load test
 docs/images/       The video, screenshots and diagram in this README
 docs/tools/        The tools behind the docs: the tour and screenshots (npm run tour, npm run screenshots), the diagrams and the load test

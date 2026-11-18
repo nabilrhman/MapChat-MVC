@@ -1,10 +1,11 @@
 <?php
 
-namespace Tests;
+namespace Tests\Models;
 
 use App\Models\Whereabouts;
 use PDO;
 use PHPUnit\Framework\TestCase;
+use Tests\Support\TestDb;
 
 /**
  * A pin shows the city, never an exact location: saved and served to two

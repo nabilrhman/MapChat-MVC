@@ -49,7 +49,7 @@
         --md-pressed: 12%;
 
         /* MapChat's own colours beside the roles */
-        --brand-yellow: #ffc107; /* the line under the header and over the login card, and the author's name */
+        --brand-yellow: #ffc107; /* the line under the header and over the login card */
         --lavender: #ede7f6; /* the chat's tab strip, hovered rows, a photo loading */
         --lavender-hover: #e1d7f2;
         --lavender-tint: #f5f1fb; /* a hovered menu row */

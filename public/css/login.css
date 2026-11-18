@@ -28,7 +28,7 @@ body
     padding: 48px 16px 32px;
 }
 
-@scope (.auth-page) to (.auth-notice, .auth-card, .copyright)
+@scope (.auth-page) to (.auth-notice, .auth-card, .copyright, .source-link)
 {
     /* Logo, title and card, centred between the top of the page and the footer */
     .center
@@ -70,15 +70,19 @@ body
         text-align: center;
     }
 
-    /* Same content as the in-app footer, on one centred line at the bottom of the
-       screen; on a page taller than the screen it comes after the card */
+    /* Same content as the in-app footer, centred at the bottom of the screen:
+       the GitHub icon over the copyright line, so it doesn't crowd the small
+       text. On a page taller than the screen it comes after the card */
     .footer
     {
         width: 100%;
         padding-block-start: 30px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
         color: var(--on-dark-text);
         font-size: 13px;
-        text-align: center;
     }
 }
 

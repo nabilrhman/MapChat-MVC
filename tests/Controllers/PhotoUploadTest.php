@@ -1,9 +1,11 @@
 <?php
 
-namespace Tests;
+namespace Tests\Controllers;
 
 use PDO;
 use PHPUnit\Framework\TestCase;
+use Tests\Support\DrivesTheSite;
+use Tests\Support\TestDb;
 
 /**
  * Photo uploads on a site with its own Cloudinary account, over real HTTP

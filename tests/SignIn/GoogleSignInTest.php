@@ -1,12 +1,13 @@
 <?php
 
-namespace Tests;
+namespace Tests\SignIn;
 
 use App\Models\User;
 use App\SignIn\GoogleAccount;
 use App\SignIn\GoogleSignIn;
 use PDO;
 use PHPUnit\Framework\TestCase;
+use Tests\Support\TestDb;
 
 /**
  * Signing in with Google: which ID tokens are trusted, and which account

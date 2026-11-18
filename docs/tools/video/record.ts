@@ -38,7 +38,9 @@
  * the recording with placeholder ones (the tour never clicks it), and once
  * more afterwards as it was.
  *
- * It prints the rate the recording kept while things moved. Needs
+ * It prints each stage as it starts, after the time the run has taken so
+ * far, as a run takes a few minutes and waits on real replies; then the rate
+ * the recording kept while things moved. Needs
  * Playwright's Chromium (npx playwright install chromium; branded Chrome won't
  * load the extension), ffmpeg, and NVIDIA's NVENC for the GPU encode (x264
  * otherwise). MAPCHAT_SCALE is below; MAPCHAT_CHROMIUM, MAPCHAT_URL, MAPCHAT_ROOT
@@ -83,6 +85,16 @@ const SEED = 7;
 
 // A gap between two frames shorter than this is the page moving, not resting
 const MOTION_GAP_SECONDS = 0.1;
+
+// When the run started (ms), for the elapsed time on each progress line
+const RUN_STARTED_AT = Date.now();
+
+/** Prints how long the run has taken so far and what it's doing now, e.g. "1:05 a private chat with Maya" */
+function printProgress(stage: string): void {
+    const seconds = Math.round((Date.now() - RUN_STARTED_AT) / 1000);
+    const elapsed = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+    console.log(`${elapsed} ${stage}`);
+}
 
 let isWorkerPaused = false;
 // When the tab's recording started and the voice line began playing into the
@@ -132,10 +144,12 @@ class JobRunner {
 }
 
 /**
- * A given guest's private chats with Maya and Rafael, and what they said in
- * the room, so the tour starts afresh. Without an email they're kept
+ * Takes a tour guest's private chats with Maya and Rafael, and what they said
+ * in the room with the answers to it, out of the chat: before a run, so a
+ * given guest starts afresh, and after, so the next pictures don't show this
+ * run's. Without an email there's nothing to clear
  */
-async function clearEarlierTour(guestEmail: string): Promise<void> {
+async function clearTourMessages(guestEmail: string): Promise<void> {
     if (!guestEmail) {
         return;
     }
@@ -319,6 +333,7 @@ async function tour(page: Page, person: Person, guest: Guest, startCapture: () =
         await waitFor(async () => await messagesFrom(name) > before, seconds);
     };
 
+    printProgress('the login page');
     // The login page
     await page.goto(`${URL}/login`);
     await waitSeconds(2.5);
@@ -327,6 +342,7 @@ async function tour(page: Page, person: Person, guest: Guest, startCapture: () =
     await person.moveTo(await requiredCentreOf(page.locator('#guest-form button')));
     await waitSeconds(1);
 
+    printProgress('the room');
     // Signed in: the room, the map and who's online
     await page.context().addCookies([{name: 'PHPSESSID', value: guest.session, url: URL}]);
     await page.goto(`${URL}/app`);
@@ -344,10 +360,12 @@ async function tour(page: Page, person: Person, guest: Guest, startCapture: () =
         await waitSeconds(1);
     }
 
+    printProgress('a pin pointed out from the online list');
     // Hovering someone online points out their pin, with their local time
     await person.moveTo(await requiredCentreOf(onlinePerson('Maya')));
     await waitSeconds(1.8);
 
+    printProgress('a city clicked, its pin flown to the middle');
     // A message's city does the same, and a click brings the pin to the
     // middle. The newest city whose sender has a pin, so the map flies:
     // MapChat greets the guest from Null Island, which has none
@@ -384,6 +402,7 @@ async function tour(page: Page, person: Person, guest: Guest, startCapture: () =
     }
     await waitSeconds(1);
 
+    printProgress('an @mention that Lukas answers');
     // In Everyone: @ brings up who's online, and Lukas answers in the room,
     // tagging the guest back
     const fromLukas = await messagesFrom('Lukas');
@@ -413,6 +432,7 @@ async function tour(page: Page, person: Person, guest: Guest, startCapture: () =
     await waitForReply('Lukas', fromLukas, 45);
     await waitSeconds(3);
 
+    printProgress('a private chat with Maya');
     // A private chat with Maya
     await openChat(onlinePerson, 'Maya');
     await waitSeconds(1);
@@ -423,6 +443,7 @@ async function tour(page: Page, person: Person, guest: Guest, startCapture: () =
     await person.pressEnter();
     await waitSeconds(1.5);
 
+    printProgress('a private chat with Rafael');
     // Then Rafael; Maya's answer comes in meanwhile, as a count on her tab
     await openChat(onlinePerson, 'Rafael');
     await waitSeconds(1);
@@ -434,10 +455,12 @@ async function tour(page: Page, person: Person, guest: Guest, startCapture: () =
     // His "typing", then his answer
     await waitForReply('Rafael', fromRafael);
     await waitSeconds(3.5);
+    printProgress('a question voice typed');
     // And a question back, by voice
     await speakMessage(page, person, composer);
     await waitSeconds(2);
 
+    printProgress('back to Maya');
     // Back to Maya, to read her answer and write back
     await waitForReply('Maya', fromMaya, 20);
     await openChat(chatTab, 'Maya');
@@ -451,6 +474,7 @@ async function tour(page: Page, person: Person, guest: Guest, startCapture: () =
     await waitForReply('Maya', fromMaya);
     await waitSeconds(3);
 
+    printProgress('a tab dragged and closed');
     // Tabs can be dragged into another order, and closed
     await person.drag(await requiredCentreOf(chatTab('Rafael')), await requiredCentreOf(chatTab('Maya')));
     await waitSeconds(1.2);
@@ -467,6 +491,7 @@ async function tour(page: Page, person: Person, guest: Guest, startCapture: () =
     await person.moveTo([x + 40, y + 160]);
     await waitSeconds(1.5);
 
+    printProgress('the profile');
     // The profile, from the account menu: hide your pin whenever you like
     const accountMenuButton = page.locator('#account-menu-button');
     await person.click(await requiredCentreOf(accountMenuButton));
@@ -587,6 +612,7 @@ async function main(): Promise<void> {
     }
     const workDir = mkdtempSync(join(tmpdir(), 'mapchat-tour-'));
     const recording = join(workDir, 'tour.webm');
+    printProgress('setting up: the app, a guest, the paused worker');
     // Sessions live in the database, so a guest's outlasts the app starting again
     const hasPlaceholderGoogle = await showGoogleSignIn(workDir);
     const guest = GIVEN_GUEST.session ? GIVEN_GUEST : await signInNewGuest();
@@ -603,7 +629,7 @@ async function main(): Promise<void> {
         });
     }
 
-    await clearEarlierTour(GIVEN_GUEST.email);
+    await clearTourMessages(GIVEN_GUEST.email);
     await pauseWorker();
     const jobs = new JobRunner();
     try {
@@ -612,6 +638,7 @@ async function main(): Promise<void> {
         // it. The permission is granted when it's used (speakMessage), not by
         // --use-fake-ui-for-media-stream, which stops the tab's capture finding its source
         const fakeMicrophone = ['--use-fake-device-for-media-stream', `--use-file-for-fake-audio-capture=${VOICE_LINE_FILE}%noloop`];
+        printProgress('opening Chrome with the capture extension');
         context = await launchWithExtension(CAPTURE_EXTENSION, {width: WIDTH, height: HEIGHT, scale: SCALE}, {handlesSignals: true, extraFlags: fakeMicrophone});
         await context.addInitScript(drawPointer, readThemeCursors(SCALE));
         const page = context.pages()[0] ?? await context.newPage();
@@ -632,8 +659,11 @@ async function main(): Promise<void> {
         if (hasPlaceholderGoogle) await restoreApp();
     }
 
+    printProgress('encoding the video');
     await encode(recording);
+    await clearTourMessages(guest.email);
     console.log(`${OUT}: ${(await motionFps(recording)).toFixed(1)}fps recorded while moving, at ${WIDTH * SCALE}×${HEIGHT * SCALE}`);
+    printProgress('done');
     rmSync(workDir, {recursive: true, force: true});
 }
 

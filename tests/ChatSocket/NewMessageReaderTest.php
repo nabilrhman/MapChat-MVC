@@ -1,11 +1,12 @@
 <?php
 
-namespace Tests;
+namespace Tests\ChatSocket;
 
 use App\ChatSocket\NewMessageReader;
 use App\Models\Chat;
 use PDO;
 use PHPUnit\Framework\TestCase;
+use Tests\Support\TestDb;
 
 /**
  * A reader with a clock the tests move

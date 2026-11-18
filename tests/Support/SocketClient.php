@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests;
+namespace Tests\Support;
 
 /**
  * A WebSocket client for the chat socket tests, sending what a chat page

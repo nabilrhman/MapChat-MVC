@@ -239,6 +239,11 @@ async function takeProfilePicture(browser: Browser): Promise<void> {
 /** Saves the page as it shows now to docs/images */
 async function savePicture(page: Page, name: string): Promise<void> {
     const path = join(IMAGES, name);
+    // A count rolling to a new number or a row easing in, caught halfway, looks
+    // broken; loops like the loading dots never end, so they don't count
+    const isStill = () => document.getAnimations().every((animation) => animation.playState !== 'running' || animation.effect?.getTiming().iterations === Infinity);
+    await page.waitForFunction(isStill, undefined, {timeout: 5000})
+        .catch(() => console.warn(`${name}: something was still moving after 5s; look at it`));
     await page.screenshot({path});
     console.log(path);
 }

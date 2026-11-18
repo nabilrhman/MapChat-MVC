@@ -1,10 +1,11 @@
 <?php
 
-namespace Tests;
+namespace Tests\Models;
 
 use App\Models\User;
 use PDO;
 use PHPUnit\Framework\TestCase;
+use Tests\Support\TestDb;
 
 /**
  * Setting a nickname on the profile. Each test runs in a transaction that

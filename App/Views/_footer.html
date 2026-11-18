@@ -1,6 +1,6 @@
 {# The site's footer: a link to the code, and the copyright line #}
 {% types {} %}
 <footer class="site-footer">
-    <a href="https://github.com/nabilrhman/MapChat-MVC" class="source" aria-label="Source code on GitHub">{{ icon('github') }}</a>
+    {{ include('_source_link.html', with_context = false) }}
     {{ include('_copyright.html', with_context = false) }}
 </footer>

@@ -1,9 +1,11 @@
 <?php
 
-namespace Tests;
+namespace Tests\SignIn;
 
 use PDO;
 use PHPUnit\Framework\TestCase;
+use Tests\Support\DrivesTheSite;
+use Tests\Support\TestDb;
 
 /**
  * Logging in, logging out and saving the profile, over real HTTP requests to

@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests;
+namespace Tests\Core;
 
 use Core\SameOrigin;
 use PHPUnit\Framework\TestCase;
