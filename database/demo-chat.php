@@ -162,7 +162,7 @@ return [
             ['maya', 'rafael, important question: how many pastéis de nata is too many in one day?'],
             ['rafael', 'there is no such number 😌'],
             ['maya', 'that\'s what i hoped. my budget disagrees 💸'],
-            ['rafael', 'get them warm, with cinnamon, from a place with a queue of grandmas. trust the grandmas'],
+            ['rafael', 'get them warm, with cinnamon, from a bakery with a line of locals out the door'],
         ],
         [
             ['maya', 'i put every lisbon tip from you all on one map 🗺️'],

@@ -240,7 +240,7 @@ body
     padding: 48px 16px 32px;
 }
 
-@scope (.auth-page) to (.auth-notice, .auth-card, .copyright, .source-link)
+@scope (.auth-page) to (.notice-band, .auth-card, .copyright, .source-link)
 {
     /* Logo, title and card, centred between the top of the page and the footer */
     .center
@@ -417,53 +417,54 @@ body
     }
 }
 
-/* A one-time message above the card, as wide as it: a Material 3 tonal
-   notice with an icon, like the guest banner on Profile, tinted by type */
-.auth-notice
+/* A one-time message to act on, above the card and as wide as it, in the
+   toast's look (ui.css), staying put till the form's used. Its band opens
+   to its height and closes again, so the card glides rather than jumps */
+.notice-band
 {
-    display: flex;
-    align-items: center;
-    gap: var(--icon-gap);
-    box-sizing: border-box;
+    display: grid;
+    grid-template-rows: 1fr;
     width: 100%;
     max-width: 400px;
-    margin-block-end: 12px;
-    padding: 12px 16px;
-    background-color: var(--md-primary-container);
-    box-shadow: var(--md-elevation-2);
-    color: var(--md-on-primary-container);
-    font-size: 14px;
-    font-weight: 500;
-    line-height: 1.4;
-    animation: auth-notice-in var(--dur) var(--ease-out);
-}
+    animation: notice-band-open var(--dur-slow) var(--ease-emphasized) var(--delay-first-paint) backwards;
 
-.auth-notice.success
-{
-    background-color: var(--success-container);
-    color: var(--on-success-container);
-}
-
-.auth-notice.warning
-{
-    background-color: var(--warning-container);
-    color: var(--on-warning-container);
-}
-
-@scope (.auth-notice)
-{
-    .icon
+    &.is-leaving
     {
-        flex-shrink: 0;
-        font-size: 20px;
-        color: var(--md-primary);
+        animation: notice-band-close var(--dur-slow) var(--ease-in-out) forwards;
     }
-
-    :scope.success .icon { color: var(--success); }
-    :scope.warning .icon { color: var(--warning); }
 }
 
-@keyframes auth-notice-in
+@scope (.notice-band) to (.toast)
 {
-    from { opacity: 0; transform: translateY(-6px); }
+    /* Room at the sides for the toast's shadow, which the clip would cut */
+    .clip
+    {
+        min-height: 0;
+        overflow: hidden;
+        margin-inline: -6px;
+        padding-inline: 6px;
+    }
+}
+
+.toast.lasting
+{
+    box-sizing: border-box;
+    margin-block-end: 12px;
+    padding-inline-end: 12px;
+    cursor: default;
+    --toast-from: translateY(-12px);
+}
+
+@keyframes notice-band-open
+{
+    from { grid-template-rows: 0fr; }
+}
+
+@keyframes notice-band-close
+{
+    to
+    {
+        grid-template-rows: 0fr;
+        opacity: 0;
+    }
 }

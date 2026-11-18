@@ -141,7 +141,18 @@
     {
         display: flex;
         justify-content: center;
+        align-items: center;
+        height: 100%;
+        box-sizing: border-box;
         padding: 12px 16px;
+    }
+
+    /* While they load, the online part fills the list, so the dots sit
+       halfway down it */
+    .list:has(.loading)
+    {
+        display: grid;
+        grid-template-rows: 1fr;
     }
 }
 

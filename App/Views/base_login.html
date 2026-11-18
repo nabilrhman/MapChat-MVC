@@ -27,6 +27,8 @@
 </head>
 
 <body>
+{% set messages = flash_messages() %}
+{% set lasting_messages = messages|filter(message => message.type != 'success') %}
 {# A screenshot of the map, shown while it loads and in its place without
    WebGL. An img, not a CSS background, so asset() changes its address
    each time it's retaken and browsers don't keep the old one #}
@@ -42,11 +44,17 @@
         <h1 class="title">{% block heading %}{% endblock %}</h1>
         <p class="subtitle">{% block subheading %}{% endblock %}</p>
 
-        {# One-time messages ("Check your email…") as a bar above the card #}
-        {% for message in flash_messages() %}
-        <div class="auth-notice {{ message.type }}" role="status">
-            {{ icon({success: 'check-circle', warning: 'danger-circle'}[message.type] ?? 'info-circle') }}
-            <span>{{ message.body }}</span>
+        {# A one-time message to act on ("Check your email…", "Wrong
+           password") stays as a bar above the card till the form's used
+           (auth-forms.js); a plain "done" fades as a toast, as in the app #}
+        {% for message in lasting_messages %}
+        <div class="notice-band" data-part="lasting-notice">
+            <div class="clip">
+                <div class="toast lasting {{ message.type }}" role="status">
+                    {{ icon({success: 'check-circle', warning: 'danger-circle'}[message.type] ?? 'info-circle', 'type-icon') }}
+                    <span class="text">{{ message.body }}</span>
+                </div>
+            </div>
         </div>
         {% endfor %}
 
@@ -60,12 +68,15 @@
 </main>
 
 <script nonce="{{ csp_nonce }}" src="{{ asset('/js/core/dom.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/core/toast.js') }}"></script>
 <script nonce="{{ csp_nonce }}" src="{{ asset('/js/forms/form-checks.js') }}"></script>
 <script nonce="{{ csp_nonce }}" src="{{ asset('/js/sign-in/auth-forms.js') }}"></script>
 <script nonce="{{ csp_nonce }}" src="{{ asset('/js/forms/password-toggle.js') }}"></script>
 <script nonce="{{ csp_nonce }}" src="{{ asset('/js/core/loading-bar.js') }}"></script>
 <script nonce="{{ csp_nonce }}" src="{{ asset('/js/map/map-style.js') }}"></script>
 <script nonce="{{ csp_nonce }}" src="{{ asset('/js/map/login-map.js') }}"></script>
+
+{{ include('_toast_messages.html', {messages: messages|filter(message => message.type == 'success')}, with_context = false) }}
 
 {% block footer %}{% endblock %}
 </body>

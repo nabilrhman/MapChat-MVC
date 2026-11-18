@@ -64,7 +64,8 @@ class Signup extends \Core\Controller
      */
     public function successAction(): void
     {
-        Flash::addMessage('Account created. Check your email to activate it.', Flash::SUCCESS);
+        // Info, not success: it's something to do, so it stays above the card
+        Flash::addMessage('Account created. Check your email to activate it.', Flash::INFO);
         $this->redirect('/login');
     }
 

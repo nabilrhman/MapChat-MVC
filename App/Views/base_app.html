@@ -54,7 +54,7 @@
 <script nonce="{{ csp_nonce }}" src="{{ asset('/js/core/loading-bar.js') }}"></script>
 <script nonce="{{ csp_nonce }}" src="{{ asset('/js/core/header.js') }}"></script>
 <script nonce="{{ csp_nonce }}" src="{{ asset('/js/core/tooltip.js') }}"></script>
-{{ include('_flash.html', with_context = false) }}
+{{ include('_toast_messages.html', {messages: flash_messages()}, with_context = false) }}
 
 {% block footer %}{% endblock %}
 </body>

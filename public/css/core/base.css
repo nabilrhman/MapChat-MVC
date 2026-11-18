@@ -74,16 +74,13 @@
         --on-dark-text: color-mix(in srgb, var(--md-on-primary) 85%, transparent);
         --on-dark-muted: color-mix(in srgb, var(--md-on-primary) 70%, transparent);
 
-        /* Done and take-care notices: a tonal box on light ground, or an icon
-           on the dark snackbar */
+        /* Done and take-care notices: a tonal box on light ground */
         --success: #2e7d32;
         --success-container: #e8f5e9;
         --on-success-container: #1b5e20;
-        --success-on-dark: #a5d6a7;
         --warning: #ef6c00;
         --warning-container: #fff3e0;
         --on-warning-container: #8a3c00;
-        --warning-on-dark: #ffb74d;
     }
 
     html

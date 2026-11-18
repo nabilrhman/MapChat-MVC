@@ -80,8 +80,8 @@ Done when:
   online and her answer
   arriving, the private chats' replies, the question to Rafael voice typed
   (the wave moving, the dots in the box while it's written out, then the
-  words in the box and sent), the tab moved and closed, the profile
-  scrolled to its bottom;
+  words in the box and sent), the tab moved, Rafael thanked, then the tab
+  closed, the profile scrolled to its bottom;
 - the voice line is heard while the mic's wave moves: the script prints
   where it lays the line, and the frames there show the wave;
 - the notifications offer slides in and is closed at the start. The tour
