@@ -272,11 +272,45 @@ class BotTest extends TestCase
         $this->assertSame([[null, 'reply 1']], $this->botSaid());
     }
 
-    public function testRepliesWaitForTheRoomCooldown(): void
+    public function testABurstOfNewVisitorsGetsOneGreeting(): void
     {
         TestBot::onArrival(self::ANN);
         TestBot::onArrival(self::BOB);
+        $this->wait(Bot::GREET_SECONDS + Bot::ROOM_COOLDOWN_SECONDS);
+        TestBot::onArrival(self::CAT);
+        $this->wait(Bot::GREET_SECONDS + Bot::ROOM_COOLDOWN_SECONDS);
+
+        $said = $this->botSaid();
+        $this->assertCount(1, $said);
+        $this->assertStringStartsWith('@Ann ', $said[0][1]);
+
+        // Once the room has been quiet a while, the next visitor is greeted
+        $this->wait(Bot::ROOM_GREET_MINUTES * 60);
+        TestBot::onArrival(self::CAT);
         $this->wait(Bot::GREET_SECONDS);
+
+        $this->assertCount(2, $this->botSaid());
+    }
+
+    public function testAGreetingDroppedForSpeakingFirstDoesntHoldBackTheNext(): void
+    {
+        TestBot::onArrival(self::ANN);
+        $this->send(self::ANN, '@MapChat hi');
+        $this->wait(Bot::GREET_SECONDS + Bot::ROOM_COOLDOWN_SECONDS);
+        $this->assertCount(1, $this->botSaid(), 'the answer to Ann, not a greeting');
+
+        $this->wait(Bot::QUIET_MINUTES * 60);
+        TestBot::onArrival(self::BOB);
+        $this->wait(Bot::GREET_SECONDS);
+
+        $this->assertStringStartsWith('@Bob ', $this->botSaid()[1][1]);
+    }
+
+    public function testRepliesWaitForTheRoomCooldown(): void
+    {
+        $this->send(self::ANN, '@MapChat what is this map?');
+        $this->send(self::BOB, '@MapChat hi there');
+        $this->wait(Bot::FOLLOW_UP_SECONDS);
 
         $this->assertCount(1, $this->botSaid());
 
