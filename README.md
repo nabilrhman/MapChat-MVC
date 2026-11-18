@@ -1,8 +1,8 @@
 <div align="center">
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="public/res/logo-mapchat-white.svg">
-  <img src="public/res/logo-mapchat.svg" width="260" alt="MapChat">
+  <source media="(prefers-color-scheme: dark)" srcset="public/images/logo-mapchat-white.svg">
+  <img src="public/images/logo-mapchat.svg" width="260" alt="MapChat">
 </picture>
 
 An open chat room on a map, running on an MVC framework<br>

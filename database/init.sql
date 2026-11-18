@@ -172,7 +172,7 @@ CREATE TABLE push_subscriptions (
 -- A built-in account that posts the welcome messages and chats back. It has
 -- no usable password (the hash below matches nothing) and cannot log in.
 INSERT INTO users (name, email, password_hash, is_active, avatar)
-VALUES ('MapChat', 'bot@mapchat.local', '!', TRUE, '/res/avatar-mapchat.svg');
+VALUES ('MapChat', 'bot@mapchat.local', '!', TRUE, '/images/avatar-mapchat.svg');
 
 -- It "chats from" Null Island, the made-up spot at 0, 0 where maps put things
 -- that have no real location. XN is a code ISO leaves free, with our own flag
