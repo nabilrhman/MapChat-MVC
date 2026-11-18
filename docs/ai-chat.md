@@ -10,7 +10,8 @@ the characters only follow their script.
 **MapChat**, the room's own account. It has no pin on the map, and the
 people list places it on Null Island:
 
-- Says hello when someone walks into a quiet room, once a day per person.
+- Says hello when someone walks into a quiet room, once a day per person and
+  at most once every 10 minutes in the room.
 - Answers someone nobody else answered, giving others 45 seconds first.
 - Keeps a conversation going, and steps back when people talk to each other.
   An @MapChat always gets an answer.

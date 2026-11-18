@@ -33,6 +33,9 @@ class Bot extends \Core\Model
     /** One greeting per person this often, however many times they open the chat */
     const GREET_COOLDOWN_HOURS = 24;
 
+    /** One greeting in the room this often, however many new guests walk in */
+    const ROOM_GREET_MINUTES = 10;
+
     /**
      * How long someone else online has to answer a visitor before MapChat
      * does. With nobody else online it answers as soon as a follow-up
@@ -92,11 +95,17 @@ class Bot extends \Core\Model
     /**
      * Someone opened the chat. If the room is quiet, greet them in a moment,
      * unless they speak first. Every tab and reload calls this; only the
-     * first in GREET_COOLDOWN_HOURS makes a greeting
+     * first in GREET_COOLDOWN_HOURS makes a greeting, and only if nobody
+     * else was greeted in the last ROOM_GREET_MINUTES
      */
     public static function onArrival(string $email): void
     {
         if (!Characters::isPerson($email) || !static::isQuiet($email) || static::wasGreetedLately($email)) {
+            return;
+        }
+
+        // Each fresh browser is a new guest, so a burst of them would stack greetings
+        if (static::wasAnyoneGreetedLately()) {
             return;
         }
 
@@ -541,6 +550,23 @@ class Bot extends \Core\Model
             ':greeting' => BotJobKind::Greeting->value,
             ':email' => $email,
             ':since' => static::databaseTime(-static::GREET_COOLDOWN_HOURS * 3600),
+        ]);
+
+        return $stmt->fetchColumn() > 0;
+    }
+
+    /**
+     * Whether anyone got a greeting, or was about to, within ROOM_GREET_MINUTES.
+     * One dropped because they spoke first doesn't count
+     */
+    protected static function wasAnyoneGreetedLately(): bool
+    {
+        $stmt = static::getDB()->prepare('SELECT COUNT(*) FROM mapchat_jobs
+                                          WHERE kind = :greeting AND created_at > :since
+                                            AND (done_at IS NULL OR posted_id IS NOT NULL)');
+        $stmt->execute([
+            ':greeting' => BotJobKind::Greeting->value,
+            ':since' => static::databaseTime(-static::ROOM_GREET_MINUTES * 60),
         ]);
 
         return $stmt->fetchColumn() > 0;
