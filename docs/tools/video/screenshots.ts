@@ -216,7 +216,7 @@ async function takeLoginPicture(browser: Browser): Promise<void> {
         // The live map in, and a pin saying hello in English, which the
         // README's readers can read. The pins take turns, so it can take a while
         await page.locator('#login-map.is-shown').waitFor({state: 'attached', timeout: 20_000});
-        await page.locator('.bubble.is-shown[lang^="en"]').first().waitFor({state: 'attached', timeout: 90_000});
+        await page.locator('.bubble.is-shown:has(.message[lang^="en"])').first().waitFor({state: 'attached', timeout: 90_000});
         await waitSeconds(1);
         await savePicture(page, 'mapchat-login.png');
         await context.close();
