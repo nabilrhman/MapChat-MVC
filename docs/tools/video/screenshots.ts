@@ -6,7 +6,10 @@
  *
  * The README's email pictures stay as they are.
  *
- * - mapchat-app.png: a new guest opens two private chats as tabs and sends
+ * Each picture is taken logged in as Alex Morgan, as in the tour: an account
+ * made for the run, and deleted with what Alex said at the end.
+ *
+ * - mapchat-app.png: Alex opens two private chats as tabs and sends
  *   the room a message that @mentions someone, then the room is shown with a
  *   message being written in the box that @mentions someone, and the pin
  *   nearest the middle of the map panned to the middle with its label open,
@@ -14,7 +17,7 @@
  * - mapchat-phone.png: the room on a phone, with a pin in the middle of the
  *   map and its label open as a tap opens it.
  * - mapchat-phone-online.png: the same phone with the online list slid open.
- * - mapchat-profile.png: a new guest's profile page.
+ * - mapchat-profile.png: Alex's profile page.
  * - mapchat-login.png: the login page, with Continue with Google.
  *
  * The environment is chrome.ts's
@@ -24,7 +27,10 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import type {Browser, Page} from 'playwright';
 
-import {launchChrome, printRenderer, REPO, restoreApp, startAppForRecording, signInAsNewGuest, sql, URL} from './chrome.ts';
+import {
+    ALEX_EMAIL, ALEX_SHOWN_NAME, type AlexAccount, deleteAlexAccount, launchChrome, logInAsAlex, makeAlexAccount, printRenderer, REPO, restoreApp,
+    sql, startAppForRecording, URL,
+} from './chrome.ts';
 import {waitSeconds} from './person.ts';
 
 const DESKTOP = {width: 1440, height: 900};
@@ -35,10 +41,10 @@ const PHONE_LEAST_ZOOM = 1.5;
 // The README wants sharp pictures on high-density screens
 const PIXEL_RATIO = 2;
 const IMAGES = join(REPO, 'docs/images');
-// Being written in the box, as if the guest were about to send it, with a mention's chip
+// Being written in the box, as if Alex were about to send it, with a mention's chip
 const draftFor = (person: ListedPerson): string => `@${person.shown_name} anyone else still up? 🌙 what time is it where you are?`;
 
-/** What the guest sends to the first demo person, so a mention chip shows */
+/** What Alex sends to the first demo person, so a mention chip shows */
 const mentionFor = (person: ListedPerson): string => `@${person.shown_name} what's the weather like where you are? ☀️`;
 
 /** A person in the online list, as people.js has them */
@@ -108,14 +114,9 @@ async function tapMiddlePinUntilLabelShows(page: Page): Promise<void> {
     throw new Error('Tapping a pin never opened its label');
 }
 
-// Every guest this run signs in, so what was said to them is taken out of the room at the end
-const guestEmails: string[] = [];
-
-/** Signs in a new guest, as anyone trying it would be, and closes the offer of notifications */
-async function signInFresh(page: Page): Promise<void> {
-    await page.goto(`${URL}/login`);
-    const {email} = await signInAsNewGuest(page);
-    guestEmails.push(email);
+/** Logs Alex in, and closes the offer of notifications */
+async function logIn(page: Page, account: AlexAccount): Promise<void> {
+    await logInAsAlex(page, account);
     await waitSeconds(4);
 
     const closeNotificationsOffer = page.locator('#notify-prompt-dismiss');
@@ -124,27 +125,26 @@ async function signInFresh(page: Page): Promise<void> {
     }
 }
 
-/** Logs the guest out, so they don't show as online in the next pictures */
+/** Logs Alex out, so the next picture's login starts afresh */
 async function signOut(page: Page): Promise<void> {
     await page.evaluate(() => fetch('/logout', {method: 'POST'}));
 }
 
 /**
- * Takes what a guest said, and what was said to them, out of the room, so
- * the next run's pictures don't show this one's too
+ * Takes what Alex said, and what was said to Alex, out of the room, so the
+ * next run's pictures don't show this one's too
  */
-async function removeWhatWasSaid(guestEmail: string): Promise<void> {
-    const shownName = await sql(`SELECT name FROM users WHERE email = '${guestEmail}'`);
-    await sql(`DELETE FROM chats WHERE email = '${guestEmail}'
-        OR ((email = 'bot@mapchat.local' OR email LIKE '%@demo.mapchat.local') AND body LIKE '@${shownName} %')`);
+async function removeWhatWasSaid(): Promise<void> {
+    await sql(`DELETE FROM chats WHERE email = '${ALEX_EMAIL}' OR to_email = '${ALEX_EMAIL}'
+        OR ((email = 'bot@mapchat.local' OR email LIKE '%@demo.mapchat.local') AND body LIKE '@${ALEX_SHOWN_NAME} %')`);
 }
 
 /** The room with two private chats open as tabs, a draft in the box and a pin's label open */
-async function takeDesktopPicture(browser: Browser): Promise<void> {
+async function takeDesktopPicture(browser: Browser, account: AlexAccount): Promise<void> {
     const context = await browser.newContext({viewport: DESKTOP, deviceScaleFactor: PIXEL_RATIO});
     const page = await context.newPage();
     await printRenderer(page);
-    await signInFresh(page);
+    await logIn(page, account);
 
     // Two private chats open as tabs, then back to the room
     const demoPeople: ListedPerson[] = await page.evaluate(() => getPeopleToMention().filter((p) => Number(p.is_demo) && p.isOnline));
@@ -174,7 +174,7 @@ async function takeDesktopPicture(browser: Browser): Promise<void> {
 }
 
 /** The room on a phone with a pin's label open, then with the online list slid open */
-async function takePhonePictures(browser: Browser): Promise<void> {
+async function takePhonePictures(browser: Browser, account: AlexAccount): Promise<void> {
     const context = await browser.newContext({
         viewport: PHONE,
         deviceScaleFactor: PIXEL_RATIO,
@@ -182,7 +182,7 @@ async function takePhonePictures(browser: Browser): Promise<void> {
         hasTouch: true,
     });
     const page = await context.newPage();
-    await signInFresh(page);
+    await logIn(page, account);
     await waitSeconds(2);
     await page.evaluate(() => scrollToNewest('instant'));
 
@@ -228,11 +228,11 @@ async function takeLoginPicture(browser: Browser): Promise<void> {
     }
 }
 
-/** A new guest's profile page, one screen of it: the same size as the login's, so they share a row evenly */
-async function takeProfilePicture(browser: Browser): Promise<void> {
+/** Alex's profile page, one screen of it: the same size as the login's, so they share a row evenly */
+async function takeProfilePicture(browser: Browser, account: AlexAccount): Promise<void> {
     const context = await browser.newContext({viewport: DESKTOP, deviceScaleFactor: PIXEL_RATIO});
     const page = await context.newPage();
-    await signInFresh(page);
+    await logIn(page, account);
     await page.goto(`${URL}/profile/show`);
     await waitSeconds(2);
     await savePicture(page, 'mapchat-profile.png');
@@ -253,19 +253,20 @@ async function savePicture(page: Page, name: string): Promise<void> {
 }
 
 async function main(): Promise<void> {
+    await removeWhatWasSaid();
+    const account = await makeAlexAccount();
     const browser = await launchChrome();
     try {
-        await takeDesktopPicture(browser);
-        await takePhonePictures(browser);
-        await takeProfilePicture(browser);
+        await takeDesktopPicture(browser, account);
+        await takePhonePictures(browser, account);
+        await takeProfilePicture(browser, account);
         // Last, as it may start the app again
         await takeLoginPicture(browser);
     } finally {
         await browser.close();
         // Last, so an answer that came in late goes too
-        for (const guestEmail of guestEmails) {
-            await removeWhatWasSaid(guestEmail);
-        }
+        await removeWhatWasSaid();
+        await deleteAlexAccount();
     }
 }
 

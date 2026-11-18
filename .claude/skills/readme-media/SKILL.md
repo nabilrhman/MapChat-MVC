@@ -15,25 +15,26 @@ and profile pictures retaken.
 
 ## 1. The room, phone, login and profile pictures
 
-Run `npm run screenshots`. It writes five pictures to `docs/images/`, all
+Run `npm run screenshots`. It logs in as Alex Morgan, an account it makes for
+the run, as the tour does, and writes five pictures to `docs/images/`, all
 at 2x:
 
 - `mapchat-app.png`, 1440×900: the room, two private chats open as tabs, a
-  message the guest sent that @mentions a demo person (who answers), a
+  message Alex sent that @mentions a demo person (who answers), a
   message being written in the box that @mentions another, and the pin
   nearest the middle panned to the middle of the map with its label open;
 - `mapchat-phone.png`, an iPhone's 393×852: the room with a pin panned to
   the middle of the map and its label open, as a tap opens it;
 - `mapchat-phone-online.png`: the same phone with the online list slid open;
-- `mapchat-profile.png`, 1440×900: a new guest's profile, one screen of it,
+- `mapchat-profile.png`, 1440×900: Alex's profile, one screen of it,
   so it matches the login in size and they share their row evenly;
 - `mapchat-login.png`, 1440×900: the login page with Continue with Google.
   Without Google keys, the app is started again with placeholder ones for it,
   then as it was.
 
-Each run signs its guests out when their pictures are done, and at the end
-takes what they said, and what was said to them, out of the room, so the
-next run's pictures don't show this one's.
+Each run logs Alex out when a picture is done, and at the end takes what
+Alex said, and what was said to Alex, out of the room and deletes the
+account, so the next run's pictures don't show this one's.
 
 Done when you've looked at all five and they show the current app with all
 of that: the label's pin in the middle of the open map, the chips in the

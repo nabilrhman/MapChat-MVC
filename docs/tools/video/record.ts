@@ -47,7 +47,6 @@
  * (set it when recording from a git worktree), MAPCHAT_GPU and
  * MAPCHAT_CHROME_FLAGS are in chrome.ts
  */
-import {randomBytes} from 'node:crypto';
 import {appendFileSync, existsSync, mkdtempSync, rmSync} from 'node:fs';
 import {createServer} from 'node:http';
 import type {AddressInfo} from 'node:net';
@@ -56,18 +55,13 @@ import {join} from 'node:path';
 import type {BrowserContext, Locator, Page} from 'playwright';
 
 import {
-    app, isGoogleSignInShown, launchWithExtension, printRenderer, REPO, restoreApp, run, sql, startAppForRecording, URL, USES_GPU, waitFor,
+    ALEX_EMAIL, app, deleteAlexAccount, isGoogleSignInShown, makeAlexAccount, type AlexAccount, launchWithExtension, printRenderer, REPO, restoreApp, run, sql, startAppForRecording, URL, USES_GPU, waitFor,
 } from './chrome.ts';
 import {Person, type Point, SeededRandom, waitSeconds} from './person.ts';
 import {drawPointer, readThemeCursors} from './pointer.ts';
 import {VOICE_LINE_FILE} from './voice-line.ts';
 import {receiveBinaryMessages} from './websocket.ts';
 
-/** The account the tour logs in as, made for the run */
-type TourAccount = {email: string, password: string};
-
-const TOUR_NAME = 'Alex Morgan';
-const TOUR_EMAIL = 'alex.morgan@example.com';
 // The demo person the tour calls into the room, kept away till then
 const AWAY_DEMO_PERSON = 'emily';
 const OUT = join(REPO, 'docs/images/mapchat-tour.mp4');
@@ -159,30 +153,16 @@ async function clearTourMessages(email: string): Promise<void> {
     await sql(`DELETE FROM chats WHERE email = '${email}' AND to_email IS NULL`);
 }
 
-// Run in the app's container with the email, name and password as
-// arguments, so none of them is read as PHP. An account left by a run that
-// stopped part way goes first
-const MAKE_TOUR_ACCOUNT_PHP = `require 'vendor/autoload.php';
-App\\Models\\User::findByEmail($argv[1])?->delete();
-$user = new App\\Models\\User(['email' => $argv[1], 'name' => $argv[2], 'password' => $argv[3]]);
-if (!$user->save()) { fwrite(STDERR, json_encode($user->errors)); exit(1); }`;
-
-const DELETE_TOUR_ACCOUNT_PHP = `require 'vendor/autoload.php';
-App\\Models\\User::findByEmail($argv[1])?->delete();`;
-
-/** Alex's account, new and active, with a password made for this run */
-async function makeTourAccount(): Promise<TourAccount> {
-    const password = `tour${randomBytes(9).toString('hex')}7`;
-    await clearTourMessages(TOUR_EMAIL);
-    await app('php', '-r', MAKE_TOUR_ACCOUNT_PHP, '--', TOUR_EMAIL, TOUR_NAME, password);
-    // Active without the emailed link, which a local app may send
-    await sql(`UPDATE users SET is_active = 1 WHERE email = '${TOUR_EMAIL}'`);
-    return {email: TOUR_EMAIL, password};
+/** Alex's account, made afresh, with nothing left from a run that stopped part way */
+async function makeTourAccount(): Promise<AlexAccount> {
+    await clearTourMessages(ALEX_EMAIL);
+    return makeAlexAccount();
 }
 
+/** Takes Alex's words out of the chat, then the account */
 async function deleteTourAccount(): Promise<void> {
-    await clearTourMessages(TOUR_EMAIL);
-    await app('php', '-r', DELETE_TOUR_ACCOUNT_PHP, '--', TOUR_EMAIL);
+    await clearTourMessages(ALEX_EMAIL);
+    await deleteAlexAccount();
 }
 
 /**
@@ -308,7 +288,7 @@ async function requiredCentreOf(element: Locator): Promise<Point> {
 }
 
 /** The tour itself, step by step, while the screencast saves each frame */
-async function tour(page: Page, person: Person, account: TourAccount, startCapture: () => Promise<void>, stopCapture: () => Promise<void>): Promise<void> {
+async function tour(page: Page, person: Person, account: AlexAccount, startCapture: () => Promise<void>, stopCapture: () => Promise<void>): Promise<void> {
     const onlinePerson = (name: string) => page.locator('[data-part="person"]', {hasText: name}).first();
     const chatTab = (name: string) => page.locator('[data-part="tab"]', {hasText: name}).first();
     const composer = page.locator('#textarea-send');
