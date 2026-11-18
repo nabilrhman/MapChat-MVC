@@ -1,7 +1,8 @@
 /**
  * What the tour and the screenshots share: where the app is, the commands
- * run in its containers, showing Continue with Google without real keys,
- * headless Chrome drawing on the GPU, and signing a new guest in.
+ * run in its containers, starting the app with the settings a recording
+ * needs (Continue with Google without real keys), headless Chrome drawing
+ * on the GPU, and signing a new guest in.
  *
  * MAPCHAT_URL is the app's address (default http://localhost:8080).
  * MAPCHAT_ROOT is the checkout whose docker compose project runs the app
@@ -66,16 +67,14 @@ export async function waitFor(isDone: () => Promise<boolean>, seconds = 40): Pro
     return false;
 }
 
-// The app container's environment for a recording, when it has no Google keys
-const PLACEHOLDER_GOOGLE_KEYS = `services:
-  app:
-    environment:
-      GOOGLE_CLIENT_ID: tour-recording
-      GOOGLE_CLIENT_SECRET: tour-recording
-`;
+// The app container's Google keys for a recording, when it has none
+const PLACEHOLDER_GOOGLE_KEYS = {
+    GOOGLE_CLIENT_ID: 'tour-recording',
+    GOOGLE_CLIENT_SECRET: 'tour-recording',
+};
 
 /** Whether the login page offers Continue with Google */
-async function isGoogleSignInShown(): Promise<boolean> {
+export async function isGoogleSignInShown(): Promise<boolean> {
     const loginPage = await fetch(`${URL}/login`).then((response) => response.text()).catch(() => '');
     return loginPage.includes('href="/login/google"');
 }
@@ -92,26 +91,34 @@ async function waitForApp(isGoogleWanted: boolean): Promise<void> {
 }
 
 /**
- * Starts the app again with placeholder Google keys when it has none, so
- * the login page shows the button, as the live site's does
+ * Starts the app again with the settings a recording needs, when it needs
+ * any: the ones given, and placeholder Google keys when it has none, so the
+ * login page shows the button, as the live site's does
  *
+ * @param environment More of the app's settings, by name
  * @returns Whether it did, so the app is started again as it was afterwards
  */
-export async function showGoogleSignIn(workDir: string): Promise<boolean> {
-    if (await isGoogleSignInShown()) {
+export async function startAppForRecording(workDir: string, environment: Record<string, string> = {}): Promise<boolean> {
+    const settings = await isGoogleSignInShown() ? environment : {...environment, ...PLACEHOLDER_GOOGLE_KEYS};
+    if (Object.keys(settings).length === 0) {
         return false;
     }
-    const overrideFile = join(workDir, 'google-keys.yml');
-    writeFileSync(overrideFile, PLACEHOLDER_GOOGLE_KEYS);
+    const settingLines = Object.entries(settings).map(([name, value]) => `      ${name}: ${value}`);
+    const overrideFile = join(workDir, 'recording.yml');
+    writeFileSync(overrideFile, ['services:', '  app:', '    environment:', ...settingLines, ''].join('\n'));
     await compose(['up', '-d', '--no-deps', 'app'], [overrideFile]);
     await waitForApp(true);
     return true;
 }
 
-/** Starts the app again with its own .env, as it was before */
-export async function restoreApp(): Promise<void> {
+/**
+ * Starts the app again with its own .env, as it was before
+ *
+ * @param hasGoogleKeys Whether its own settings show Continue with Google
+ */
+export async function restoreApp(hasGoogleKeys = false): Promise<void> {
     await compose(['up', '-d', '--no-deps', 'app']);
-    await waitForApp(false);
+    await waitForApp(hasGoogleKeys);
 }
 
 /**

@@ -2,6 +2,7 @@
 
 namespace Tests\Models;
 
+use App\Bot\Characters;
 use App\Models\DemoChat;
 use PHPUnit\Framework\TestCase;
 use Tests\Support\TestDb;
@@ -73,7 +74,24 @@ class DemoChatTest extends TestCase
     protected function tearDown(): void
     {
         putenv('DEMO_SPEED');
+        putenv('DEMO_AWAY');
         TestDemoChat::$isStampedOnDemoClock = false;
+    }
+
+    public function testSomeoneDemoAwayNamesIsNeverInTheRoom(): void
+    {
+        // A demo person's first line, when they're in the room
+        $demoLines = array_filter(
+            TestDemoChat::schedule(TestDemoChat::today()),
+            fn (array $line): bool => str_ends_with($line['email'], Characters::DEMO_DOMAIN),
+        );
+        $firstLine = reset($demoLines);
+        TestDemoChat::$demoNow = strtotime($firstLine['time'] . ' UTC');
+        $this->assertContains($firstLine['email'], TestDemoChat::presentNow());
+
+        putenv('DEMO_AWAY=' . strtok($firstLine['email'], '@'));
+
+        $this->assertNotContains($firstLine['email'], TestDemoChat::presentNow());
     }
 
     public function testRealTimeIsTheDemoTimeAtNormalSpeed(): void
@@ -134,6 +152,37 @@ class DemoChatTest extends TestCase
     {
         TestDemoChat::$demoNow = strtotime($schedule[$line]['time'] . ' UTC');
         TestDemoChat::catchUpNow();
+    }
+
+    public function testACatchUpLeavesSomeoneDemoAwayNamesUnseen(): void
+    {
+        TestDemoChat::$isStampedOnDemoClock = true;
+
+        $db = TestDb::get();
+        $db->beginTransaction();
+        try {
+            $schedule = TestDemoChat::schedule(TestDemoChat::today());
+            $demoEmails = array_values(array_unique(array_filter(
+                array_column(array_slice($schedule, 0, 21), 'email'),
+                fn (string $email): bool => str_ends_with($email, Characters::DEMO_DOMAIN),
+            )));
+            foreach ($demoEmails as $email) {
+                TestDb::createUser(ucfirst(strtok($email, '@')), $email);
+                $db->prepare("INSERT INTO userinfo (email, ip) VALUES (?, '')")->execute([$email]);
+            }
+            [$awayEmail, $hereEmail] = $demoEmails;
+            putenv('DEMO_AWAY=' . strtok($awayEmail, '@'));
+
+            $this->catchUpTo(TestDemoChat::schedule(TestDemoChat::today()), 20);
+
+            $seenAt = $db->prepare('SELECT online_at FROM userinfo WHERE email = ?');
+            $seenAt->execute([$awayEmail]);
+            $this->assertNull($seenAt->fetchColumn());
+            $seenAt->execute([$hereEmail]);
+            $this->assertNotNull($seenAt->fetchColumn());
+        } finally {
+            $db->rollBack();
+        }
     }
 
     public function testCatchUpGoesOnFromWhereTheStoryIs(): void

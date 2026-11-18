@@ -224,7 +224,8 @@ class DemoChat extends \Core\Model
     /**
      * Note when each demo person last spoke, for "Recently here", on the
      * real clock. A time left in the future by an earlier fast-forwarded day
-     * is replaced
+     * is replaced. Anyone DEMO_AWAY names is left as they are, as a line
+     * just said would show them online
      *
      * @param array<string, string> $lastSpokeAt By email, on the demo clock
      */
@@ -232,7 +233,12 @@ class DemoChat extends \Core\Model
     {
         $seen = $db->prepare('UPDATE userinfo SET online_at = :time
                               WHERE email = :email AND (online_at IS NULL OR online_at < :time2 OR online_at > NOW())');
+        $awayEmails = static::awayEmails();
         foreach ($lastSpokeAt as $email => $time) {
+            if (in_array($email, $awayEmails, true)) {
+                continue;
+            }
+
             $realTime = static::realTime($time);
             $seen->execute([':email' => $email, ':time' => $realTime, ':time2' => $realTime]);
         }
@@ -305,24 +311,41 @@ class DemoChat extends \Core\Model
 
     /**
      * The demo people who are in the room right now: those about to speak,
-     * speaking, or who spoke a little while ago
+     * speaking, or who spoke a little while ago. Anyone DEMO_AWAY names is
+     * left out, so the README's tour can call one in from away (markSeen
+     * leaves them out too)
      *
      * @return string[] Their emails
      */
     public static function presentNow(): array
     {
         $now = static::now();
+        $awayEmails = static::awayEmails();
         $present = [];
 
         foreach (static::schedule(static::today()) as ['time' => $time, 'email' => $email]) {
             $at = strtotime($time . ' UTC');
+            $isAround = $now >= $at - static::ARRIVE_MINUTES * 60 && $now <= $at + static::LINGER_MINUTES * 60;
 
-            if ($now >= $at - static::ARRIVE_MINUTES * 60 && $now <= $at + static::LINGER_MINUTES * 60) {
+            if ($isAround && !in_array($email, $awayEmails, true)) {
                 $present[$email] = true;
             }
         }
 
         return array_keys($present);
+    }
+
+    /**
+     * The demo people DEMO_AWAY keeps out of the room whatever the day's
+     * script says, by first name, comma separated (DEMO_AWAY=emily)
+     *
+     * @return string[] Their emails
+     */
+    protected static function awayEmails(): array
+    {
+        $names = array_filter(array_map(trim(...), explode(',', strtolower((string) Config::get('DEMO_AWAY', '')))));
+
+        return array_map(fn (string $name): string => $name . Characters::DEMO_DOMAIN, $names);
     }
 
     /**

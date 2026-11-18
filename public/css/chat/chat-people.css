@@ -244,11 +244,12 @@
         border-radius: 50%;
         object-fit: cover;
         display: block;
-        transition: opacity var(--dur) var(--ease-out);
+        transition: opacity var(--dur) var(--ease-out), filter var(--dur) var(--ease-out);
     }
 
-    /* Green dot on the avatar of someone online */
-    :scope.is-online .avatar::after
+    /* Green dot on the avatar of someone online. Always there, so it fades
+       as they go between online and recent */
+    .avatar::after
     {
         content: '';
         position: absolute;
@@ -259,6 +260,13 @@
         border: 2px solid var(--chat-surface);
         border-radius: 50%;
         background-color: var(--online);
+        opacity: 0;
+        transition: opacity var(--dur) var(--ease-out);
+    }
+
+    :scope.is-online .avatar::after
+    {
+        opacity: 1;
     }
 
     :scope:not(.is-online) .photo
@@ -278,6 +286,7 @@
         overflow: hidden;
         color: var(--text-strong);
         font-size: 13px; /* as the chat header's name */
+        font-weight: 600; /* as a pin label's name */
         line-height: 18px;
         text-overflow: ellipsis;
         white-space: nowrap;

@@ -52,7 +52,9 @@ Once, if they're missing:
   link the script's header gives), or the user records one. The tour stops
   early without it.
 
-Run `npm run tour` in the background: it signs in its own guest, pauses the
+Run `npm run tour` in the background: it logs in as an Alex Morgan account it
+makes for the run (and deletes after), keeps Emily away till Alex calls her
+in (DEMO_AWAY), pauses the
 chat worker while it records real Groq replies, and takes a few minutes: it
 prints each stage with the time so far, so a step that hangs shows by name.
 Without Google keys in `.env`, it starts the app container again with
@@ -72,7 +74,8 @@ Done when:
   stacked into a grid) show every step doing what it's there to show: the
   login page with Continue with Google, the hovered person's pin pointed
   out, the clicked city's pin flown to the middle of the map, the whole @
-  list then Lukas, each emoji picked from the emoji menu, Lukas's answer
+  list then Emily, each emoji picked from the emoji menu, Emily coming
+  online and her answer
   arriving, the private chats' replies, the question to Rafael voice typed
   (the wave moving, the dots in the box while it's written out, then the
   words in the box and sent), the tab moved and closed, the profile

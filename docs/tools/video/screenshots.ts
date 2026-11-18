@@ -24,7 +24,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import type {Browser, Page} from 'playwright';
 
-import {launchChrome, printRenderer, REPO, restoreApp, showGoogleSignIn, signInAsNewGuest, sql, URL} from './chrome.ts';
+import {launchChrome, printRenderer, REPO, restoreApp, startAppForRecording, signInAsNewGuest, sql, URL} from './chrome.ts';
 import {waitSeconds} from './person.ts';
 
 const DESKTOP = {width: 1440, height: 900};
@@ -208,7 +208,7 @@ async function takePhonePictures(browser: Browser): Promise<void> {
  */
 async function takeLoginPicture(browser: Browser): Promise<void> {
     const workDir = mkdtempSync(join(tmpdir(), 'mapchat-screenshots-'));
-    const hasPlaceholderGoogle = await showGoogleSignIn(workDir);
+    const hasPlaceholderGoogle = await startAppForRecording(workDir);
     try {
         const context = await browser.newContext({viewport: DESKTOP, deviceScaleFactor: PIXEL_RATIO});
         const page = await context.newPage();
