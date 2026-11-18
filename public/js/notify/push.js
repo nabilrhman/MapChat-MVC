@@ -1,7 +1,8 @@
-// Web Push for this browser (App\Notify\PushNotifications): subscribing it to the signed-in
-// person's notifications, so public/sw.js shows them with MapChat closed,
-// and letting it go again. notifications.js decides when; header.js lets
-// it go on logging out. On every page with the header, for the logout
+// Web Push for this browser (App\Notify\PushNotifications): subscribing it
+// to the signed-in person's notifications, so public/service-worker.js shows
+// them with MapChat closed, and letting it go again. notifications.js
+// decides when; header.js lets it go on logging out. On every page with the
+// header, for the logout
 
 // This browser is subscribed to Web Push
 const PUSH_ON_KEY = 'pushOn';
@@ -27,7 +28,7 @@ async function getPushSubscription() {
 async function subscribeToPush() {
     if (!isPushSupported()) return;
     try {
-        const registration = await navigator.serviceWorker.register('/sw.js');
+        const registration = await navigator.serviceWorker.register('/service-worker.js');
         const subscription = await registration.pushManager.getSubscription()
             || await registration.pushManager.subscribe({userVisibleOnly: true, applicationServerKey: keyBytes(pushPublicKey)});
         const {endpoint, keys} = subscription.toJSON();

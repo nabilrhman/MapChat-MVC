@@ -24,8 +24,8 @@ Each part of MapChat and what it's made with. Back to the
 - **Notifications:** while a chat page is in view it shows them itself; with
   MapChat closed they come by Web Push, sent by the chat worker with
   [minishlink/web-push](https://github.com/web-push-libs/web-push-php) and
-  shown by a service worker, `public/sw.js`. Signed with VAPID keys; without
-  them, only an open page notifies. How it all works, and setting it up, is in
+  shown by a service worker, `public/service-worker.js`. Signed with VAPID
+  keys; without them, only an open page notifies. How it all works, and setting it up, is in
   [docs/notifications.md](notifications.md).
 - **Icons:** the Solid weight of [Heroicons](https://heroicons.com) by
   Tailwind Labs, under the MIT licence, in one sprite, `public/icons.svg`. The GitHub mark is from Simple Icons.

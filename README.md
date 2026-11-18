@@ -189,7 +189,7 @@ App/*.php          Settings, flash messages, names and avatar pictures
 App/ChatSocket/    The live chat: who's let in (Handshake), what each page gets (Hub)
 App/Views/         Twig templates; a partial's name starts with _
 bin/               The chat socket and the chat worker, run by docker/start.sh
-public/            Web root: index.php, CSS, JavaScript, sw.js, images, icons.svg
+public/            Web root: index.php, CSS, JavaScript, service-worker.js, images, icons.svg
 public/js/         Scripts by part: core/ on every page, chat/, messages/, map/, notify/, sign-in/, forms/, profile/
 public/css/        Styles by part: core/ on every page, chat/, and pages/ for the rest
 database/          The schema, the demo people and their day, and migrate.php
