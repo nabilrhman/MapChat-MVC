@@ -25,8 +25,6 @@
     --hairline: #ececec; /* between messages */
     --online: #43a047;
     --danger: #e53935; /* close buttons on hover, a count near its limit */
-    --daylight-day: #ffa000; /* the sun beside a local time */
-    --daylight-night: #5c6bc0; /* the moon */
     --deep-shadow: rgba(0, 0, 0, 0.3); /* the pin label */
     --panel-shadow: rgba(0, 0, 0, 0.12);
     --edge-shadow: rgba(0, 0, 0, 0.08); /* the chat header and composer */

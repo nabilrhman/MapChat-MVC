@@ -58,6 +58,7 @@ class View
         // A function, so only the page that shows messages uses them up
         $twig->addFunction(new TwigFunction('flash_messages', Flash::getMessages(...)));
         $twig->addFunction(new TwigFunction('avatar_src', AvatarPicture::src(...)));
+        $twig->addFunction(new TwigFunction('demo_face_srcs', AvatarPicture::demoFaceSrcs(...)));
         // Links to files in public/ that change when the file does (see Asset)
         $twig->addFunction(new TwigFunction('asset', Asset::url(...)));
         $twig->addFunction(new TwigFunction('icon', Icon::svg(...), ['is_safe' => ['html']]));
