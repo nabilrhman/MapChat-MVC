@@ -14,8 +14,6 @@ MySQL-compatible service.
      `mapchat.swiftsolve.net`. Put your own domain in both. Without a domain,
      delete the two `domains` lines, and once Render shows the service's
      `onrender.com` address, set `APP_URL` to it and push.
-   - In `.github/workflows/keep-awake.yml`, change the address it visits to
-     yours (see below).
 3. In Render, choose **New > Blueprint** and pick your fork. Render reads
    `render.yaml` and asks for the settings it leaves blank:
    - `DB_HOST`, `DB_USER` and `DB_PASSWORD`, from TiDB's **Connect** dialog.
@@ -49,10 +47,11 @@ MySQL-compatible service.
    a visitor is, after ipapi.co, ipwho.is and GeoJS. It comes last because its
    free plan is plain http, with the key in the address.
 
-Free Render services sleep after 15 minutes without visitors. The `Keep awake`
-workflow visits the site every 10 minutes, well within Render's 750 free hours
-a month. GitHub turns scheduled workflows off in a fork, so turn them on in
-your fork's **Actions** tab.
+Free Render services sleep after 15 minutes without visitors, and the first
+visit after that waits about a minute while the site wakes. To keep it awake,
+have an uptime monitor such as UptimeRobot visit `/health.txt` every 5
+minutes; a month awake fits in Render's 750 free hours. A scheduled GitHub
+Actions workflow can't do it: GitHub runs them hours apart when it's busy.
 
 The container brings an older database up to date each time it starts
 (`database/migrate.php`): it adds the tables, columns and keys it's missing,

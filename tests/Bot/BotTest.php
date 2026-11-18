@@ -1,12 +1,13 @@
 <?php
 
-namespace Tests;
+namespace Tests\Bot;
 
 use App\Models\Bot;
 use App\Models\Chat;
 use App\Models\DemoChat;
 use PDO;
 use PHPUnit\Framework\TestCase;
+use Tests\Support\TestDb;
 
 /**
  * The MapChat account with a clock the tests move and a writer that notes
@@ -608,7 +609,7 @@ class BotTest extends TestCase
         $this->wait(Bot::COME_ONLINE_SECONDS + Bot::DEMO_ANSWER_SECONDS);
         $this->wait(Bot::ROOM_COOLDOWN_SECONDS);
 
-        $voices = require dirname(__DIR__) . '/database/demo-voices.php';
+        $voices = require dirname(__DIR__, 2) . '/database/demo-voices.php';
         $asked = array_column(TestBot::$asked, 0);
         $this->assertCount(2, $asked);
         $emilys = array_values(array_filter($asked, fn ($instructions) => str_contains($instructions, 'You are Emily')))[0];

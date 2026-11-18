@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests;
+namespace Tests\Messages;
 
 use App\Messages\Mention;
 use App\PersonName;

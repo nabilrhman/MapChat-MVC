@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests;
+namespace Tests\Notify;
 
 use App\Notify\Mail;
 use PHPUnit\Framework\Attributes\DataProvider;

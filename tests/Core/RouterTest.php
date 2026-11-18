@@ -63,7 +63,7 @@ namespace App\Controllers\Test {
     }
 }
 
-namespace Tests {
+namespace Tests\Core {
 
     use App\Controllers\Test\Probe;
     use Core\MethodNotAllowed;

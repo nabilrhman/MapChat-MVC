@@ -1,10 +1,11 @@
 <?php
 
-namespace Tests;
+namespace Tests\SignIn;
 
 use App\Models\User;
 use PDO;
 use PHPUnit\Framework\TestCase;
+use Tests\Support\TestDb;
 
 /**
  * Emailing a password reset link: a failed send says so, but only for an

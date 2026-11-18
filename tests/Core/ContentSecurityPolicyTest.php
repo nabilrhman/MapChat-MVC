@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests;
+namespace Tests\Core;
 
 use Core\ContentSecurityPolicy;
 use PHPUnit\Framework\TestCase;

@@ -1,12 +1,13 @@
 <?php
 
-namespace Tests;
+namespace Tests\SignIn;
 
 use App\ChatSocket\Sessions;
 use App\Models\User;
 use App\SignIn\Auth;
 use PDO;
 use PHPUnit\Framework\TestCase;
+use Tests\Support\TestDb;
 
 /**
  * Guest accounts last GUEST_LIFETIME_HOURS: the countdown, logging out

@@ -53,7 +53,8 @@ Once, if they're missing:
   early without it.
 
 Run `npm run tour` in the background: it signs in its own guest, pauses the
-chat worker while it records real Groq replies, and takes a few minutes.
+chat worker while it records real Groq replies, and takes a few minutes: it
+prints each stage with the time so far, so a step that hangs shows by name.
 Without Google keys in `.env`, it starts the app container again with
 placeholder ones so the login page shows Continue with Google, as the live
 site does, and restarts it as it was afterwards. It records the tab at

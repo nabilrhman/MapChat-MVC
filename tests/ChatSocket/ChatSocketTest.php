@@ -1,11 +1,13 @@
 <?php
 
-namespace Tests;
+namespace Tests\ChatSocket;
 
 use App\Models\Chat;
 use App\Models\User;
 use PDO;
 use PHPUnit\Framework\TestCase;
+use Tests\Support\SocketClient;
+use Tests\Support\TestDb;
 
 /**
  * The chat socket (bin/chat-socket.php), run as its own process against the
@@ -74,7 +76,7 @@ class ChatSocketTest extends TestCase
             'CHAT_PRESENCE_GRACE_SECONDS' => self::GRACE_SECONDS,
             'CHAT_SESSION_CHECK_SECONDS' => self::SESSION_CHECK_SECONDS,
         ];
-        $command = [PHP_BINARY, dirname(__DIR__) . '/bin/chat-socket.php'];
+        $command = [PHP_BINARY, dirname(__DIR__, 2) . '/bin/chat-socket.php'];
         // Its log, for when a test fails
         $log = ['file', sys_get_temp_dir() . '/chat-socket-test.log', 'a'];
         self::$server = proc_open($command, [1 => $log, 2 => $log], $pipes, null, $environment);

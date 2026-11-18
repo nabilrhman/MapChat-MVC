@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests;
+namespace Tests\Views;
 
 use App\Models\User;
 use Core\View;

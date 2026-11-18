@@ -1,10 +1,11 @@
 <?php
 
-namespace Tests;
+namespace Tests\Messages;
 
 use App\Models\Chat;
 use PDO;
 use PHPUnit\Framework\TestCase;
+use Tests\Support\TestDb;
 
 /**
  * Who sees which messages. Each test runs in a transaction that is rolled back

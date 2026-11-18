@@ -1,9 +1,10 @@
 <?php
 
-namespace Tests;
+namespace Tests\Models;
 
 use App\Models\DemoChat;
 use PHPUnit\Framework\TestCase;
+use Tests\Support\TestDb;
 
 /**
  * The demo clock, with its "now" fixed

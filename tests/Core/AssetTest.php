@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests;
+namespace Tests\Core;
 
 use Core\Asset;
 use PHPUnit\Framework\TestCase;
@@ -14,7 +14,7 @@ class AssetTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->scratchFile = dirname(__DIR__) . '/public' . self::SCRATCH_PATH;
+        $this->scratchFile = dirname(__DIR__, 2) . '/public' . self::SCRATCH_PATH;
     }
 
     protected function tearDown(): void
@@ -26,7 +26,7 @@ class AssetTest extends TestCase
 
     public function testVersionIsTheFilesContentHash(): void
     {
-        $file = dirname(__DIR__) . '/public/css/ui.css';
+        $file = dirname(__DIR__, 2) . '/public/css/ui.css';
 
         $this->assertSame('/css/ui.css?v=' . hash_file('crc32b', $file), Asset::url('/css/ui.css'));
     }

@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests;
+namespace Tests\Support;
 
 /**
  * For tests that drive the site over real HTTP requests, on PHP's built-in

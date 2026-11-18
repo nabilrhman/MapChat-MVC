@@ -37,7 +37,7 @@
 
 /* Alone in a button, an icon keeps its whole box, so it stays centred */
 .password-toggle .icon,
-.site-footer .source .icon
+.source-link .icon
 {
     margin-inline: 0;
     translate: none;

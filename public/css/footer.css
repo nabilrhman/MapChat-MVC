@@ -31,37 +31,30 @@
     font-size: 13px;
 }
 
-@scope (.site-footer) to (.copyright)
+/* The GitHub icon, here and under the login pages */
+.source-link
 {
-    .source
-    {
-        color: var(--md-on-primary);
-        font-size: 16px;
+    color: var(--md-on-primary);
+    font-size: 16px;
+    transition: color var(--dur-fast) var(--ease-out);
 
-        &:hover
-        {
-            text-decoration: underline;
-        }
+    /* An icon has no text to underline, so it turns MapChat's purple, the
+       light one made for dark surfaces */
+    &:hover
+    {
+        color: var(--md-inverse-primary);
     }
 }
 
 /* The copyright line, here and under the login pages */
 @scope (.copyright)
 {
-    .author
-    {
-        color: var(--brand-yellow);
-    }
-
-    /* Quiet beside the name: the footer's own colour */
-    .privacy
-    {
-        color: inherit;
-    }
-
+    /* Both links in the line's own colour */
     .author,
     .privacy
     {
+        color: inherit;
+
         &:hover
         {
             text-decoration: underline;

@@ -1,12 +1,13 @@
 <?php
 
-namespace Tests;
+namespace Tests\Notify;
 
 use App\Controllers\Push as PushController;
 use App\Models\PushSubscription;
 use App\Notify\PushNotifications;
 use PDO;
 use PHPUnit\Framework\TestCase;
+use Tests\Support\TestDb;
 
 /**
  * Web Push: whose browsers a message goes to, what it says, and keeping

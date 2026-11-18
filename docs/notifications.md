@@ -95,5 +95,5 @@ push to everyone subscribed.
   area; if nothing shows, check that Do Not Disturb is off.
 - **iPhone and iPad:** Web Push works only once MapChat is added to the Home
   Screen.
-- `tests/PushTest.php` covers who receives a push, what it says, a browser
+- `tests/Notify/PushTest.php` covers who receives a push, what it says, a browser
   moving between accounts, unsubscribing and refused addresses.

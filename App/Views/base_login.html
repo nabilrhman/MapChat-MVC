@@ -1,5 +1,5 @@
 {# Every page you see signed out (log in, sign up, password): the logo,
-   a heading, the form, and the copyright line #}
+   a heading, the form, and the source link and copyright line #}
 {% types {csp_nonce: 'string'} %}
 <!DOCTYPE html>
 <html lang="en" data-icons="{{ asset('/icons.svg') }}">
@@ -41,6 +41,7 @@
     </div>
 
     <footer class="footer">
+        {{ include('_source_link.html', with_context = false) }}
         {{ include('_copyright.html', with_context = false) }}
     </footer>
 </main>

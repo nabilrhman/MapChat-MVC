@@ -1,9 +1,11 @@
 <?php
 
-namespace Tests;
+namespace Tests\SignIn;
 
 use PDO;
 use PHPUnit\Framework\TestCase;
+use Tests\Support\DrivesTheSite;
+use Tests\Support\TestDb;
 
 /**
  * Signing up on a site that sends email, over real HTTP requests: the
