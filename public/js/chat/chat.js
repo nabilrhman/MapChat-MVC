@@ -1104,7 +1104,15 @@ navigator.serviceWorker?.addEventListener('message', (event) => {
     if (event.data?.openChat) openNotifiedChat(event.data.openChat, event.data.name);
 });
 
-keepPeopleUpdated({onPeopleOnline, onPersonChosen: openPrivateChat});
+// A row in the people list opens their chat and, when the map shows, brings
+// their pin to its middle. On a phone with the chat all the way up the map
+// stays put, as the keyboard is coming up to write to them
+function onPersonChosen(userId, name) {
+    openPrivateChat(userId, name);
+    if (isMapOpen()) focusPin(userId);
+}
+
+keepPeopleUpdated({onPeopleOnline, onPersonChosen});
 connectChat({
     onNewChats: showNewChats,
     onBuild: reloadIfUpdated,

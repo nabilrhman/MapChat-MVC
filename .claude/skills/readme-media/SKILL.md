@@ -74,7 +74,8 @@ Done when:
   `ffmpeg -ss <second> -i docs/images/mapchat-tour.mp4 -frames:v 1 …`,
   stacked into a grid) show every step doing what it's there to show: the
   login page with Continue with Google, the hovered person's pin pointed
-  out, the clicked city's pin flown to the middle of the map, the whole @
+  out, the clicked city's pin flown to the middle of the map, Maya's pin flown
+  to when her row opens her chat, the whole @
   list then Emily, each emoji picked from the emoji menu, Emily coming
   online and her answer
   arriving, the private chats' replies, the question to Rafael voice typed

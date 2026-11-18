@@ -41,7 +41,7 @@ In 2026 I came back to it to bring parts of it up to date.
 sleeps when nobody visits, so the first visit after a quiet spell takes about
 a minute to load.
 
-https://github.com/user-attachments/assets/fe2ddbd9-c84c-4cbc-b512-e040cd0d9902
+https://github.com/user-attachments/assets/c8e1bd4e-007d-4b1a-b844-0dd6a5d4ee57
 
 <sub>A quick tour of MapChat.</sub>
 
@@ -76,7 +76,7 @@ https://github.com/user-attachments/assets/fe2ddbd9-c84c-4cbc-b512-e040cd0d9902
 - Notifications for private messages and @mentions, even with MapChat closed.
 - A pin for each person online, placed from their IP address, never GPS,
   with their local time. Anyone can hide theirs.
-- Hover a person or a message's city to point out their pin; click the city
+- Hover a person or a message's city to point out their pin; click either
   to fly the map there. The night side of the world is shaded.
 - MapChat, the room's AI, and nine AI characters who chat back.
 - Try it as a guest, with no sign-up, for 24 hours.

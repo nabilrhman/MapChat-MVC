@@ -21,7 +21,7 @@ Everything MapChat does, in full. Back to the [README](../README.md).
 - A map with a pin for each person online, placed from their IP address and
   rounded to about a kilometre, never from GPS, with their local time and a
   sun or moon.
-- Hover someone, or a message's city, to point out their pin; click the city
+- Hover someone, or a message's city, to point out their pin; click either
   to fly the map to it. The night side of the world is shaded.
 - Hover a message's time to see the sender's own time, or its city to see
   their country. On a phone, tap it.
