@@ -1,6 +1,11 @@
 # Remove the question mark from the request but maintain the query string
 RewriteEngine On
 RewriteBase /
+
+# The site's pictures were in /res/; sent emails and cached link previews
+# still point there
+RewriteRule ^res/(.*)$ /images/$1 [R=301,L]
+
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^(.*)$ index.php?$1 [L,QSA]

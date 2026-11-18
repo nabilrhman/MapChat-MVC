@@ -155,6 +155,7 @@ class Schema extends \Core\Model
 
         static::fillDemoPlaces($db);
         static::dropDemoPictures($db);
+        static::moveSitePictures($db);
         static::placeBot($db);
 
         return $added;
@@ -182,6 +183,16 @@ class Schema extends \Core\Model
     {
         $db->exec("UPDATE users SET avatar = NULL
                    WHERE " . Characters::isDemoSql('email') . " AND avatar LIKE '/res/avatars/%'");
+    }
+
+    /**
+     * The site's own pictures moved from /res/ to /images/, so a stored
+     * avatar there (the welcome bot's) follows them. After dropDemoPictures,
+     * which still looks for the demo people's old /res/avatars/ files
+     */
+    protected static function moveSitePictures(PDO $db): void
+    {
+        $db->exec("UPDATE users SET avatar = CONCAT('/images/', SUBSTRING(avatar, 6)) WHERE avatar LIKE '/res/%'");
     }
 
     /**
