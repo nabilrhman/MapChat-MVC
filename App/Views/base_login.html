@@ -1,5 +1,6 @@
-{# Every page you see signed out (log in, sign up, password): the logo,
-   a heading, the form, and the source link and copyright line #}
+{# Every page you see signed out (log in, sign up, password): the world
+   map behind, the logo, a heading, the form, and the source link and
+   copyright line #}
 {% types {csp_nonce: 'string'} %}
 <!DOCTYPE html>
 <html lang="en" data-icons="{{ asset('/icons.svg') }}">
@@ -17,12 +18,18 @@
     <link rel="stylesheet" href="{{ asset('/css/footer.css') }}" />
     <link rel="stylesheet" href="{{ asset('/css/ui.css') }}" />
     <link rel="stylesheet" type="text/css" href="{{ asset('/css/login.css') }}">
+    {# login-map.js loads MapLibre itself; fetching it now saves a round trip #}
+    <link rel="preload" as="script" nonce="{{ csp_nonce }}" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js">
+    <link rel="preload" as="style" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 
     <title>{% block title %}{% endblock %} · MapChat</title>
     {{ include('_meta.html', with_context = false) }}
 </head>
 
 <body>
+{# The world map behind the page, drawn by login-map.js #}
+<div id="login-map" class="login-map" aria-hidden="true"></div>
+
 <main class="auth-page">
     <div class="center">
         <a href="/" class="logo pop-in hover-grow" aria-label="MapChat"></a>
@@ -51,6 +58,8 @@
 <script nonce="{{ csp_nonce }}" src="{{ asset('/js/auth-forms.js') }}"></script>
 <script nonce="{{ csp_nonce }}" src="{{ asset('/js/password-toggle.js') }}"></script>
 <script nonce="{{ csp_nonce }}" src="{{ asset('/js/loading-bar.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/map-style.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/login-map.js') }}"></script>
 
 {% block footer %}{% endblock %}
 </body>
