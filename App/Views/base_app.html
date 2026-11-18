@@ -21,15 +21,15 @@
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
 
     {{ include('_beer.html', with_context = false) }}
-    <link rel="stylesheet" href="{{ asset('/css/base.css') }}" />
-    <link rel="stylesheet" href="{{ asset('/css/animations.css') }}" />
+    <link rel="stylesheet" href="{{ asset('/css/core/base.css') }}" />
+    <link rel="stylesheet" href="{{ asset('/css/core/animations.css') }}" />
 
     <!-- Styles for the header and footer -->
-    <link rel="stylesheet" href="{{ asset('/css/header.css') }}" />
-    <link rel="stylesheet" href="{{ asset('/css/footer.css') }}" />
+    <link rel="stylesheet" href="{{ asset('/css/core/header.css') }}" />
+    <link rel="stylesheet" href="{{ asset('/css/core/footer.css') }}" />
 
-    <link rel="stylesheet" href="{{ asset('/css/icons.css') }}" />
-    <link rel="stylesheet" href="{{ asset('/css/ui.css') }}" />
+    <link rel="stylesheet" href="{{ asset('/css/core/icons.css') }}" />
+    <link rel="stylesheet" href="{{ asset('/css/core/ui.css') }}" />
 
     {% block head %}{% endblock %}
 </head>
@@ -47,13 +47,13 @@
 {{ include('_footer.html', with_context = false) }}
 
 <script nonce="{{ csp_nonce }}" src="https://unpkg.com/axios@1.21.0/dist/axios.min.js"></script>
-<script nonce="{{ csp_nonce }}" src="{{ asset('/js/dom.js') }}"></script>
-<script nonce="{{ csp_nonce }}" src="{{ asset('/js/http.js') }}"></script>
-<script nonce="{{ csp_nonce }}" src="{{ asset('/js/push.js') }}"></script>
-<script nonce="{{ csp_nonce }}" src="{{ asset('/js/toast.js') }}"></script>
-<script nonce="{{ csp_nonce }}" src="{{ asset('/js/loading-bar.js') }}"></script>
-<script nonce="{{ csp_nonce }}" src="{{ asset('/js/header.js') }}"></script>
-<script nonce="{{ csp_nonce }}" src="{{ asset('/js/tooltip.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/core/dom.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/core/http.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/notify/push.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/core/toast.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/core/loading-bar.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/core/header.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/core/tooltip.js') }}"></script>
 {{ include('_flash.html', with_context = false) }}
 
 {% block footer %}{% endblock %}

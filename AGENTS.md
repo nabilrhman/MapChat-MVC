@@ -46,7 +46,8 @@ A PHP class lives in a title-case folder for the part it belongs to, matching
 its namespace (`App/Notify/PushNotifications.php`); a view folder is named
 for its controller (`Views/Room/`), and a test sits in the same folder as what
 it mostly covers (`tests/Notify/PushTest.php`). Scripts and styles are kebab-case, as
-they're URLs with no imports (`chat-sheet.js`). A Twig partial starts with
+they're URLs with no imports (`chat-sheet.js`), in a folder for the part they
+belong to (`js/chat/chat-sheet.js`, `css/core/ui.css`). A Twig partial starts with
 `_`, a layout with `base_`. Every other folder is lowercase.
 
 ### Comments

@@ -6,7 +6,7 @@ use App\Models\PushSubscription;
 use App\SignIn\Auth;
 
 /**
- * Turning Web Push on and off for this browser (public/js/notifications.js)
+ * Turning Web Push on and off for this browser (public/js/notify/notifications.js)
  */
 class Push extends Authenticated
 {

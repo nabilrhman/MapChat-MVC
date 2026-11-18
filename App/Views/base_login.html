@@ -12,12 +12,12 @@
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
 
     {{ include('_beer.html', with_context = false) }}
-    <link rel="stylesheet" href="{{ asset('/css/base.css') }}" />
-    <link rel="stylesheet" href="{{ asset('/css/animations.css') }}" />
-    <link rel="stylesheet" href="{{ asset('/css/icons.css') }}" />
-    <link rel="stylesheet" href="{{ asset('/css/footer.css') }}" />
-    <link rel="stylesheet" href="{{ asset('/css/ui.css') }}" />
-    <link rel="stylesheet" type="text/css" href="{{ asset('/css/login.css') }}">
+    <link rel="stylesheet" href="{{ asset('/css/core/base.css') }}" />
+    <link rel="stylesheet" href="{{ asset('/css/core/animations.css') }}" />
+    <link rel="stylesheet" href="{{ asset('/css/core/icons.css') }}" />
+    <link rel="stylesheet" href="{{ asset('/css/core/footer.css') }}" />
+    <link rel="stylesheet" href="{{ asset('/css/core/ui.css') }}" />
+    <link rel="stylesheet" type="text/css" href="{{ asset('/css/pages/login.css') }}">
     {# login-map.js loads MapLibre itself; fetching it now saves a round trip #}
     <link rel="preload" as="script" nonce="{{ csp_nonce }}" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js">
     <link rel="preload" as="style" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
@@ -53,13 +53,13 @@
     </footer>
 </main>
 
-<script nonce="{{ csp_nonce }}" src="{{ asset('/js/dom.js') }}"></script>
-<script nonce="{{ csp_nonce }}" src="{{ asset('/js/form-checks.js') }}"></script>
-<script nonce="{{ csp_nonce }}" src="{{ asset('/js/auth-forms.js') }}"></script>
-<script nonce="{{ csp_nonce }}" src="{{ asset('/js/password-toggle.js') }}"></script>
-<script nonce="{{ csp_nonce }}" src="{{ asset('/js/loading-bar.js') }}"></script>
-<script nonce="{{ csp_nonce }}" src="{{ asset('/js/map-style.js') }}"></script>
-<script nonce="{{ csp_nonce }}" src="{{ asset('/js/login-map.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/core/dom.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/forms/form-checks.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/sign-in/auth-forms.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/forms/password-toggle.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/core/loading-bar.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/map/map-style.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/map/login-map.js') }}"></script>
 
 {% block footer %}{% endblock %}
 </body>

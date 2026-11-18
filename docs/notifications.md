@@ -23,7 +23,7 @@ the profile both turn them on for this browser. The browser asks for
 permission the first time.
 
 - **Allowed:** the switch stays on, and the browser subscribes to Web Push
-  (`public/js/push.js`), sending its push address to `/push/subscribe`.
+  (`public/js/notify/push.js`), sending its push address to `/push/subscribe`.
 - **Blocked:** the switch turns off and can't be used, and its hint says to
   change it in the browser's site settings. It follows a change made there at
   once, without a reload.
@@ -40,7 +40,7 @@ Two places can show a notification, and only one does for each message:
 
 | MapChat is | Shown by |
 |---|---|
-| Open on the chat, in view | The page itself (`public/js/notifications.js`) |
+| Open on the chat, in view | The page itself (`public/js/notify/notifications.js`) |
 | Open, but the chat isn't in view (another tab, or only the profile or About open) | The service worker, from a push |
 | Closed | The service worker, from a push |
 

@@ -21,7 +21,7 @@
 {% block title %}Profile{% endblock %}
 
 {% block head %}
-<link rel="stylesheet" href="{{ asset('/css/profile.css') }}"/>
+<link rel="stylesheet" href="{{ asset('/css/pages/profile.css') }}"/>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flag-icons@7.2.3/css/flag-icons.min.css">
 {% endblock %}
 
@@ -201,8 +201,8 @@
 {% endblock %}
 
 {% block footer %}
-<script nonce="{{ csp_nonce }}" src="{{ asset('/js/password-toggle.js') }}"></script>
-<script nonce="{{ csp_nonce }}" src="{{ asset('/js/form-checks.js') }}"></script>
-<script nonce="{{ csp_nonce }}" src="{{ asset('/js/notifications.js') }}"></script>
-<script nonce="{{ csp_nonce }}" src="{{ asset('/js/profile.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/forms/password-toggle.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/forms/form-checks.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/notify/notifications.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/profile/profile.js') }}"></script>
 {% endblock %}

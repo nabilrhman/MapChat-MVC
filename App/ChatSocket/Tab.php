@@ -22,7 +22,7 @@ class Tab
     /** A catching-up page waits while more than this is queued for it */
     const CATCH_UP_QUEUE_BYTES = 262144;
 
-    /** Close codes the page acts on (public/js/messages.js) */
+    /** Close codes the page acts on (public/js/messages/messages.js) */
     const CLOSE_LOG_IN_AGAIN = 4401;
     const CLOSE_TOO_SLOW = 4408;
 
