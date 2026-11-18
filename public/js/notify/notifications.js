@@ -1,8 +1,9 @@
 // System notifications for private messages and @mentions you haven't seen.
 // chat.js starts it with setUpNotifications and hands it new messages; the
 // profile's switch turns them on and off for this browser. With Web Push
-// set up (App\Notify\PushNotifications), this browser also subscribes (push.js), so public/sw.js
-// shows them while no MapChat tab is in view, even with MapChat closed
+// set up (App\Notify\PushNotifications), this browser also subscribes
+// (push.js), so public/service-worker.js shows them while no MapChat tab is
+// in view, even with MapChat closed
 
 const NOTIFY_BODY_LENGTH = 120;
 // Per browser, like the permission itself
@@ -88,7 +89,8 @@ function setUpNotifications() {
 }
 
 // For a message you haven't seen (another tab, or the page hidden); onOpen
-// shows its chat. With Web Push on, a hidden page leaves it to public/sw.js
+// shows its chat. With Web Push on, a hidden page leaves it to
+// public/service-worker.js
 function notifyOf(chat, onOpen) {
     const isPrivate = chat.dataset.conversation !== EVERYONE;
     const isMention = 'mentionsMe' in chat.dataset;
@@ -115,8 +117,8 @@ function notifyOf(chat, onOpen) {
 }
 
 // Through the service worker when this browser has one, as Android Chrome
-// has no Notification constructor; public/sw.js opens the chat on a click
-// (openNotifiedChat in chat.js). chatToOpen: {conversation, name}
+// has no Notification constructor; public/service-worker.js opens the chat
+// on a click (openNotifiedChat in chat.js). chatToOpen: {conversation, name}
 async function showNotification(title, options, chatToOpen, onOpen) {
     const registration = await navigator.serviceWorker?.getRegistration();
     if (registration?.active) {

@@ -14,8 +14,8 @@ use Minishlink\WebPush\WebPush;
 /**
  * Web Push: notifications for private messages and @mentions that reach a
  * browser even with MapChat closed. The chat worker sends them for each new
- * message (bin/chat-worker.php); public/sw.js shows them. Off until the
- * VAPID keys are set (.env.example)
+ * message (bin/chat-worker.php); public/service-worker.js shows them. Off
+ * until the VAPID keys are set (.env.example)
  */
 class PushNotifications
 {
@@ -114,7 +114,7 @@ class PushNotifications
     }
 
     /**
-     * What public/sw.js shows for a message
+     * What public/service-worker.js shows for a message
      *
      * @param array $chat As Chat::getByIds gives it, with ids and flags cast
      * @param array $subscription Whose browser it's for

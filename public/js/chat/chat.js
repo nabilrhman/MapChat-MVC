@@ -1085,8 +1085,8 @@ shouldAnimateNewTabs = true;
 setUpNotifications();
 keepPushUpToDate();
 
-// A notification's chat: from a click that opened this page (public/sw.js
-// adds ?chat=), or one in a page already open
+// A notification's chat: from a click that opened this page
+// (public/service-worker.js adds ?chat=), or one in a page already open
 function openNotifiedChat(conversation, name) {
     if (!conversation || conversation === EVERYONE) {
         showConversation(EVERYONE);

@@ -44,11 +44,11 @@ Two places can show a notification, and only one does for each message:
 | Open, but the chat isn't in view (another tab, or only the profile or About open) | The service worker, from a push |
 | Closed | The service worker, from a push |
 
-The service worker (`public/sw.js`) receives every push, and stays quiet
-only while a chat page is in view, since that page shows its own. Without
-Web Push set up, the page shows them whenever it's open, in view or not. A new
-version of `sw.js` takes over at once, without waiting for every MapChat tab
-to close.
+The service worker (`public/service-worker.js`) receives every push, and
+stays quiet only while a chat page is in view, since that page shows its own.
+Without Web Push set up, the page shows them whenever it's open, in view or
+not. A new version of `service-worker.js` takes over at once, without waiting
+for every MapChat tab to close.
 
 ## Sending a push
 

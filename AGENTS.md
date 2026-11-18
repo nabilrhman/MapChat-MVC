@@ -172,7 +172,7 @@ checkout, branch to merged PR: `.claude/skills/ship/SKILL.md`.
 | `App/ChatSocket/`, `bin/`, or a model they use | `docker compose restart app`: the socket and worker keep the code they started with |
 | `composer.json`, the `Dockerfile` | `docker compose up --build` |
 | Anything a person sees | Open http://localhost:8080 and look, in the chat and on a phone width: a cramped gap or a wrong size shows only there |
-| `public/sw.js` | Reload a MapChat tab: the new version takes over at once |
+| `public/service-worker.js` | Reload a MapChat tab: the new version takes over at once |
 | A page's markup or colours | `npm run a11y` (once: `npm install`): axe on every page at desktop and phone widths, in Playwright against the app on :8080 |
 | A script or style from a new host | Add the host to `Core/ContentSecurityPolicy.php`; a script tag needs `nonce="{{ csp_nonce }}"` |
 | What the README's screenshots or tour show | Retake them, and swap in the video the README plays: `.claude/skills/readme-media/SKILL.md` |
