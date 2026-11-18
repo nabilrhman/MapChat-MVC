@@ -2,7 +2,8 @@
  * What the tour and the screenshots share: where the app is, the commands
  * run in its containers, starting the app with the settings a recording
  * needs (Continue with Google without real keys), headless Chrome drawing
- * on the GPU, and signing a new guest in.
+ * on the GPU, signing a new guest in, and Alex Morgan's account, which the
+ * tour and the pictures log in as.
  *
  * MAPCHAT_URL is the app's address (default http://localhost:8080).
  * MAPCHAT_ROOT is the checkout whose docker compose project runs the app
@@ -10,7 +11,7 @@
  * MAPCHAT_GPU=0 draws without the GPU, and MAPCHAT_CHROME_FLAGS adds flags
  */
 import {execFile} from 'node:child_process';
-import {createHash} from 'node:crypto';
+import {createHash, randomBytes} from 'node:crypto';
 import {existsSync, mkdtempSync, readdirSync, writeFileSync} from 'node:fs';
 import {homedir, tmpdir} from 'node:os';
 import {join, resolve} from 'node:path';
@@ -138,6 +139,47 @@ export function launchChrome(extraFlags: string[] = [], {handlesSignals = false}
 // Run in the app's container with the id as an argument, so nothing in it is read as PHP
 const EMAIL_OF_USER_PHP = `require 'vendor/autoload.php';
 echo App\\Models\\User::findByID((int) $argv[1])->email;`;
+
+/** The account the tour and the pictures log in as, made for each run */
+export type AlexAccount = {email: string, password: string};
+
+const ALEX_NAME = 'Alex Morgan';
+export const ALEX_EMAIL = 'alex.morgan@example.com';
+// How the chat shows Alex, and what an @mention of Alex is
+export const ALEX_SHOWN_NAME = 'Alex';
+
+// Run in the app's container with the email, name and password as
+// arguments, so none of them is read as PHP. An account left by a run that
+// stopped part way goes first
+const MAKE_ALEX_ACCOUNT_PHP = `require 'vendor/autoload.php';
+App\\Models\\User::findByEmail($argv[1])?->delete();
+$user = new App\\Models\\User(['email' => $argv[1], 'name' => $argv[2], 'password' => $argv[3]]);
+if (!$user->save()) { fwrite(STDERR, json_encode($user->errors)); exit(1); }`;
+
+const DELETE_ALEX_ACCOUNT_PHP = `require 'vendor/autoload.php';
+App\\Models\\User::findByEmail($argv[1])?->delete();`;
+
+/** Alex's account, new and active, with a password made for this run */
+export async function makeAlexAccount(): Promise<AlexAccount> {
+    const password = `alex${randomBytes(9).toString('hex')}7`;
+    await app('php', '-r', MAKE_ALEX_ACCOUNT_PHP, '--', ALEX_EMAIL, ALEX_NAME, password);
+    // Active without the emailed link, which a local app may send
+    await sql(`UPDATE users SET is_active = 1 WHERE email = '${ALEX_EMAIL}'`);
+    return {email: ALEX_EMAIL, password};
+}
+
+export async function deleteAlexAccount(): Promise<void> {
+    await app('php', '-r', DELETE_ALEX_ACCOUNT_PHP, '--', ALEX_EMAIL);
+}
+
+/** Logs Alex in from the login page, straight away, and waits for the room */
+export async function logInAsAlex(page: Page, account: AlexAccount): Promise<void> {
+    await page.goto(`${URL}/login`);
+    await page.locator('#email-input').fill(account.email);
+    await page.locator('#password-input').fill(account.password);
+    await page.locator('form[action="/login/create"] button[type="submit"]').click();
+    await page.waitForURL(/\/app/);
+}
 
 /**
  * Signs a new guest in from the login page the page is on, as anyone trying
