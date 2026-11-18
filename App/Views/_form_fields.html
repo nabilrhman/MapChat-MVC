@@ -1,6 +1,6 @@
 {# A text field in Beer CSS's style: the label floats up once the field has
    focus or text, and a problem shows in place of the hint until it's fixed
-   (formChecks.js). After a refused submit, the server's problems for the
+   (form-checks.js). After a refused submit, the server's problems for the
    field (User::$errors under its name) start out shown #}
 {% macro text_field(field, problems = []) %}
 {% types {field: 'array', problems: 'string[]'} %}

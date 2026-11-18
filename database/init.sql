@@ -149,7 +149,7 @@ CREATE TABLE mapchat_jobs (
   ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4;
 
--- Browsers that get Web Push notifications, one row each (see App/Push.php)
+-- Browsers that get Web Push notifications, one row each (see App/Notify/PushNotifications.php)
 CREATE TABLE push_subscriptions (
   `id`              INT          NOT NULL AUTO_INCREMENT,
   `email`           VARCHAR(255) NOT NULL,

@@ -364,7 +364,7 @@
     to { opacity: 0.35; }
 }
 
-/* The emoji grid, floating over the messages above the box (emojiPicker.js) */
+/* The emoji grid, floating over the messages above the box (emoji-picker.js) */
 .emoji-picker
 {
     position: absolute;

@@ -2,9 +2,9 @@
 
 namespace Core;
 
-use App\Auth;
 use App\Config;
 use App\Flash;
+use App\SignIn\Auth;
 
 /**
  * What every controller shares: the route's values, the origin check, the

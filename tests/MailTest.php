@@ -2,7 +2,7 @@
 
 namespace Tests;
 
-use App\Mail;
+use App\Notify\Mail;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 

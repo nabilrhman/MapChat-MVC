@@ -345,13 +345,13 @@ class BotTest extends TestCase
 
     public function testMapChatIsOnlineWhileItCanChatBack(): void
     {
-        $people = array_column(\App\Models\UserInfo::getRecentPeople(), null, 'name');
+        $people = array_column(\App\Models\Whereabouts::getRecentPeople(), null, 'name');
         $this->assertEquals(1, $people['MapChat']['is_online']);
         $this->assertEquals(1, $people['MapChat']['is_bot']);
         $this->assertEquals(0, $people['Ann']['is_bot']);
 
         TestBot::forget();
-        $people = array_column(\App\Models\UserInfo::getRecentPeople(), 'is_online', 'name');
+        $people = array_column(\App\Models\Whereabouts::getRecentPeople(), 'is_online', 'name');
         $this->assertArrayNotHasKey('MapChat', $people);
     }
 

@@ -3,7 +3,6 @@
 use App\Config;
 use App\Controllers\About;
 use App\Controllers\Account;
-use App\Controllers\App;
 use App\Controllers\Avatar;
 use App\Controllers\Google;
 use App\Controllers\Home;
@@ -12,6 +11,7 @@ use App\Controllers\Password;
 use App\Controllers\Privacy;
 use App\Controllers\Profile;
 use App\Controllers\Push;
+use App\Controllers\Room;
 use App\Controllers\Signup;
 
 /**
@@ -48,7 +48,7 @@ $router = new Core\Router();
 $router->get('/', [Home::class, 'indexAction']);
 $router->get('/about', [About::class, 'indexAction']);
 $router->get('/privacy', [Privacy::class, 'indexAction']);
-$router->get('/app', [App::class, 'indexAction']);
+$router->get('/app', [Room::class, 'indexAction']);
 
 // Login and account
 $router->get('/login', [Login::class, 'newAction']);
@@ -86,13 +86,13 @@ $router->post('/profile/delete', [Profile::class, 'deleteAction']);
 $router->get('/avatar/{id:\d+}', [Avatar::class, 'showAction']);
 
 // Chat and map
-$router->post('/app/get', [App::class, 'getAction']);
-$router->post('/app/get-older', [App::class, 'getOlderAction']);
-$router->post('/app/send', [App::class, 'sendAction']);
-$router->post('/app/transcribe', [App::class, 'transcribeAction']);
-$router->post('/app/mark-read', [App::class, 'markReadAction']);
-$router->post('/app/get-people', [App::class, 'getPeopleAction']);
-$router->post('/app/get-locations', [App::class, 'getLocationsAction']);
+$router->post('/app/get', [Room::class, 'getAction']);
+$router->post('/app/get-older', [Room::class, 'getOlderAction']);
+$router->post('/app/send', [Room::class, 'sendAction']);
+$router->post('/app/transcribe', [Room::class, 'transcribeAction']);
+$router->post('/app/mark-read', [Room::class, 'markReadAction']);
+$router->post('/app/get-people', [Room::class, 'getPeopleAction']);
+$router->post('/app/get-locations', [Room::class, 'getLocationsAction']);
 
 // Web Push for this browser (public/js/notifications.js)
 $router->post('/push/subscribe', [Push::class, 'subscribeAction']);
@@ -101,7 +101,7 @@ $router->post('/push/unsubscribe', [Push::class, 'unsubscribeAction']);
 // Older URLs, from links and callers made before each route was listed here
 $router->get('/home/index', [Home::class, 'indexAction']);
 $router->get('/about/index', [About::class, 'indexAction']);
-$router->get('/app/index', [App::class, 'indexAction']);
+$router->get('/app/index', [Room::class, 'indexAction']);
 $router->post('/login/destroy', [Login::class, 'destroyAction']);
 
 $router->dispatch($_SERVER['REQUEST_METHOD'], $_SERVER['REQUEST_URI']);

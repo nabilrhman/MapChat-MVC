@@ -3,9 +3,9 @@
 namespace App\Controllers;
 
 use App\Config;
-use Core\View;
-use App\Models\User;
 use App\Flash;
+use App\Models\User;
+use Core\View;
 
 /**
  * Resetting a forgotten password by email

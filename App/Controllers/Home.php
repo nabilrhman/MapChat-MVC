@@ -2,7 +2,7 @@
 
 namespace App\Controllers;
 
-use App\Auth;
+use App\SignIn\Auth;
 
 /**
  * The site's address, which leads to the chat or the login page

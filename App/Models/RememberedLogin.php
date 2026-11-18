@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
+use App\SignIn\Token;
 use PDO;
-use App\Token;
 
 /**
  * A browser kept logged in by "Remember me": a row per cookie, found by

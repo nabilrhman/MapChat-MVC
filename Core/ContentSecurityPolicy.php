@@ -15,7 +15,7 @@ class ContentSecurityPolicy
         'font-src' => ['https://fonts.gstatic.com', 'https://cdn.jsdelivr.net', 'data:'],
         'img-src' => [
             'data:', 'blob:', 'https://res.cloudinary.com', 'https://cdn.jsdelivr.net',
-            // Photos of people who signed in with Google (App\Google::photoOf)
+            // Photos of people who signed in with Google (App\SignIn\GoogleSignIn::photoOf)
             'https://*.googleusercontent.com',
             'https://tile.openstreetmap.org', 'https://tiles.openfreemap.org',
         ],

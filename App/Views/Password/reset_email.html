@@ -7,10 +7,10 @@
 {% block preheader %}This link works for the next 2 hours.{% endblock %}
 
 {% block body %}
-{{ include('email_greeting.html', {name: name}, with_context = false) }}
+{{ include('_email_greeting.html', {name: name}, with_context = false) }}
 <p style="margin: 0;">Someone asked to reset the password for your MapChat account. Choose a new one with the button below. The link works for 2 hours.</p>
 
-{{ include('email_button.html', {url: url, label: 'Choose a new password'}, with_context = false) }}
+{{ include('_email_button.html', {url: url, label: 'Choose a new password'}, with_context = false) }}
 
 <p style="margin: 0; color: #7a7489; font-size: 13px;">Didn't ask for this? Ignore this email and your password stays the same.</p>
 {% endblock %}

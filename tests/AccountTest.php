@@ -454,7 +454,7 @@ class AccountTest extends TestCase
     {
         $token = bin2hex(random_bytes(16));
         $this->db->prepare('UPDATE users SET is_active = FALSE, activation_hash = ? WHERE email = ?')
-            ->execute([(new \App\Token($token))->getHash(), self::EMAIL]);
+            ->execute([(new \App\SignIn\Token($token))->getHash(), self::EMAIL]);
 
         $this->assertRedirect('/signup/activated', $this->request('GET', "/signup/activate/$token"));
         $this->assertRedirect('/login', $this->request('GET', '/signup/activated'));
@@ -467,7 +467,7 @@ class AccountTest extends TestCase
     {
         $token = bin2hex(random_bytes(16));
         $this->db->prepare('UPDATE users SET password_reset_hash = ?, password_reset_expires_at = DATE_ADD(NOW(), INTERVAL 1 HOUR) WHERE email = ?')
-            ->execute([(new \App\Token($token))->getHash(), self::EMAIL]);
+            ->execute([(new \App\SignIn\Token($token))->getHash(), self::EMAIL]);
 
         $response = $this->request('GET', "/password/reset/$token");
         $this->assertSame(200, $response['status']);

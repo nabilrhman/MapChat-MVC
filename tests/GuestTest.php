@@ -2,9 +2,9 @@
 
 namespace Tests;
 
-use App\Auth;
 use App\ChatSocket\Sessions;
 use App\Models\User;
+use App\SignIn\Auth;
 use PDO;
 use PHPUnit\Framework\TestCase;
 

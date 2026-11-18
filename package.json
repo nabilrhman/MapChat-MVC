@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "a11y": "playwright test --config tests/browser/playwright.config.ts",
-    "tour": "node docs/video/record.ts",
-    "screenshots": "node docs/video/screenshots.ts",
-    "voice-line": "node docs/video/voice-line.ts"
+    "tour": "node docs/tools/video/record.ts",
+    "screenshots": "node docs/tools/video/screenshots.ts",
+    "voice-line": "node docs/tools/video/voice-line.ts"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",

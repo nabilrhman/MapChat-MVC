@@ -2,7 +2,7 @@
 
 namespace Tests;
 
-use App\VoiceClip;
+use App\Messages\VoiceClip;
 use PHPUnit\Framework\TestCase;
 
 /**

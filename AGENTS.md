@@ -12,7 +12,7 @@ where everything lives; docs/live-chat.md how the live chat works.
 Write the version a newcomer reads in one pass: named steps over dense
 expressions, the codebase's existing pattern over a new one. Copy the
 neighbouring file's shape before writing (a controller like
-`App/Controllers/App.php`, a model like `App/Models/Chat.php`). Something
+`App/Controllers/Room.php`, a model like `App/Models/Chat.php`). Something
 clever earns its place only when the plain version is wrong or too slow, and
 its comment says which. A nested ternary is out: a third case is an `if` or a
 lookup.
@@ -38,6 +38,12 @@ A function is named for its effect:
 
 A boolean, in PHP and JS alike, reads as a question too: `isPrivate`,
 `shouldSnap`.
+
+Files are named like what they hold. A PHP class's file is the class's name
+(`PushNotifications.php`), in a folder for what it's part of (`App/Notify/`).
+Scripts and styles are kebab-case (`chat-sheet.js`, `chat-panel.css`), as
+they are URLs with no imports. A Twig partial starts with `_`
+(`_email_button.html`), and a layout with `base_`.
 
 ### Comments
 

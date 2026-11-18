@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Bot\BotJobKind;
+
 /**
  * One of the answers MapChat or a demo person owes someone (Bot), as a row
  * of mapchat_jobs

@@ -1,6 +1,6 @@
 {% extends 'base_app.html' %}
 {% from '_loading_dots.html' import loading_dots %}
-{# The chat page (App::indexAction): the map, the chat panel and the people
+{# The chat page (Room::indexAction): the map, the chat panel and the people
    list. Its messages come in the chats block #}
 {% types {
     current_user: 'App\\Models\\User',
@@ -132,7 +132,7 @@
             </div>
 
             <div class="tools">
-                {# Opens a grid of emoji that go in at the cursor (emojiPicker.js) #}
+                {# Opens a grid of emoji that go in at the cursor (emoji-picker.js) #}
                 <button class="emoji-toggle" id="emoji-toggle" type="button" aria-controls="emoji-picker"
                         aria-expanded="false" aria-label="Add an emoji" title="Add an emoji">
                     {{ icon('smile-circle-linear') }}
@@ -166,7 +166,7 @@
                     {{ icon('close') }}
                 </button>
             </div>
-            {# The groups of emoji, filled on first open (emojiPicker.js) #}
+            {# The groups of emoji, filled on first open (emoji-picker.js) #}
             <div class="groups" data-part="emoji-groups"></div>
         </section>
     </form>
@@ -198,12 +198,12 @@
 {% block footer %}
 <script nonce="{{ csp_nonce }}" src="{{ asset('/js/people.js') }}"></script>
 <script nonce="{{ csp_nonce }}" src="{{ asset('/js/mentions.js') }}"></script>
-<script nonce="{{ csp_nonce }}" src="{{ asset('/js/emojiPicker.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/emoji-picker.js') }}"></script>
 <script nonce="{{ csp_nonce }}" src="{{ asset('/js/voice.js') }}"></script>
 <script nonce="{{ csp_nonce }}" src="{{ asset('/js/messages.js') }}"></script>
 <script nonce="{{ csp_nonce }}" src="{{ asset('/js/notifications.js') }}"></script>
 <script nonce="{{ csp_nonce }}" src="{{ asset('/js/chat.js') }}"></script>
-<script nonce="{{ csp_nonce }}" src="{{ asset('/js/tabDragging.js') }}"></script>
-<script nonce="{{ csp_nonce }}" src="{{ asset('/js/chatSheet.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/tab-dragging.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/chat-sheet.js') }}"></script>
 <script nonce="{{ csp_nonce }}" src="{{ asset('/js/map.js') }}"></script>
 {% endblock %}

@@ -2,14 +2,14 @@
 
 namespace Tests;
 
-use App\MessagesForReader;
+use App\Messages\MessagesForReader;
 use App\Models\Chat;
 use App\Models\User;
 use Core\View;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Messages as App/chat.html draws them for one reader: whose name is a
+ * Messages as Room/chat.html draws them for one reader: whose name is a
  * button, which tab each goes in, mentions of the reader, and the place row
  */
 class ChatViewTest extends TestCase
@@ -49,7 +49,7 @@ class ChatViewTest extends TestCase
      */
     private function render(array $chats, array $mentionNames = []): string
     {
-        return View::getTemplate('App/chat.html', [
+        return View::getTemplate('Room/chat.html', [
             'chats' => MessagesForReader::rowsOf($chats, $this->ann),
             'current_user' => $this->ann,
             'mention_names' => $mentionNames,

@@ -375,7 +375,7 @@ class ChatTest extends TestCase
         $this->db->prepare('UPDATE userinfo SET online_at = NOW() WHERE email = ?')->execute([self::ANN]);
         $this->db->prepare('UPDATE userinfo SET online_at = NOW() - INTERVAL 1 HOUR WHERE email = ?')->execute([self::BOB]);
 
-        $names = array_column(\App\Models\UserInfo::getAllLocations(), 'name');
+        $names = array_column(\App\Models\Whereabouts::getAllLocations(), 'name');
 
         $this->assertContains('ann', $names);
         $this->assertNotContains('bob', $names);

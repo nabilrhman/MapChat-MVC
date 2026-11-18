@@ -53,7 +53,7 @@ to close.
 ## Sending a push
 
 The chat worker (`bin/chat-worker.php`) reads new messages every second, in id
-order, and hands them to `App\Push`, which works out each message's
+order, and hands them to `App\Notify\PushNotifications`, which works out each message's
 recipients and sends to every browser they've subscribed, encrypted
 (aes128gcm) and signed with the site's VAPID key. A message that saves late
 with an earlier id is waited for, not skipped (`NewMessageReader`, as the chat
