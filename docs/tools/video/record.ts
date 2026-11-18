@@ -336,7 +336,11 @@ async function tour(page: Page, person: Person, guest: Guest, startCapture: () =
     printProgress('the login page');
     // The login page
     await page.goto(`${URL}/login`);
-    await waitSeconds(2.5);
+    // The live map in behind the form, and a pin about to say hello in
+    // English. The pins take turns, so it waits for one that has just
+    // started, and the hello plays out on the recording
+    await page.locator('#login-map.is-shown').waitFor({state: 'attached', timeout: 20_000});
+    await page.locator('.bubble.is-shown[lang^="en"]').first().waitFor({state: 'attached', timeout: 90_000});
     await startCapture();
     await waitSeconds(1.2);
     await person.moveTo(await requiredCentreOf(page.locator('#guest-form button')));
