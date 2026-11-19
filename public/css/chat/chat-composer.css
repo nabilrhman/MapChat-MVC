@@ -10,6 +10,7 @@
     --composer-surface-colour: var(--md-surface-container-lowest);
     --composer-top-line: 1px solid var(--line);
     --composer-shadow: 0 -2px 6px var(--edge-shadow);
+    --composer-shadow-room: 8px; /* how far above it that shadow reaches */
 
     padding: var(--composer-padding-block) var(--composer-padding-inline);
     background-color: var(--composer-surface-colour);
@@ -553,21 +554,29 @@
         display: flex;
     }
 
-    /* While it slides in or out (translate.js): a layer over the composer's
-       top, dressed as the composer's own top edge and clipped where the
-       composer starts, so the edge seems to rise and fall with it. Only
-       transform and clip-path move; the page is laid out once, at the end */
+    /* While it slides in or out (translate.js): a window over the
+       composer's top, ending where the message box starts, in which the bar,
+       dressed as the composer's own top edge, slides up or down, so the edge
+       seems to rise and fall with it. The window's overflow cuts it off, as
+       every browser animates that; only transform moves, and the page is
+       laid out once, at the end */
     &.is-sliding
     {
         position: absolute;
         inset-inline: 0;
         inset-block-end: calc(100% - var(--composer-padding-block));
         margin: 0;
-        padding: var(--composer-padding-block) var(--composer-padding-inline);
-        background-color: var(--composer-surface-colour);
-        border-block-start: var(--composer-top-line);
-        box-shadow: var(--composer-shadow);
+        padding-block-start: var(--composer-shadow-room);
+        overflow: hidden;
         pointer-events: none;
+
+        & .translate-bar
+        {
+            padding: var(--composer-padding-block) var(--composer-padding-inline);
+            background-color: var(--composer-surface-colour);
+            border-block-start: var(--composer-top-line);
+            box-shadow: var(--composer-shadow);
+        }
     }
 }
 

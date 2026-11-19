@@ -75,9 +75,9 @@ function setTranslating(isOn, {isAtOnce = false} = {}) {
 // while none is running
 let finishBarSlide = null;
 
-// Gives the bar its room above the box, or takes it back. It slides as a
-// layer over the composer's top edge (.is-sliding), clipped where the
-// composer starts, so the edge rises and falls with it, and the messages
+// Gives the bar its room above the box, or takes it back. It slides in a
+// window over the composer's top edge (.is-sliding) that ends where the
+// message box starts, so the edge rises and falls with it, and the messages
 // move with the edge. The page is laid out for real only once
 function placeBar(shouldShow, {isAtOnce = false} = {}) {
     finishBarSlide?.();
@@ -99,15 +99,16 @@ function placeBar(shouldShow, {isAtOnce = false} = {}) {
     }
 
     const timing = {...motionTiming(), fill: 'forwards'};
+    const barInside = bar.querySelector('[data-part="translate-bar"]');
     if (shouldShow) {
         // Laid over the composer first: how far its edge will rise is the
-        // layer's height less the composer's own edge, which it covers
+        // bar's height there less the composer's own edge, which it covers
         bar.classList.add('is-shown', 'is-sliding');
         const composerStyle = getComputedStyle(composer);
         const edgeHeight = parseFloat(composerStyle.borderBlockStartWidth) + parseFloat(composerStyle.paddingBlockStart);
-        const rise = bar.offsetHeight - edgeHeight;
+        const rise = barInside.offsetHeight - edgeHeight;
 
-        const slide = bar.animate([edgeAt(rise), edgeAt(0)], timing);
+        const slide = barInside.animate([edgeAt(rise), edgeAt(0)], timing);
         // The newest message stays in view, moving up with the edge
         const messageSlides = isAtNewest ? moveMessagesBy(list, -rise, timing) : [];
         finishBarSlide = () => {
@@ -129,7 +130,7 @@ function placeBar(shouldShow, {isAtOnce = false} = {}) {
     const movedUpBy = list.scrollTop - oldScrollTop;
     if (movedUpBy !== 0) slideMessagesFrom(list, movedUpBy);
 
-    const slide = bar.animate([edgeAt(0), edgeAt(fall)], timing);
+    const slide = barInside.animate([edgeAt(0), edgeAt(fall)], timing);
     finishBarSlide = () => {
         finishBarSlide = null;
         bar.classList.remove('is-sliding', 'is-shown');
@@ -138,13 +139,8 @@ function placeBar(shouldShow, {isAtOnce = false} = {}) {
     slide.addEventListener('finish', () => finishBarSlide?.(), {once: true});
 }
 
-// The sliding bar moved down by `distance` and cut off that far from its
-// bottom, so what shows ends where the composer starts. Its shadow, above
-// it, stays in
-const edgeAt = (distance) => ({
-    transform: `translateY(${distance}px)`,
-    clipPath: `inset(-8px 0 ${distance}px 0)`,
-});
+// The sliding bar moved down by `distance`, below which its window cuts it off
+const edgeAt = (distance) => ({transform: `translateY(${distance}px)`});
 
 // The messages in view moved by `distance` (up, when it's less than 0) and
 // held there, until the page is laid out to match
