@@ -51,6 +51,7 @@
             <ul class="list">
                 <li>Messages in Everyone are seen by everyone signed in. Private messages are shown only to the two of you.</li>
                 <li>MapChat and some people on the map are AI. To write their replies, the chat they answer is sent to Groq, which doesn't train its AI on it.</li>
+                <li>When you translate a message, what you typed is sent to Groq, or to Cerebras when Groq is busy, to be translated. MapChat keeps what you typed beside the translation, and everyone who sees the message can read both.</li>
                 <li>When you speak a message, the recording is sent to Groq to be written out, and MapChat doesn't keep it. When Groq is busy, your browser listens instead, and its maker's speech service (Google's in Chrome, Apple's in Safari) writes it out.</li>
                 <li>Notifications you turn on keep your browser's push address, until you turn them off or log out.</li>
             </ul>

@@ -108,7 +108,7 @@
 
         &:hover
         {
-            background-color: color-mix(in srgb, var(--md-primary) var(--md-hover), transparent);
+            background-color: var(--md-primary-hover);
             color: var(--md-primary);
         }
 

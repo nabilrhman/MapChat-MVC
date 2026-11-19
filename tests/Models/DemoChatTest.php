@@ -198,6 +198,30 @@ class DemoChatTest extends TestCase
         }
     }
 
+    public function testALineTranslatedInTheScriptIsPostedWithWhatWasTyped(): void
+    {
+        TestDemoChat::$isStampedOnDemoClock = true;
+
+        $db = TestDb::get();
+        $db->beginTransaction();
+        try {
+            $schedule = TestDemoChat::schedule(TestDemoChat::today());
+            foreach (array_unique(array_column($schedule, 'email')) as $email) {
+                TestDb::createUser(ucfirst(strtok($email, '@')), $email);
+            }
+            $schedule = TestDemoChat::schedule(TestDemoChat::today());
+            $translatedLine = array_key_first(array_filter(array_column($schedule, 'original')));
+
+            $this->catchUpTo($schedule, $translatedLine);
+
+            $stmt = $db->prepare('SELECT original_body FROM chats WHERE email = ? AND body = ?');
+            $stmt->execute([$schedule[$translatedLine]['email'], $schedule[$translatedLine]['body']]);
+            $this->assertSame($schedule[$translatedLine]['original'], $stmt->fetchColumn());
+        } finally {
+            $db->rollBack();
+        }
+    }
+
     public function testCatchUpGoesOnFromWhereTheStoryIs(): void
     {
         // The demo clock is moved to a line of today's plan, which is ahead

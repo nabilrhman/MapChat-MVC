@@ -39,54 +39,6 @@
             animation: fade-in var(--dur) var(--ease-out);
         }
     }
-
-    /* The messages fade out at an end with more past it: a band stuck to
-       each end, shown while the list can scroll that way. Browsers without
-       scroll-state queries (Safari, Firefox) show no fade */
-    @supports (container-type: scroll-state)
-    {
-        .list
-        {
-            container-type: scroll-state;
-        }
-
-        .list::before,
-        .list::after
-        {
-            content: '';
-            display: block;
-            position: sticky;
-            z-index: 1;
-            height: var(--edge-fade);
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity var(--dur-fast) var(--ease-out);
-        }
-
-        .list::before
-        {
-            inset-block-start: 0;
-            margin-block-end: calc(-1 * var(--edge-fade));
-            background: linear-gradient(var(--chat-surface), transparent);
-        }
-
-        .list::after
-        {
-            inset-block-end: 0;
-            margin-block-start: calc(-1 * var(--edge-fade));
-            background: linear-gradient(transparent, var(--chat-surface));
-        }
-
-        @container scroll-state(scrollable: top)
-        {
-            .list::before { opacity: 1; }
-        }
-
-        @container scroll-state(scrollable: bottom)
-        {
-            .list::after { opacity: 1; }
-        }
-    }
 }
 
 /* Under the last message, above the box: the other person in a private

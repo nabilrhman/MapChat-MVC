@@ -47,6 +47,11 @@
         /* How much of a button's text colour tints it on hover and press */
         --md-hover: 8%;
         --md-pressed: 12%;
+        /* MapChat's purple at its hover strength: a hovered tool or chip's tint */
+        --md-primary-hover: color-mix(in srgb, var(--md-primary) var(--md-hover), transparent);
+        /* Material 3's disabled look: its text and icon, and its fill */
+        --md-disabled-content: color-mix(in srgb, var(--md-on-surface) 38%, transparent);
+        --md-disabled-container: color-mix(in srgb, var(--md-on-surface) 12%, transparent);
 
         /* MapChat's own colours beside the roles */
         --brand-yellow: #ffc107; /* the line under the header and over the login card */

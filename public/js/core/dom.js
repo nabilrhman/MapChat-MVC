@@ -48,6 +48,22 @@ const phoneScreen = window.matchMedia('(max-width: 700px)');
 // page is open, so read .matches when it's needed
 const prefersLessMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
+// The duration and easing of something appearing (--dur, --ease-out in
+// animations.css), for an animation run from script
+function motionTiming() {
+    const rootStyle = getComputedStyle(document.documentElement);
+    return {
+        duration: millisecondsOf(rootStyle.getPropertyValue('--dur')),
+        easing: rootStyle.getPropertyValue('--ease-out'),
+    };
+}
+
+// A CSS time ("250ms" or "1.5s") in milliseconds, as animate() takes it
+function millisecondsOf(cssTime) {
+    const amount = parseFloat(cssTime);
+    return cssTime.trim().endsWith('ms') ? amount : amount * 1000;
+}
+
 // Counts a number shown in an element up or down to the target instead of
 // snapping, as Rove's useCountUp does: each frame covers a fraction of the
 // distance left, so it slows as it lands. Each number it passes rolls in
@@ -171,8 +187,15 @@ function isShown(element) {
     return element.getClientRects().length > 0;
 }
 
+// The element's own animation ending, not one inside it that bubbled up
+// (a language list fading out inside the translate bar, say)
 function onAnimationEnd(element, callback) {
-    element.addEventListener('animationend', callback, {once: true});
+    const onEnd = (event) => {
+        if (event.target !== element) return;
+        element.removeEventListener('animationend', onEnd);
+        callback(event);
+    };
+    element.addEventListener('animationend', onEnd);
 }
 
 function onTransitionEnd(element, callback) {

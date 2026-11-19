@@ -138,9 +138,86 @@
         white-space: pre-line; /* keep line breaks people typed */
     }
 
-    .location
+    /* A translated message and its original, in one place: while "See
+       original" swaps them (chat.js), both are there, one fading out as
+       the other fades in */
+    .texts
     {
         grid-column: 1 / -1;
+        display: grid;
+
+        /* Easing from one text's height to the other's (chat.js) */
+        &.is-resizing
+        {
+            overflow: clip;
+        }
+
+        & .body
+        {
+            grid-area: 1 / 1;
+
+            &.is-leaving
+            {
+                animation: fade-out var(--dur-fast) var(--ease-out) forwards;
+            }
+
+            &.is-arriving
+            {
+                animation: fade-in var(--dur) var(--ease-out);
+            }
+        }
+    }
+
+    /* Bottom left: the message was translated, with a button to its original */
+    .translation
+    {
+        grid-column: 1;
+        justify-self: start;
+        /* By the row's top, as the city is: the grid's baseline would take
+           the city's from its pin and drop this 3px below it */
+        align-self: start;
+        display: flex;
+        align-items: center;
+        gap: var(--icon-gap); /* as the city's pin from its name */
+        margin-block-start: 2px;
+        color: var(--text-faint);
+        font-size: 11px;
+        line-height: 16px;
+    }
+
+    /* The message box's translate icon, at the city's pin's size */
+    .translated-icon
+    {
+        font-size: 13px;
+    }
+
+    .dot
+    {
+        margin-inline: -1px; /* with the 5px gap, 4px each side */
+    }
+
+    .see-original
+    {
+        margin: 0;
+        padding: 0;
+        border: none;
+        background: none;
+        color: var(--purple-soft);
+        font: inherit;
+        cursor: pointer;
+
+        &:hover
+        {
+            color: var(--md-primary);
+            text-decoration: underline;
+        }
+    }
+
+    /* Its own column, so a translation's note can share its row */
+    .location
+    {
+        grid-column: 2;
+        align-self: start; /* level with a translation's note (see .translation) */
         display: flex;
         justify-content: flex-end; /* bottom right corner, under the time */
         margin-block-start: 2px;
@@ -240,7 +317,7 @@
 {
     padding: 1px 3px;
     border-radius: 4px;
-    background-color: color-mix(in srgb, var(--md-primary) var(--md-hover), transparent);
+    background-color: var(--md-primary-hover);
     color: var(--md-primary);
     font-weight: 400;
     box-decoration-break: clone;

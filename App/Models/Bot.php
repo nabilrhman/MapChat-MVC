@@ -8,6 +8,7 @@ use App\Bot\Characters;
 use App\Bot\Groq;
 use App\ChatSocket\Signal;
 use App\Messages\Mention;
+use App\Messages\MessageText;
 use App\PersonName;
 use PDO;
 
@@ -85,11 +86,27 @@ class Bot extends \Core\Model
     protected static ?\Closure $writer = null;
 
     /**
+     * Translates a reply back in place of Groq, for the tests
+     *
+     * @var (\Closure(string $text, string $example): ?string)|null
+     */
+    protected static ?\Closure $translator = null;
+
+    /**
      * Whether MapChat can write replies, or only greet
      */
     public static function canReply(): bool
     {
         return static::$writer !== null || Groq::isEnabled();
+    }
+
+    /**
+     * Whether a reply can be translated back for someone who translated
+     * what they wrote
+     */
+    protected static function canTranslate(): bool
+    {
+        return static::$translator !== null || Groq::isEnabled();
     }
 
     /**
@@ -189,7 +206,10 @@ class Bot extends \Core\Model
                 Signal::typing($job['speaker'], $job['email'], true);
             }
 
-            $stmt = $db->prepare('SELECT * FROM mapchat_jobs WHERE done_at IS NULL AND due_at <= :now ORDER BY due_at, id');
+            // With the answered message's original, for the reply's language
+            $stmt = $db->prepare('SELECT mapchat_jobs.*, chats.original_body AS answered_original
+                                  FROM mapchat_jobs LEFT JOIN chats ON chats.id = mapchat_jobs.chat_id
+                                  WHERE done_at IS NULL AND due_at <= :now ORDER BY due_at, mapchat_jobs.id');
             $stmt->execute([':now' => static::databaseTime()]);
 
             foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
@@ -239,7 +259,7 @@ class Bot extends \Core\Model
         if (static::needsTag($job)) {
             $body = static::withMentionOf($job->email, $body);
         }
-        static::post($job, static::fitLength($body), null);
+        static::post($job, static::translatedBack($job, static::fitLength($body)), null);
     }
 
     /**
@@ -252,7 +272,7 @@ class Bot extends \Core\Model
     {
         // A reply written earlier, now typed
         if ($job->reply !== null) {
-            static::post($job, $job->reply, $job->email);
+            static::post($job, new MessageText($job->reply, $job->replyOriginal), $job->email);
             return;
         }
 
@@ -261,26 +281,32 @@ class Bot extends \Core\Model
 
         try {
             $body = static::privateReply($job);
+            $text = $body === null ? null : static::translatedBack($job, static::fitLength($body));
         } catch (\Throwable $e) {
             Signal::typing($job->speaker, $job->email, false);
             throw $e;
         }
 
-        if ($body === null) {
+        if ($text === null) {
             Signal::typing($job->speaker, $job->email, false);
             return;
         }
 
-        $body = static::fitLength($body);
-        $typingLeft = (int) ceil(static::typingSeconds($body) - (microtime(true) - $startedAt));
+        $typingLeft = (int) ceil(static::typingSeconds($text->body) - (microtime(true) - $startedAt));
         if ($typingLeft <= 0) {
-            static::post($job, $body, $job->email);
+            static::post($job, $text, $job->email);
             return;
         }
 
         // Due again once typed; runDue keeps "typing" showing till then
-        static::getDB()->prepare('UPDATE mapchat_jobs SET reply = :reply, due_at = :due, done_at = NULL WHERE id = :id')
-            ->execute([':reply' => $body, ':due' => static::databaseTime($typingLeft), ':id' => $job->id]);
+        static::getDB()->prepare('UPDATE mapchat_jobs SET reply = :reply, reply_original = :original, due_at = :due, done_at = NULL
+                                  WHERE id = :id')
+            ->execute([
+                ':reply' => $text->body,
+                ':original' => $text->original,
+                ':due' => static::databaseTime($typingLeft),
+                ':id' => $job->id,
+            ]);
     }
 
     /**
@@ -327,15 +353,48 @@ class Bot extends \Core\Model
      *
      * @param string|null $toEmail Null for the open room
      */
-    protected static function post(BotJob $job, string $body, ?string $toEmail): void
+    protected static function post(BotJob $job, MessageText $text, ?string $toEmail): void
     {
-        $postedId = Chat::save($job->speaker, $toEmail, $body);
+        $postedId = Chat::save($job->speaker, $toEmail, $text);
 
         static::getDB()->prepare('UPDATE mapchat_jobs SET posted_id = :posted WHERE id = :id')
             ->execute([':posted' => $postedId, ':id' => $job->id]);
 
         // A demo person who just spoke is in the room
         Whereabouts::markOnline($job->speaker);
+    }
+
+    /**
+     * The reply as it's posted. To someone who translated what they wrote,
+     * it goes back in the language they typed, as they'd translate it
+     * themselves, with the speaker's own words as its original. As written
+     * when the API can't translate it. Done as the reply is written, so a
+     * private reply's typing time is the translation's
+     */
+    protected static function translatedBack(BotJob $job, string $body): MessageText
+    {
+        // Without Groq there's nothing to translate with; a greeting still goes out
+        if ($job->answeredOriginal === null || !static::canTranslate()) {
+            return new MessageText($body);
+        }
+
+        $translator = static::$translator ?? Groq::translateIntoLanguageOf(...);
+        $translation = $translator($body, $job->answeredOriginal);
+        if ($translation === null || $translation === '') {
+            return new MessageText($body);
+        }
+
+        // A translation can run longer than what was written
+        return (new MessageText(static::fitLength($translation), $body))->trimmed();
+    }
+
+    /**
+     * The note that has the writer answer in a translated message's
+     * language (BotInstructions::TRANSLATED_NOTE); '' for one sent as typed
+     */
+    protected static function translatedNoteFor(BotJob $job): string
+    {
+        return $job->answeredOriginal === null ? '' : BotInstructions::TRANSLATED_NOTE;
     }
 
     /**
@@ -380,7 +439,8 @@ class Bot extends \Core\Model
         return static::writtenReply(
             static::instructionsFor($job)
                 . "\n\nYou're in the open room, which everyone can read. Reply to $name's latest message."
-                . BotInstructions::closingNote(static::bodyOf($job->chatId)),
+                . BotInstructions::closingNote(static::bodyOf($job->chatId))
+                . static::translatedNoteFor($job),
             static::roomHistory($job->chatId, $job->speaker),
             $job->speaker
         );
@@ -400,7 +460,8 @@ class Bot extends \Core\Model
         return static::writtenReply(
             static::instructionsFor($job)
                 . "\n\nThis is your private chat with $name; nobody else can read it. Reply to their latest message."
-                . BotInstructions::closingNote(static::bodyOf($job->chatId)),
+                . BotInstructions::closingNote(static::bodyOf($job->chatId))
+                . static::translatedNoteFor($job),
             static::privateHistory($job->email, $job->speaker, $job->chatId),
             $job->speaker
         );

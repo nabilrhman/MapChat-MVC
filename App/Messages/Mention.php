@@ -35,15 +35,17 @@ class Mention
 
     /**
      * Every way people are mentioned in any of these messages, names and
-     * shown names, so a page of them takes one look-up
+     * shown names, so a page of them takes one look-up. A translated
+     * message's original counts too, as "See original" shows its chips
      *
-     * @param array<array{body: string}> $chats
+     * @param array<array{body: string, original_body?: string|null}> $chats
      *
      * @return string[]
      */
     public static function namesIn(array $chats): array
     {
-        $bodies = array_filter(array_column($chats, 'body'), fn (string $body): bool => str_contains($body, '@'));
+        $texts = [...array_column($chats, 'body'), ...array_filter(array_column($chats, 'original_body'))];
+        $bodies = array_filter($texts, fn (string $text): bool => str_contains($text, '@'));
         if (!$bodies) {
             return [];
         }

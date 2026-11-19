@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Bot\BotJobKind;
 use App\Bot\Characters;
+use App\Bot\DemoLine;
 use App\Config;
 use PDO;
 
@@ -198,12 +199,12 @@ class DemoChat extends \Core\Model
         $now = gmdate('Y-m-d H:i:s', static::now());
 
         // Skip the same line if two requests catch up at once
-        $insert = $db->prepare('INSERT INTO chats (email, body, timestamp)
-                                SELECT :email, :body, :time FROM DUAL
+        $insert = $db->prepare('INSERT INTO chats (email, body, original_body, timestamp)
+                                SELECT :email, :body, :original, :time FROM DUAL
                                 WHERE NOT EXISTS (SELECT 1 FROM chats WHERE email = :email2 AND body = :body2 AND timestamp >= :start)');
 
         $lastSpokeAt = [];
-        foreach ($schedule as $i => ['time' => $time, 'email' => $email, 'body' => $body]) {
+        foreach ($schedule as $i => ['time' => $time, 'email' => $email, 'body' => $body, 'original' => $original]) {
             if ($time > $now) {
                 break;
             }
@@ -212,7 +213,7 @@ class DemoChat extends \Core\Model
 
             if ($i > $postedUpTo) {
                 $insert->execute([
-                    ':email' => $email, ':body' => $body, ':time' => static::realTime($time),
+                    ':email' => $email, ':body' => $body, ':original' => $original, ':time' => static::realTime($time),
                     ':email2' => $email, ':body2' => $body, ':start' => gmdate('Y-m-d H:i:s', $dayStart),
                 ]);
             }
@@ -374,13 +375,13 @@ class DemoChat extends \Core\Model
     public static function storiesSoFar(string $email): array
     {
         $firstNames = static::firstNames();
-        $stories = require dirname(__DIR__, 2) . '/database/demo-chat.php';
+        $stories = static::stories();
 
         // Which story each line belongs to, as the room has it (with its @mention)
         $storyOf = [];
         foreach ($stories as $name => $scenes) {
-            foreach (array_merge(...$scenes) as [$speaker, $body]) {
-                $storyOf[$speaker . Characters::DEMO_DOMAIN . ' ' . static::withAddressee($body, $firstNames)] = $name;
+            foreach (array_merge(...$scenes) as $line) {
+                $storyOf[$line->speaker . Characters::DEMO_DOMAIN . ' ' . static::withAddressee($line->body, $firstNames)] = $name;
             }
         }
 
@@ -414,7 +415,8 @@ class DemoChat extends \Core\Model
      *
      * @param string $date Y-m-d
      *
-     * @return array<array{time: string, email: string, body: string}> Each line, its time UTC as Y-m-d H:i:s
+     * @return array<array{time: string, email: string, body: string, original: string|null}> Each line,
+     *         its time UTC as Y-m-d H:i:s, and what was typed when the body is its translation
      */
     public static function schedule(string $date): array
     {
@@ -430,7 +432,7 @@ class DemoChat extends \Core\Model
 
         mt_srand(crc32($date));
 
-        $scenes = static::orderScenes(require dirname(__DIR__, 2) . '/database/demo-chat.php');
+        $scenes = static::orderScenes(static::stories());
 
         // Minutes into each scene for each line, then spread the scenes
         // evenly-ish over the whole day so every story ends by midnight
@@ -461,12 +463,14 @@ class DemoChat extends \Core\Model
         $messages = [];
 
         foreach ($scenes as $n => $scene) {
-            foreach ($scene as $i => [$speaker, $body]) {
+            foreach ($scene as $i => $line) {
                 $seconds = (int) round(($minute + $offsets[$n][$i]) * 60) + mt_rand(0, 30);
                 $messages[] = [
                     'time' => gmdate('Y-m-d H:i:s', $dayStart + $seconds),
-                    'email' => $speaker . Characters::DEMO_DOMAIN,
-                    'body' => static::withAddressee($body, $firstNames),
+                    'email' => $line->speaker . Characters::DEMO_DOMAIN,
+                    'body' => static::withAddressee($line->body, $firstNames),
+                    // Tagged as the body is, so See original shows the same @mention
+                    'original' => $line->original === null ? null : static::withAddressee($line->original, $firstNames),
                 ];
             }
 
@@ -614,20 +618,37 @@ class DemoChat extends \Core\Model
      * How long after one line the next one comes: time to read it (unless
      * it's the same person adding a line), a moment to think, then typing
      *
-     * @param array{string, string} $previous [speaker, body]
-     * @param array{string, string} $line [speaker, body]
-     *
      * @return float Minutes
      */
-    protected static function replyMinutes(array $previous, array $line): float
+    protected static function replyMinutes(DemoLine $previous, DemoLine $line): float
     {
-        $typing = mb_strlen($line[1]) / static::TYPE_SPEED;
+        $typing = mb_strlen($line->body) / static::TYPE_SPEED;
 
-        if ($previous[0] === $line[0]) {
+        if ($previous->speaker === $line->speaker) {
             return $typing + 0.2;
         }
 
-        return mb_strlen($previous[1]) / static::READ_SPEED + mt_rand(50, 200) / 100 + $typing;
+        return mb_strlen($previous->body) / static::READ_SPEED + mt_rand(50, 200) / 100 + $typing;
+    }
+
+    /**
+     * The demo people's stories, from database/demo-chat.php, each a list of
+     * scenes, each a list of lines
+     *
+     * @return array<string, list<list<DemoLine>>> By the story's name
+     */
+    protected static function stories(): array
+    {
+        $rowsByStory = require dirname(__DIR__, 2) . '/database/demo-chat.php';
+
+        $stories = [];
+        foreach ($rowsByStory as $name => $scenes) {
+            foreach ($scenes as $scene) {
+                $stories[$name][] = array_map(DemoLine::fromRow(...), $scene);
+            }
+        }
+
+        return $stories;
     }
 
     /**
@@ -635,9 +656,9 @@ class DemoChat extends \Core\Model
      * each story's scenes in order, never two from the same story in a row,
      * and longer stories picked more often so they stretch across the day
      *
-     * @param array<string, array> $stories As database/demo-chat.php has them
+     * @param array<string, list<list<DemoLine>>> $stories From stories()
      *
-     * @return array[] Scenes, each a list of [speaker, body]
+     * @return list<list<DemoLine>> Scenes, each a list of lines
      */
     protected static function orderScenes(array $stories): array
     {

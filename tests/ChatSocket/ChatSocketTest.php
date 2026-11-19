@@ -2,6 +2,7 @@
 
 namespace Tests\ChatSocket;
 
+use App\Messages\MessageText;
 use App\Models\Chat;
 use App\Models\User;
 use PDO;
@@ -55,7 +56,7 @@ class ChatSocketTest extends TestCase
 
         // Other tests' rolled-back transactions used up ids, and the socket
         // waits out a gap in the ids once (NewMessageReader::GAP_SECONDS) before reading on
-        Chat::save(Chat::BOT_EMAIL, null, 'warming up');
+        Chat::save(Chat::BOT_EMAIL, null, new MessageText('warming up'));
         usleep((int) ((\App\ChatSocket\NewMessageReader::GAP_SECONDS + 0.5) * 1000000));
         TestDb::get()->exec("DELETE FROM chats WHERE body = 'warming up'");
     }
@@ -237,7 +238,7 @@ class ChatSocketTest extends TestCase
         $bob = $this->openPage('bob');
 
         // As the HTTP fallback, the chat worker or MapChat save one
-        Chat::sendFrom($this->users['ann'], 'sent by http', (int) $this->users['bob']->id);
+        Chat::sendFrom($this->users['ann'], new MessageText('sent by http'), (int) $this->users['bob']->id);
 
         $this->assertSame(['sent by http'], $this->bodiesReceived($bob, 1.5));
     }
@@ -266,6 +267,17 @@ class ChatSocketTest extends TestCase
         // Each page shows it once: the catch-up and the live stream don't both send it
         $this->assertSame(['only once'], $this->bodiesReceived($bob, 1));
         $this->assertSame(['only once'], $this->bodiesReceived($ann, 0.5));
+    }
+
+    public function testATranslatedMessageKeepsWhatWasTyped(): void
+    {
+        $ann = $this->openPage('ann');
+        $ann->send(['type' => 'send', 'clientId' => 'translated-1', 'body' => 'Hello', 'to' => null, 'original' => 'হ্যালো']);
+        $ann->waitFor('sent', 5, fn ($message) => $message['clientId'] === 'translated-1') ?? $this->fail('No answer to sending');
+
+        $stmt = $this->db->prepare("SELECT body, original_body FROM chats WHERE client_id = 'translated-1'");
+        $stmt->execute();
+        $this->assertSame(['body' => 'Hello', 'original_body' => 'হ্যালো'], $stmt->fetch(PDO::FETCH_ASSOC));
     }
 
     public function testRetryIsAnsweredEvenOverTheRateLimit(): void
@@ -348,9 +360,9 @@ class ChatSocketTest extends TestCase
 
     public function testOlderPrivateHistoryComesStraightFromThatChat(): void
     {
-        $old = Chat::sendFrom($this->users['ann'], 'old private', (int) $this->users['bob']->id)->id;
+        $old = Chat::sendFrom($this->users['ann'], new MessageText('old private'), (int) $this->users['bob']->id)->id;
         for ($i = 0; $i < Chat::HISTORY + 10; $i++) {
-            Chat::save($this->emails['cat'], null, "busy room $i");
+            Chat::save($this->emails['cat'], null, new MessageText("busy room $i"));
         }
         $bob = $this->openPage('bob');
 

@@ -54,6 +54,12 @@ class Schema extends \Core\Model
         ['users', 'google_photo_declined', [
             'ALTER TABLE users ADD COLUMN google_photo_declined BOOLEAN NOT NULL DEFAULT FALSE AFTER google_id',
         ]],
+        ['chats', 'original_body', [
+            'ALTER TABLE chats ADD COLUMN original_body TEXT NULL DEFAULT NULL AFTER client_id',
+        ]],
+        ['mapchat_jobs', 'reply_original', [
+            'ALTER TABLE mapchat_jobs ADD COLUMN reply_original TEXT NULL DEFAULT NULL AFTER reply',
+        ]],
     ];
 
     /** Indexes added since the first release, as in init.sql, by table and name */
@@ -74,6 +80,7 @@ class Schema extends \Core\Model
             `done_at`    TIMESTAMP    NULL DEFAULT NULL,
             `posted_id`  INT          NULL DEFAULT NULL,
             `reply`      TEXT         NULL DEFAULT NULL,
+            `reply_original` TEXT     NULL DEFAULT NULL,
             `created_at` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (`id`),
             UNIQUE KEY `dedupe_key` (`dedupe_key`),

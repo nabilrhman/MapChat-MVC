@@ -51,6 +51,16 @@
     }
 }
 
+/* fade-in-up played back, for something that leaves the way it came */
+@keyframes fade-out-down
+{
+    to
+    {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+}
+
 @keyframes pop-in
 {
     from

@@ -10,10 +10,12 @@
  * made for the run, and deleted with what Alex said at the end.
  *
  * - mapchat-app.png: Alex opens two private chats as tabs and sends
- *   the room a message that @mentions someone, then the room is shown with a
- *   message being written in the box that @mentions someone, and the pin
- *   nearest the middle of the map panned to the middle with its label open,
- *   as hovering it shows.
+ *   the room a message that @mentions Aiko, translated into Japanese with
+ *   the translate bar; she answers in Japanese, translated back into
+ *   English. Then the room is shown with a message being written in the box
+ *   that @mentions someone, and the pin nearest the middle of the map panned
+ *   to the middle with its label open, as hovering it shows. Translating
+ *   needs GROQ_API_KEY in .env
  * - mapchat-phone.png: the room on a phone, with a pin in the middle of the
  *   map and its label open as a tap opens it.
  * - mapchat-phone-online.png: the same phone with the online list slid open.
@@ -28,7 +30,7 @@ import {join} from 'node:path';
 import type {Browser, Page} from 'playwright';
 
 import {
-    ALEX_EMAIL, ALEX_SHOWN_NAME, type AlexAccount, deleteAlexAccount, launchChrome, logInAsAlex, makeAlexAccount, printRenderer, REPO, restoreApp,
+    ALEX_EMAIL, ALEX_SHOWN_NAME, type AlexAccount, deleteAlexAccount, isGoogleSignInShown, launchChrome, logInAsAlex, makeAlexAccount, printRenderer, REPO, restoreApp,
     sql, startAppForRecording, URL,
 } from './chrome.ts';
 import {waitSeconds} from './person.ts';
@@ -44,8 +46,13 @@ const IMAGES = join(REPO, 'docs/images');
 // Being written in the box, as if Alex were about to send it, with a mention's chip
 const draftFor = (person: ListedPerson): string => `@${person.shown_name} anyone else still up? 🌙 what time is it where you are?`;
 
-/** What Alex sends to the first demo person, so a mention chip shows */
+/** What Alex sends to Aiko, so a mention chip shows */
 const mentionFor = (person: ListedPerson): string => `@${person.shown_name} what's the weather like where you are? ☀️`;
+
+/** Who Alex writes to in her own language: she answers in it, and it's translated back */
+const TRANSLATED_FOR = 'Aiko';
+/** Her language, by the code the To list knows it by */
+const TRANSLATE_TO_CODE = 'ja';
 
 /** A person in the online list, as people.js has them */
 type ListedPerson = {id: number, shown_name: string};
@@ -139,27 +146,60 @@ async function removeWhatWasSaid(): Promise<void> {
         OR ((email = 'bot@mapchat.local' OR email LIKE '%@demo.mapchat.local') AND body LIKE '@${ALEX_SHOWN_NAME} %')`);
 }
 
-/** The room with two private chats open as tabs, a draft in the box and a pin's label open */
+/**
+ * The room with two private chats open as tabs, a draft in the box and a
+ * pin's label open. The app is started again with Aiko kept online, as she
+ * answers in it, then as it was
+ */
 async function takeDesktopPicture(browser: Browser, account: AlexAccount): Promise<void> {
+    const workDir = mkdtempSync(join(tmpdir(), 'mapchat-screenshots-'));
+    const hadGoogleKeys = await isGoogleSignInShown();
+    await startAppForRecording(workDir, {DEMO_HERE: TRANSLATED_FOR.toLowerCase()});
+    try {
+        await takeRoomPicture(browser, account);
+    } finally {
+        await restoreApp(hadGoogleKeys);
+        rmSync(workDir, {recursive: true, force: true});
+    }
+}
+
+/** The room as takeDesktopPicture describes it, on the app as it's running */
+async function takeRoomPicture(browser: Browser, account: AlexAccount): Promise<void> {
     const context = await browser.newContext({viewport: DESKTOP, deviceScaleFactor: PIXEL_RATIO});
     const page = await context.newPage();
     await printRenderer(page);
     await logIn(page, account);
 
     // Two private chats open as tabs, then back to the room
-    const demoPeople: ListedPerson[] = await page.evaluate(() => getPeopleToMention().filter((p) => Number(p.is_demo) && p.isOnline));
-    if (demoPeople.length < 2) {
-        throw new Error('Fewer than two demo people online: is the demo running?');
+    const onlineDemoPeople: ListedPerson[] = await page.evaluate(() => getPeopleToMention().filter((p) => Number(p.is_demo) && p.isOnline));
+    const translatedFor = onlineDemoPeople.find((person) => person.shown_name === TRANSLATED_FOR);
+    if (!translatedFor || onlineDemoPeople.length < 2) {
+        throw new Error(`${TRANSLATED_FOR} or another demo person isn't online: is the demo running?`);
     }
+    // Aiko first: her tab, then the message to her
+    const demoPeople = [translatedFor, ...onlineDemoPeople.filter((person) => person !== translatedFor)];
     for (const person of demoPeople.slice(0, 2)) {
         await openPrivateChat(page, person);
     }
     await page.evaluate(() => showConversation('everyone'));
 
-    // A message that @mentions someone, so a mention chip shows among the newest
+    // Translating on, into Japanese, so the bar shows over the box
+    await page.locator('#translate-toggle').click();
+    await page.locator('#translate-to').click();
+    await page.locator(`#translate-to-${TRANSLATE_TO_CODE}`).click();
+
+    // A message that @mentions Aiko, sent in Japanese, so a mention chip and
+    // "Translated · See original" show among the newest. Her answer, in
+    // Japanese, comes back translated too
+    const translatedBefore = await page.locator('[data-part="see-original"]').count();
     await page.locator('#textarea-send').fill(mentionFor(demoPeople[0]));
     await page.locator('#button-send').click();
-    await waitSeconds(4);
+    await page.waitForFunction(
+        (count) => document.querySelectorAll('[data-part="see-original"]').length >= count,
+        translatedBefore + 2,
+        {timeout: 90_000},
+    );
+    await waitSeconds(2);
 
     // A message being written, and a pin's label open in the middle of the map
     await page.locator('#textarea-send').fill(draftFor(demoPeople[1]));

@@ -1,0 +1,40 @@
+{# A From or To list for translating what you write: a button that names
+   the language, and a list of them that opens above the message box
+   (translate.js). The browser's own select looked out of place here #}
+{#- chosen: the language it starts on, {code, name}; a code of '' is Auto.
+    auto_name: the name of the Auto choice, for a list that has it #}
+{% macro language_picker(id, label, languages, chosen, auto_name = null) %}
+{% types {id: 'string', label: 'string', languages: 'array', chosen: 'array', auto_name: '?string'} %}
+<div class="language-picker" data-part="language-picker">
+    <button class="choice" id="{{ id }}" type="button" aria-expanded="false"
+            aria-controls="{{ id }}-menu" data-value="{{ chosen.code }}">
+        <span class="label">{{ label }}</span>
+        <span class="value" data-part="language-name">{{ chosen.name }}</span>
+        {{ icon('alt-arrow-down', 'chevron') }}
+    </button>
+    {# Floats over the messages: a search over the languages, then the list #}
+    <div class="language-menu" id="{{ id }}-menu" data-part="language-menu" hidden>
+        <div class="search-field">
+            {{ icon('magnifying-glass', 'search-icon') }}
+            <input class="search" type="search" role="combobox" aria-expanded="true" aria-controls="{{ id }}-list"
+                   aria-autocomplete="list" aria-label="Find a language to translate {{ label|lower }}"
+                   placeholder="Search" autocomplete="off" spellcheck="false" data-part="language-search">
+            {# The app's own ×, in place of the browser's for a search field #}
+            <button class="clear tool-button" type="button" data-part="language-search-clear" aria-label="Clear the search" title="Clear">
+                {{ icon('close') }}
+            </button>
+        </div>
+        <ul class="list" id="{{ id }}-list" role="listbox" aria-label="Translate {{ label|lower }}" data-part="language-list">
+            {% if auto_name %}
+            <li class="option" id="{{ id }}-auto" role="option" data-part="language-option" data-code=""
+                aria-selected="{{ chosen.code == '' ? 'true' : 'false' }}">{{ auto_name }}</li>
+            {% endif %}
+            {% for language in languages %}
+            <li class="option" id="{{ id }}-{{ language.code }}" role="option" data-part="language-option" data-code="{{ language.code }}"
+                aria-selected="{{ language.code == chosen.code ? 'true' : 'false' }}">{{ language.name }}</li>
+            {% endfor %}
+        </ul>
+        <p class="empty" data-part="no-language" hidden>No language by that name.</p>
+    </div>
+</div>
+{% endmacro %}

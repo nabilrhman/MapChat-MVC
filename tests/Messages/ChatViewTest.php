@@ -135,6 +135,22 @@ class ChatViewTest extends TestCase
         $this->assertStringNotContainsString('data-part="sender-time"', $html);
     }
 
+    public function testATranslatedMessageSaysSoAndKeepsItsOriginalHidden(): void
+    {
+        $html = $this->render([$this->message(['body' => 'Hello room', 'original_body' => '<i>হ্যালো</i>'])]);
+
+        $this->assertStringContainsString('<p class="body" data-part="original-body" hidden>&lt;i&gt;হ্যালো&lt;/i&gt;</p>', $html);
+        $this->assertStringContainsString('data-part="see-original" aria-pressed="false">See original</button>', $html);
+    }
+
+    public function testAMessageTypedAsSentHasNoTranslationNote(): void
+    {
+        $html = $this->render([$this->message(['original_body' => null])]);
+
+        $this->assertStringNotContainsString('class="translation"', $html);
+        $this->assertStringNotContainsString('data-part="original-body"', $html);
+    }
+
     public function testMapChatsNameIsAButtonOnlyWhileItCanWriteBack(): void
     {
         $fromMapChat = $this->message(['email' => Chat::BOT_EMAIL, 'name' => 'MapChat']);

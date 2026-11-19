@@ -15,7 +15,7 @@
 :root
 {
     --chat-surface: #fafafa; /* the panels and the messages */
-    --edge-fade: 24px; /* how far a list fades out at an end with more past it */
+    --edge-fade: 24px; /* how far the tab strip fades out at an end with more past it */
     --composer-surface: #faf9fd;
     --composer-line: #ddd6ee; /* the message box's border */
     --day-divider-surface: #faf8fd; /* fainter than the notifications bar, so they read apart */

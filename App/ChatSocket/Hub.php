@@ -9,6 +9,7 @@ use Amp\Websocket\WebsocketClient;
 use App\Config;
 use App\Messages\Conversation;
 use App\Messages\Mention;
+use App\Messages\MessageText;
 use App\Messages\MessagesForReader;
 use App\Models\Chat;
 use App\Models\User;
@@ -350,7 +351,8 @@ class Hub implements WebsocketClientHandler
      * why not), and send it out at once. Its client id makes a repeat of the
      * same send answer with the first one's message
      *
-     * @param array $message ['clientId' => string, 'body' => string, 'to' => int|null]
+     * @param array $message ['clientId' => string, 'body' => string, 'to' => int|null,
+     *                        'original' => what was typed when body is its translation, or null]
      *
      * @return bool Whether the message was well formed
      */
@@ -359,7 +361,9 @@ class Hub implements WebsocketClientHandler
         $clientId = $message['clientId'] ?? null;
         $body = $message['body'] ?? null;
         $to = $message['to'] ?? null;
-        if (!is_string($clientId) || !is_string($body) || ($to !== null && !is_int($to))) {
+        $originalBody = $message['original'] ?? null;
+        if (!is_string($clientId) || !is_string($body) || ($to !== null && !is_int($to))
+            || ($originalBody !== null && !is_string($originalBody))) {
             return false;
         }
 
@@ -372,7 +376,7 @@ class Hub implements WebsocketClientHandler
             $this->stopTyping($tab);
         }
 
-        $result = Chat::sendFrom($tab->user, $body, $to, $clientId);
+        $result = Chat::sendFrom($tab->user, new MessageText($body, $originalBody), $to, $clientId);
 
         if (!$result->isSent()) {
             $tab->send(['type' => MessageToPage::Refused, 'clientId' => $clientId, 'status' => $result->status, 'error' => $result->error]);

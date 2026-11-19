@@ -104,6 +104,15 @@ class BotInstructions
     }
 
     /**
+     * A firm note for the writer when the message it answers was translated
+     * by its sender into the language it's in: the writer answers in that
+     * language, not English, and the app translates the answer back for
+     * them (Bot::translatedBack)
+     */
+    const TRANSLATED_NOTE = ' Their latest message was translated into the language it is written in, so they could talk to you in it:'
+        . ' answer in that same language, not in English.';
+
+    /**
      * A firm note for the writer when the message it answers just closes
      * the chat ("no", "ok", "thanks, got it"), so it doesn't answer with
      * another question; '' for any other message

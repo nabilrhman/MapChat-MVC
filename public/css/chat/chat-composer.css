@@ -1,5 +1,6 @@
 /* The message box under the messages (base_chat.html), with its tools,
-   and the emoji and @mention pickers that float above it */
+   the translate bar over it, and the emoji and @mention pickers that float
+   above it */
 
 .chat-composer
 {
@@ -11,17 +12,17 @@
     box-shadow: 0 -2px 6px var(--edge-shadow);
 }
 
-@scope (.chat-composer) to (.mention-picker, .emoji-picker)
+@scope (.chat-composer) to (.translate-band, .language-picker, .mention-picker, .emoji-picker)
 {
     /* One bordered box around the text and its tools; purple while you type.
-       One row while the text fits: emoji, text, mic, Send. Once it wraps
+       One row while the text fits: emoji, text, translate, mic, Send. Once it wraps
        (chat.js), the text takes the whole width and the tools go under it */
     .field
     {
         --input-padding: 5px 6px 5px 0; /* the grid's gap is the space after the emoji */
         display: grid;
-        grid-template-columns: auto minmax(0, 1fr) auto auto;
-        grid-template-areas: "emoji box voice send";
+        grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+        grid-template-areas: "emoji box translate voice send";
         align-items: center;
         column-gap: 6px;
         padding: 5px 6px;
@@ -39,8 +40,8 @@
         {
             --input-padding: 6px 6px 6px 0; /* room above and below, and between the text and its scrollbar */
             grid-template-areas:
-                "box box box box"
-                "emoji . voice send";
+                "box box box box box"
+                "emoji . translate voice send";
             row-gap: 6px; /* between the text and the buttons under it */
             padding-block: 0 6px;
         }
@@ -168,7 +169,7 @@
     .chips .mention
     {
         padding: 0;
-        box-shadow: 0 0 0 2px color-mix(in srgb, var(--md-primary) var(--md-hover), transparent);
+        box-shadow: 0 0 0 2px var(--md-primary-hover);
     }
 
     /* Phones: Safari on iPhone zooms in on a field whose text is under 16px.
@@ -211,10 +212,12 @@
 
 
     .emoji-toggle { grid-area: emoji; }
+    .translate { grid-area: translate; }
     .voice { grid-area: voice; }
     .send { grid-area: send; }
 
     .emoji-toggle,
+    .translate,
     .voice
     {
         width: 30px;
@@ -235,7 +238,7 @@
         &:hover,
         &.is-open
         {
-            background-color: color-mix(in srgb, var(--md-primary) var(--md-hover), transparent);
+            background-color: var(--md-primary-hover);
             color: var(--md-primary);
         }
 
@@ -302,6 +305,18 @@
         }
     }
 
+    /* Waiting for the translation before sending: the icon breathes, as the
+       mic's does while it types out */
+    .translate.is-translating
+    {
+        cursor: progress;
+
+        & .icon
+        {
+            animation: transcribing-breath 1s var(--ease-in-out) infinite alternate;
+        }
+    }
+
     .send
     {
         flex: none;
@@ -326,8 +341,8 @@
         /* Material 3's disabled look, as on the other buttons */
         &:disabled
         {
-            background-color: color-mix(in srgb, var(--md-on-surface) 12%, transparent);
-            color: color-mix(in srgb, var(--md-on-surface) 38%, transparent);
+            background-color: var(--md-disabled-container);
+            color: var(--md-disabled-content);
             cursor: default;
         }
     }
@@ -389,6 +404,7 @@
         /* The X sits as far in as the title; the room under them is where
            the emoji scroll out of sight, so none is cut off against the title */
         padding: 6px 7px 6px 12px;
+        border-block-end: 1px solid var(--hairline); /* as the language search has */
     }
 
     .title
@@ -417,7 +433,7 @@
 
         &:hover
         {
-            background-color: color-mix(in srgb, var(--md-primary) var(--md-hover), transparent);
+            background-color: var(--md-primary-hover);
             color: var(--md-primary);
         }
 
@@ -431,7 +447,7 @@
     {
         max-height: 180px; /* about 220px with its top bar */
         overflow-y: auto;
-        padding: 0 8px 8px;
+        padding: 4px 8px 8px; /* clear of the line above */
     }
 
     .heading
@@ -512,5 +528,314 @@
         height: 24px;
         border-radius: 50%;
         object-fit: cover;
+    }
+}
+
+/* Holds the From and To bar, at the top of the composer, taking its own
+   room so no message is ever under it. Shown, it fades and rises into
+   place while translate.js slides the messages up out of its way: the page
+   is laid out once, and only opacity and transform move after */
+.translate-band
+{
+    display: none;
+    margin-block-end: 10px; /* the composer's own padding, above it and under the box */
+
+    &.is-shown
+    {
+        display: flex;
+        animation: fade-in-up var(--dur) var(--ease-out);
+    }
+
+    /* Already on when the page loads: there from the start */
+    &.is-shown-at-once
+    {
+        animation: none;
+    }
+
+    /* Turned off: it sinks and fades where it is, then gives its room back
+       (translate.js) */
+    &.is-leaving
+    {
+        animation: fade-out-down var(--dur-fast) var(--ease-out) forwards;
+        pointer-events: none;
+    }
+}
+
+/* A small square icon button in the translate bar and its lists, with the
+   hover of the box's own tools */
+.tool-button
+{
+    padding: 0;
+    border: none;
+    border-radius: 4px;
+    background-color: transparent;
+    color: var(--md-on-surface-variant);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color var(--dur-fast) var(--ease-out),
+                color var(--dur-fast) var(--ease-out);
+
+    &:hover:not(:disabled)
+    {
+        background-color: var(--md-primary-hover);
+        color: var(--md-primary);
+    }
+
+    &:disabled
+    {
+        color: var(--md-disabled-content);
+        cursor: default;
+    }
+}
+
+/* From and To, over the message box while the translate button is on
+   (translate.js): what you write, in one language, is sent in the other */
+.translate-bar
+{
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    min-inline-size: 0; /* a fieldset is as wide as its contents otherwise */
+    margin: 0;
+    padding: 0;
+    border: none;
+}
+
+@scope (.translate-bar) to (.language-picker)
+{
+    /* Between the pickers, the size of the box's own tools */
+    .swap
+    {
+        flex: none;
+        inline-size: 26px;
+        block-size: 26px;
+
+        & .icon
+        {
+            font-size: 15px;
+        }
+    }
+}
+
+/* A From or To button and its list (Room/_language_picker.html), which
+   opens just above it, as wide as it */
+.language-picker
+{
+    position: relative;
+    flex: 1;
+    min-inline-size: 0;
+}
+
+@scope (.language-picker)
+{
+    /* "From", the language, and a chevron, all on one line at one size,
+       in the message box's thin border. Hovered or open, the tint the
+       box's emoji and mic buttons take */
+    .choice
+    {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        inline-size: 100%;
+        min-inline-size: 0;
+        padding: 4px 8px 4px 10px;
+        border: 1px solid var(--composer-line);
+        border-radius: 0; /* square, flush with the list it opens */
+        background-color: var(--composer-surface);
+        color: var(--text-strong);
+        font: inherit;
+        font-size: 11px; /* the size of places and tags */
+        line-height: 16px;
+        text-align: start;
+        cursor: pointer;
+        transition: background-color var(--dur-fast) var(--ease-out);
+
+        &:hover,
+        &.is-open
+        {
+            background-color: color-mix(in srgb, var(--md-primary) var(--md-hover), var(--composer-surface));
+        }
+
+        /* The site's purple ring, as on its other buttons */
+        &:focus-visible
+        {
+            outline: none;
+            box-shadow: 0 0 0 2px var(--md-inverse-primary);
+        }
+    }
+
+    .label
+    {
+        flex: none;
+        color: var(--md-on-surface-variant);
+    }
+
+    .value
+    {
+        flex: 1;
+        min-inline-size: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-weight: 500;
+    }
+
+    .chevron
+    {
+        flex: none;
+        color: var(--md-outline);
+        font-size: 11px;
+        transition: rotate var(--dur-fast) var(--ease-out);
+
+        .choice.is-open &
+        {
+            rotate: 180deg;
+        }
+    }
+
+    /* A search over the languages, floating over the messages, flush on its button */
+    .language-menu
+    {
+        position: absolute;
+        inset-inline: 0;
+        inset-block-end: 100%;
+        z-index: 2;
+        display: flex;
+        flex-direction: column;
+        background-color: var(--md-surface-container-lowest);
+        box-shadow: 0 6px 20px var(--raised-shadow);
+        color: var(--text-strong);
+        animation: fade-in-up var(--dur) var(--ease-out);
+
+        &[hidden]
+        {
+            display: none;
+        }
+
+        /* Closing: it sinks back toward its button, then hides (translate.js) */
+        &.is-closing
+        {
+            animation: fade-out-down var(--dur-fast) var(--ease-out) forwards;
+            pointer-events: none;
+        }
+    }
+
+    /* The search as the panel's top row, as the emoji grid has its title:
+       no box of its own, a hairline between it and the languages */
+    .search-field
+    {
+        position: relative;
+        margin-block-end: 4px;
+        border-block-end: 1px solid var(--hairline);
+    }
+
+    /* Heroicons' 20px magnifier, drawn for small sizes, in the middle */
+    .search-icon
+    {
+        position: absolute;
+        inset-inline-start: 12px;
+        inset-block-start: 50%;
+        translate: 0 -50%;
+        color: var(--md-outline);
+        font-size: 12px;
+        pointer-events: none;
+    }
+
+    /* Shown only once there's something to clear */
+    .clear
+    {
+        position: absolute;
+        inset-inline-end: 6px;
+        inset-block-start: 50%;
+        translate: 0 -50%;
+        inline-size: 22px;
+        block-size: 22px;
+
+        & .icon
+        {
+            font-size: 14px;
+        }
+
+        .search-field:has(.search:placeholder-shown) &
+        {
+            display: none;
+        }
+    }
+
+    .search
+    {
+        box-sizing: border-box;
+        inline-size: 100%;
+        padding: 8px 34px 8px 32px;
+        border: none;
+        background-color: transparent;
+        color: var(--text-strong);
+        font: inherit;
+        font-size: 11px;
+        line-height: 16px;
+
+        /* The caret shows where you type; the panel itself is what's open */
+        &:focus
+        {
+            outline: none;
+        }
+
+        &::placeholder
+        {
+            color: var(--md-outline);
+        }
+
+        /* The browser's own clear button; .clear is the app's */
+        &::-webkit-search-cancel-button
+        {
+            appearance: none;
+        }
+    }
+
+    /* The languages, one under another */
+    .list
+    {
+        max-block-size: 220px; /* about ten rows */
+        overflow-y: auto;
+        margin: 0;
+        padding: 0 0 4px; /* rows run edge to edge, as the @mention list's do */
+        list-style: none;
+    }
+
+    .option
+    {
+        padding: 3px 12px;
+        font-size: 11px; /* as the chips that open it */
+        line-height: 16px;
+        cursor: pointer;
+
+        &:hover,
+        &.is-active
+        {
+            background-color: var(--lavender-tint);
+        }
+
+        &[aria-selected="true"]
+        {
+            color: var(--md-primary);
+            font-weight: 500;
+        }
+
+        /* Its display would beat [hidden] */
+        &[hidden]
+        {
+            display: none;
+        }
+    }
+
+    .empty
+    {
+        margin: 0;
+        padding: 4px 12px 8px;
+        color: var(--text-faint);
+        font-size: 11px;
     }
 }
