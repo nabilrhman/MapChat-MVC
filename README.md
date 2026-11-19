@@ -10,7 +10,7 @@ I wrote from scratch in PHP.
 
 [![Status](https://img.shields.io/website?url=https%3A%2F%2Fmapchat.swiftsolve.net%2Fhealth.txt&label=status&up_message=online&down_message=offline&logo=render&logoColor=white&labelColor=1e0839)](https://mapchat.swiftsolve.net)
 [![Tests](https://img.shields.io/github/actions/workflow/status/nabilrhman/MapChat-MVC/tests.yml?branch=master&label=tests&logo=githubactions&logoColor=white&labelColor=1e0839)](https://github.com/nabilrhman/MapChat-MVC/actions/workflows/tests.yml)<br>
-[![PHP](https://img.shields.io/badge/PHP-8.4-512da8?logo=php&logoColor=white&labelColor=1e0839)](composer.json)
+[![PHP](https://img.shields.io/badge/PHP-8.5-512da8?logo=php&logoColor=white&labelColor=1e0839)](composer.json)
 [![MySQL](https://img.shields.io/badge/MySQL-8.4-512da8?logo=mysql&logoColor=white&labelColor=1e0839)](database/init.sql)
 [![Docker](https://img.shields.io/badge/Docker-ready-512da8?logo=docker&logoColor=white&labelColor=1e0839)](Dockerfile)
 [![License](https://img.shields.io/badge/license-MIT-512da8?labelColor=1e0839)](LICENSE)
@@ -106,7 +106,7 @@ their script. When each answers, what they read and what goes to Groq:
 
 ![A request goes from public/index.php to the router and a controller, which reads from MySQL through a model and answers with a Twig view or JSON. The browser then opens a WebSocket at /ws, which Apache passes to the chat socket's Hub, which also hears from the chat worker](docs/images/request-path.svg)
 
-- **Framework:** MVC written from scratch in PHP 8.4 (`Core/`); the app is
+- **Framework:** MVC written from scratch in PHP 8.5 (`Core/`); the app is
   in `App/`.
 - **Database:** MySQL, with prepared statements. Sessions live there too.
 - **Views:** Twig 3, which escapes what users type, behind a strict

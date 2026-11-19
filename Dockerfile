@@ -8,7 +8,7 @@ FROM vendor AS vendor-dev
 RUN composer install --no-interaction --prefer-dist --no-scripts
 
 # Apache's event MPM in front of PHP-FPM (see docker/apache.conf)
-FROM php:8.4-fpm AS base
+FROM php:8.5-fpm AS base
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends apache2 libgmp-dev \
