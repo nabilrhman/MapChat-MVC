@@ -253,7 +253,6 @@ function clearUnreadCount(tab) {
         const unreadCount = tab.querySelector('[data-part="tab-unread"]');
         unreadCount.hidden = true;
         unreadCount.textContent = '';
-        unreadCount.classList.remove('is-mention');
     });
 }
 
@@ -497,30 +496,37 @@ function addDayDividers() {
         });
 }
 
-// A message that @mentions you turns the count purple until you look
-function countUnread(tab, isMention) {
+// One more message on a tab's count, which pops in at the first
+function countUnread(tab) {
     const unreadCount = tab.querySelector('[data-part="tab-unread"]');
     slideTabs(() => {
         unreadCount.classList.toggle('is-entering', unreadCount.hidden);
-        if (isMention) unreadCount.classList.add('is-mention');
         unreadCount.textContent = (parseInt(unreadCount.textContent, 10) || 0) + 1;
         unreadCount.hidden = false;
     });
 }
 
 // Put new messages in their tab and count the ones you haven't seen: in
-// other tabs, or in this one while the page is hidden
+// other tabs, or in this one while the page is hidden. The room is too busy
+// to count everything, so its tab counts only messages that @mention you.
+// One ping for the lot, however many ping-worthy messages came at once
 function placeMessages(chats) {
+    let shouldPing = false;
     chats.forEach((chat) => {
         const tab = addTabFor(chat);
         const isInOpenTab = conversationOf(chat) === activeConversation;
+        const isUnseen = !isInOpenTab || document.hidden;
+        const isMention = 'mentionsMe' in chat.dataset;
+        const isCounted = conversationOf(chat) !== EVERYONE || isMention;
 
         chat.hidden = !isInOpenTab;
-        if (tab && (!isInOpenTab || document.hidden)) {
-            countUnread(tab, 'mentionsMe' in chat.dataset);
+        if (tab && isUnseen) {
+            if (isCounted) countUnread(tab);
             notifyOf(chat, showConversation);
         }
+        if (shouldPingFor(chat, !isUnseen)) shouldPing = true;
     });
+    if (shouldPing) playPing();
     if (!document.hidden && chats.some((chat) => conversationOf(chat) === activeConversation)) {
         markConversationRead(activeConversation);
     }
