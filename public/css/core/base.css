@@ -89,6 +89,9 @@
         line-height: 1.5;
         color: var(--md-on-surface);
         -webkit-text-size-adjust: 100%;
+        /* No grey flash on a tap: it lights only the element's own box, often
+           not the whole row or tab it's in. Each part shows its own pressed state */
+        -webkit-tap-highlight-color: transparent;
     }
 
     *,
@@ -102,7 +105,6 @@
     {
         color: var(--link);
         text-decoration: none;
-        -webkit-tap-highlight-color: transparent;
     }
 
     ul

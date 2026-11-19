@@ -354,8 +354,6 @@
         transform: scaleY(-1);
         display: flex;
         align-items: center;
-        gap: 6px;
-        padding: 0 12px;
         color: var(--text-muted);
         font-size: 13px;
         font-weight: 400;
@@ -383,6 +381,14 @@
         &:hover
         {
             background-color: color-mix(in srgb, var(--md-surface-container-lowest) 50%, transparent);
+            color: var(--md-primary);
+        }
+
+        /* Held down: the whole tab turns white as the open one is, so the tap
+           shows at once where it leads */
+        &:has(.label:active)
+        {
+            background-color: var(--chat-surface);
             color: var(--md-primary);
         }
 
@@ -464,7 +470,15 @@
         align-items: center;
         gap: 6px;
         height: 100%;
+        /* The tab's own edge is the label's, so a tap anywhere on it opens the chat */
+        padding-inline: 12px;
         cursor: pointer;
+    }
+
+    /* With a close button after it, that button holds the tab's far edge */
+    .label:has(+ .close)
+    {
+        padding-inline-end: 0;
     }
 
     .close
@@ -473,7 +487,10 @@
         color: var(--text-faint);
         font-size: 20px;
         line-height: 1;
-        padding-inline-start: 2px; /* none after it, so the tab's sides match */
+        height: 100%; /* the whole height of the tab, an easy tap on a phone */
+        /* The space after the name and the tab's far edge, so no strip of
+           the tab is dead to a tap */
+        padding-inline: 8px 12px;
 
         &:hover
         {
