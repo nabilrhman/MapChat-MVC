@@ -618,6 +618,56 @@ chatList.addEventListener('click', (event) => {
     }
 });
 
+// A translated message shows what its sender typed, and back
+chatList.addEventListener('click', (event) => {
+    const seeOriginal = event.target.closest('[data-part="see-original"]');
+    if (!seeOriginal) return;
+    const message = seeOriginal.closest('[data-part="message"]');
+    const shouldShowOriginal = seeOriginal.getAttribute('aria-pressed') !== 'true';
+
+    const translation = message.querySelector('[data-part="message-body"]');
+    const original = message.querySelector('[data-part="original-body"]');
+    swapMessageText(shouldShowOriginal ? translation : original, shouldShowOriginal ? original : translation);
+    seeOriginal.setAttribute('aria-pressed', String(shouldShowOriginal));
+    seeOriginal.textContent = shouldShowOriginal ? 'See translation' : 'See original';
+});
+
+// One text fades out as the other fades in over it, while the message eases
+// from one's height to the other's (.texts in chat-messages.css), so the
+// messages under it slide instead of jumping. At once under reduced motion
+function swapMessageText(leaving, arriving) {
+    const texts = leaving.closest('[data-part="message-texts"]');
+    for (const text of [leaving, arriving]) {
+        text.classList.remove('is-leaving', 'is-arriving');
+    }
+
+    if (prefersLessMotion.matches) {
+        leaving.hidden = true;
+        arriving.hidden = false;
+        return;
+    }
+
+    const startHeight = texts.offsetHeight;
+    // Measured as it will be once the swap is done, margins and all
+    arriving.hidden = false;
+    leaving.hidden = true;
+    const endHeight = texts.offsetHeight;
+    leaving.hidden = false;
+    leaving.classList.add('is-leaving');
+    arriving.classList.add('is-arriving');
+
+    texts.classList.add('is-resizing');
+    const resize = texts.animate([{height: `${startHeight}px`}, {height: `${endHeight}px`}], motionTiming());
+    resize.addEventListener('finish', () => texts.classList.remove('is-resizing'), {once: true});
+
+    onAnimationEnd(leaving, () => {
+        if (!leaving.classList.contains('is-leaving')) return;
+        leaving.classList.remove('is-leaving');
+        leaving.hidden = true;
+    });
+    onAnimationEnd(arriving, () => arriving.classList.remove('is-arriving'));
+}
+
 /* The "Latest" button: shows once you've scrolled up, counts messages in
    this tab that arrive meanwhile, and takes you back down */
 
@@ -913,7 +963,8 @@ composerForm.addEventListener('submit', async (event) => {
     stopTyping();
 
     try {
-        await sendMessage(messageInput.value.trim(), to);
+        await sendMessage(await messageToSend(messageInput.value.trim()), to);
+        forgetTranslation();
         messageInput.value = '';
         messageInput.dispatchEvent(new Event('input'));
         // Someone you called who was away comes online a moment later
@@ -933,6 +984,7 @@ setUpMentions(messageInput, () => activeConversation === EVERYONE, getPeopleToMe
 
 setUpEmojiPicker(messageInput, document.getElementById('emoji-toggle'), document.getElementById('emoji-picker'));
 setUpVoiceTyping(messageInput, document.getElementById('voice-button'), sendButton, document.getElementById('voice-dots'));
+setUpTranslation(document.getElementById('translate-toggle'), document.getElementById('translate-band'));
 
 // Enter sends, Shift+Enter starts a new line. On a touch screen Enter is
 // the keyboard's return key, which starts a new line; Send sends

@@ -15,6 +15,14 @@ Everything MapChat does, in full. Back to the [README](../README.md).
   into the box to read over before sending. Groq's Whisper writes it out; when
   Groq is off or its free plan is used up for the minute, the browser's own
   speech recognition listens instead (Chrome, Safari and Edge).
+- Translation: the translate button beside the mic opens From and To above
+  the message box. From starts on Auto and To on English, and the choice is
+  remembered. A message goes out in the To language, and readers see
+  "Translated · See original", which fades to what was typed and back.
+  Groq translates, with Cerebras when Groq is busy, up to 30 messages a
+  minute, or 10 for a guest. The emoji grid and the translate bar take turns.
+  MapChat and the AI characters answer a translated message in its language,
+  and their reply is translated back.
 - A calm ping for a private message or an @mention of you in a chat you
   aren't looking at. Your profile turns it off on that browser. The room's
   tab counts only @mentions.

@@ -75,6 +75,8 @@ CREATE TABLE chats (
   -- The id the sender's page gave the message, so sending it again after a
   -- lost reply finds this row instead of saving a second one
   `client_id` VARCHAR(36)  NULL DEFAULT NULL,
+  -- What the sender wrote, when the message box translated it into body
+  `original_body` TEXT     NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `fk_m_email` (`email`),
   KEY `fk_m_to_email` (`to_email`),
@@ -136,6 +138,8 @@ CREATE TABLE mapchat_jobs (
   `posted_id`  INT          NULL DEFAULT NULL,
   -- A private reply already written, held until it would have taken to type
   `reply`      TEXT         NULL DEFAULT NULL,
+  -- The speaker's own words, when the held reply is their translation
+  `reply_original` TEXT     NULL DEFAULT NULL,
   `created_at` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `dedupe_key` (`dedupe_key`),

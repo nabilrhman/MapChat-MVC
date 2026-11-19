@@ -181,7 +181,7 @@ function onSocketClosed(code) {
 }
 
 function sendOverSocket(clientId, send) {
-    socket.send(JSON.stringify({type: 'send', clientId, body: send.body, to: send.to}));
+    socket.send(JSON.stringify({type: 'send', clientId, body: send.body, to: send.to, original: send.original}));
 }
 
 /* The HTTP fallback */
@@ -223,6 +223,7 @@ function stopPolling() {
 async function sendOverHttp(clientId, send) {
     const message = {body: send.body, client_id: clientId};
     if (send.to !== null) message.to = send.to;
+    if (send.original !== null) message.original = send.original;
 
     let response;
     try {
@@ -291,15 +292,17 @@ function createClientId() {
 // Sends to everyone, or privately when to is a person's id. Resolves with
 // the message's id once it's saved; the message itself arrives like any
 // other. A send whose answer is lost is sent again with the same client id
-// on reconnecting, and the server gives back the first one's message
-function sendMessage(body, to = null) {
+// on reconnecting, and the server gives back the first one's message.
+// The message is {body, original}: what's sent, and what was typed when
+// the body is its translation (null otherwise), as messageToSend gives them
+function sendMessage({body, original = null}, to = null) {
     const toId = to === null ? null : Number(to);
     const isRetry = failedSend && failedSend.body === body && failedSend.to === toId;
     const clientId = isRetry ? failedSend.clientId : createClientId();
     failedSend = null;
 
     return new Promise((resolve, reject) => {
-        const send = {body, to: toId, resolve, reject};
+        const send = {body, to: toId, original, resolve, reject};
         send.timer = setTimeout(() => {
             settleSend(clientId, () => {
                 failedSend = {body, to: toId, clientId};

@@ -2,6 +2,8 @@
 
 namespace Tests\Messages;
 
+use App\Messages\Mention;
+use App\Messages\MessageText;
 use App\Models\Chat;
 use PDO;
 use PHPUnit\Framework\TestCase;
@@ -40,7 +42,7 @@ class ChatTest extends TestCase
      */
     private function send(string $from, string $body, ?string $to = null): int
     {
-        return Chat::save($from, $to, $body);
+        return Chat::save($from, $to, new MessageText($body));
     }
 
     /**
@@ -393,8 +395,8 @@ class ChatTest extends TestCase
 
     public function testSendFromWithTheSameClientIdSavesOnce(): void
     {
-        $first = Chat::sendFrom($this->user(self::ANN), 'once', $this->userId(self::BOB), 'client-id-1');
-        $again = Chat::sendFrom($this->user(self::ANN), 'once', $this->userId(self::BOB), 'client-id-1');
+        $first = Chat::sendFrom($this->user(self::ANN), new MessageText('once'), $this->userId(self::BOB), 'client-id-1');
+        $again = Chat::sendFrom($this->user(self::ANN), new MessageText('once'), $this->userId(self::BOB), 'client-id-1');
 
         $this->assertTrue($first->isSent());
         $this->assertSame($first->id, $again->id);
@@ -403,21 +405,53 @@ class ChatTest extends TestCase
 
     public function testSendFromKeepsClientIdsPerSender(): void
     {
-        $ann = Chat::sendFrom($this->user(self::ANN), 'from ann', null, 'shared-id-1');
-        $bob = Chat::sendFrom($this->user(self::BOB), 'from bob', null, 'shared-id-1');
+        $ann = Chat::sendFrom($this->user(self::ANN), new MessageText('from ann'), null, 'shared-id-1');
+        $bob = Chat::sendFrom($this->user(self::BOB), new MessageText('from bob'), null, 'shared-id-1');
 
         $this->assertNotSame($ann->id, $bob->id);
     }
 
     public function testSendFromAppliesTheChatsRules(): void
     {
-        $this->assertSame(400, Chat::sendFrom($this->user(self::ANN), str_repeat('x', Chat::MAX_LENGTH + 1))->status);
-        $this->assertSame(400, Chat::sendFrom($this->user(self::ANN), '   ')->status);
-        $this->assertSame(400, Chat::sendFrom($this->user(self::ANN), 'to me', $this->userId(self::ANN))->status);
-        $this->assertSame(400, Chat::sendFrom($this->user(self::ANN), 'bad id', null, 'not a valid id!')->status);
+        $this->assertSame(400, Chat::sendFrom($this->user(self::ANN), new MessageText(str_repeat('x', Chat::MAX_LENGTH + 1)))->status);
+        $this->assertSame(400, Chat::sendFrom($this->user(self::ANN), new MessageText('   '))->status);
+        $this->assertSame(400, Chat::sendFrom($this->user(self::ANN), new MessageText('to me'), $this->userId(self::ANN))->status);
+        $this->assertSame(400, Chat::sendFrom($this->user(self::ANN), new MessageText('bad id'), null, 'not a valid id!')->status);
 
         $this->sendMany(self::ANN, Chat::USER_PER_MINUTE);
-        $this->assertSame(429, Chat::sendFrom($this->user(self::ANN), 'one too many')->status);
+        $this->assertSame(429, Chat::sendFrom($this->user(self::ANN), new MessageText('one too many'))->status);
+    }
+
+    public function testSendFromKeepsWhatWasTypedBeforeItWasTranslated(): void
+    {
+        $sent = Chat::sendFrom($this->user(self::ANN), new MessageText('Hello', 'হ্যালো'));
+
+        $this->assertTrue($sent->isSent());
+        $newest = array_last(Chat::getRecent(self::BOB));
+        $this->assertSame('হ্যালো', $newest['original_body']);
+    }
+
+    public function testAnOriginalThatSaysTheSameIsNoTranslation(): void
+    {
+        Chat::sendFrom($this->user(self::ANN), new MessageText('Hello', ' Hello '));
+        Chat::sendFrom($this->user(self::ANN), new MessageText('Hi', '  '));
+
+        $newestTwo = array_slice(Chat::getRecent(self::BOB), -2);
+        $this->assertSame([null, null], array_column($newestTwo, 'original_body'));
+    }
+
+    public function testSomeoneMentionedOnlyInAnOriginalIsFoundForItsChips(): void
+    {
+        $names = Mention::namesIn([['body' => 'hola a todos', 'original_body' => 'hi everyone @bob']]);
+
+        $this->assertContains('bob', $names);
+    }
+
+    public function testAnOriginalOverTheLimitIsRefused(): void
+    {
+        $sent = Chat::sendFrom($this->user(self::ANN), new MessageText('Hello', str_repeat('x', Chat::MAX_LENGTH + 1)));
+
+        $this->assertSame(400, $sent->status);
     }
 
     public function testAfterStopsAtTheGivenId(): void

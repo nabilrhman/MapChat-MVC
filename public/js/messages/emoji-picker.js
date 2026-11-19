@@ -46,6 +46,8 @@ function setUpEmojiPicker(input, toggleButton, picker) {
         picker.hidden = false;
         toggleButton.setAttribute('aria-expanded', 'true');
         toggleButton.classList.add('is-open');
+        // It turns translating off, one or the other (translate.js)
+        document.dispatchEvent(new CustomEvent('panel-open', {detail: picker}));
     }
 
     function closePicker() {
@@ -95,4 +97,9 @@ function setUpEmojiPicker(input, toggleButton, picker) {
     });
 
     input.form.addEventListener('submit', closePicker);
+
+    // Translating turned on, or a language list opened (translate.js)
+    document.addEventListener('panel-open', (event) => {
+        if (event.detail !== picker && isPickerOpen()) closePicker();
+    });
 }

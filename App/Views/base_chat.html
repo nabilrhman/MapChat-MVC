@@ -1,5 +1,6 @@
 {% extends 'base_app.html' %}
 {% from '_loading_dots.html' import loading_dots %}
+{% from 'Room/_language_picker.html' import language_picker %}
 {# The chat page (Room::indexAction): the map, the chat panel and the people
    list. Its messages come in the chats block #}
 {% types {
@@ -8,6 +9,9 @@
     conversations?: 'array',
     build_id?: 'string',
     can_transcribe?: 'bool',
+    can_translate?: 'bool',
+    languages?: 'array',
+    translate_to_first?: 'array',
     csp_nonce: 'string',
 } -%}
 
@@ -119,6 +123,22 @@
     </div>
 
     <form class="chat-composer" method="post" id="input-container-form">
+        {# Which language what you write is in, and which it's sent in, while
+           the translate button is on (translate.js) #}
+        {% if can_translate ?? false %}
+        <div class="translate-band" id="translate-band">
+        <fieldset class="translate-bar">
+            <legend class="visually-hidden">Translate your message</legend>
+            {{ language_picker('translate-from', 'From', languages, {code: '', name: 'Auto'}, 'Auto') }}
+            {# Turns From into To and To into From; not while From is Auto (translate.js) #}
+            <button class="swap tool-button" id="translate-swap" type="button" aria-label="Swap the languages" title="Swap">
+                {{ icon('arrows-right-left-linear') }}
+            </button>
+            {{ language_picker('translate-to', 'To', languages, translate_to_first) }}
+        </fieldset>
+        </div>
+        {% endif %}
+
         {# One bordered field: the text and its tools in one row, or the tools
            under the text once it wraps (chat.js) #}
         <div class="field" id="composer-field">
@@ -137,6 +157,15 @@
                         aria-expanded="false" aria-label="Add an emoji" title="Add an emoji">
                     {{ icon('smile-circle-linear') }}
                 </button>
+
+                {# Translates what you write before it's sent, into the language
+                   the bar above the box names (translate.js) #}
+                {% if can_translate ?? false %}
+                <button class="translate" id="translate-toggle" type="button" aria-pressed="false"
+                        aria-controls="translate-band" aria-label="Translate" title="Translate">
+                    {{ icon('language-linear') }}
+                </button>
+                {% endif %}
 
                 {# Speaks a message, beside Send, when this browser can listen.
                    Groq turns it into text, or the browser does without a key (voice.js) #}
@@ -200,6 +229,7 @@
 <script nonce="{{ csp_nonce }}" src="{{ asset('/js/messages/mentions.js') }}"></script>
 <script nonce="{{ csp_nonce }}" src="{{ asset('/js/messages/emoji-picker.js') }}"></script>
 <script nonce="{{ csp_nonce }}" src="{{ asset('/js/messages/voice.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/messages/translate.js') }}"></script>
 <script nonce="{{ csp_nonce }}" src="{{ asset('/js/messages/messages.js') }}"></script>
 <script nonce="{{ csp_nonce }}" src="{{ asset('/js/notify/notifications.js') }}"></script>
 <script nonce="{{ csp_nonce }}" src="{{ asset('/js/notify/ping.js') }}"></script>

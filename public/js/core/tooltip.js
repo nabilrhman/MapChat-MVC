@@ -64,7 +64,8 @@ function setUpTooltips() {
         }
 
         const text = tipTarget && moveTitleToTip(tipTarget);
-        if (!text) return;
+        // None for a button that can't be pressed now, as Swap while From is Auto
+        if (!text || tipTarget.disabled) return;
 
         tooltip.textContent = text;
         tooltip.classList.remove('is-below', 'is-on-left');

@@ -90,6 +90,7 @@ $router->post('/app/get', [Room::class, 'getAction']);
 $router->post('/app/get-older', [Room::class, 'getOlderAction']);
 $router->post('/app/send', [Room::class, 'sendAction']);
 $router->post('/app/transcribe', [Room::class, 'transcribeAction']);
+$router->post('/app/translate', [Room::class, 'translateAction']);
 $router->post('/app/mark-read', [Room::class, 'markReadAction']);
 $router->post('/app/get-people', [Room::class, 'getPeopleAction']);
 $router->post('/app/get-locations', [Room::class, 'getLocationsAction']);

@@ -1,6 +1,6 @@
 {% extends 'base_chat.html' %}
 {# The chat page, with the latest messages already in it (Room::indexAction) #}
-{% types {chats: 'array', last_chat_id: 'int', conversations: 'array', build_id: 'string', can_transcribe: 'bool'} %}
+{% types {chats: 'array', last_chat_id: 'int', conversations: 'array', build_id: 'string', can_transcribe: 'bool', can_translate: 'bool', languages: 'array', translate_to_first: 'array'} %}
 {% block chats %}
 {{ include('Room/chat.html', {chats: chats, initial: true}, with_context = false) }}
 {% endblock %}

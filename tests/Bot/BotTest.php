@@ -2,6 +2,7 @@
 
 namespace Tests\Bot;
 
+use App\Messages\MessageText;
 use App\Models\Bot;
 use App\Models\Chat;
 use App\Models\DemoChat;
@@ -46,11 +47,22 @@ class TestBot extends Bot
     }
 
     /**
-     * Go back to the real writer
+     * Have replies translated back with this, as Groq would
+     *
+     * @param \Closure(string $text, string $example): ?string $translator
+     */
+    public static function useTranslator(\Closure $translator): void
+    {
+        static::$translator = $translator;
+    }
+
+    /**
+     * Go back to the real writer and translator
      */
     public static function forget(): void
     {
         static::$writer = null;
+        static::$translator = null;
     }
 
     /**
@@ -108,7 +120,7 @@ class BotTest extends TestCase
      */
     private function send(string $from, string $body, ?string $to = null): int
     {
-        $id = Chat::save($from, $to, $body);
+        $id = Chat::save($from, $to, new MessageText($body));
         TestBot::onMessage($from, $id, $to, $body);
 
         return $id;
@@ -349,6 +361,68 @@ class BotTest extends TestCase
         $this->wait(Bot::PRIVATE_SECONDS);
 
         $this->assertSame([[self::ANN, 'reply 1']], $this->botSaid());
+    }
+
+    public function testAReplyToATranslatedMessageGoesBackInTheLanguageTyped(): void
+    {
+        TestBot::useReply('元気だよ！');
+        TestBot::useTranslator(fn (string $text, string $example): string => "I'm good! (from $example)");
+        $id = Chat::save(self::ANN, Chat::BOT_EMAIL, new MessageText('元気？', 'how are you?'));
+        TestBot::onMessage(self::ANN, $id, Chat::BOT_EMAIL, '元気？');
+
+        $this->wait(Bot::PRIVATE_SECONDS);
+
+        $stmt = $this->db->prepare('SELECT body, original_body FROM chats WHERE email = ? ORDER BY id DESC LIMIT 1');
+        $stmt->execute([Chat::BOT_EMAIL]);
+        $this->assertSame(['body' => "I'm good! (from how are you?)", 'original_body' => '元気だよ！'], $stmt->fetch(PDO::FETCH_ASSOC));
+    }
+
+    public function testAReplyTranslatedBackIsKeptToTheLengthLimit(): void
+    {
+        TestBot::useTranslator(fn (): string => str_repeat('lang ', Chat::MAX_LENGTH));
+        $id = Chat::save(self::ANN, Chat::BOT_EMAIL, new MessageText('元気？', 'how are you?'));
+        TestBot::onMessage(self::ANN, $id, Chat::BOT_EMAIL, '元気？');
+
+        $this->wait(Bot::PRIVATE_SECONDS);
+
+        $stmt = $this->db->prepare('SELECT body FROM chats WHERE email = ? ORDER BY id DESC LIMIT 1');
+        $stmt->execute([Chat::BOT_EMAIL]);
+        $this->assertLessThanOrEqual(Chat::MAX_LENGTH, mb_strlen($stmt->fetchColumn()));
+    }
+
+    public function testAReplyToATranslatedMessageIsWrittenInItsLanguage(): void
+    {
+        TestBot::useTranslator(fn (string $text): string => $text);
+        $id = Chat::save(self::ANN, Chat::BOT_EMAIL, new MessageText('元気？', 'how are you?'));
+        TestBot::onMessage(self::ANN, $id, Chat::BOT_EMAIL, '元気？');
+
+        $this->wait(Bot::PRIVATE_SECONDS);
+
+        $this->assertStringContainsString('answer in that same language', TestBot::$asked[0][0]);
+    }
+
+    public function testWithoutGroqAReplyToATranslatedMessageIsPostedAsWritten(): void
+    {
+        $id = Chat::save(self::ANN, Chat::BOT_EMAIL, new MessageText('元気？', 'how are you?'));
+        TestBot::onMessage(self::ANN, $id, Chat::BOT_EMAIL, '元気？');
+
+        $this->wait(Bot::PRIVATE_SECONDS);
+
+        $stmt = $this->db->prepare('SELECT body, original_body FROM chats WHERE email = ? ORDER BY id DESC LIMIT 1');
+        $stmt->execute([Chat::BOT_EMAIL]);
+        $this->assertSame(['body' => 'reply 1', 'original_body' => null], $stmt->fetch(PDO::FETCH_ASSOC));
+    }
+
+    public function testAReplyToAMessageSentAsTypedIsPostedAsWritten(): void
+    {
+        TestBot::useTranslator(fn (): string => 'never used');
+        $this->send(self::ANN, 'what can you do?', Chat::BOT_EMAIL);
+
+        $this->wait(Bot::PRIVATE_SECONDS);
+
+        $stmt = $this->db->prepare('SELECT body, original_body FROM chats WHERE email = ? ORDER BY id DESC LIMIT 1');
+        $stmt->execute([Chat::BOT_EMAIL]);
+        $this->assertSame(['body' => 'reply 1', 'original_body' => null], $stmt->fetch(PDO::FETCH_ASSOC));
     }
 
     public function testPublicAndPrivateConversationsStayApart(): void
@@ -689,6 +763,23 @@ class BotTest extends TestCase
         $this->assertSame([[$tanvir, trim($reply)]], $this->answers(), 'posted once typed, and only once');
         $this->wait(Bot::MOST_TYPING_SECONDS);
         $this->assertCount(1, $this->answers());
+    }
+
+    public function testAPrivateReplyStillBeingTypedKeepsItsOriginal(): void
+    {
+        TestBot::$typing = null;
+        TestBot::useReply('fine, thanks');
+        TestBot::useTranslator(fn (): string => '元気です、ありがとう');
+        $id = Chat::save(self::ANN, Chat::BOT_EMAIL, new MessageText('元気？', 'how are you?'));
+        TestBot::onMessage(self::ANN, $id, Chat::BOT_EMAIL, '元気？');
+
+        $this->wait(Bot::PRIVATE_SECONDS);
+        $this->assertSame([], $this->answers(), 'written and translated, but still being typed');
+        $this->wait(Bot::MOST_TYPING_SECONDS);
+
+        $stmt = $this->db->prepare('SELECT body, original_body FROM chats WHERE email = ? ORDER BY id DESC LIMIT 1');
+        $stmt->execute([Chat::BOT_EMAIL]);
+        $this->assertSame(['body' => '元気です、ありがとう', 'original_body' => 'fine, thanks'], $stmt->fetch(PDO::FETCH_ASSOC));
     }
 
     public function testDemoPersonComesOnlineAMomentLaterAndStaysWhileTalking(): void

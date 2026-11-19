@@ -5,6 +5,8 @@ namespace App\Controllers;
 use App\Bot\Groq;
 use App\Config;
 use App\Messages\Conversation;
+use App\Messages\Language;
+use App\Messages\MessageText;
 use App\Messages\MessagesForReader;
 use App\Messages\VoiceClip;
 use App\Models\Bot;
@@ -38,6 +40,9 @@ class Room extends Authenticated
             'conversations' => Chat::getConversations(Auth::getEmail(), $lastChatId),
             'build_id' => Config::buildId(),
             'can_transcribe' => Groq::isEnabled(),
+            'can_translate' => Groq::isEnabled(),
+            'languages' => Language::choices(),
+            'translate_to_first' => Language::FIRST_TARGET->choice(),
         ]);
     }
 
@@ -111,8 +116,9 @@ class Room extends Authenticated
 
         $toUserId = empty($_POST['to']) ? null : (int) $_POST['to'];
         $clientId = empty($_POST['client_id']) ? null : (string) $_POST['client_id'];
+        $originalBody = empty($_POST['original']) ? null : (string) $_POST['original'];
 
-        $result = Chat::sendFrom(Auth::getUser(), (string) $_POST['body'], $toUserId, $clientId);
+        $result = Chat::sendFrom(Auth::getUser(), new MessageText((string) $_POST['body'], $originalBody), $toUserId, $clientId);
 
         if (!$result->isSent()) {
             $this->json(['error' => $result->error], $result->status);
@@ -148,6 +154,65 @@ class Room extends Authenticated
         }
 
         $this->json(['text' => $text]);
+    }
+
+    /**
+     * Translate the message box's text before it's sent (for AJAX). The
+     * page then sends the translation, with what was typed as its original
+     */
+    public function translateAction(): void
+    {
+        if (!Groq::isEnabled()) {
+            $this->json(['error' => 'Translation is off.'], 503);
+            return;
+        }
+
+        // As many a minute as a person can send, so translating without
+        // sending can't run up Groq's limits; guests get fewer
+        $recentTranslations = $this->translationsInLastMinute();
+        $limit = Auth::getUser()->is_guest ? Chat::GUEST_PER_MINUTE : Chat::USER_PER_MINUTE;
+        if (count($recentTranslations) >= $limit) {
+            $this->json(['error' => 'You are translating too fast. Wait a moment and try again.'], 429);
+            return;
+        }
+
+        $text = trim((string) ($_POST['text'] ?? ''));
+        // An empty From means the language is told from the text
+        $from = Language::tryFrom((string) ($_POST['from'] ?? ''));
+        $to = Language::tryFrom((string) ($_POST['to'] ?? ''));
+
+        if ($text === '' || mb_strlen($text) > Chat::MAX_LENGTH || $to === null) {
+            $this->json(['error' => 'This message could not be translated.'], 422);
+            return;
+        }
+
+        // Counted once it goes to Groq: a refused request uses none of the limit
+        $_SESSION['translated_at'] = [...$recentTranslations, time()];
+        $translation = Groq::translate($text, $from, $to);
+        if ($translation === null || $translation === '') {
+            $this->json(['error' => 'Translation is busy. Try again in a moment.'], 503);
+            return;
+        }
+
+        if (mb_strlen($translation) > Chat::MAX_LENGTH) {
+            $this->json(['error' => 'The translation is over ' . Chat::MAX_LENGTH . ' characters. Shorten the message.'], 422);
+            return;
+        }
+
+        $this->json(['text' => $translation]);
+    }
+
+    /**
+     * When this session asked for a translation in the last minute
+     *
+     * @return list<int> Unix times
+     */
+    protected function translationsInLastMinute(): array
+    {
+        $minuteAgo = time() - 60;
+        $translatedAt = $_SESSION['translated_at'] ?? [];
+
+        return array_values(array_filter($translatedAt, fn (int $at): bool => $at > $minuteAgo));
     }
 
     /**

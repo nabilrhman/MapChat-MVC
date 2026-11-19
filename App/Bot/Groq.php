@@ -3,6 +3,7 @@
 namespace App\Bot;
 
 use App\Config;
+use App\Messages\Language;
 use App\Messages\VoiceClip;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Component\Mime\Part\DataPart;
@@ -13,10 +14,11 @@ use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 
 /**
  * Writes MapChat's and the demo people's replies (App\Models\Bot) with
- * Groq's chat API, and turns voice messages into text with its Whisper.
+ * Groq's chat API, translates what people write with it, and turns voice
+ * messages into text with its Whisper.
  * Both are on its free plan. Off until GROQ_API_KEY is set. With
- * CEREBRAS_API_KEY set too, Cerebras writes a reply when Groq is busy or
- * down: it runs the same model, behind the same kind of API
+ * CEREBRAS_API_KEY set too, Cerebras writes a reply or a translation when
+ * Groq is busy or down: it runs the same model, behind the same kind of API
  */
 class Groq
 {
@@ -31,6 +33,11 @@ class Groq
 
     /** The same model as Groq's default, by Cerebras's name for it */
     const CEREBRAS_MODEL = 'gpt-oss-120b';
+
+    /** How every translation is to be written, after which language it goes into */
+    const TRANSLATION_RULES = 'Write it as a person would say it in a chat, keeping its tone. '
+        . 'Keep names, @mentions, emoji, links and line breaks as they are. '
+        . 'Reply with the translation only: no quotes, notes or other words.';
 
     /** The longest a reply may take to write, in seconds; the chat worker waits on it */
     const TIMEOUT = 20;
@@ -67,20 +74,82 @@ class Groq
             ['role' => 'user', 'content' => "<chat>\n$chat\n</chat>"],
         ];
 
+        return static::replyFromGroqOrCerebras($messages, 'a reply');
+    }
+
+    /**
+     * A message put into another language, as its sender would have written it
+     *
+     * @param Language|null $from The language it's in; null to tell from the text
+     *
+     * @return string|null Null when the API couldn't answer
+     */
+    public static function translate(string $text, ?Language $from, Language $to): ?string
+    {
+        $fromLanguage = $from === null ? 'whatever language it is in' : $from->name;
+        return static::translation($text, "Translate the chat message from $fromLanguage into {$to->name}.");
+    }
+
+    /**
+     * A message put into the language another message was written in, as
+     * when a reply goes back to someone who translated what they wrote
+     *
+     * @param string $example A message in the language wanted
+     *
+     * @return string|null Null when the API couldn't answer
+     */
+    public static function translateIntoLanguageOf(string $text, string $example): ?string
+    {
+        return static::translation(
+            $text,
+            "Translate the chat message into the language this example is written in.\n<example>\n$example\n</example>\n"
+        );
+    }
+
+    /**
+     * The text translated as the instructions say, with the rules every
+     * translation keeps
+     *
+     * @param string $whichLanguage Which language it goes into, as an instruction
+     *
+     * @return string|null Null when the API couldn't answer
+     */
+    protected static function translation(string $text, string $whichLanguage): ?string
+    {
+        $messages = [
+            ['role' => 'system', 'content' => "$whichLanguage " . static::TRANSLATION_RULES],
+            ['role' => 'user', 'content' => $text],
+        ];
+
+        $translation = static::replyFromGroqOrCerebras($messages, 'a translation');
+
+        return $translation === null ? null : trim($translation);
+    }
+
+    /**
+     * Groq's reply to the messages, or Cerebras's when Groq is busy or down
+     *
+     * @param list<array{role: string, content: string}> $messages
+     * @param string $whatForLog What's being written, as the log names it: "a reply"
+     *
+     * @return string|null Null when neither could answer
+     */
+    protected static function replyFromGroqOrCerebras(array $messages, string $whatForLog): ?string
+    {
         try {
             return static::reply(static::API_URL, Config::get('GROQ_API_KEY'), Config::get('MAPCHAT_MODEL', static::MODEL), $messages);
         } catch (ExceptionInterface $e) {
             if (!static::isWorthAskingCerebras($e)) {
-                error_log('MapChat could not write a reply: ' . $e->getMessage());
+                error_log("MapChat could not write $whatForLog: " . $e->getMessage());
                 return null;
             }
-            error_log('Groq could not write a reply, so Cerebras will: ' . $e->getMessage());
+            error_log("Groq could not write $whatForLog, so Cerebras will: " . $e->getMessage());
         }
 
         try {
             return static::reply(static::CEREBRAS_API_URL, Config::get('CEREBRAS_API_KEY'), static::CEREBRAS_MODEL, $messages);
         } catch (ExceptionInterface $e) {
-            error_log('Cerebras could not write a reply either: ' . $e->getMessage());
+            error_log("Cerebras could not write $whatForLog either: " . $e->getMessage());
             return null;
         }
     }

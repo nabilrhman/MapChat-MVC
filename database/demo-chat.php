@@ -4,7 +4,8 @@
  * What the demo people (database/demo.sql) say in the room through the day;
  * see App/Models/DemoChat.php. Each story is one or more scenes, played in
  * order hours apart so a reader can follow it over the day. Each line is the
- * speaker (their email before @demo.mapchat.local) and what they say
+ * speaker (their email before @demo.mapchat.local) and what they say, and
+ * for a line they translated with the message box, what they typed
  */
 return [
     'camera' => [
@@ -144,7 +145,7 @@ return [
         [
             ['aiko', 'the station called!! someone handed in my umbrella ☂️🐱'],
             ['emily', 'YES 🙌'],
-            ['aiko', 'they kept it in a bag with a little note: "cat umbrella, blue"'],
+            ['aiko', 'they kept it in a bag with a little note: "cat umbrella, blue"', '袋に入れて、小さなメモまで付けてくれてた：「猫の傘、青」'],
             ['lukas', 'in berlin that umbrella would have started a new life'],
             ['sofia', 'this is why i want to visit japan 🥹'],
         ],

@@ -10,6 +10,9 @@
 {# Looked up once for the whole page of messages; the chat socket looks
    them up once for everyone it sends the same messages to #}
 {% set mention_names = mention_names ?? mentioned_names(chats) %}
+{# What a room message needs to show its @mentions as chips #}
+{% set room_mentions = {names: mention_names, reader: current_user} %}
+{% from _self import message_text %}
 {% for chat in chats %}
 {# Messages from the poll ease in; the history and your own appear at once #}
 <div class="chat{% if chat.mentions_me %} mentions-me{% endif %}{% if not (initial ?? false) and not chat.is_mine %} is-entering{% endif %}" data-part="message"
@@ -39,11 +42,19 @@
                 {% endif %}
             </span>
         </span>
-        {% if chat.is_in_room %}
-        {# Safe: mark_mentions escapes the message before it adds the chips #}
-        <p class="body" data-part="message-body">{{ mark_mentions(chat.body, mention_names, current_user.name, current_user.nickname, current_user.is_guest) }}</p>
+        {% if chat.original_body ?? null %}
+        {# A translated message holds what its sender typed too, in the same
+           place, so "See original" can fade one into the other (chat.js) #}
+        <div class="texts" data-part="message-texts">
+            {{ message_text(chat.body, 'message-body', chat.is_in_room ? room_mentions : null) }}
+            {{ message_text(chat.original_body, 'original-body', chat.is_in_room ? room_mentions : null, is_hidden = true) }}
+        </div>
+        {# Bottom left, across from the city #}
+        <span class="translation">
+            {{ icon('language-linear', 'translated-icon') }}Translated<span class="dot" aria-hidden="true">·</span><button class="see-original" type="button" data-part="see-original" aria-pressed="false">See original</button>
+        </span>
         {% else %}
-        <p class="body" data-part="message-body">{{ chat.body }}</p>
+        {{ message_text(chat.body, 'message-body', chat.is_in_room ? room_mentions : null) }}
         {% endif %}
         {# No row at all without a place (e.g. a hidden location), nor in a
            private chat, whose header already says where they are #}
@@ -69,3 +80,15 @@
     </div>
 </div>
 {% endfor %}
+
+{# A message's words. With mentions ({names, reader}, given in the room),
+   its @mentions show as chips #}
+{% macro message_text(text, part, mentions = null, is_hidden = false) %}
+{% types {text: 'string', part: 'string', mentions: '?array', is_hidden: 'bool'} %}
+{%- if mentions -%}
+{# Safe: mark_mentions escapes the message before it adds the chips #}
+<p class="body" data-part="{{ part }}"{% if is_hidden %} hidden{% endif %}>{{ mark_mentions(text, mentions.names, mentions.reader.name, mentions.reader.nickname, mentions.reader.is_guest) }}</p>
+{%- else -%}
+<p class="body" data-part="{{ part }}"{% if is_hidden %} hidden{% endif %}>{{ text }}</p>
+{%- endif -%}
+{% endmacro %}

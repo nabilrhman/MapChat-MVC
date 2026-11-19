@@ -12,8 +12,9 @@
  * message's city, an @mention in Everyone that brings Emily in from away to
  * answer (the app runs with DEMO_AWAY=emily, so she isn't online till then), then a private
  * chat with Maya, one with Rafael while Maya's answer comes in, back to Maya,
- * Rafael's tab dragged into another place, a thank-you to him, then his tab
- * closed, and the profile, scrolled to its bottom. Each emoji in a message is picked from the emoji menu, and one
+ * Rafael's tab dragged into another place, a thank-you to him translated into
+ * Portuguese with its original shown, then his tab closed, and the profile,
+ * scrolled to its bottom. Each emoji in a message is picked from the emoji menu, and one
  * message to Rafael is voice typed: Chrome plays docs/tools/video/voice-line.wav as
  * the microphone (npm run voice-line makes it), and Whisper writes it out.
  * The pointer moves and types like a person (person.ts). Headless Chrome
@@ -227,6 +228,25 @@ async function writeMessage(page: Page, person: Person, composer: Locator, messa
             await person.type(part);
         }
     }
+}
+
+/**
+ * Turns translating on and picks the language to send in, as a person
+ * would: the translate button, then To, a few letters in its search, and
+ * the language from the list
+ */
+async function translateTo(page: Page, person: Person, languageName: string): Promise<void> {
+    await person.click(await requiredCentreOf(page.locator('#translate-toggle')));
+    await waitSeconds(0.8);
+    await person.click(await requiredCentreOf(page.locator('#translate-to')));
+    await waitSeconds(0.6);
+    await person.type(languageName.slice(0, 3).toLowerCase());
+    await waitSeconds(0.6);
+    const option = page.locator('#translate-to-menu [data-part="language-option"]').getByText(languageName, {exact: true});
+    await person.moveTo(await requiredCentreOf(option));
+    await waitSeconds(0.5);
+    await person.click(await requiredCentreOf(option));
+    await waitSeconds(0.6);
 }
 
 /** How long the voice line runs, in seconds */
@@ -490,18 +510,31 @@ async function tour(page: Page, person: Person, account: AlexAccount, startCaptu
     await waitForReply('Maya', fromMaya);
     await waitSeconds(3);
 
-    printProgress('a tab dragged, a reply, then the tab closed');
+    printProgress('a tab dragged, a thank-you translated, then the tab closed');
     // Tabs can be dragged into another order
     await person.drag(await requiredCentreOf(chatTab('Rafael')), await requiredCentreOf(chatTab('Maya')));
     await waitSeconds(1.2);
     // Then Rafael's tab, to read his answer to the question and thank him
+    // in his own language
     await waitForReply('Rafael', fromRafaelBeforeQuestion, 20);
     await openChat(chatTab, 'Rafael');
     await waitSeconds(3);
+    await translateTo(page, person, 'Portuguese');
     await person.click(await requiredCentreOf(composer));
-    await writeMessage(page, person, composer, 'perfect, thank you! 🙏');
+    // No emoji: opening the emoji menu turns translating off
+    await writeMessage(page, person, composer, 'perfect, thank you so much!');
     await waitSeconds(0.4);
     await person.pressEnter();
+    // It goes out in Portuguese; See original shows what Alex typed
+    const seeOriginal = page.locator('[data-part="see-original"]').last();
+    if (!await waitFor(async () => await seeOriginal.isVisible(), 30)) {
+        throw new Error("The thank-you wasn't sent translated");
+    }
+    await waitSeconds(1.5);
+    await person.moveTo(await requiredCentreOf(seeOriginal));
+    await waitSeconds(0.6);
+    await person.click(await requiredCentreOf(seeOriginal));
+    await waitSeconds(2.5);
     // Closed straight after: his answer takes longer than the tour stays on
     // the page, which matters as a message in a closed chat opens its tab
     // again

@@ -6,6 +6,7 @@ use App\Bot\Characters;
 use App\ChatSocket\Signal;
 use App\Messages\Conversation;
 use App\Messages\Mention;
+use App\Messages\MessageText;
 use App\Messages\SendResult;
 use PDO;
 
@@ -79,7 +80,7 @@ class Chat extends \Core\Model
      *
      * @return SendResult The message's id, or an HTTP status and what to show the sender
      */
-    public static function sendFrom(User $sender, string $body, ?int $toUserId = null, ?string $clientId = null): SendResult
+    public static function sendFrom(User $sender, MessageText $text, ?int $toUserId = null, ?string $clientId = null): SendResult
     {
         if ($clientId !== null && !preg_match(static::CLIENT_ID_PATTERN, $clientId)) {
             return SendResult::refused(400, 'Your message could not be sent.');
@@ -91,12 +92,12 @@ class Chat extends \Core\Model
             return SendResult::sent($savedId);
         }
 
-        $body = trim($body);
-        if ($body === '') {
+        $text = $text->trimmed();
+        if ($text->body === '') {
             return SendResult::refused(400, 'Type a message first.');
         }
 
-        if (mb_strlen($body) > static::MAX_LENGTH) {
+        if ($text->isLongerThan(static::MAX_LENGTH)) {
             return SendResult::refused(400, 'Messages can be up to ' . static::MAX_LENGTH . ' characters.');
         }
 
@@ -120,7 +121,7 @@ class Chat extends \Core\Model
         }
 
         try {
-            $id = static::save($sender->email, $toEmail, $body, $clientId);
+            $id = static::save($sender->email, $toEmail, $text, $clientId);
         } catch (\PDOException $e) {
             // The same message sent twice at once, from two tries: the other one saved it
             $savedId = $clientId === null ? null : static::findSent($sender->email, $clientId);
@@ -130,7 +131,7 @@ class Chat extends \Core\Model
             throw $e;
         }
 
-        Bot::onMessage($sender->email, $id, $toEmail, $body);
+        Bot::onMessage($sender->email, $id, $toEmail, $text->body);
 
         return SendResult::sent($id);
     }
@@ -161,15 +162,17 @@ class Chat extends \Core\Model
      *
      * @return int The message's id
      */
-    public static function save(string $email, ?string $toEmail, string $body, ?string $clientId = null): int
+    public static function save(string $email, ?string $toEmail, MessageText $text, ?string $clientId = null): int
     {
         // Stored as typed; Twig escapes it when the chat is shown
         $db = static::getDB();
-        $stmt = $db->prepare('INSERT INTO chats (email, to_email, body, client_id) VALUES (:email, :to_email, :body, :client_id)');
+        $stmt = $db->prepare('INSERT INTO chats (email, to_email, body, client_id, original_body)
+                              VALUES (:email, :to_email, :body, :client_id, :original_body)');
         $stmt->bindValue(':email', $email, PDO::PARAM_STR);
         $stmt->bindValue(':to_email', $toEmail, PDO::PARAM_STR);
-        $stmt->bindValue(':body', $body, PDO::PARAM_STR);
+        $stmt->bindValue(':body', $text->body, PDO::PARAM_STR);
         $stmt->bindValue(':client_id', $clientId, PDO::PARAM_STR);
+        $stmt->bindValue(':original_body', $text->original, PDO::PARAM_STR);
         $stmt->execute();
 
         $id = (int) $db->lastInsertId();
@@ -443,7 +446,7 @@ class Chat extends \Core\Model
      */
     protected static function selectSql(): string
     {
-        return 'SELECT chats.id, chats.body, chats.timestamp, chats.to_email, users.id AS user_id, users.name, users.email, users.avatar,
+        return 'SELECT chats.id, chats.body, chats.original_body, chats.timestamp, chats.to_email, users.id AS user_id, users.name, users.email, users.avatar,
                        ' . Characters::isDemoSql() . ' AS is_demo, users.nickname, users.is_guest,
                        ' . Whereabouts::sharedPlaceSql() . ',
                        recipients.id AS to_user_id, recipients.name AS to_name,

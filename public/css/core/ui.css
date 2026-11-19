@@ -120,7 +120,7 @@ h4
 
     &:hover:not(:disabled)
     {
-        background-color: color-mix(in srgb, var(--md-primary) var(--md-hover), transparent);
+        background-color: var(--md-primary-hover);
     }
 
     &:active:not(:disabled)
@@ -141,7 +141,7 @@ h4
     &:hover:not(:disabled)
     {
         border-color: var(--md-outline);
-        background-color: color-mix(in srgb, var(--md-primary) var(--md-hover), transparent);
+        background-color: var(--md-primary-hover);
         color: var(--md-primary);
     }
 
@@ -176,9 +176,9 @@ h4
 .button:disabled
 {
     border-color: transparent;
-    background-color: color-mix(in srgb, var(--md-on-surface) 12%, transparent);
+    background-color: var(--md-disabled-container);
     box-shadow: none;
-    color: color-mix(in srgb, var(--md-on-surface) 38%, transparent);
+    color: var(--md-disabled-content);
     cursor: default;
 }
 

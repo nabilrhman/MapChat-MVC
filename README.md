@@ -41,7 +41,7 @@ In 2026 I came back to it to bring parts of it up to date.
 sleeps when nobody visits, so the first visit after a quiet spell takes about
 a minute to load.
 
-https://github.com/user-attachments/assets/f444bf29-f9ae-4d21-824d-8d0f63273f52
+https://github.com/user-attachments/assets/c29ae7de-1994-4f9a-b353-3301585783a0
 
 <sub>A quick tour of MapChat.</sub>
 
@@ -73,6 +73,7 @@ https://github.com/user-attachments/assets/f444bf29-f9ae-4d21-824d-8d0f63273f52
 - One open chat room for everyone signed in, live over a WebSocket.
 - Private chats in tabs, with unread counts and "Typing...".
 - @mentions, emoji and voice typing in the message box.
+- Translate a message before sending: pick From and To, and readers see "Translated · See original". MapChat and the AI people answer in that language, translated back.
 - Notifications for private messages and @mentions, even with MapChat closed.
 - A calm ping for a private message or an @mention of you in a chat you aren't looking at, with a switch for it in your profile. The room's tab counts only @mentions.
 - A pin for each person online, placed from their IP address, never GPS,
