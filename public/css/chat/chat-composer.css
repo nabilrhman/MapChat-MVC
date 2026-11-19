@@ -4,12 +4,19 @@
 
 .chat-composer
 {
-    padding: 10px 16px; /* same side padding as the messages above */
-    background-color: var(--md-surface-container-lowest);
-    border-block-start: 1px solid var(--line);
+    /* Its top edge, which the translate bar wears too while it slides */
+    --composer-padding-block: 10px;
+    --composer-padding-inline: 16px; /* same side padding as the messages above */
+    --composer-surface-colour: var(--md-surface-container-lowest);
+    --composer-top-line: 1px solid var(--line);
+    --composer-shadow: 0 -2px 6px var(--edge-shadow);
+
+    padding: var(--composer-padding-block) var(--composer-padding-inline);
+    background-color: var(--composer-surface-colour);
+    border-block-start: var(--composer-top-line);
     position: relative;
     z-index: 1; /* its shadow falls over the messages, as the header's does */
-    box-shadow: 0 -2px 6px var(--edge-shadow);
+    box-shadow: var(--composer-shadow);
 }
 
 @scope (.chat-composer) to (.translate-band, .language-picker, .mention-picker, .emoji-picker)
@@ -535,32 +542,31 @@
 }
 
 /* Holds the From and To bar, at the top of the composer, taking its own
-   room so no message is ever under it. Shown, it fades and rises into
-   place while translate.js slides the messages up out of its way: the page
-   is laid out once, and only opacity and transform move after */
+   room so no message is ever under it */
 .translate-band
 {
     display: none;
-    margin-block-end: 10px; /* the composer's own padding, above it and under the box */
+    margin-block-end: var(--composer-padding-block); /* as much as above it */
 
     &.is-shown
     {
         display: flex;
-        animation: fade-in-up var(--dur) var(--ease-out);
     }
 
-    /* Already on when the page loads: there from the start */
-    &.is-shown-at-once
+    /* While it slides in or out (translate.js): a layer over the composer's
+       top, dressed as the composer's own top edge and clipped where the
+       composer starts, so the edge seems to rise and fall with it. Only
+       transform and clip-path move; the page is laid out once, at the end */
+    &.is-sliding
     {
-        animation: none;
-    }
-
-    /* Turned off: it sinks and fades where it is, then gives its room back
-       (translate.js). As long as it took to come in, and evenly: a
-       fast-start curve made it look gone at once on a phone */
-    &.is-leaving
-    {
-        animation: fade-out-down var(--dur) var(--ease-in-out) forwards;
+        position: absolute;
+        inset-inline: 0;
+        inset-block-end: calc(100% - var(--composer-padding-block));
+        margin: 0;
+        padding: var(--composer-padding-block) var(--composer-padding-inline);
+        background-color: var(--composer-surface-colour);
+        border-block-start: var(--composer-top-line);
+        box-shadow: var(--composer-shadow);
         pointer-events: none;
     }
 }

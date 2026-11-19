@@ -56,7 +56,7 @@ function setUpTranslation(toggle, bar) {
     });
 }
 
-// Turns translating on or off: the button, and the bar fading in or out
+// Turns translating on or off: the button, and the bar sliding in or out
 function setTranslating(isOn, {isAtOnce = false} = {}) {
     const {toggle, bar} = translateParts;
     toggle.setAttribute('aria-pressed', String(isOn));
@@ -65,46 +65,101 @@ function setTranslating(isOn, {isAtOnce = false} = {}) {
     if (isOn) {
         // Turned on, it closes the emoji grid (emoji-picker.js)
         document.dispatchEvent(new CustomEvent('panel-open', {detail: bar}));
-        bar.classList.remove('is-leaving');
-        placeBar(true, {isAtOnce});
-        return;
+    } else {
+        closeLanguageMenus();
     }
-
-    closeLanguageMenus();
-    if (isAtOnce || prefersLessMotion.matches) {
-        placeBar(false, {isAtOnce});
-        return;
-    }
-    // It fades out where it is first, then gives its room back: only
-    // opacity and transform move while it fades
-    bar.classList.add('is-leaving');
-    onAnimationEnd(bar, () => {
-        if (!bar.classList.contains('is-leaving')) return;
-        bar.classList.remove('is-leaving');
-        placeBar(false);
-    });
+    placeBar(isOn, {isAtOnce});
 }
 
-// Gives the bar its room above the box, or takes it back. The page is laid
-// out once, then the messages in view slide by what that moved them
+// Ends the bar's slide at once, laying the page out as it ends; null
+// while none is running
+let finishBarSlide = null;
+
+// Gives the bar its room above the box, or takes it back. It slides as a
+// layer over the composer's top edge (.is-sliding), clipped where the
+// composer starts, so the edge rises and falls with it, and the messages
+// move with the edge. The page is laid out for real only once
 function placeBar(shouldShow, {isAtOnce = false} = {}) {
+    finishBarSlide?.();
     const {bar} = translateParts;
     if (bar.classList.contains('is-shown') === shouldShow) return;
     const list = document.getElementById('chat-list');
+    const composer = document.getElementById('input-container-form');
 
     // Read before changing anything: a read after a change makes the
     // browser work out the page's styles again (about 20ms here)
     const oldScrollTop = list.scrollTop;
     const isAtNewest = list.scrollHeight - oldScrollTop - list.clientHeight < 2;
+    const composerHeight = composer.offsetHeight;
 
-    bar.classList.toggle('is-shown-at-once', isAtOnce);
-    bar.classList.toggle('is-shown', shouldShow);
+    if (isAtOnce || prefersLessMotion.matches) {
+        bar.classList.toggle('is-shown', shouldShow);
+        if (isAtNewest) list.scrollTop = list.scrollHeight;
+        return;
+    }
 
-    // The newest message stays in view, so the messages move up by the
-    // bar's room; going, they move down by what the list can no longer scroll
+    const timing = {...motionTiming(), fill: 'forwards'};
+    if (shouldShow) {
+        // Laid over the composer first: how far its edge will rise is the
+        // layer's height less the composer's own edge, which it covers
+        bar.classList.add('is-shown', 'is-sliding');
+        const composerStyle = getComputedStyle(composer);
+        const edgeHeight = parseFloat(composerStyle.borderBlockStartWidth) + parseFloat(composerStyle.paddingBlockStart);
+        const rise = bar.offsetHeight - edgeHeight;
+
+        const slide = bar.animate([edgeAt(rise), edgeAt(0)], timing);
+        // The newest message stays in view, moving up with the edge
+        const messageSlides = isAtNewest ? moveMessagesBy(list, -rise, timing) : [];
+        finishBarSlide = () => {
+            finishBarSlide = null;
+            bar.classList.remove('is-sliding');
+            if (isAtNewest) list.scrollTop = list.scrollHeight;
+            slide.cancel();
+            for (const messageSlide of messageSlides) messageSlide.cancel();
+        };
+        slide.addEventListener('finish', () => finishBarSlide?.(), {once: true});
+        return;
+    }
+
+    // Going: its room is given back at once, and the layer falls behind
+    // the composer's edge while the messages move down into the room
+    bar.classList.add('is-sliding');
+    const fall = composerHeight - composer.offsetHeight;
     if (isAtNewest) list.scrollTop = list.scrollHeight;
     const movedUpBy = list.scrollTop - oldScrollTop;
-    if (!isAtOnce && movedUpBy !== 0) slideMessagesFrom(list, movedUpBy);
+    if (movedUpBy !== 0) slideMessagesFrom(list, movedUpBy);
+
+    const slide = bar.animate([edgeAt(0), edgeAt(fall)], timing);
+    finishBarSlide = () => {
+        finishBarSlide = null;
+        bar.classList.remove('is-sliding', 'is-shown');
+        slide.cancel();
+    };
+    slide.addEventListener('finish', () => finishBarSlide?.(), {once: true});
+}
+
+// The sliding bar moved down by `distance` and cut off that far from its
+// bottom, so what shows ends where the composer starts. Its shadow, above
+// it, stays in
+const edgeAt = (distance) => ({
+    transform: `translateY(${distance}px)`,
+    clipPath: `inset(-8px 0 ${distance}px 0)`,
+});
+
+// The messages in view moved by `distance` (up, when it's less than 0) and
+// held there, until the page is laid out to match
+function moveMessagesBy(list, distance, timing) {
+    return messagesInView(list, distance)
+        .map((message) => message.animate([{transform: 'none'}, {transform: `translateY(${distance}px)`}], timing));
+}
+
+// The messages that show in the list, or will once moved by `distance`
+function messagesInView(list, distance) {
+    const listBox = list.getBoundingClientRect();
+    return [...list.children].filter((message) => {
+        const box = message.getBoundingClientRect();
+        return box.bottom > listBox.top - Math.abs(distance) && box.top < listBox.bottom + Math.abs(distance);
+    });
 }
 
 // The messages in view start drawn where they were before the list moved
@@ -113,12 +168,7 @@ function placeBar(shouldShow, {isAtOnce = false} = {}) {
 function slideMessagesFrom(list, distance) {
     if (prefersLessMotion.matches) return;
     const timing = motionTiming();
-    const listBox = list.getBoundingClientRect();
-
-    for (const message of list.children) {
-        const box = message.getBoundingClientRect();
-        const isInView = box.bottom > listBox.top - Math.abs(distance) && box.top < listBox.bottom + Math.abs(distance);
-        if (!isInView) continue;
+    for (const message of messagesInView(list, distance)) {
         message.animate([{transform: `translateY(${distance}px)`}, {transform: 'none'}], timing);
     }
 }
