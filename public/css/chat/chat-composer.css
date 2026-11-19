@@ -63,7 +63,8 @@
     }
 
     /* While a voice message is written out (voice.js): the dots where the
-       words will go, on the first line, in the placeholder's place */
+       words will go. Here, in the placeholder's place; after any text,
+       voice.js moves them to its end */
     .dots
     {
         position: absolute;
@@ -112,6 +113,12 @@
         &.is-full
         {
             overflow-y: auto;
+        }
+
+        /* A line under the text for voice typing's dots (voice.js) */
+        &.is-making-room
+        {
+            padding-block-end: calc(var(--input-padding-block) + 1lh);
         }
 
         &:focus
@@ -163,6 +170,12 @@
         pointer-events: none;
     }
 
+
+    /* The same room under the text as the box, so it scrolls as far */
+    .box:has(.is-making-room) .chips
+    {
+        padding-block-end: calc(var(--input-padding-block) + 1lh);
+    }
 
     /* The text can't move, so no padding here: a shadow in the chip's own
        colour stands in for it */

@@ -930,15 +930,17 @@ function updateSendButton() {
 }
 
 // The box sits in one row with its buttons while the text fits there; once
-// it wraps, the text gets the whole width and grows, up to its CSS max-height
-function fitMessageInputToText() {
+// it wraps, the text gets the whole width and grows, up to its CSS max-height.
+// shouldWrap wraps it anyway, for voice typing's dots (voice.js)
+function fitMessageInputToText({shouldWrap = false} = {}) {
     // Measured in the one-row layout, or text that fits there would never go back
     composerField.classList.remove('is-multiline');
     messageInput.style.height = 'auto';
-    const {lineHeight, paddingTop, paddingBottom} = getComputedStyle(messageInput);
-    const oneLineHeight = parseFloat(lineHeight) + parseFloat(paddingTop) + parseFloat(paddingBottom);
+    const {lineHeight, paddingTop} = getComputedStyle(messageInput);
+    // The top's padding twice: voice typing can add room below for its dots (voice.js)
+    const oneLineHeight = parseFloat(lineHeight) + 2 * parseFloat(paddingTop);
     // Half a line's slack: a scaled screen rounds one line a pixel taller
-    const isWrapped = messageInput.scrollHeight > oneLineHeight + parseFloat(lineHeight) / 2;
+    const isWrapped = shouldWrap || messageInput.scrollHeight > oneLineHeight + parseFloat(lineHeight) / 2;
     composerField.classList.toggle('is-multiline', isWrapped);
 
     messageInput.style.height = 'auto';

@@ -55,6 +55,56 @@ const MIC_LABELS = {
 // Send's label while it's the stop button
 const STOP_LABEL = 'Stop';
 
+// What the hidden copy of the box takes from it, so its lines wrap where the box's do
+const TEXT_LAYOUT_STYLES = [
+    'fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'letterSpacing', 'lineHeight',
+    'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
+    'whiteSpace', 'overflowWrap', 'wordBreak', 'tabSize', 'direction', 'textAlign',
+];
+
+/**
+ * Where `input`'s text ends, as the top left of a gap `gapWidth` wide put
+ * after it, in px from the box's own top left (scrolled), and whether that
+ * gap had to go to a new line. A textarea can't say where a letter is, so
+ * a hidden copy of it, laid out the same, says instead
+ */
+function endOfTextIn(input, gapWidth) {
+    const inputStyle = getComputedStyle(input);
+    const hiddenCopy = document.createElement('div');
+    for (const property of TEXT_LAYOUT_STYLES) {
+        hiddenCopy.style[property] = inputStyle[property];
+    }
+    hiddenCopy.style.position = 'absolute';
+    hiddenCopy.style.visibility = 'hidden';
+    hiddenCopy.style.boxSizing = 'border-box';
+    // The box's width inside its border and any scrollbar
+    hiddenCopy.style.width = `${input.clientWidth}px`;
+
+    // Inline blocks a line tall, so each one's top is its line's top
+    const endOfText = document.createElement('span');
+    const gap = document.createElement('span');
+    for (const marker of [endOfText, gap]) {
+        marker.style.display = 'inline-block';
+        marker.style.verticalAlign = 'top';
+        marker.style.height = inputStyle.lineHeight;
+    }
+    gap.style.width = `${gapWidth}px`;
+    // About a space's width, as the words will go in after one
+    if (input.value !== '') {
+        gap.style.marginInlineStart = '0.3em';
+    }
+
+    hiddenCopy.append(input.value, endOfText, gap);
+    input.after(hiddenCopy);
+    const end = {
+        left: input.offsetLeft + input.clientLeft + gap.offsetLeft,
+        top: input.offsetTop + input.clientTop + gap.offsetTop - input.scrollTop,
+        isOnNewLine: gap.offsetTop > endOfText.offsetTop,
+    };
+    hiddenCopy.remove();
+    return end;
+}
+
 /**
  * Moves each bar of `wave` with its band of pitches in `microphone`, until
  * the function it returns is called
@@ -238,9 +288,10 @@ function moveWaveWith(wave, microphone) {
 }
 
 /**
- * Lets `micButton` fill `input` by voice at the cursor. While it listens it
- * shows a moving wave, and `sendButton` beside it becomes its stop button;
- * while the words are written out, `writingDots` show in the box. Gives back
+ * Lets `micButton` fill `input` by voice, after what's already there. While
+ * it listens it shows a moving wave, and `sendButton` beside it becomes its
+ * stop button; while the words are written out, `writingDots` show where
+ * they will go, at the end of the text. Gives back
  * a function that says its state, which chat.js's updateSendButton reads
  */
 function setUpVoiceTyping(input, micButton, sendButton, writingDots) {
@@ -263,7 +314,7 @@ function setUpVoiceTyping(input, micButton, sendButton, writingDots) {
         micButton.classList.toggle('is-listening', state === 'listening');
         micButton.classList.toggle('is-transcribing', state === 'transcribing');
         micButton.disabled = state === 'transcribing';
-        writingDots.hidden = state !== 'transcribing';
+        showWritingDots(state === 'transcribing');
         micButton.setAttribute('aria-pressed', String(state === 'listening'));
         micButton.setAttribute('aria-label', MIC_LABELS[state]);
         micButton.title = MIC_LABELS[state];
@@ -279,11 +330,67 @@ function setUpVoiceTyping(input, micButton, sendButton, writingDots) {
         updateSendButton();
     }
 
+    // The dots go after the text, where the words will
+    function showWritingDots(isShown) {
+        const wasShown = !writingDots.hidden;
+        writingDots.hidden = !isShown;
+        if (isShown) {
+            makeRoomForWritingDots();
+            input.scrollTop = input.scrollHeight;
+            placeWritingDots();
+        } else if (wasShown) {
+            input.classList.remove('is-making-room');
+            fitMessageInputToText();
+            writingDots.style.removeProperty('translate');
+        }
+    }
+
+    // With no room left on the text's last line, the box wraps, as the
+    // wrapped layout is wider; with none there either, the dots take a new
+    // line and the box grows one for them
+    function makeRoomForWritingDots() {
+        input.classList.remove('is-making-room');
+        fitMessageInputToText();
+        if (!endOfTextIn(input, writingDots.offsetWidth).isOnNewLine) return;
+
+        fitMessageInputToText({shouldWrap: true});
+        if (endOfTextIn(input, writingDots.offsetWidth).isOnNewLine) {
+            input.classList.add('is-making-room');
+            fitMessageInputToText({shouldWrap: true});
+        }
+    }
+
+    function placeWritingDots() {
+        const end = endOfTextIn(input, writingDots.offsetWidth);
+        const lineHeight = parseFloat(getComputedStyle(input).lineHeight);
+        // Centred on the line, from where the stylesheet puts them
+        const top = end.top + (lineHeight - writingDots.offsetHeight) / 2;
+        writingDots.style.translate = `${end.left - writingDots.offsetLeft}px ${top - writingDots.offsetTop}px`;
+    }
+
+    // The text can move while it's written out: typed in, scrolled, or a phone turned
+    function onTextMovedWhileWriting() {
+        if (state !== 'transcribing') return;
+        makeRoomForWritingDots();
+        placeWritingDots();
+    }
+
+    // A frame later: chat.js refits the box on these after this, which would undo the room
+    input.addEventListener('input', () => requestAnimationFrame(onTextMovedWhileWriting));
+    window.addEventListener('resize', () => requestAnimationFrame(onTextMovedWhileWriting));
+    input.addEventListener('scroll', () => {
+        if (state === 'transcribing') {
+            placeWritingDots();
+        }
+    });
+
     function putSpokenText(text) {
         if (text === '') {
             showToast('Nothing was heard. Try again.', 'warning');
             return;
         }
+        // After what's there, wherever the caret was left
+        input.setSelectionRange(input.value.length, input.value.length);
         // Words said after some typed ones need a space between them
         const before = input.value.slice(0, input.selectionStart);
         const needsSpace = before !== '' && !/\s$/.test(before);
