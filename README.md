@@ -74,6 +74,7 @@ https://github.com/user-attachments/assets/3f97fc92-967b-45eb-9e8a-acb3afc1a263
 - Private chats in tabs, with unread counts and "Typing...".
 - @mentions, emoji and voice typing in the message box.
 - Notifications for private messages and @mentions, even with MapChat closed.
+- A calm ping for a private message or an @mention of you in a chat you aren't looking at. The room's tab counts only @mentions.
 - A pin for each person online, placed from their IP address, never GPS,
   with their local time. Anyone can hide theirs.
 - Hover a person or a message's city to point out their pin; click either

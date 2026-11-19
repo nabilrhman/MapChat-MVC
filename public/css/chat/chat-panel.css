@@ -449,18 +449,6 @@
         {
             animation: grow-in var(--dur) var(--ease-out) backwards;
         }
-
-        /* Someone @mentioned you in a tab you're not looking at */
-        &.is-mention
-        {
-            background-color: var(--md-primary);
-            color: var(--md-on-primary);
-        }
-
-        &.is-mention::before
-        {
-            content: "@ ";
-        }
     }
 
     /* Everything in a tab but its close button: the label that opens its chat */
