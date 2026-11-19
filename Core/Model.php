@@ -4,6 +4,7 @@ namespace Core;
 
 use App\Config;
 use PDO;
+use Pdo\Mysql;
 
 /**
  * What every model shares: the database connection and query helpers
@@ -37,10 +38,10 @@ abstract class Model
                 . ';charset=utf8mb4';
 
             // Times are stored and read as UTC; the browser shows them in local time
-            $options = [PDO::MYSQL_ATTR_INIT_COMMAND => "SET time_zone = '+00:00'"];
+            $options = [Mysql::ATTR_INIT_COMMAND => "SET time_zone = '+00:00'"];
             // Hosted MySQL services usually require TLS
             if (Config::isOn('DB_SSL')) {
-                $options[PDO::MYSQL_ATTR_SSL_CA] = Config::get('DB_SSL_CA', '/etc/ssl/certs/ca-certificates.crt');
+                $options[Mysql::ATTR_SSL_CA] = Config::get('DB_SSL_CA', '/etc/ssl/certs/ca-certificates.crt');
             }
 
             self::$db = new PDO($dsn, Config::get('DB_USER', 'root'), Config::get('DB_PASSWORD', ''), $options);

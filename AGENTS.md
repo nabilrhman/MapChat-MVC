@@ -1,6 +1,6 @@
 # MapChat
 
-A PHP 8.4 MVC site (`Core/` is the framework, `App/` the app, Twig views)
+A PHP 8.5 MVC site (`Core/` is the framework, `App/` the app, Twig views)
 with plain-script JavaScript and CSS in `public/`, a live chat socket and a
 worker in `bin/`, and MySQL. README.md: Run it locally and Project layout say
 where everything lives; docs/live-chat.md how the live chat works.
@@ -62,7 +62,7 @@ docblock (`testAPrivateMessageGoesToTheOtherPersonOnly`), and so are
 
 ### Modern PHP
 
-Write PHP 8.4:
+Write PHP 8.5:
 
 - Every parameter, return and property has a type (`?int`, `int|false`,
   `void`, `never`); `mixed` only where a value truly can be anything.
@@ -70,7 +70,7 @@ Write PHP 8.4:
   arguments promotes them.
 - One value checked against several cases is a `match`; a fixed set of
   string values (a job's kind, a conversation) is a backed `enum`.
-- `str_contains`, `str_starts_with`, `??`, `?->`, arrow functions for
+- `array_first`, `array_last`, `str_contains`, `str_starts_with`, `??`, `?->`, arrow functions for
   one-line closures, first-class callables (`strlen(...)`), and named
   arguments where a bare `true` or a third positional would be a guess.
 - Values from the database arrive as strings: cast them where they come in,

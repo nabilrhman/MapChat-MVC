@@ -6,7 +6,7 @@ Each part of MapChat and what it's made with. Back to the
 ![A request goes from public/index.php to the router and a controller, which reads from MySQL through a model and answers with a Twig view or JSON. The browser then opens a WebSocket at /ws, which Apache passes to the chat socket's Hub, which also hears from the chat worker](images/request-path.svg)
 
 - **Framework:** a model-view-controller (MVC) framework written from scratch in
-  PHP 8.4, in `Core/`. The app itself is in `App/`.
+  PHP 8.5, in `Core/`. The app itself is in `App/`.
 - **Database:** MySQL, queried with prepared statements to block SQL injection.
 - **Views:** Twig 3 templates, which escape everything users type to block
   cross-site scripting. A strict Content-Security-Policy backs that up: a
