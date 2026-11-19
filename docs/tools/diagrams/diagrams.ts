@@ -80,7 +80,7 @@ export const DIAGRAMS: Diagram[] = [
         cards: [
           {
             id: 'proxy',
-            icon: 'routing-2',
+            icon: 'round-transfer-horizontal',
             column: 0,
             title: 'Apache /ws',
             body: 'Passes the page\'s WebSocket to the chat socket, on the site\'s own address.',
