@@ -104,7 +104,9 @@ function rollTo(element, number, distanceLeft) {
     // Far off, numbers pass every frame or two, so each rolls quicker
     element.classList.toggle('is-far-off', distanceLeft > 3);
 
-    element.querySelectorAll('[data-part="count-number"].is-leaving').forEach((leavingNumber) => leavingNumber.remove());
+    for (const leavingNumber of element.querySelectorAll('[data-part="count-number"].is-leaving')) {
+        leavingNumber.remove();
+    }
     const oldNumber = element.lastElementChild;
     if (oldNumber) {
         oldNumber.classList.add('is-leaving');
@@ -215,14 +217,14 @@ function replayAnimation(element, className) {
 // translate, not transform, so an element's own transform (the tabs' flip)
 // stays
 function slideFromShifts(shifts) {
-    shifts.forEach(({x = 0, y = 0}, element) => {
+    for (const [element, {x = 0, y = 0}] of shifts) {
         // One still sliding from the last change starts again from where it is
         element.classList.remove('is-shifting');
         element.style.translate = `${x}px ${y}px`;
-    });
+    }
     void document.body.offsetWidth; // makes the browser draw them there first
 
-    shifts.forEach((shift, element) => {
+    for (const element of shifts.keys()) {
         element.classList.add('is-shifting');
         element.style.translate = '';
         element.addEventListener('transitionend', function onSlid(event) {
@@ -231,7 +233,7 @@ function slideFromShifts(shifts) {
             element.removeEventListener('transitionend', onSlid);
             element.classList.remove('is-shifting');
         });
-    });
+    }
 }
 
 // Plays a leaving animation, then removes the element. One that isn't

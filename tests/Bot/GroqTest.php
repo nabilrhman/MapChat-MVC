@@ -14,6 +14,9 @@ use Symfony\Contracts\HttpClient\Exception\ExceptionInterface;
  */
 class GroqForTests extends Groq
 {
+    /**
+     * Whether Cerebras should stand in after this Groq error, opened up for the tests
+     */
     public static function isWorthAskingCerebrasFor(ExceptionInterface $groqError): bool
     {
         return static::isWorthAskingCerebras($groqError);

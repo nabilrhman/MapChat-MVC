@@ -5,12 +5,5 @@
 {% block title %}Page not found{% endblock %}
 
 {% block body %}
-
-<section class="error-page">
-    <h4 class="appear-down">404: Page not found</h4>
-    <div class="divider"></div>
-    <p>We couldn't find that page.</p>
-    <a href="/" class="button primary">Back to MapChat</a>
-</section>
-
+{{ include('_error_page.html', {title: '404: Page not found', message: "We couldn't find that page."}, with_context = false) }}
 {% endblock %}

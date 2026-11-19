@@ -71,6 +71,16 @@ class RoomTest extends TestCase
         $this->assertSame(0, (int) $stmt->fetchColumn());
     }
 
+    public function testAListInPlaceOfAClientIdOrTheOriginalSendsTheMessageWithout(): void
+    {
+        $response = $this->request('POST', '/app/send', ['body' => 'hello', 'client_id' => ['a'], 'original' => ['b']]);
+
+        $stmt = $this->db->prepare('SELECT COUNT(*) FROM chats WHERE email = ?');
+        $stmt->execute([self::EMAIL]);
+        $this->assertSame(200, $response['status']);
+        $this->assertSame(1, (int) $stmt->fetchColumn());
+    }
+
     public function testARefusedRecordingUsesNoneOfTheLimit(): void
     {
         for ($i = 0; $i < Chat::USER_PER_MINUTE + 1; $i++) {

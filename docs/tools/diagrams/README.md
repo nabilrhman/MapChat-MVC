@@ -21,7 +21,7 @@ against the code, as the README around it is.
 - A 168px label column on the left: the section title in Montserrat 700, 17px,
   `primary` (`#512da8`), and a one-sentence summary under it.
 - White cards (`surface-container-lowest`), square, 20px padding, 32px apart.
-  Inside: a 24px Solar icon in its Bold weight, as on the site, the title, then two or three short lines.
+  Inside: a 24px Solar icon in its Bold weight, the title, then two or three short lines.
   A code name as a title is a monospace chip on `surface-container-high`.
 - Arrows run only between neighbouring cards, dashed in `primary`. They and
   the section titles are the only colour.
@@ -32,4 +32,5 @@ against the code, as the README around it is.
 - Copy is sentences with full stops, no em dashes, no typed arrows.
 
 Montserrat is under the SIL Open Font License (`LICENSE-montserrat.txt`), and
-the icons are Solar's, by 480 Design, under CC BY 4.0.
+the icons are Solar's, by 480 Design, under CC BY 4.0. The diagrams keep Solar
+on their own: the site moved to Heroicons Solid (`public/icons.svg`).

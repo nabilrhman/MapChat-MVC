@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Messages;
+namespace Tests\Models;
 
 use App\Messages\Mention;
 use App\Messages\MessageText;
@@ -371,18 +371,6 @@ class ChatTest extends TestCase
         Chat::markRead(self::BOB, $this->userId(self::ANN), PHP_INT_MAX);
 
         $this->assertSame(['ann' => [1, $sent]], $this->conversations(self::CAT));
-    }
-
-    public function testMapShowsOnlyPeopleOnline(): void
-    {
-        $this->db->prepare('UPDATE userinfo SET online_at = NOW() WHERE email = ?')->execute([self::ANN]);
-        $this->db->prepare('UPDATE userinfo SET online_at = NOW() - INTERVAL 1 HOUR WHERE email = ?')->execute([self::BOB]);
-
-        $names = array_column(\App\Models\Whereabouts::getAllLocations(), 'name');
-
-        $this->assertContains('ann', $names);
-        $this->assertNotContains('bob', $names);
-        $this->assertNotContains('cat', $names, 'never seen');
     }
 
     /**

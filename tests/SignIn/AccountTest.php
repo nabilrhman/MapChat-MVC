@@ -3,6 +3,7 @@
 namespace Tests\SignIn;
 
 use App\Models\User;
+use Core\View;
 use PDO;
 use PHPUnit\Framework\TestCase;
 use Tests\Support\DrivesTheSite;
@@ -491,6 +492,67 @@ class AccountTest extends TestCase
 
         $this->assertSame('false', $taken['body']);
         $this->assertSame('true', $free['body']);
+    }
+
+    public function testEmailCheckSaysAnEmailAtMapChatsOwnDomainIsNotFree(): void
+    {
+        $demoDomain = $this->request('GET', '/account/validate-email?' . http_build_query(['email' => 'nobody@demo.mapchat.local']));
+        $ownDomain = $this->request('GET', '/account/validate-email?' . http_build_query(['email' => 'nobody@mapchat.local']));
+
+        $this->assertSame('false', $demoDomain['body']);
+        $this->assertSame('false', $ownDomain['body']);
+    }
+
+    public function testEmailCheckLetsAGuestKeepTheirPlaceholder(): void
+    {
+        $this->db->prepare('INSERT INTO users (name, email, password_hash, is_active, is_guest) VALUES (?, ?, ?, 1, 1)')
+            ->execute(['Guest 1', 'account-guest@guest.mapchat.local', '']);
+        $guestId = (int) $this->db->lastInsertId();
+
+        try {
+            $query = http_build_query(['email' => 'account-guest@guest.mapchat.local', 'ignore_id' => $guestId]);
+            $this->assertSame('true', $this->request('GET', "/account/validate-email?$query")['body']);
+        } finally {
+            $this->db->prepare('DELETE FROM users WHERE id = ?')->execute([$guestId]);
+        }
+    }
+
+    public function testListsInPlaceOfFormFieldsAreRefusedNotA500(): void
+    {
+        $login = $this->request('POST', '/login/create', ['email' => [self::EMAIL], 'password' => [self::PASSWORD]]);
+        $signup = $this->request('POST', '/signup/create', ['name' => ['Ann'], 'email' => ['x@test.local'], 'password' => ['a']]);
+        $check = $this->request('GET', '/account/validate-email?' . http_build_query(['email' => [self::EMAIL]]));
+        $reset = $this->request('POST', '/password/request-reset', ['email' => [self::EMAIL]]);
+
+        $this->assertNotSame(500, $login['status']);
+        $this->assertNotSame(500, $signup['status']);
+        $this->assertSame(200, $check['status']);
+        $this->assertNotSame(500, $reset['status']);
+        $this->assertFalse($this->isSignedIn());
+    }
+
+    public function testAProfileSavedWithListsInPlaceOfFieldsIsRefusedNotA500(): void
+    {
+        $this->logIn();
+
+        $response = $this->request('POST', '/profile/update', ['name' => ['Ann'], 'email' => [self::EMAIL]]);
+
+        $this->assertSame(303, $response['status']);
+        $this->assertSame(self::EMAIL, $this->user()['email']);
+    }
+
+    public function testANewEmailsLinkComesInAMailAboutTheNewEmailNotSigningUp(): void
+    {
+        $args = ['url' => 'https://mapchat.test/signup/activate/abc', 'name' => 'Ann'];
+
+        $html = View::getTemplate('Profile/new_email.html', $args);
+        $text = View::getTemplate('Profile/new_email.txt', $args);
+
+        foreach ([$html, $text] as $mail) {
+            $this->assertStringContainsString('Confirm', $mail);
+            $this->assertStringContainsString('https://mapchat.test/signup/activate/abc', $mail);
+            $this->assertStringNotContainsString('Thanks for signing up', $mail);
+        }
     }
 
     public function testProtectedPageSendsYouToLogInAndBack(): void

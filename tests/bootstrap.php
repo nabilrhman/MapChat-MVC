@@ -15,7 +15,7 @@ $name = Config::get('DB_NAME', 'mapchat');
 
 // The database is dropped below; never let that be the app's own
 if (!str_ends_with($name, '_test')) {
-    fwrite(STDERR, "DB_NAME must end in _test (it is \"$name\"); run the tests with `docker compose run --rm test`\n");
+    fwrite(STDERR, "DB_NAME must end in _test (it is \"$name\"); run the tests with `docker compose -p <name> run --rm --build test`\n");
     exit(1);
 }
 

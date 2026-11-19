@@ -75,6 +75,7 @@
         padding: 10px;
         color: var(--md-on-primary);
         font-weight: 600;
+        text-transform: uppercase; /* like the account name beside them */
         text-decoration: none;
         cursor: pointer;
 
@@ -234,7 +235,8 @@
         align-items: center;
         gap: 8px;
         height: 44px;
-        padding: 0 15px 0 5px; /* 15px after the chevron's drawing (.icon takes back its blank sides) */
+        padding-block: 0;
+        padding-inline: 5px 15px; /* 15px after the chevron's drawing (.icon takes back its blank sides) */
         border: none;
         border-radius: 22px;
         background: none;
@@ -278,7 +280,7 @@
         max-width: 140px;
         overflow: hidden;
         white-space: nowrap;
-        text-transform: uppercase; /* like ABOUT beside it */
+        text-transform: uppercase; /* like the About link beside it */
         text-overflow: ellipsis;
     }
 

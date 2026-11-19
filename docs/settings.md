@@ -18,6 +18,8 @@ explanations. The main ones:
 | `IPSTACK_API_KEY` | Optional. Adds ipstack as the last place to look up where a visitor is, after ipapi.co, ipwho.is and GeoJS. Last because its free plan is plain HTTP, with the key in the address |
 | `DEV_FAKE_IP` | Used in place of any private or reserved IP, in any environment. Locally every visitor has one, so this public IP puts them on the map. Leave it empty on a host |
 | `DEMO_TIMEZONE` | Optional. Where the demo people's day starts at midnight. Default `America/Toronto` |
+| `DEMO_AWAY` | Optional. Demo people kept out of the room whatever the day's script says, by first name, comma separated: `emily`. The README's tour uses it to call one in from away. Leave empty on a real site |
+| `DEMO_HERE` | Optional. Demo people always in the room, by first name, comma separated, so the tour's private chats open on someone with a pin. Leave empty on a real site |
 | `DEMO_SPEED` | Optional, for watching the demo chat locally: `60` plays the whole day in 24 minutes. Leave empty on a real site |
 | `GROQ_API_KEY` | Optional. Lets MapChat and the demo people chat back, and writes out voice messages, through Groq's free plan (console.groq.com). Without it, MapChat only greets, and the browser writes out voice messages where it can |
 | `MAPCHAT_MODEL` | Optional. The Groq model they write with. Default `openai/gpt-oss-120b` |

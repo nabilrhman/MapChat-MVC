@@ -14,6 +14,8 @@ use Tests\Support\TestDb;
 class LocationTest extends TestCase
 {
     const ANN = 'ann@test.local';
+    const BOB = 'bob@test.local';
+    const CAT = 'cat@test.local';
 
     private PDO $db;
 
@@ -45,6 +47,23 @@ class LocationTest extends TestCase
         $pins = array_values(array_filter(Whereabouts::getAllLocations(), fn ($pin) => $pin['name'] === 'Ann'));
 
         return $pins[0];
+    }
+
+    public function testMapShowsOnlyPeopleOnline(): void
+    {
+        TestDb::createUser('Bob', self::BOB);
+        TestDb::createUser('Cat', self::CAT);
+        $this->db->prepare("UPDATE userinfo SET lat = 1, lng = 2, city = 'Dhaka', country = 'BD' WHERE email = ?")->execute([self::ANN]);
+        $this->db->prepare("INSERT INTO userinfo (email, ip, lat, lng, city, country, online_at) VALUES (?, '8.8.8.8', 1, 2, 'Dhaka', 'BD', NOW() - INTERVAL 1 HOUR)")
+            ->execute([self::BOB]);
+        $this->db->prepare("INSERT INTO userinfo (email, ip, lat, lng, city, country) VALUES (?, '8.8.8.8', 1, 2, 'Dhaka', 'BD')")
+            ->execute([self::CAT]);
+
+        $names = array_column(Whereabouts::getAllLocations(), 'name');
+
+        $this->assertContains('Ann', $names);
+        $this->assertNotContains('Bob', $names);
+        $this->assertNotContains('Cat', $names, 'never seen');
     }
 
     public function testALookedUpLocationIsSavedToTheCity(): void

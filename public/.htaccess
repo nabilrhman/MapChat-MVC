@@ -10,7 +10,8 @@ RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^(.*)$ index.php?$1 [L,QSA]
 
-# Cache static files for a week; CSS and JS links carry ?v=N, bumped on change
+# Cache static files for a week; CSS and JS links carry a hash of their content,
+# so a changed file gets a new URL
 <IfModule mod_headers.c>
     <FilesMatch "\.(css|js|svg|png|jpe?g|webp|gif|ico|woff2?)$">
         Header set Cache-Control "public, max-age=604800"

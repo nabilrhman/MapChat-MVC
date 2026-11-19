@@ -369,8 +369,9 @@ class Whereabouts extends \Core\Model
      * These people as getRecentPeople lists them, with their email, for the
      * chat socket to say who came or went. Online is the socket's to say
      *
-     * @return array[] People rows, with email and minutes_ago
      * @param string[] $emails
+     *
+     * @return array[] People rows, with email and minutes_ago
      */
     public static function getPeople(array $emails): array
     {

@@ -20,13 +20,34 @@
 </div>
 {% endmacro %}
 
-{# An on/off switch; its label sits beside it, in the setting's text #}
-{% macro switch(input_id, is_on = false) %}
-{% types {input_id: 'string', is_on: 'bool'} %}
+{# An on/off switch; its label sits beside it, in the setting's text, and
+   its hint (by id) describes it #}
+{% macro switch(input_id, is_on = false, hint_id = null) %}
+{% types {input_id: 'string', is_on: 'bool', hint_id: '?string'} %}
 <div class="beer control">
     <label class="switch">
-        <input type="checkbox" id="{{ input_id }}"{% if is_on %} checked{% endif %}>
+        <input type="checkbox" id="{{ input_id }}"{% if is_on %} checked{% endif %}
+               {%- if hint_id %} aria-describedby="{{ hint_id }}"{% endif %}>
         <span></span>
     </label>
+</div>
+{% endmacro %}
+
+{# A setting: its name and hint on the left, its switch on the right. The
+   hint is text, or markup captured with {% set %}; without one there's no
+   hint. hint_id is what scripts find it by, input_id-hint unless given #}
+{% macro setting_row(input_id, label, hint = null, is_on = false, hint_id = null, hint_class = null) %}
+{% types {input_id: 'string', label: 'string', hint: 'string|Twig\\Markup|null', is_on: 'bool', hint_id: '?string', hint_class: '?string'} %}
+{% from _self import switch %}
+{% set has_hint = hint is not empty %}
+{% set hint_id = has_hint ? (hint_id ?? (input_id ~ '-hint')) : null %}
+<div class="privacy-setting">
+    <div>
+        <label class="name" for="{{ input_id }}">{{ label }}</label>
+        {% if has_hint %}
+        <p class="field-hint{{ hint_class ? ' ' ~ hint_class }}" id="{{ hint_id }}">{{ hint }}</p>
+        {% endif %}
+    </div>
+    {{ switch(input_id, is_on = is_on, hint_id = hint_id) }}
 </div>
 {% endmacro %}

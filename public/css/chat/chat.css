@@ -73,6 +73,23 @@ body
     }
 }
 
+/* Buttons drawn as the text they hold: a tab's buttons, a message's name
+   and city, and a person in the list. :where() keeps this at no
+   specificity, so each part's own rules give it its look */
+:where(.chat-tabs .label, .chat-tabs .close, .chat .name-button, .chat .city, .person)
+{
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: none;
+    color: inherit;
+    font: inherit;
+    letter-spacing: inherit;
+    text-align: inherit;
+    text-shadow: inherit;
+    text-transform: inherit;
+}
+
 /* Two lines in a one-line window: the reader's time then the sender's, or the
    city then the country. Hovering slides the second line into view; on a
    touch screen a tap does, for a moment (chat.js) */

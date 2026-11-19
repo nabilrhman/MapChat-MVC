@@ -5,6 +5,9 @@ namespace Tests\Core;
 use Core\Asset;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * Asset links carry a hash of the file's contents, so a changed file gets a new link
+ */
 class AssetTest extends TestCase
 {
     /** A throwaway file in public/, made for each test that needs one */

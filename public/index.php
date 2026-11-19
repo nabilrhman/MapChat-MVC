@@ -22,8 +22,8 @@ use App\Controllers\Signup;
 require dirname(__DIR__) . '/vendor/autoload.php';
 
 error_reporting(E_ALL);
-set_error_handler(Core\Error::errorHandler(...));
-set_exception_handler(Core\Error::exceptionHandler(...));
+set_error_handler(Core\Error::onError(...));
+set_exception_handler(Core\Error::onUncaughtException(...));
 
 // In the database, so restarting the container doesn't log anyone out. A
 // session lasts a week without activity

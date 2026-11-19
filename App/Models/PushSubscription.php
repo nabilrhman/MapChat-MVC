@@ -57,7 +57,7 @@ class PushSubscription extends \Core\Model
     /**
      * Every subscribed browser, with its owner's names for spotting @mentions
      *
-     * @return array Each with email, endpoint, p256dh, auth, name, nickname and is_guest
+     * @return array[] Each with email, endpoint, p256dh, auth, name, nickname and is_guest
      */
     public static function getAll(): array
     {

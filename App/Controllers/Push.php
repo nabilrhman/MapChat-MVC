@@ -24,9 +24,9 @@ class Push extends Authenticated
      */
     public function subscribeAction(): void
     {
-        $endpoint = (string) ($_POST['endpoint'] ?? '');
-        $p256dh = (string) ($_POST['p256dh'] ?? '');
-        $auth = (string) ($_POST['auth'] ?? '');
+        $endpoint = $this->stringFrom($_POST, 'endpoint');
+        $p256dh = $this->stringFrom($_POST, 'p256dh');
+        $auth = $this->stringFrom($_POST, 'auth');
 
         // The chat worker posts to it, so only a real push service's address
         if (!static::isPushEndpoint($endpoint) || $p256dh === '' || $auth === ''
@@ -44,7 +44,7 @@ class Push extends Authenticated
      */
     public function unsubscribeAction(): void
     {
-        PushSubscription::delete(Auth::getEmail(), (string) ($_POST['endpoint'] ?? ''));
+        PushSubscription::delete(Auth::getEmail(), $this->stringFrom($_POST, 'endpoint'));
         $this->json(['subscribed' => false]);
     }
 

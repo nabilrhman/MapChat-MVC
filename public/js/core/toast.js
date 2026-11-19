@@ -45,5 +45,7 @@ function showToast(text, type = 'success') {
 document.addEventListener('DOMContentLoaded', () => {
     const toastMessages = document.getElementById('toast-messages');
     if (!toastMessages) return;
-    JSON.parse(toastMessages.dataset.messages).forEach(({body, type}) => showToast(body, type));
+    for (const {body, type} of JSON.parse(toastMessages.dataset.messages)) {
+        showToast(body, type);
+    }
 });

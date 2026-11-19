@@ -35,8 +35,9 @@ two are tangled in one hunk, ask.
    owner, with no AI attribution. The subject is a sentence saying what
    changes for people, as the repo's history reads.
 6. **Open and merge the PR.** Push, write the body with the `pr` skill,
-   `gh pr create`, then `gh pr merge --merge` (the repo has no CI; it
-   merges with merge commits).
+   `gh pr create`, then `gh pr merge --merge` (it merges with merge
+   commits; CI runs the tests after the merge, so the merge doesn't wait
+   on it).
 7. **Bring the checkout up to date.** `git switch master`, then
    `git pull --ff-only`.
 

@@ -27,9 +27,9 @@ class Signup extends \Core\Controller
     {
         // Only the form's fields
         $user = new User([
-            'name' => (string) ($_POST['name'] ?? ''),
-            'email' => (string) ($_POST['email'] ?? ''),
-            'password' => (string) ($_POST['password'] ?? ''),
+            'name' => $this->stringFrom($_POST, 'name'),
+            'email' => $this->stringFrom($_POST, 'email'),
+            'password' => $this->stringFrom($_POST, 'password'),
         ]);
 
         if ($user->save()) {

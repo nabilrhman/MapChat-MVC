@@ -28,8 +28,8 @@ class Login extends \Core\Controller
     public function createAction(): void
     {
         $isRemembered = isset($_POST['remember_me']);
-        $email = (string) ($_POST['email'] ?? '');
-        $user = User::authenticate($email, (string) ($_POST['password'] ?? ''));
+        $email = $this->stringFrom($_POST, 'email');
+        $user = User::authenticate($email, $this->stringFrom($_POST, 'password'));
 
         // These say only that the email has an account, as signing up already does
         $account = $user ? null : User::findByEmail($email);
@@ -67,7 +67,7 @@ class Login extends \Core\Controller
     public function guestAction(): void
     {
         // Someone who was a guest in this browser gets that account back
-        $user = User::findGuestByToken((string) ($_COOKIE['guest_token'] ?? ''));
+        $user = User::findGuestByToken($this->stringFrom($_COOKIE, 'guest_token'));
 
         if ($user) {
             Flash::addMessage('Welcome back, ' . $user->name . '.', Flash::INFO);
@@ -91,7 +91,7 @@ class Login extends \Core\Controller
     public function destroyAction(): void
     {
         $email = Auth::getEmail();
-        $pushEndpoint = (string) ($_POST['push_endpoint'] ?? '');
+        $pushEndpoint = $this->stringFrom($_POST, 'push_endpoint');
         if ($email !== null && $pushEndpoint !== '') {
             PushSubscription::delete($email, $pushEndpoint);
         }
