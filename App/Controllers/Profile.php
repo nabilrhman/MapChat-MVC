@@ -110,14 +110,35 @@ class Profile extends Authenticated
         $data = ['name' => (string) ($_POST['name'] ?? ''), 'nickname' => $nickname, 'email' => $email, 'password' => $password];
 
         if ($this->user->updateProfile($data)) {
+            // A new password ends every session made before it, but not this one
+            Auth::stayLoggedIn($this->user);
+
             Flash::clear();
-            Flash::addMessage('Changes saved.');
+            Flash::addMessage($this->sendNewEmailLink());
         } else {
             // The cards show their saved details, not the form, so the problems go in one message
             Flash::addMessage(implode(' ', array_merge(...array_values($this->user->errors))), Flash::WARNING);
         }
 
         $this->redirect('/profile/show');
+    }
+
+    /**
+     * Email a new email the link that proves it's theirs, as signing up
+     * does, and give the message that says the profile is saved
+     */
+    protected function sendNewEmailLink(): string
+    {
+        $hasNewEmail = $this->user->activationToken !== null;
+        if (!$hasNewEmail || !Config::isMailEnabled()) {
+            return 'Changes saved.';
+        }
+
+        if (!$this->user->sendActivationEmail()) {
+            return "Changes saved. We couldn't send the link that confirms your new email.";
+        }
+
+        return 'Changes saved. Check your new email for a link to confirm it.';
     }
 
     /**

@@ -44,6 +44,9 @@ let pingTimer = null;
 
 let isPolling = false;
 let pollTimer = null;
+// Each poll loop's number: a stop and start while a check is in flight
+// would otherwise leave the old loop running beside the new one
+let pollGeneration = 0;
 
 // Sends not saved yet, by client id, to send again after a reconnect
 const pendingSends = new Map();
@@ -55,6 +58,10 @@ let failedSend = null;
 
 const olderRequests = new Map();
 let nextRequestId = 1;
+
+// isSocketLive stays true while a closing socket waits for its close
+// event, and a send on it is dropped without a word
+const isSocketOpen = () => isSocketLive && socket?.readyState === WebSocket.OPEN;
 
 /* Showing what arrives */
 
@@ -192,22 +199,23 @@ async function checkForMessages(isAfterSending = false) {
     showArrivedChats(response.data, isAfterSending);
 }
 
-async function keepCheckingForMessages() {
-    if (!isPolling) return;
+async function keepCheckingForMessages(generation) {
+    if (generation !== pollGeneration) return;
 
     try {
         await checkForMessages();
     } catch {
         // Try again on the next round
     }
-    if (!isPolling) return;
-    pollTimer = setTimeout(keepCheckingForMessages, document.hidden ? MESSAGES_HIDDEN_INTERVAL : MESSAGES_INTERVAL);
+    if (generation !== pollGeneration) return;
+    pollTimer = setTimeout(() => keepCheckingForMessages(generation), document.hidden ? MESSAGES_HIDDEN_INTERVAL : MESSAGES_INTERVAL);
 }
 
 function startPolling() {
     if (isPolling) return;
     isPolling = true;
-    keepCheckingForMessages();
+    pollGeneration += 1;
+    keepCheckingForMessages(pollGeneration);
     chatHandlers.onPollingChanged(true);
     // Sends waiting for the socket go by HTTP instead
     pendingSends.forEach((send, clientId) => sendOverHttp(clientId, send));
@@ -216,6 +224,7 @@ function startPolling() {
 function stopPolling() {
     if (!isPolling) return;
     isPolling = false;
+    pollGeneration += 1;
     clearTimeout(pollTimer);
     chatHandlers.onPollingChanged(false);
 }
@@ -297,6 +306,10 @@ function createClientId() {
 // the body is its translation (null otherwise), as messageToSend gives them
 function sendMessage({body, original = null}, to = null) {
     const toId = to === null ? null : Number(to);
+    // Not a person's id: JSON would make it null, which posts to the room
+    if (toId !== null && !(Number.isInteger(toId) && toId > 0)) {
+        return Promise.reject(new Error('Not a chat a message can go to'));
+    }
     const isRetry = failedSend && failedSend.body === body && failedSend.to === toId;
     const clientId = isRetry ? failedSend.clientId : createClientId();
     failedSend = null;
@@ -311,7 +324,7 @@ function sendMessage({body, original = null}, to = null) {
         }, SEND_TIMEOUT);
         pendingSends.set(clientId, send);
 
-        if (isSocketLive) {
+        if (isSocketOpen()) {
             sendOverSocket(clientId, send);
         } else if (isPolling) {
             sendOverHttp(clientId, send);
@@ -324,7 +337,7 @@ function sendMessage({body, original = null}, to = null) {
 // first: conversation is "everyone" or the other person's id
 async function fetchOlderChats(before, conversation) {
     let html;
-    if (isSocketLive) {
+    if (isSocketOpen()) {
         const requestId = nextRequestId++;
         html = await new Promise((resolve, reject) => {
             const request = {resolve, reject};
@@ -346,7 +359,7 @@ async function fetchOlderChats(before, conversation) {
 // Tells the server you've seen the private messages from a person, up to
 // an id; your other open tabs hear of it too
 function markChatRead(from, upTo) {
-    if (isSocketLive) {
+    if (isSocketOpen()) {
         socket.send(JSON.stringify({type: 'read', from: Number(from), upTo}));
         return Promise.resolve();
     }
@@ -356,6 +369,6 @@ function markChatRead(from, upTo) {
 // Tells the person you're writing to privately that you are, or have
 // stopped. Only over the socket; the HTTP fallback goes without
 function sendTyping(to, isTyping) {
-    if (!isSocketLive) return;
+    if (!isSocketOpen()) return;
     socket.send(JSON.stringify({type: 'typing', to: Number(to), isTyping}));
 }

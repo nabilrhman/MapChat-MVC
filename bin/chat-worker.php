@@ -7,8 +7,8 @@
  * people's lines that are due (DemoChat::catchUp) and deletes guest
  * accounts whose day is up, then signals the socket to send out what's new.
  * docker/start.sh runs it and starts it again if it stops. Pages on the
- * HTTP fallback still run the replies and the demo lines from their polls;
- * locks in each keep two from running at once. Each round it also sends
+ * HTTP fallback still add the demo lines from their polls, but not the
+ * replies, which can wait on Groq; a lock keeps two from running at once. Each round it also sends
  * Web Push for the messages saved since the last (App\Notify\PushNotifications), from
  * whichever way they came
  */
@@ -29,10 +29,10 @@ const PUSH_BATCH = 50;
 
 $isStopping = false;
 pcntl_async_signals(true);
-pcntl_signal(SIGTERM, function () use (&$isStopping) {
+pcntl_signal(SIGTERM, function () use (&$isStopping): void {
     $isStopping = true;
 });
-pcntl_signal(SIGINT, function () use (&$isStopping) {
+pcntl_signal(SIGINT, function () use (&$isStopping): void {
     $isStopping = true;
 });
 
@@ -62,6 +62,9 @@ while (!$isStopping) {
     } catch (PDOException $e) {
         error_log('Chat worker: database error, reconnecting: ' . $e->getMessage());
         Core\Model::disconnectDB();
+    } catch (Throwable $e) {
+        // Logged and on to the next round: a restart would start pushing from the newest message and skip the rest
+        error_log('Chat worker: ' . $e);
     }
 
     sleep(ROUND_SECONDS);

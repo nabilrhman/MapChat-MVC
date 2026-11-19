@@ -33,25 +33,35 @@ const FIELD_CHECKS = {
 const EMAIL_CHECK_TIMEOUT = 8000;
 const emailFreeAnswers = new Map();
 
-// The server decides again on submit, so a failed check lets it through
+// The server's answer, or null when it gave none in time
 async function askIfEmailIsFree(query) {
     try {
         const response = await fetch(`/account/validate-email?${query}`, {signal: AbortSignal.timeout(EMAIL_CHECK_TIMEOUT)});
+        if (!response.ok) return null;
         return await response.json();
     } catch {
-        return true;
+        return null;
     }
 }
 
-// Each email is asked about once; typing it again reuses the answer
+// Each email is asked about once; typing it again reuses the answer. A
+// failed check isn't kept, so the next one asks again, and lets the email
+// through for now: the server decides again on submit
 async function isEmailFree(email, ownUserId) {
     const query = new URLSearchParams({email, ignore_id: ownUserId}).toString();
-    if (!emailFreeAnswers.has(query)) emailFreeAnswers.set(query, askIfEmailIsFree(query));
-    return emailFreeAnswers.get(query);
+    if (!emailFreeAnswers.has(query)) {
+        const answer = askIfEmailIsFree(query);
+        emailFreeAnswers.set(query, answer);
+        if ((await answer) === null) emailFreeAnswers.delete(query);
+    }
+    return (await emailFreeAnswers.get(query)) ?? true;
 }
 
 function setUpFormChecks(form, checksByFieldName) {
     const checkedFieldNames = new Set();
+    // How many checks each field has started, so an older, slower one that
+    // ends last doesn't show its stale answer
+    const checkCountsByFieldName = new Map();
     let haveChecksPassed = false;
 
     const getCheckedFields = () => Object.keys(checksByFieldName)
@@ -86,8 +96,12 @@ function setUpFormChecks(form, checksByFieldName) {
 
     async function checkField(field) {
         checkedFieldNames.add(field.name);
+        const checkCount = (checkCountsByFieldName.get(field.name) ?? 0) + 1;
+        checkCountsByFieldName.set(field.name, checkCount);
+
         const problem = await getFirstProblem(field);
-        showProblem(field, problem);
+        const isNewestCheck = checkCountsByFieldName.get(field.name) === checkCount;
+        if (isNewestCheck) showProblem(field, problem);
         return problem === null;
     }
 
@@ -126,6 +140,9 @@ function setUpFormChecks(form, checksByFieldName) {
         }
         haveChecksPassed = true;
         form.requestSubmit(event.submitter);
+        // The browser's own checks may have stopped that submit, so the next
+        // one runs these again
+        haveChecksPassed = false;
     });
 
     return {

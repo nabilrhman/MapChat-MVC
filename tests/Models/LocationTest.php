@@ -17,8 +17,12 @@ class LocationTest extends TestCase
 
     private PDO $db;
 
+    /** The ipstack key before the test, which some tests unset; false when there was none */
+    private string|false $ipstackKeyBefore;
+
     protected function setUp(): void
     {
+        $this->ipstackKeyBefore = getenv('IPSTACK_API_KEY');
         $this->db = TestDb::get();
         $this->db->beginTransaction();
 
@@ -30,6 +34,7 @@ class LocationTest extends TestCase
     protected function tearDown(): void
     {
         $this->db->rollBack();
+        $this->ipstackKeyBefore === false ? putenv('IPSTACK_API_KEY') : putenv('IPSTACK_API_KEY=' . $this->ipstackKeyBefore);
     }
 
     /**

@@ -2,6 +2,8 @@
 
 namespace Tests\ChatSocket;
 
+use App\ChatSocket\Handshake;
+use App\ChatSocket\Hub;
 use App\Messages\MessageText;
 use App\Models\Chat;
 use App\Models\User;
@@ -72,11 +74,12 @@ class ChatSocketTest extends TestCase
      */
     private static function startServer(): void
     {
-        $environment = getenv() + [
+        // The test's settings first, so the same ones in the environment don't win
+        $environment = [
             'CHAT_SOCKET_PORT' => self::$port,
             'CHAT_PRESENCE_GRACE_SECONDS' => self::GRACE_SECONDS,
             'CHAT_SESSION_CHECK_SECONDS' => self::SESSION_CHECK_SECONDS,
-        ];
+        ] + getenv();
         $command = [PHP_BINARY, dirname(__DIR__, 2) . '/bin/chat-socket.php'];
         // Its log, for when a test fails
         $log = ['file', sys_get_temp_dir() . '/chat-socket-test.log', 'a'];
@@ -124,7 +127,7 @@ class ChatSocketTest extends TestCase
 
             $sessionId = bin2hex(random_bytes(16));
             $this->db->prepare('INSERT INTO sessions (id, data, updated_at) VALUES (?, ?, ?)')
-                ->execute([$sessionId, 'user_id|i:' . $user->id . ';', time()]);
+                ->execute([$sessionId, 'user_id|i:' . $user->id . ';sign_in_stamp|' . serialize($user->signInStamp()), time()]);
             $this->sessions[$name] = $sessionId;
         }
     }
@@ -300,19 +303,22 @@ class ChatSocketTest extends TestCase
         $seen = Chat::getNewestId();
 
         self::stopServer();
-        $this->assertSame(1012, $bob->waitForClose());
+        // Started again whatever fails here, as the tests after this one share it
+        try {
+            $this->assertSame(1012, $bob->waitForClose());
 
-        // More than a page arrives while it's down, from both people, some
-        // for others. Dated earlier, so they don't count against the rate limit
-        $insert = $this->db->prepare('INSERT INTO chats (email, to_email, body, timestamp) VALUES (?, ?, ?, NOW() - INTERVAL 5 MINUTE)');
-        for ($i = 1; $i <= Chat::HISTORY * 2 + 50; $i++) {
-            $from = $i % 2 ? 'ann' : 'cat';
-            $to = $i % 5 === 0 ? 'ann' : 'bob';
-            $toEmail = $from === $to ? null : $this->emails[$to];
-            $insert->execute([$this->emails[$from], $toEmail, "missed $i"]);
+            // More than a page arrives while it's down, from both people, some
+            // for others. Dated earlier, so they don't count against the rate limit
+            $insert = $this->db->prepare('INSERT INTO chats (email, to_email, body, timestamp) VALUES (?, ?, ?, NOW() - INTERVAL 5 MINUTE)');
+            for ($i = 1; $i <= Chat::HISTORY * 2 + 50; $i++) {
+                $from = $i % 2 ? 'ann' : 'cat';
+                $to = $i % 5 === 0 ? 'ann' : 'bob';
+                $toEmail = $from === $to ? null : $this->emails[$to];
+                $insert->execute([$this->emails[$from], $toEmail, "missed $i"]);
+            }
+        } finally {
+            self::startServer();
         }
-
-        self::startServer();
         $bob = $this->connect('bob');
         $bob->send(['type' => 'hello', 'after' => $seen]);
         $bob->waitFor('welcome');
@@ -334,6 +340,108 @@ class ChatSocketTest extends TestCase
         $this->assertGreaterThan(Chat::HISTORY * 2, count($expected));
         $this->assertSame($expected, $ids, 'every message once, in order');
         $this->assertSame('during catch-up 5', end($received)[1]);
+    }
+
+    public function testAPageFarBehindSkipsToTheNewestPage(): void
+    {
+        $seen = Chat::getNewestId();
+        $missedCount = Chat::HISTORY * (Hub::CATCH_UP_PAGES + 1) + 50;
+        $this->insertRoomMessagesFrom('cat', $missedCount);
+
+        $bob = $this->connect('bob');
+        $bob->hello($seen);
+        $ids = array_column(self::chatsIn($bob->collect(1)), 0);
+
+        $sortedIds = array_values(array_unique($ids));
+        sort($sortedIds);
+        $this->assertSame($sortedIds, $ids, 'in order and once');
+        $this->assertLessThanOrEqual(Chat::HISTORY * (Hub::CATCH_UP_PAGES + 1), count($ids));
+        $this->assertSame(Chat::getNewestId(), end($ids), 'ends with the newest');
+    }
+
+    public function testAPageWithNoMessagesYetStartsFromTheNewestPage(): void
+    {
+        $this->insertRoomMessagesFrom('cat', Chat::HISTORY + 20);
+
+        $bob = $this->connect('bob');
+        $bob->hello(0);
+        $ids = array_column(self::chatsIn($bob->collect(1)), 0);
+
+        $this->assertCount(Chat::HISTORY, $ids);
+        $this->assertSame(Chat::getNewestId(), end($ids));
+    }
+
+    public function testOlderPagesPastTheBudgetWaitTheirTurn(): void
+    {
+        $bob = $this->openPage('bob');
+        $extraCount = 2;
+
+        $startedAt = microtime(true);
+        for ($requestId = 1; $requestId <= Hub::OLDER_BURST + $extraCount; $requestId++) {
+            $bob->send(['type' => 'older', 'requestId' => $requestId, 'before' => Chat::getNewestId() + 1, 'conversation' => 'everyone']);
+            $this->assertNotNull($bob->waitFor('older', 5, fn ($message) => $message['requestId'] === $requestId), "older page $requestId");
+        }
+
+        // Each one past the burst waited for the budget to refill
+        $this->assertGreaterThan(($extraCount - 0.5) / Hub::OLDER_PER_SECOND, microtime(true) - $startedAt);
+    }
+
+    public function testHandshakesAtOnceStillKeepToTheTabLimit(): void
+    {
+        $attemptCount = Handshake::MAX_TABS_PER_USER + 5;
+        $streams = [];
+        for ($i = 0; $i < $attemptCount; $i++) {
+            $stream = stream_socket_client('tcp://' . self::$address, $errorCode, $errorMessage, 5);
+            fwrite($stream, implode("\r\n", [
+                'GET /ws HTTP/1.1',
+                'Host: ' . self::$address,
+                'Upgrade: websocket',
+                'Connection: Upgrade',
+                'Sec-WebSocket-Version: 13',
+                'Sec-WebSocket-Key: ' . base64_encode(random_bytes(16)),
+                'Origin: http://' . self::$address,
+                'Cookie: ' . session_name() . '=' . $this->sessions['ann'],
+            ]) . "\r\n\r\n");
+            $streams[] = $stream;
+        }
+
+        // Every answer, and any close that followed it
+        usleep(1500000);
+        $openCount = 0;
+        foreach ($streams as $stream) {
+            stream_set_blocking($stream, false);
+            [$head, $frames] = array_pad(explode("\r\n\r\n", (string) stream_get_contents($stream), 2), 2, '');
+            $isUpgraded = str_starts_with($head, 'HTTP/1.1 101');
+            // 0x88 starts a close frame
+            if ($isUpgraded && !str_starts_with($frames, "\x88")) {
+                $openCount++;
+            }
+            fclose($stream);
+        }
+
+        $this->assertSame(Handshake::MAX_TABS_PER_USER, $openCount);
+    }
+
+    /**
+     * Add open-room messages from someone straight to the database, as if
+     * sent while a page was away, and wait for the socket to read them all.
+     * Dated earlier, so they don't count against the rate limit
+     */
+    private function insertRoomMessagesFrom(string $name, int $count): void
+    {
+        $rows = [];
+        for ($i = 1; $i <= $count; $i++) {
+            $rows[] = [$this->emails[$name], "missed $i"];
+        }
+        foreach (array_chunk($rows, 500) as $chunk) {
+            $placeholders = implode(', ', array_fill(0, count($chunk), '(?, NULL, ?, NOW() - INTERVAL 5 MINUTE)'));
+            $this->db->prepare("INSERT INTO chats (email, to_email, body, timestamp) VALUES $placeholders")
+                ->execute(array_merge(...$chunk));
+        }
+
+        // Nothing signals these, so the socket finds them a batch each round
+        $roundCount = intdiv($count, Hub::TAIL_BATCH) + 2;
+        usleep((int) ($roundCount * Hub::TAIL_SECONDS * 1000000));
     }
 
     public function testConcurrentSendersArriveInOrderOnce(): void
@@ -467,6 +575,17 @@ class ChatSocketTest extends TestCase
         $this->db->prepare('DELETE FROM sessions WHERE id = ?')->execute([$this->sessions['ann']]);
 
         $this->assertSame(4401, $ann->waitForClose(self::SESSION_CHECK_SECONDS + 3));
+    }
+
+    public function testAPasswordChangedElsewhereClosesTheTabAndRefusesItsSession(): void
+    {
+        $ann = $this->openPage('ann');
+
+        $this->db->prepare('UPDATE users SET password_hash = ? WHERE email = ?')
+            ->execute([password_hash('a new password', PASSWORD_DEFAULT), $this->emails['ann']]);
+
+        $this->assertSame(4401, $ann->waitForClose(self::SESSION_CHECK_SECONDS + 3));
+        $this->assertSame(401, $this->connect('ann')->status);
     }
 
     public function testRefusesOtherSitesAndMissingSessions(): void

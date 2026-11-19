@@ -26,8 +26,9 @@ function errorMessageOf(error, fallback) {
 // The promise's answer, or a failure once the limit (in ms) has passed:
 // for a wait that might never end
 function withTimeLimit(promise, limit) {
+    let timer;
     const timeout = new Promise((resolve, reject) => {
-        setTimeout(() => reject(new Error('Took too long')), limit);
+        timer = setTimeout(() => reject(new Error('Took too long')), limit);
     });
-    return Promise.race([promise, timeout]);
+    return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }

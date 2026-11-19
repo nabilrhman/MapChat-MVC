@@ -23,7 +23,12 @@ read marks, typing, and who's online. Nothing polls while it's connected.
   connects, and is caught up from MySQL from there, a page of 100 at a time,
   before new messages go straight to it. So a dropped network, a restart or a
   deploy loses nothing, and each message shows once and in order. A page that
-  can't keep up is cut and catches up the same way.
+  can't keep up is cut and catches up the same way. A page more than 10 pages
+  behind skips to the newest page, and a new page starts there.
+- **Sharing the socket.** Every page shares one event loop, so each person
+  gets a budget: older pages come one at a time per tab, about one a second
+  after a burst of 10, and catching up about two pages a second after a burst
+  of 30. A request over budget waits its turn rather than being refused.
 - **Falling back.** If the socket can't connect twice in a row, the page goes
   back to asking every second over HTTP, or every 8 seconds in a hidden tab,
   and keeps trying the socket. Once it connects, polling stops. Both ways resume from the same last message.
@@ -57,7 +62,9 @@ it stops. On SIGTERM, a deploy or a restart, the socket closes every page's
 socket with "restarting" and the pages reconnect to the new container within
 a few seconds, at random, so they don't all arrive at once. The chat worker
 does what each poll used to set off: MapChat's due replies every second, and
-the demo people's due lines every minute. It also sends Web Push for new
+the demo people's due lines every minute. Polls on the HTTP fallback still
+add the demo lines, but leave the replies to the worker, as a reply can wait
+on Groq longer than a poll should be held. It also sends Web Push for new
 messages, and deletes guest accounts that have run out.
 
 The AI's replies wait their turn as jobs in `mapchat_jobs`, which the chat

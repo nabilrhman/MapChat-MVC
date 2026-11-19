@@ -29,7 +29,7 @@ class GuestTest extends TestCase
     protected function tearDown(): void
     {
         date_default_timezone_set($this->timezoneBefore);
-        unset($_SESSION['user_id']);
+        unset($_SESSION['user_id'], $_SESSION['sign_in_stamp']);
         $this->db->rollBack();
     }
 
@@ -65,9 +65,11 @@ class GuestTest extends TestCase
         $this->assertFalse($fresh->isExpiredGuest());
 
         $_SESSION['user_id'] = $expired->id;
+        $_SESSION['sign_in_stamp'] = $expired->signInStamp();
         $this->assertNull(Auth::getUser());
 
         $_SESSION['user_id'] = $fresh->id;
+        $_SESSION['sign_in_stamp'] = $fresh->signInStamp();
         $this->assertSame($fresh->id, Auth::getUser()?->id);
     }
 

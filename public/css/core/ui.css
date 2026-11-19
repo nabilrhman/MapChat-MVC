@@ -750,7 +750,7 @@ h4
     position: relative;
     inset-block-start: var(--header-height);
     margin-inline: auto;
-    margin-block: 0 140px; /* clear the fixed footer */
+    margin-block: 0 calc(var(--header-height) + var(--footer-height)); /* clear the fixed footer, after the header's offset */
     padding: 10px 16px 40px;
     /* clip, not hidden: hidden would make this its own scroll box */
     overflow-x: clip;

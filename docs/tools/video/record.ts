@@ -675,7 +675,6 @@ async function main(): Promise<void> {
     const recording = join(workDir, 'tour.webm');
     printProgress("setting up: the app, Alex's account, the paused worker");
     const hasGoogleKeys = await isGoogleSignInShown();
-    await startAppForRecording(workDir, {DEMO_AWAY: AWAY_DEMO_PERSON, DEMO_HERE: HERE_DEMO_PEOPLE});
     // Once, though Ctrl-C and the run's own ending both ask: two at a time
     // left the app's container made but not started
     let puttingAppBack: Promise<void> | null = null;
@@ -683,7 +682,6 @@ async function main(): Promise<void> {
         puttingAppBack ??= restoreApp(hasGoogleKeys);
         return puttingAppBack;
     };
-    const account = await makeTourAccount();
     let context: BrowserContext | undefined;
 
     // An interrupted run still closes Chrome and lets the worker go
@@ -698,42 +696,49 @@ async function main(): Promise<void> {
         });
     }
 
-    await pauseWorker();
-    await sendAwayDemoPersonAway();
-    const jobs = new JobRunner();
+    // Whatever fails, from the restart on, the app and the chat end as they were
     try {
-        // The handlers above close it and let the worker go
-        // The voice line plays once as the microphone, from when the mic opens
-        // it. The permission is granted when it's used (speakMessage), not by
-        // --use-fake-ui-for-media-stream, which stops the tab's capture finding its source
-        const fakeMicrophone = ['--use-fake-device-for-media-stream', `--use-file-for-fake-audio-capture=${VOICE_LINE_FILE}%noloop`];
-        printProgress('opening Chrome with the capture extension');
-        context = await launchWithExtension(CAPTURE_EXTENSION, {width: WIDTH, height: HEIGHT, scale: SCALE}, {handlesSignals: true, extraFlags: fakeMicrophone});
-        await context.addInitScript(drawPointer, readThemeCursors(SCALE));
-        const page = context.pages()[0] ?? await context.newPage();
-        await printRenderer(page);
+        await startAppForRecording(workDir, {DEMO_AWAY: AWAY_DEMO_PERSON, DEMO_HERE: HERE_DEMO_PEOPLE});
+        const account = await makeTourAccount();
+        await pauseWorker();
+        await sendAwayDemoPersonAway();
+        const jobs = new JobRunner();
+        try {
+            // The voice line plays once as the microphone, from when the mic opens
+            // it. The permission is granted when it's used (speakMessage), not by
+            // --use-fake-ui-for-media-stream, which stops the tab's capture finding its source
+            const fakeMicrophone = ['--use-fake-device-for-media-stream', `--use-file-for-fake-audio-capture=${VOICE_LINE_FILE}%noloop`];
+            printProgress('opening Chrome with the capture extension');
+            context = await launchWithExtension(CAPTURE_EXTENSION, {width: WIDTH, height: HEIGHT, scale: SCALE}, {handlesSignals: true, extraFlags: fakeMicrophone});
+            await context.addInitScript(drawPointer, readThemeCursors(SCALE));
+            const page = context.pages()[0] ?? await context.newPage();
+            await printRenderer(page);
 
-        let stopRecording: () => Promise<void> = async () => {};
-        const startCapture = async () => {
-            stopRecording = await startRecording(context!, recording);
-        };
-        const stopCapture = () => stopRecording();
+            let stopRecording: () => Promise<void> = async () => {};
+            const startCapture = async () => {
+                stopRecording = await startRecording(context!, recording);
+            };
+            const stopCapture = () => stopRecording();
 
-        const person = new Person(page, new SeededRandom(SEED), [WIDTH * 0.55, HEIGHT * 0.6]);
-        await tour(page, person, account, startCapture, stopCapture);
-    } finally {
-        await context?.close();
-        await jobs.stop();
+            const person = new Person(page, new SeededRandom(SEED), [WIDTH * 0.55, HEIGHT * 0.6]);
+            await tour(page, person, account, startCapture, stopCapture);
+        } finally {
+            await context?.close();
+            await jobs.stop();
+        }
         await resumeWorker();
         await putAppBack();
-    }
 
-    printProgress('encoding the video');
-    await encode(recording);
-    await deleteTourAccount();
-    console.log(`${OUT}: ${(await motionFps(recording)).toFixed(1)}fps recorded while moving, at ${WIDTH * SCALE}×${HEIGHT * SCALE}`);
+        printProgress('encoding the video');
+        await encode(recording);
+        console.log(`${OUT}: ${(await motionFps(recording)).toFixed(1)}fps recorded while moving, at ${WIDTH * SCALE}×${HEIGHT * SCALE}`);
+    } finally {
+        await resumeWorker().catch(() => {});
+        await deleteTourAccount().catch(() => {});
+        await putAppBack().catch(() => {});
+        rmSync(workDir, {recursive: true, force: true});
+    }
     printProgress('done');
-    rmSync(workDir, {recursive: true, force: true});
 }
 
 await main();

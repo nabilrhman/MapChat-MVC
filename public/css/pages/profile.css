@@ -6,7 +6,7 @@
     margin-inline: auto;
 }
 
-@scope (.profile-page) to (.guest-banner, .settings-card)
+@scope (.profile-page) to (.guest-banner, .settings-card, .delete-dialog)
 {
     /* The page's one h1, at the size it had as an h4 */
     .title

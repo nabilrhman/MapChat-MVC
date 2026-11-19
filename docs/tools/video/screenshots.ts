@@ -154,8 +154,9 @@ async function removeWhatWasSaid(): Promise<void> {
 async function takeDesktopPicture(browser: Browser, account: AlexAccount): Promise<void> {
     const workDir = mkdtempSync(join(tmpdir(), 'mapchat-screenshots-'));
     const hadGoogleKeys = await isGoogleSignInShown();
-    await startAppForRecording(workDir, {DEMO_HERE: TRANSLATED_FOR.toLowerCase()});
+    // Inside the try: a restart that times out still puts the app back
     try {
+        await startAppForRecording(workDir, {DEMO_HERE: TRANSLATED_FOR.toLowerCase()});
         await takeRoomPicture(browser, account);
     } finally {
         await restoreApp(hadGoogleKeys);
@@ -248,8 +249,11 @@ async function takePhonePictures(browser: Browser, account: AlexAccount): Promis
  */
 async function takeLoginPicture(browser: Browser): Promise<void> {
     const workDir = mkdtempSync(join(tmpdir(), 'mapchat-screenshots-'));
-    const hasPlaceholderGoogle = await startAppForRecording(workDir);
+    // Started again only without Google keys; inside the try, so a restart
+    // that times out still puts the app back
+    const needsPlaceholderGoogle = !await isGoogleSignInShown();
     try {
+        await startAppForRecording(workDir);
         const context = await browser.newContext({viewport: DESKTOP, deviceScaleFactor: PIXEL_RATIO});
         const page = await context.newPage();
         await page.goto(`${URL}/login`);
@@ -261,7 +265,7 @@ async function takeLoginPicture(browser: Browser): Promise<void> {
         await savePicture(page, 'mapchat-login.png');
         await context.close();
     } finally {
-        if (hasPlaceholderGoogle) {
+        if (needsPlaceholderGoogle) {
             await restoreApp();
         }
         rmSync(workDir, {recursive: true, force: true});

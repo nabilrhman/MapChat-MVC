@@ -122,9 +122,13 @@ async function uploadPhoto(file) {
     formData.append('file', file);
     formData.append('upload_preset', uploadPreset);
 
+    // fetch, not axios: axios adds MapChat's own header, which Cloudinary
+    // refuses, and would send its 401 to MapChat's login page
     const uploadUrl = `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`;
-    const response = await axios.post(uploadUrl, formData, {timeout: PHOTO_UPLOAD_TIMEOUT});
-    return response.data.secure_url;
+    const response = await fetch(uploadUrl, {method: 'POST', body: formData, signal: AbortSignal.timeout(PHOTO_UPLOAD_TIMEOUT)});
+    if (!response.ok) throw new Error(`Cloudinary refused the photo: ${response.status}`);
+    const {secure_url: photoUrl} = await response.json();
+    return photoUrl;
 }
 
 // A button, not a label for the input, so a keyboard can reach it too

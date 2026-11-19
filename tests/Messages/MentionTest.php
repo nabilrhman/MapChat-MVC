@@ -19,6 +19,26 @@ class MentionTest extends TestCase
         $this->assertFalse(Mention::isMentionedIn('MapChat hi', new PersonName('MapChat')));
     }
 
+    public function testAnAtInsideAWordIsNotAMention(): void
+    {
+        $mapChat = new PersonName('MapChat');
+
+        $this->assertFalse(Mention::isMentionedIn('mail support@mapchat.com', $mapChat));
+        $this->assertFalse(Mention::isMentionedIn('write to help.desk@MapChat', $mapChat));
+        $this->assertFalse(Mention::isMentionedIn('team_1@mapchat or x-@mapchat', $mapChat));
+        $this->assertSame('mail support@maya.com', Mention::htmlWithChips('mail support@maya.com', ['Maya'], new PersonName('Ann')));
+    }
+
+    public function testAnAtAfterASpaceOrPunctuationIsAMention(): void
+    {
+        $mapChat = new PersonName('MapChat');
+
+        $this->assertTrue(Mention::isMentionedIn('@mapchat hi', $mapChat));
+        $this->assertTrue(Mention::isMentionedIn("hi\n@MapChat", $mapChat));
+        $this->assertTrue(Mention::isMentionedIn('(@mapchat) and "@mapchat"', $mapChat));
+        $this->assertTrue(Mention::isMentionedIn('ok,@mapchat!', $mapChat));
+    }
+
     public function testMarksMentionsAsChipsAndEscapesTheRest(): void
     {
         $html = Mention::htmlWithChips('<b>hi</b> @maya and @Ann', ['Maya', 'Ann'], new PersonName('Ann'));

@@ -4,6 +4,7 @@ namespace App\Notify;
 
 use App\AvatarPicture;
 use App\Config;
+use App\Controllers\Push;
 use App\Messages\Conversation;
 use App\Messages\Mention;
 use App\Models\PushSubscription;
@@ -102,7 +103,8 @@ class PushNotifications
     public static function recipientsOf(array $chat, array $subscriptions): array
     {
         return array_values(array_filter($subscriptions, function (array $subscription) use ($chat): bool {
-            if ($subscription['email'] === $chat['email']) {
+            // One saved before only known push services were taken is never sent to
+            if ($subscription['email'] === $chat['email'] || !Push::isPushEndpoint($subscription['endpoint'])) {
                 return false;
             }
             if ($chat['to_email'] !== null) {

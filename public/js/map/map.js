@@ -163,7 +163,7 @@ async function loadLocations() {
 }
 
 // Everything a pin shows; when it changes, the pin is drawn again
-const pinContentOf = (personLocation) => [personLocation.lat, personLocation.lng, personLocation.shown_name, personLocation.city, personLocation.country, personLocation.timezone].join('|');
+const pinContentOf = (personLocation) => [personLocation.lat, personLocation.lng, personLocation.shown_name, personLocation.avatar_src, personLocation.city, personLocation.country, personLocation.timezone].join('|');
 
 // What the rest of the page asks of the pins (refreshPinsSoon, focusPin)
 // and the map's own rounds share

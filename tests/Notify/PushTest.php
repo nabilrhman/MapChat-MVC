@@ -43,7 +43,7 @@ class PushTest extends TestCase
     private function subscribeEveryone(): array
     {
         foreach ([self::ANN, self::BOB, self::CAT] as $email) {
-            PushSubscription::save($email, "https://push.example.com/$email", 'key', 'secret');
+            PushSubscription::save($email, "https://fcm.googleapis.com/fcm/send/$email", 'key', 'secret');
         }
 
         return PushSubscription::getAll();
@@ -55,6 +55,14 @@ class PushTest extends TestCase
     private function emailsOf(array $subscriptions): array
     {
         return array_column($subscriptions, 'email');
+    }
+
+    public function testASubscriptionToAnUnknownHostIsNeverSentTo(): void
+    {
+        PushSubscription::save(self::BOB, 'https://internal.example.com/send', 'key', 'secret');
+        $chat = ['email' => self::ANN, 'to_email' => self::BOB, 'body' => 'hi'];
+
+        $this->assertSame([], PushNotifications::recipientsOf($chat, PushSubscription::getAll()));
     }
 
     public function testAPrivateMessageGoesToTheOtherPersonOnly(): void
@@ -127,5 +135,28 @@ class PushTest extends TestCase
         $this->assertFalse(PushController::isPushEndpoint('https://127.0.0.1/send'));
         $this->assertFalse(PushController::isPushEndpoint('https://localhost/send'));
         $this->assertFalse(PushController::isPushEndpoint('https://push.example.com/' . str_repeat('a', 2000)));
+    }
+
+    public function testEachBrowsersPushServiceIsAllowed(): void
+    {
+        $this->assertTrue(PushController::isPushEndpoint('https://updates.push.services.mozilla.com/wpush/v2/abc'));
+        $this->assertTrue(PushController::isPushEndpoint('https://web.push.apple.com/abc'));
+        $this->assertTrue(PushController::isPushEndpoint('https://wns2-by3p.notify.windows.com/w/?token=abc'));
+    }
+
+    public function testAnyOtherHostIsRefusedEvenAPublicName(): void
+    {
+        // A public name can resolve to an address inside the network
+        $this->assertFalse(PushController::isPushEndpoint('https://internal.example.com/send'));
+        $this->assertFalse(PushController::isPushEndpoint('https://fcm.googleapis.com.evil.example/send'));
+        $this->assertFalse(PushController::isPushEndpoint('https://evilpush.apple.com/send'));
+        $this->assertFalse(PushController::isPushEndpoint('https://push.apple.com.evil.example/send'));
+    }
+
+    public function testAPortOrLoginBesideAPushServicesHostIsRefused(): void
+    {
+        $this->assertFalse(PushController::isPushEndpoint('https://fcm.googleapis.com:8443/fcm/send/abc'));
+        $this->assertFalse(PushController::isPushEndpoint('https://evil.example\\@fcm.googleapis.com/fcm/send/abc'));
+        $this->assertFalse(PushController::isPushEndpoint('https://user:pass@fcm.googleapis.com/fcm/send/abc'));
     }
 }
