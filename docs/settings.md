@@ -21,6 +21,7 @@ explanations. The main ones:
 | `DEMO_SPEED` | Optional, for watching the demo chat locally: `60` plays the whole day in 24 minutes. Leave empty on a real site |
 | `GROQ_API_KEY` | Optional. Lets MapChat and the demo people chat back, and writes out voice messages, through Groq's free plan (console.groq.com). Without it, MapChat only greets, and the browser writes out voice messages where it can |
 | `MAPCHAT_MODEL` | Optional. The Groq model they write with. Default `openai/gpt-oss-120b` |
+| `CEREBRAS_API_KEY` | Optional. With it, Cerebras's free plan (cloud.cerebras.ai) writes the replies with `gpt-oss-120b` when Groq is busy, down or out of reach. Voice messages stay with Groq |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Optional. An OAuth client (Web application) from console.cloud.google.com/apis/credentials, with `APP_URL/login/google/callback` as its redirect URI. With both, the login page offers Continue with Google |
 | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_UPLOAD_PRESET` | The Cloudinary account and unsigned upload preset photo uploads go to. Both are needed for uploads, with no default: with either empty, uploads are off and the profile says so. Removing a photo still works |
 | `CHAT_SOCKET_HOST` | Optional. The address the chat socket listens on inside the container, behind Apache's `/ws`. Default `127.0.0.1` |

@@ -33,7 +33,8 @@ Each part of MapChat and what it's made with. Back to the
   MapChat's colours. Browsers without WebGL get OpenStreetMap tiles through
   Leaflet instead, recoloured to the same theme in the browser. No API key is
   needed for either.
-- **AI replies:** Groq's chat API, run by the chat worker; see
+- **AI replies:** Groq's chat API, with Cerebras's standing in, run by the
+  chat worker; see
   [ai-chat.md](ai-chat.md).
 - **Location:** looked up from the IP address someone logs in from, which is
   kept with their account. ipapi.co, ipwho.is and GeoJS are tried in turn,

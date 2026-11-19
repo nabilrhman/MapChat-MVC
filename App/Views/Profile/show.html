@@ -167,6 +167,14 @@
             </div>
             {{ switch('notifications') }}
         </div>
+
+        <div class="privacy-setting">
+            <div>
+                <label class="name" for="ping-sound">Sound for private messages and mentions</label>
+                <p class="field-hint">On this browser, in chats you aren't looking at</p>
+            </div>
+            {{ switch('ping-sound') }}
+        </div>
     </section>
 
     {# The button opens the dialog below, which asks first (profile.js) #}
@@ -204,5 +212,6 @@
 <script nonce="{{ csp_nonce }}" src="{{ asset('/js/forms/password-toggle.js') }}"></script>
 <script nonce="{{ csp_nonce }}" src="{{ asset('/js/forms/form-checks.js') }}"></script>
 <script nonce="{{ csp_nonce }}" src="{{ asset('/js/notify/notifications.js') }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ asset('/js/notify/ping.js') }}"></script>
 <script nonce="{{ csp_nonce }}" src="{{ asset('/js/profile/profile.js') }}"></script>
 {% endblock %}

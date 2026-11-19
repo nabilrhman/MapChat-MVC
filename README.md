@@ -74,7 +74,7 @@ https://github.com/user-attachments/assets/3f97fc92-967b-45eb-9e8a-acb3afc1a263
 - Private chats in tabs, with unread counts and "Typing...".
 - @mentions, emoji and voice typing in the message box.
 - Notifications for private messages and @mentions, even with MapChat closed.
-- A calm ping for a private message or an @mention of you in a chat you aren't looking at. The room's tab counts only @mentions.
+- A calm ping for a private message or an @mention of you in a chat you aren't looking at, with a switch for it in your profile. The room's tab counts only @mentions.
 - A pin for each person online, placed from their IP address, never GPS,
   with their local time. Anyone can hide theirs.
 - Hover a person or a message's city to point out their pin; click either
@@ -89,7 +89,8 @@ Every feature in full: [docs/features.md](docs/features.md).
 
 ## AI chat
 
-Two kinds of AI share the room, and Groq's chat API writes what both say.
+Two kinds of AI share the room, and Groq's chat API writes what both say,
+with Cerebras standing in when Groq is busy or down.
 
 - **MapChat**, the room's own account, greets people walking into a quiet
   room, answers anyone nobody else answered, and answers private messages.
@@ -138,7 +139,9 @@ Open http://localhost:8080 and sign up, or press **Try it as a guest**.
 - Nine made-up people (`database/demo.sql`) keep the room and the map busy.
   For an empty room, remove the `demo.sql` line from `docker-compose.yml`.
 - A free Groq key from console.groq.com, as `GROQ_API_KEY` in `.env`, makes
-  MapChat and the demo people chat back.
+  MapChat and the demo people chat back. A free Cerebras key from
+  cloud.cerebras.ai, as `CEREBRAS_API_KEY`, writes their replies while Groq
+  is busy.
 - Emails don't go out locally. They land in Mailpit, at
   http://localhost:8025.
 - Code changes show on reload, except in the chat socket and worker: run
