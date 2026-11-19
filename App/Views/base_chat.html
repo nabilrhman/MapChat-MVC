@@ -132,7 +132,7 @@
            the translate button is on (translate.js) #}
         {% if can_translate ?? false %}
         <div class="translate-band" id="translate-band">
-        <fieldset class="translate-bar">
+        <fieldset class="translate-bar" data-part="translate-bar">
             <legend class="visually-hidden">Translate your message</legend>
             {{ language_picker('translate-from', 'From', languages, {code: '', name: 'Auto'}, 'Auto') }}
             {# Turns From into To and To into From; not while From is Auto (translate.js) #}
