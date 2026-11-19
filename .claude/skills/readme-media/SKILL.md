@@ -54,9 +54,9 @@ Once, if they're missing:
   early without it.
 
 Run `npm run tour` in the background: it logs in as an Alex Morgan account it
-makes for the run (and deletes after), keeps Emily away till Alex calls her
-in (DEMO_AWAY), pauses the
-chat worker while it records real Groq replies, and takes a few minutes: it
+makes for the run (and deletes after), keeps Maya away till Alex messages
+her (DEMO_AWAY) and Emily and Rafael online (DEMO_HERE), pauses the chat
+worker while it records real Groq replies, and takes a few minutes: it
 prints each stage with the time so far, so a step that hangs shows by name.
 Without Google keys in `.env`, it starts the app container again with
 placeholder ones so the login page shows Continue with Google, as the live
@@ -73,17 +73,20 @@ Done when:
 - frames pulled at each step (for example
   `ffmpeg -ss <second> -i docs/images/mapchat-tour.mp4 -frames:v 1 …`,
   stacked into a grid) show every step doing what it's there to show: the
-  login page with Continue with Google, the hovered person's pin pointed
-  out, the clicked city's pin flown to the middle of the map, Maya's pin flown
-  to when her row opens her chat, the whole @
-  list then Emily, each emoji picked from the emoji menu, Emily coming
-  online and her answer
-  arriving, the private chats' replies, the question to Rafael voice typed
-  (the wave moving, the dots in the box while it's written out, then the
-  words in the box and sent), the tab moved, Rafael thanked, then the tab
-  closed, the profile scrolled to its bottom;
+  login page with Continue with Google, Emily's city hovered and clicked,
+  her pin flown to the middle of the map, the whole @ list then Emily and
+  her answer arriving, Maya's chat opened from Recently here and her coming
+  online to answer, Rafael's pin flown to when his row opens his chat, each
+  emoji picked from the emoji menu, the private chats' replies, the
+  question to Rafael voice typed (the wave moving, the dots in the box while
+  it's written out, then the words in the box and sent), the tab moved,
+  Rafael thanked in Portuguese, See original clicked, his answer translated
+  back, then the tab closed, the profile scrolled to its bottom;
 - the voice line is heard while the mic's wave moves: the script prints
   where it lays the line, and the frames there show the wave;
+- the ding is heard where an answer arrives in another tab: the script
+  prints where it lays each one, and the sound there is loud
+  (`ffmpeg -ss <second> -t 0.4 -i … -af volumedetect -f null -`);
 - the notifications offer slides in and is closed at the start. The tour
   grants the mic only at the voice step, as granting one permission denies
   the rest, and the offer shows only while notifications haven't been
