@@ -6,11 +6,11 @@ const STYLE_URL = 'https://tiles.openfreemap.org/styles/positron';
 const MAPLIBRE_URL = 'https://unpkg.com/maplibre-gl@4.7.1/dist/';
 // Without the style by then, the tile map takes over
 const STYLE_TIMEOUT = 10000;
-// The map's credit, in place of the tiles' longer "… Data from OpenStreetMap":
-// the same three, each still linked
-const MAP_CREDIT = '<a href="https://openfreemap.org" target="_blank">OpenFreeMap</a>'
-    + ' <a href="https://www.openmaptiles.org/" target="_blank">&copy; OpenMapTiles</a>'
-    + ' <a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap</a>';
+// The map's credit, in place of the tiles' longer "OpenFreeMap © OpenMapTiles
+// Data from OpenStreetMap": the two the licences ask for, under one ©, each
+// still linked. OpenFreeMap's own mention is a courtesy, not a term
+const MAP_CREDIT = '&copy; <a href="https://www.openmaptiles.org/" target="_blank">OpenMapTiles</a>'
+    + ', <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>';
 
 // MapChat's purple map, by map layer: near-white land, lavender water, and
 // text in purples from deep (countries) to light (small places)
