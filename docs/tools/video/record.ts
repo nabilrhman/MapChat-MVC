@@ -8,13 +8,15 @@
  * said once the video is made.
  *
  * It drives headless Chrome with Playwright: Alex logging in, the
- * notifications offer closed, pins pointed out from the online list and a
- * message's city, an @mention in Everyone that brings Emily in from away to
- * answer (the app runs with DEMO_AWAY=emily, so she isn't online till then), then a private
- * chat with Maya, one with Rafael while Maya's answer comes in, back to Maya,
- * Rafael's tab dragged into another place, a thank-you to him translated into
- * Portuguese with its original shown, then his tab closed, and the profile,
- * scrolled to its bottom. Each emoji in a message is picked from the emoji menu, and one
+ * notifications offer closed, Emily's city clicked so the map flies to her
+ * pin, an @mention of her in Everyone that she answers, then a private chat
+ * with Maya, away till then (the app runs with DEMO_AWAY=maya), who comes
+ * online to answer, one with Rafael while Maya's answer comes in, back to
+ * Maya, Rafael's tab dragged into another place, a thank-you to him
+ * translated into Portuguese with its original shown and his answer
+ * translated back, then his tab closed, and the profile, scrolled to its
+ * bottom. The ding the app plays for a message in another tab is laid into
+ * the video where it played. Each emoji in a message is picked from the emoji menu, and one
  * message to Rafael is voice typed: Chrome plays docs/tools/video/voice-line.wav as
  * the microphone (npm run voice-line makes it), and Whisper writes it out.
  * The pointer moves and types like a person (person.ts). Headless Chrome
@@ -48,7 +50,7 @@
  * (set it when recording from a git worktree), MAPCHAT_GPU and
  * MAPCHAT_CHROME_FLAGS are in chrome.ts
  */
-import {appendFileSync, existsSync, mkdtempSync, rmSync} from 'node:fs';
+import {appendFileSync, existsSync, mkdtempSync, rmSync, writeFileSync} from 'node:fs';
 import {createServer} from 'node:http';
 import type {AddressInfo} from 'node:net';
 import {tmpdir} from 'node:os';
@@ -63,11 +65,11 @@ import {drawPointer, readThemeCursors} from './pointer.ts';
 import {VOICE_LINE_FILE} from './voice-line.ts';
 import {receiveBinaryMessages} from './websocket.ts';
 
-// The demo person the tour calls into the room, kept away till then
-const AWAY_DEMO_PERSON = 'emily';
-// The demo people the tour opens private chats with, kept online with their
-// pins, as the map flies to the pin of whoever's chat opens
-const HERE_DEMO_PEOPLE = 'maya,rafael';
+// The demo person the tour messages while they're away, who comes online to answer
+const AWAY_DEMO_PERSON = 'maya';
+// The demo people kept online with their pins: Emily, whose city the tour
+// clicks and @mentions, and Rafael, whose chat flies the map to his pin
+const HERE_DEMO_PEOPLE = 'emily,rafael';
 const OUT = join(REPO, 'docs/images/mapchat-tour.mp4');
 const WIDTH = 1440;
 const HEIGHT = 900;
@@ -100,6 +102,64 @@ let isWorkerPaused = false;
 // mic, by this script's clock (ms), so the voice can be put back in the video
 let recordingStartedAt = 0;
 let voiceStartedAt: number | null = null;
+
+// When the app played its ding for a message in another tab, by the clock
+// both the page and this script share (Date.now, ms), and the ding itself,
+// as the page makes it, so the video carries it where it played
+let dingTimes: number[] = [];
+let dingSound: {sampleRate: number, channels: number[][]} | null = null;
+
+// The page's ding, played back where the app played it: ping.js's own note
+// and echo, rendered offline, at the volume it plays at
+const RENDER_DING = `(async () => {
+    const sampleRate = 48000;
+    const offline = new OfflineAudioContext(2, Math.ceil((PING_SECONDS + PING_ECHO_SECONDS) * sampleRate), sampleRate);
+    const note = new AudioBufferSourceNode(offline, {buffer: createMarimbaNote(offline)});
+    const volume = new GainNode(offline, {gain: PING_VOLUME});
+    note.connect(volume);
+    volume.connect(offline.destination);
+    volume.connect(createPingEcho(offline));
+    note.start(0);
+    const rendered = await offline.startRendering();
+    return {sampleRate, channels: [0, 1].map((channel) => Array.from(rendered.getChannelData(channel)))};
+})()`;
+
+// Notes each ding the app plays, by wrapping ping.js's playPing; the sound
+// is left to the video, as headless Chrome's audio isn't recorded
+const NOTE_DINGS = `(() => {
+    window.tourDingTimes = [];
+    const playPingAsTheAppDoes = playPing;
+    window.playPing = () => {
+        if (isPingSoundOn()) tourDingTimes.push(Date.now());
+        playPingAsTheAppDoes();
+    };
+})()`;
+
+/** A WAV file of 16-bit samples, from channels of samples between -1 and 1 */
+function wavOf({sampleRate, channels}: {sampleRate: number, channels: number[][]}): Buffer {
+    const frames = channels[0].length;
+    const dataBytes = frames * channels.length * 2;
+    const wav = Buffer.alloc(44 + dataBytes);
+    wav.write('RIFF', 0);
+    wav.writeUInt32LE(36 + dataBytes, 4);
+    wav.write('WAVEfmt ', 8);
+    wav.writeUInt32LE(16, 16);
+    wav.writeUInt16LE(1, 20);
+    wav.writeUInt16LE(channels.length, 22);
+    wav.writeUInt32LE(sampleRate, 24);
+    wav.writeUInt32LE(sampleRate * channels.length * 2, 28);
+    wav.writeUInt16LE(channels.length * 2, 32);
+    wav.writeUInt16LE(16, 34);
+    wav.write('data', 36);
+    wav.writeUInt32LE(dataBytes, 40);
+    for (let frame = 0; frame < frames; frame++) {
+        for (const [channel, samples] of channels.entries()) {
+            const sample = Math.max(-1, Math.min(1, samples[frame]));
+            wav.writeInt16LE(Math.round(sample * 32767), 44 + (frame * channels.length + channel) * 2);
+        }
+    }
+    return wav;
+}
 
 /** Pauses the chat worker, so the demo people don't talk over the tour */
 async function pauseWorker(): Promise<void> {
@@ -376,6 +436,8 @@ async function tour(page: Page, person: Person, account: AlexAccount, startCaptu
     // Logged in: the room, the map and who's online
     await page.waitForURL('**/app', {timeout: 15_000});
     await waitForMap();
+    dingSound = await page.evaluate(RENDER_DING);
+    await page.evaluate(NOTE_DINGS);
     await waitSeconds(1.5);
 
     // The offer to turn notifications on slides in; close it for the tour
@@ -389,21 +451,17 @@ async function tour(page: Page, person: Person, account: AlexAccount, startCaptu
         await waitSeconds(1);
     }
 
-    printProgress('a pin pointed out from the online list');
-    // Hovering someone online points out their pin, with their local time
-    await person.moveTo(await requiredCentreOf(onlinePerson('Maya')));
-    await waitSeconds(1.8);
-
-    printProgress('a city clicked, its pin flown to the middle');
-    // A message's city does the same, and a click brings the pin to the
-    // middle. The newest city whose sender has a pin, so the map flies:
-    // MapChat greets newcomers from Null Island, which has none
+    printProgress("Emily's city clicked, her pin flown to the middle");
+    // Hovering a message's city points out its sender's pin, and a click
+    // brings the pin to the middle: Emily's newest message, as the tour
+    // talks to her next
     const pinnedCityIndex = await page.evaluate(() => [...document.querySelectorAll('[data-part="city"]')].findLastIndex((cityButton) => {
-        const senderId = cityButton.closest('[data-part="message"]').dataset.senderId;
-        return pinLabelsByUserId.has(senderId) && !/Toronto|Mountain View/.test(cityButton.textContent);
+        const message = cityButton.closest('[data-part="message"]');
+        const senderName = message.querySelector('[data-part="sender-name"]')?.textContent.trim() ?? '';
+        return senderName.startsWith('Emily') && pinLabelsByUserId.has(message.dataset.senderId);
     }));
     if (pinnedCityIndex < 0) {
-        throw new Error('No message in the room from someone with a pin: is the demo running?');
+        throw new Error('No message from Emily with a pin in the room: is the demo running?');
     }
     const cityLine = page.locator('[data-part="city"]').nth(pinnedCityIndex);
     await cityLine.scrollIntoViewIfNeeded();
@@ -431,9 +489,9 @@ async function tour(page: Page, person: Person, account: AlexAccount, startCaptu
     }
     await waitSeconds(1);
 
-    printProgress('an @mention that brings Emily in');
-    // In Everyone: @ brings up who's around, and Emily, away till now,
-    // comes online and answers in the room, tagging Alex back
+    printProgress('an @mention of Emily');
+    // In Everyone: @ brings up who's around, and Emily answers in the room,
+    // tagging Alex back
     const fromEmily = await messagesFrom('Emily');
     await person.click(await requiredCentreOf(composer));
     await waitSeconds(0.3);
@@ -461,16 +519,11 @@ async function tour(page: Page, person: Person, account: AlexAccount, startCaptu
     await waitForReply('Emily', fromEmily, 60);
     await waitSeconds(3);
 
-    printProgress('a private chat with Maya, the map flown to her pin');
-    // A private chat with Maya, opened from the online list, which flies
-    // the map to her pin too
-    const pinBeforeMaya = await firstPinAt();
+    printProgress('a private chat with Maya, away till she answers');
+    // A private chat with Maya, opened from Recently here: she's away, and
+    // comes online to answer
     await openChat(onlinePerson, 'Maya');
     await waitSeconds(1);
-    const pinAfterMaya = await firstPinAt();
-    if (pinBeforeMaya?.x === pinAfterMaya?.x && pinBeforeMaya?.y === pinAfterMaya?.y) {
-        throw new Error("Opening Maya's chat didn't move the map: is she online?");
-    }
     let fromMaya = await messagesFrom('Maya');
     await person.click(await requiredCentreOf(composer));
     await writeMessage(page, person, composer, 'hey maya! still up in toronto? 🌙');
@@ -478,10 +531,16 @@ async function tour(page: Page, person: Person, account: AlexAccount, startCaptu
     await person.pressEnter();
     await waitSeconds(1.5);
 
-    printProgress('a private chat with Rafael');
-    // Then Rafael; Maya's answer comes in meanwhile, as a count on her tab
+    printProgress('a private chat with Rafael, the map flown to his pin');
+    // Then Rafael, whose chat flies the map to his pin; Maya's answer comes
+    // in meanwhile, as a count on her tab and a ding
+    const pinBeforeRafael = await firstPinAt();
     await openChat(onlinePerson, 'Rafael');
     await waitSeconds(1);
+    const pinAfterRafael = await firstPinAt();
+    if (pinBeforeRafael?.x === pinAfterRafael?.x && pinBeforeRafael?.y === pinAfterRafael?.y) {
+        throw new Error("Opening Rafael's chat didn't move the map: is he online?");
+    }
     const fromRafael = await messagesFrom('Rafael');
     await person.click(await requiredCentreOf(composer));
     await writeMessage(page, person, composer, "hey rafael! i'm visiting lisbon soon, any tips? ✈️");
@@ -519,6 +578,7 @@ async function tour(page: Page, person: Person, account: AlexAccount, startCaptu
     await waitForReply('Rafael', fromRafaelBeforeQuestion, 20);
     await openChat(chatTab, 'Rafael');
     await waitSeconds(3);
+    const fromRafaelBeforeThanks = await messagesFrom('Rafael');
     await translateTo(page, person, 'Portuguese');
     await person.click(await requiredCentreOf(composer));
     // No emoji: opening the emoji menu turns translating off
@@ -535,10 +595,15 @@ async function tour(page: Page, person: Person, account: AlexAccount, startCaptu
     await waitSeconds(0.6);
     await person.click(await requiredCentreOf(seeOriginal));
     await waitSeconds(2.5);
-    // Closed straight after: his answer takes longer than the tour stays on
-    // the page, which matters as a message in a closed chat opens its tab
-    // again
-    await waitSeconds(1);
+    // He answers in Portuguese, which comes back translated for Alex
+    await person.moveTo(await requiredCentreOf(composer));
+    await waitForReply('Rafael', fromRafaelBeforeThanks, 90);
+    const rafaelTranslated = page.locator('[data-part="message"]', {has: page.locator('[data-part="see-original"]')})
+        .filter({has: page.locator('[data-part="sender-name"]', {hasText: /^Rafael/})});
+    if (await rafaelTranslated.count() === 0) {
+        throw new Error("Rafael's answer to the thank-you wasn't translated back");
+    }
+    await waitSeconds(4);
     // Rafael's ×, measured again on arrival as the tabs settle after the drag
     const closeRafael = chatTab('Rafael').locator('[data-part="tab-close"]');
     await person.moveTo(await requiredCentreOf(closeRafael));
@@ -551,6 +616,9 @@ async function tour(page: Page, person: Person, account: AlexAccount, startCaptu
     const [x, y] = person.at;
     await person.moveTo([x + 40, y + 160]);
     await waitSeconds(1.5);
+
+    // The dings so far, before the page goes; the profile plays none
+    dingTimes = await page.evaluate('tourDingTimes');
 
     printProgress('the profile');
     // The profile, from the account menu: hide your pin whenever you like
@@ -611,12 +679,35 @@ function videoTimeOf(seconds: number, keptTimes: number[]): number {
  * The recording made into the video: repeated frames dropped, any stretch
  * where nothing moves cut to LONGEST_STILL_SECONDS (each gap between frames
  * capped, by setpts against the frame before), then 60fps on the GPU. The
- * voice line is laid in where it played into the mic, the video's only sound
+ * voice line is laid in where it played into the mic, and the ding wherever
+ * the app played it: the video's only sounds
+ *
+ * @param dingFile The ding as a WAV, or null for none
  */
-async function encode(recording: string): Promise<void> {
+async function encode(recording: string, dingFile: string | null): Promise<void> {
     const capGaps = `setpts='if(eq(N,0),0,PREV_OUTPTS+min(PTS-PREV_INPTS,${LONGEST_STILL_SECONDS}/TB))'`;
     const video = `[0:v]${DROP_REPEATS},${capGaps},fps=${FPS},format=yuv420p[video]`;
-    if (voiceStartedAt === null) {
+    const keptTimes = await keptFrameTimes(recording);
+    // Each sound: its file and where it starts in the video, in seconds
+    const sounds: {file: string, at: number}[] = [];
+    if (voiceStartedAt !== null) {
+        const voiceInVideo = videoTimeOf((voiceStartedAt - recordingStartedAt) / 1000, keptTimes);
+        sounds.push({file: VOICE_LINE_FILE, at: voiceInVideo});
+        console.log(`The voice line plays at ${voiceInVideo.toFixed(2)} s in the video`);
+    }
+    // The page's clock is the wall clock; the recording's start is on this script's
+    const recordingStartedAtWall = performance.timeOrigin + recordingStartedAt;
+    for (const dingAt of dingFile === null ? [] : dingTimes) {
+        const dingInRecording = (dingAt - recordingStartedAtWall) / 1000;
+        if (dingInRecording >= 0) {
+            sounds.push({file: dingFile!, at: videoTimeOf(dingInRecording, keptTimes)});
+        }
+    }
+    if (dingTimes.length) {
+        console.log(`The ding plays at ${sounds.filter((sound) => sound.file === dingFile).map((sound) => sound.at.toFixed(2)).join(', ')} s in the video`);
+    }
+
+    if (!sounds.length) {
         await run('ffmpeg', [
             '-hide_banner', '-loglevel', 'error', '-y', '-i', recording,
             '-filter_complex', video, '-map', '[video]', ...await encoderFlags(),
@@ -625,16 +716,17 @@ async function encode(recording: string): Promise<void> {
         return;
     }
 
-    const voiceInRecording = (voiceStartedAt - recordingStartedAt) / 1000;
-    const voiceInVideo = videoTimeOf(voiceInRecording, await keptFrameTimes(recording));
-    const voice = `[1:a]adelay=${Math.round(voiceInVideo * 1000)}:all=1,apad[voice]`;
+    // Each sound in its place, all in one format, then mixed at their own loudness
+    const soundInputs = sounds.flatMap((sound) => ['-i', sound.file]);
+    const placed = sounds.map((sound, i) =>
+        `[${i + 1}:a]aformat=sample_rates=48000:channel_layouts=stereo,adelay=${Math.round(sound.at * 1000)}:all=1[sound${i}]`);
+    const mix = `${sounds.map((_, i) => `[sound${i}]`).join('')}amix=inputs=${sounds.length}:normalize=0:duration=longest,apad[audio]`;
     await run('ffmpeg', [
-        '-hide_banner', '-loglevel', 'error', '-y', '-i', recording, '-i', VOICE_LINE_FILE,
-        '-filter_complex', `${video};${voice}`, '-map', '[video]', '-map', '[voice]',
+        '-hide_banner', '-loglevel', 'error', '-y', '-i', recording, ...soundInputs,
+        '-filter_complex', [video, ...placed, mix].join(';'), '-map', '[video]', '-map', '[audio]',
         ...await encoderFlags(), '-c:a', 'aac', '-b:a', '128k', '-shortest',
         '-movflags', '+faststart', OUT,
     ]);
-    console.log(`The voice line plays at ${voiceInVideo.toFixed(2)} s in the video`);
 }
 
 /**
@@ -730,7 +822,12 @@ async function main(): Promise<void> {
         await putAppBack();
 
         printProgress('encoding the video');
-        await encode(recording);
+        let dingFile: string | null = null;
+        if (dingSound) {
+            dingFile = join(workDir, 'ding.wav');
+            writeFileSync(dingFile, wavOf(dingSound));
+        }
+        await encode(recording, dingFile);
         console.log(`${OUT}: ${(await motionFps(recording)).toFixed(1)}fps recorded while moving, at ${WIDTH * SCALE}×${HEIGHT * SCALE}`);
     } finally {
         await resumeWorker().catch(() => {});
