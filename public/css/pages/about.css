@@ -170,7 +170,7 @@
     /* Every icon in the same 20/24-wide column, centred in it, whatever its own
        blank sides (--icon-bearing): so each title starts at the same place, and
        the dots below sit under the icon's middle. Two classes, to win over
-       the map-point icon's own fit and the like in styles.css */
+       the map-point icon's own fit and the like in icons.css */
     .title .icon
     {
         margin-inline: calc(var(--icon-size) * -2 / 24);

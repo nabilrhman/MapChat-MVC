@@ -487,7 +487,8 @@ class Hub implements WebsocketClientHandler
     {
         $requestId = $message['requestId'] ?? null;
         $before = $message['before'] ?? null;
-        $conversation = Conversation::fromPageName((string) ($message['conversation'] ?? ''));
+        $pageName = $message['conversation'] ?? null;
+        $conversation = is_string($pageName) ? Conversation::fromPageName($pageName) : null;
         if (!is_int($requestId) || !is_int($before) || $conversation === null) {
             return false;
         }

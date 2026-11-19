@@ -319,7 +319,7 @@ class Bot extends \Core\Model
 
     /**
      * Whether a room message needs an @mention to show who it's for: a
-     * greeting or a digital character's answer always, MapChat's answer only
+     * greeting or a demo person's answer always, MapChat's answer only
      * when other messages came in between
      */
     protected static function needsTag(BotJob $job): bool
@@ -722,7 +722,7 @@ class Bot extends \Core\Model
     }
 
     /**
-     * Seconds until MapChat may post in the open room again
+     * Seconds until MapChat or a demo person may answer in the open room again
      */
     protected static function roomCooldownLeft(): int
     {

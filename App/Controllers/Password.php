@@ -33,7 +33,7 @@ class Password extends \Core\Controller
             $this->redirect('/password/forgot');
         }
 
-        if (!User::sendPasswordReset((string) ($_POST['email'] ?? ''))) {
+        if (!User::sendPasswordReset($this->stringFrom($_POST, 'email'))) {
             Flash::addMessage("We couldn't send the reset email. Try again in a moment.", Flash::WARNING);
             $this->redirect('/password/forgot');
         }
@@ -61,11 +61,11 @@ class Password extends \Core\Controller
      */
     public function resetPasswordAction(): void
     {
-        $token = (string) ($_POST['token'] ?? '');
+        $token = $this->stringFrom($_POST, 'token');
 
         $user = $this->getUserOrExit($token);
 
-        if ($user->resetPassword((string) ($_POST['password'] ?? ''))) {
+        if ($user->resetPassword($this->stringFrom($_POST, 'password'))) {
             Flash::addMessage('Password changed. Log in with your new password.', Flash::SUCCESS);
             $this->redirect('/login/new');
         }

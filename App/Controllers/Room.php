@@ -85,7 +85,7 @@ class Room extends Authenticated
     public function getOlderAction(): void
     {
         // A page from before tabs loaded their own sends none, and gets all it may see
-        $conversation = Conversation::fromPageName((string) ($_POST['conversation'] ?? ''));
+        $conversation = Conversation::fromPageName($this->stringFrom($_POST, 'conversation'));
         $chats = Chat::getOlder(Auth::getEmail(), $conversation, (int) ($_POST['before'] ?? 0));
 
         if ($chats) {
@@ -120,8 +120,8 @@ class Room extends Authenticated
         }
 
         $toUserId = empty($_POST['to']) ? null : (int) $_POST['to'];
-        $clientId = empty($_POST['client_id']) ? null : (string) $_POST['client_id'];
-        $originalBody = empty($_POST['original']) ? null : (string) $_POST['original'];
+        $clientId = $this->stringFrom($_POST, 'client_id') ?: null;
+        $originalBody = $this->stringFrom($_POST, 'original') ?: null;
 
         $result = Chat::sendFrom(Auth::getUser(), new MessageText($body, $originalBody), $toUserId, $clientId);
 
@@ -189,10 +189,10 @@ class Room extends Authenticated
             return;
         }
 
-        $text = trim((string) ($_POST['text'] ?? ''));
+        $text = trim($this->stringFrom($_POST, 'text'));
         // An empty From means the language is told from the text
-        $from = Language::tryFrom((string) ($_POST['from'] ?? ''));
-        $to = Language::tryFrom((string) ($_POST['to'] ?? ''));
+        $from = Language::tryFrom($this->stringFrom($_POST, 'from'));
+        $to = Language::tryFrom($this->stringFrom($_POST, 'to'));
 
         if ($text === '' || mb_strlen($text) > Chat::MAX_LENGTH || $to === null) {
             $this->json(['error' => 'This message could not be translated.'], 422);

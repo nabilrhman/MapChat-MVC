@@ -5,12 +5,5 @@
 {% block title %}Error{% endblock %}
 
 {% block body %}
-
-<section class="error-page">
-    <h4 class="appear-down">500: Internal server error</h4>
-    <div class="divider"></div>
-    <p>Something went wrong on our end. Please try again in a moment.</p>
-    <a href="/" class="button primary">Back to MapChat</a>
-</section>
-
+{{ include('_error_page.html', {title: '500: Internal server error', message: 'Something went wrong on our end. Please try again in a moment.'}, with_context = false) }}
 {% endblock %}

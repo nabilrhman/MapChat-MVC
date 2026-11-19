@@ -1,8 +1,8 @@
 /**
  * The icons the diagrams use: the Bold weight of Solar icons by 480 Design,
- * the set MapChat's pages use (public/icons.svg), as SVG elements in a 24px
- * box, under CC BY 4.0. Copied from @solar-icons/react
- * (dist/cjs/defs/<category>/<Name>.cjs), or from public/icons.svg, so
+ * as SVG elements in a 24px box, under CC BY 4.0. The diagrams keep Solar on
+ * their own; the site's pages moved to Heroicons Solid (public/icons.svg).
+ * Copied from @solar-icons/react (dist/cjs/defs/<category>/<Name>.cjs), so
  * drawing needs no npm install.
  */
 export const ICONS = {

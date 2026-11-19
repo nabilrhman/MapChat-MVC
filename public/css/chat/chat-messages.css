@@ -47,22 +47,6 @@
    own component. Not at .line-swap, which is a message's .time and .city */
 @scope (.chat) to (.mention)
 {
-    /* Buttons drawn as the text they hold; the rules below give each its look */
-    .name-button,
-    .city
-    {
-        margin: 0;
-        padding: 0;
-        border: none;
-        background: none;
-        color: inherit;
-        font: inherit;
-        letter-spacing: inherit;
-        text-align: inherit;
-        text-shadow: inherit;
-        text-transform: inherit;
-    }
-
     .avatar
     {
         width: 36px;

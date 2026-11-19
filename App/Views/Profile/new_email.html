@@ -1,0 +1,16 @@
+{% extends 'base_email.html' %}
+{# The email that confirms a changed email address, in HTML #}
+{% types {url: 'string', name: 'string'} %}
+
+{% block title %}Confirm your new email{% endblock %}
+
+{% block preheader %}One click and it's yours on MapChat.{% endblock %}
+
+{% block body %}
+{{ include('_email_greeting.html', {name: name}, with_context = false) }}
+<p style="margin: 0;">You changed your MapChat email to this one. Confirm that it's yours.</p>
+
+{{ include('_email_button.html', {url: url, label: 'Confirm email'}, with_context = false) }}
+
+<p style="margin: 0; color: #7a7489; font-size: 13px;">Didn't change your email on MapChat? You can ignore this email.</p>
+{% endblock %}

@@ -1,5 +1,5 @@
 {# The site's header: the logo, and links that fold into a menu on phones.
-   The link to the page being shown is marked, e.g. /profile/... for PROFILE #}
+   The link to the page being shown is marked, e.g. /profile/... for Profile #}
 {% types {current_user: '?App\\Models\\User', current_path: 'string'} %}
 {% macro link(href, label, section) %}
 {% types {href: 'string', label: 'string', section: 'string'} %}
@@ -30,7 +30,7 @@
         {% set is_on_profile = current_path starts with '/profile' %}
         <div class="account-menu" id="account-menu">
             <button type="button" class="toggle{{ is_on_profile ? ' is-current' }}" id="account-menu-button"
-                    aria-controls="account-menu-list" aria-expanded="false" aria-haspopup="true">
+                    aria-controls="account-menu-list" aria-expanded="false">
                 <img class="avatar" src="{{ avatar_src(current_user.id, current_user.name, current_user.avatar) }}" alt="">
                 <span class="name">{{ shown_name(current_user.name, current_user.nickname, current_user.is_guest) }}</span>
                 {{ icon('alt-arrow-down', 'chevron') }}
@@ -54,10 +54,10 @@
             </div>
         </div>
         {% else %}
-        {{ link('/login', 'LOG IN', '/login') }}
-        {{ link('/signup/new', 'SIGN UP', '/signup') }}
+        {{ link('/login', 'Log in', '/login') }}
+        {{ link('/signup/new', 'Sign up', '/signup') }}
         {% endif %}
-        {{ link('/about', 'ABOUT', '/about') }}
+        {{ link('/about', 'About', '/about') }}
 
     </nav>
 </header>

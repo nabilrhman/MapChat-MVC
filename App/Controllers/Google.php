@@ -51,12 +51,12 @@ class Google extends \Core\Controller
             $this->refuse('Google sign-in was cancelled.', '/login');
         }
 
-        $isThisBrowsersSignIn = is_array($signIn) && hash_equals($signIn['state'], (string) ($_GET['state'] ?? ''));
+        $isThisBrowsersSignIn = is_array($signIn) && hash_equals($signIn['state'], $this->stringFrom($_GET, 'state'));
         if (!$isThisBrowsersSignIn) {
             $this->refuse("That Google sign-in didn't come from this browser. Please try again.", '/login');
         }
 
-        $google = GoogleSignIn::fetchAccount((string) ($_GET['code'] ?? ''), $signIn['code_verifier'], $signIn['nonce']);
+        $google = GoogleSignIn::fetchAccount($this->stringFrom($_GET, 'code'), $signIn['code_verifier'], $signIn['nonce']);
         if (!$google) {
             $this->refuse("We couldn't sign you in with Google. Please try again.", '/login');
         }

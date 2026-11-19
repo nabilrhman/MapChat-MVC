@@ -21,16 +21,18 @@ const AUTH_FORM_CHECKS = {
     },
 };
 
-Object.entries(AUTH_FORM_CHECKS).forEach(([formId, checksByFieldName]) => {
+for (const [formId, checksByFieldName] of Object.entries(AUTH_FORM_CHECKS)) {
     const form = document.getElementById(formId);
     if (form) setUpFormChecks(form, checksByFieldName);
-});
+}
 
 // A message to act on ("Wrong email or password.") goes once the person
 // starts typing again, so an old one isn't left over the fix
 const lastingNotices = document.querySelectorAll('[data-part="lasting-notice"]');
 if (lastingNotices.length > 0) {
     document.addEventListener('input', () => {
-        lastingNotices.forEach((notice) => removeWithAnimation(notice, 'is-leaving'));
+        for (const notice of lastingNotices) {
+            removeWithAnimation(notice, 'is-leaving');
+        }
     }, {once: true});
 }

@@ -73,6 +73,20 @@ abstract class Controller
     }
 
     /**
+     * A text field from the request, or '' when it's missing or isn't text
+     *
+     * A list (name[]=…) cast with (string) would warn, and every warning is a 500
+     *
+     * @param array<string, mixed> $input $_POST, $_GET or $_COOKIE
+     */
+    protected function stringFrom(array $input, string $name): string
+    {
+        $value = $input[$name] ?? '';
+
+        return is_string($value) ? $value : '';
+    }
+
+    /**
      * Reply with JSON
      *
      * @param int $status HTTP status

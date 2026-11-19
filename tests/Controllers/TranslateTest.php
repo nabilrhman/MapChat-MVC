@@ -54,6 +54,13 @@ class TranslateTest extends TestCase
         $this->assertSame(422, $response['status']);
     }
 
+    public function testAListInPlaceOfTheTextIsRefusedNotAnError(): void
+    {
+        $response = $this->request('POST', '/app/translate', ['text' => ['hello'], 'from' => [''], 'to' => ['en']]);
+
+        $this->assertSame(422, $response['status']);
+    }
+
     public function testARefusedTranslationUsesNoneOfTheLimit(): void
     {
         for ($i = 0; $i < Chat::USER_PER_MINUTE + 1; $i++) {

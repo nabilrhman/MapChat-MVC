@@ -15,7 +15,7 @@
 {% from _self import message_text %}
 {% for chat in chats %}
 {# Messages from the poll ease in; the history and your own appear at once #}
-<div class="chat{% if chat.mentions_me %} mentions-me{% endif %}{% if not (initial ?? false) and not chat.is_mine %} is-entering{% endif %}" data-part="message"
+<article class="chat{% if chat.mentions_me %} mentions-me{% endif %}{% if not (initial ?? false) and not chat.is_mine %} is-entering{% endif %}" data-part="message"
      data-id="{{ chat.id }}" data-sender-id="{{ chat.user_id }}" data-conversation="{{ chat.conversation }}" data-partner="{{ chat.partner }}"
      {%- if chat.mentions_me %} data-mentions-me{% endif %}>
     <div class="avatar">
@@ -78,7 +78,7 @@
         </span>
         {% endif %}
     </div>
-</div>
+</article>
 {% endfor %}
 
 {# A message's words. With mentions ({names, reader}, given in the room),

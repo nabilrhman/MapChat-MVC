@@ -579,6 +579,22 @@ class User extends \Core\Model
     }
 
     /**
+     * Email a changed email the link that proves it's theirs, the same link
+     * activation uses
+     *
+     * @return bool Whether the mail service took it
+     */
+    public function sendNewEmailConfirmation(): bool
+    {
+        $url = Config::appUrl() . '/signup/activate/' . $this->activationToken;
+
+        $text = View::getTemplate('Profile/new_email.txt', ['url' => $url, 'name' => $this->name]);
+        $html = View::getTemplate('Profile/new_email.html', ['url' => $url, 'name' => $this->name]);
+
+        return Mail::send($this->email, 'Confirm your new MapChat email', $text, $html);
+    }
+
+    /**
      * Email the password reset link
      *
      * @return bool Whether the mail service took it
@@ -791,8 +807,8 @@ class User extends \Core\Model
     }
 
     /**
-     * Log out every remembered browser, after a password change or someone
-     * else proving the email is theirs
+     * Log out every remembered browser: on a password change, on deleting
+     * the account, or when someone else proves the email is theirs
      */
     protected function forgetRememberedLogins(): void
     {

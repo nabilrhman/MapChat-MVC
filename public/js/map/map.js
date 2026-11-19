@@ -190,21 +190,22 @@ function keepPinsUpdated(addPin, fitPins) {
     function updatePins(locations) {
         const shownUserIds = new Set();
 
-        locations.forEach((personLocation) => {
+        for (const personLocation of locations) {
             const content = pinContentOf(personLocation);
             const pin = pinsByUserId.get(personLocation.user_id);
             shownUserIds.add(personLocation.user_id);
 
-            if (pin?.content === content) return;
+            if (pin?.content === content) continue;
             pin?.removePin();
             pinsByUserId.set(personLocation.user_id, {content, removePin: addPin(personLocation, !isFirstRound)});
-        });
+        }
 
-        pinsByUserId.forEach((pin, userId) => {
-            if (shownUserIds.has(userId)) return;
+        // Deleting the entry being visited is safe in a Map's for…of
+        for (const [userId, pin] of pinsByUserId) {
+            if (shownUserIds.has(userId)) continue;
             pin.removePin();
             pinsByUserId.delete(userId);
-        });
+        }
     }
 
     async function refreshPins() {
@@ -288,9 +289,17 @@ function focusPin(userId) {
     label.focus();
 }
 
-const getLabelOffset = (pin) => (pin.classList.contains('is-highlighted') ? HIGHLIGHTED_PIN_LABEL_OFFSET : PIN_LABEL_OFFSET);
+// Whose pin is pointed out from the people list, kept in step by setPinLabelShown
+const highlightedPinUserIds = new Set();
+
+const getLabelOffset = (pin) => (highlightedPinUserIds.has(pin.dataset.userId) ? HIGHLIGHTED_PIN_LABEL_OFFSET : PIN_LABEL_OFFSET);
 
 function setPinLabelShown(userId, isShown) {
+    if (isShown) {
+        highlightedPinUserIds.add(String(userId));
+    } else {
+        highlightedPinUserIds.delete(String(userId));
+    }
     const label = pinLabelsByUserId.get(String(userId));
     if (isShown) {
         label?.show(HIGHLIGHTED_PIN_LABEL_OFFSET);
@@ -362,7 +371,9 @@ function addVectorPin(map, personLocation, shouldAnimate) {
 
 function fitVectorPins(map, locations) {
     const bounds = new maplibregl.LngLatBounds();
-    locations.forEach((personLocation) => bounds.extend(lngLatOf(personLocation)));
+    for (const personLocation of locations) {
+        bounds.extend(lngLatOf(personLocation));
+    }
 
     const padding = getMapPadding();
     if (locations.length === 1) {

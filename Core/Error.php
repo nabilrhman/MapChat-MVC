@@ -18,7 +18,7 @@ class Error
      *
      * @return bool False for an error silenced with @, so PHP carries on
      */
-    public static function errorHandler(int $level, string $message, string $file, int $line): bool
+    public static function onError(int $level, string $message, string $file, int $line): bool
     {
         // Respect @ (PHP 8 masks the level instead of zeroing it)
         if (!(error_reporting() & $level)) {
@@ -30,9 +30,9 @@ class Error
 
     /**
      * Answer an uncaught exception: 405 for a wrong method, else a 404 or
-     * 500 page, with the details shown (SHOW_ERRORS) or logged
+     * 500 page, with the details shown (SHOW_ERRORS) or a 500 logged
      */
-    public static function exceptionHandler(\Throwable $exception): void
+    public static function onUncaughtException(\Throwable $exception): void
     {
         // The caller's mistake, not an error to log
         if ($exception instanceof MethodNotAllowed) {
@@ -53,12 +53,15 @@ class Error
             return;
         }
 
-        $message = "Uncaught exception: '" . get_class($exception) . "'";
-        $message .= " with message '" . $exception->getMessage() . "'";
-        $message .= "\nStack trace: " . $exception->getTraceAsString();
-        $message .= "\nThrown in '" . $exception->getFile() . "' on line " . $exception->getLine();
+        // A missing page is the visitor's mistake; logging it buries real errors
+        if ($code === 500) {
+            $message = "Uncaught exception: '" . get_class($exception) . "'";
+            $message .= " with message '" . $exception->getMessage() . "'";
+            $message .= "\nStack trace: " . $exception->getTraceAsString();
+            $message .= "\nThrown in '" . $exception->getFile() . "' on line " . $exception->getLine();
 
-        error_log($message);
+            error_log($message);
+        }
 
         // Plain text if the error page itself fails (e.g. database down)
         try {

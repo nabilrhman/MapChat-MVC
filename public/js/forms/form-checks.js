@@ -82,14 +82,21 @@ function setUpFormChecks(form, checksByFieldName) {
         const hasProblem = problem !== null;
         const fieldBox = field.closest('[data-part="field"]');
         const errorOutput = fieldBox.querySelector('[data-part="field-error"]');
+        const hintOutput = fieldBox.querySelector('[data-part="field-hint"]');
 
         fieldBox.classList.toggle('invalid', hasProblem);
         errorOutput.textContent = problem ?? '';
         if (hasProblem) {
             field.setAttribute('aria-invalid', 'true');
-            field.setAttribute('aria-describedby', errorOutput.id);
         } else {
             field.removeAttribute('aria-invalid');
+        }
+
+        // The hint always describes the field, and the error too while there is one
+        const describingIds = [hintOutput?.id, hasProblem ? errorOutput.id : null].filter(Boolean);
+        if (describingIds.length > 0) {
+            field.setAttribute('aria-describedby', describingIds.join(' '));
+        } else {
             field.removeAttribute('aria-describedby');
         }
     }

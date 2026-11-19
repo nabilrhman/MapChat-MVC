@@ -84,8 +84,8 @@ class Profile extends Authenticated
      */
     public function updateAction(): void
     {
-        $email = trim((string) ($_POST['email'] ?? ''));
-        $password = (string) ($_POST['password'] ?? '');
+        $email = trim($this->stringFrom($_POST, 'email'));
+        $password = $this->stringFrom($_POST, 'password');
 
         if ($this->user->is_guest) {
             // A guest's email field starts empty; leaving it empty keeps the placeholder
@@ -99,15 +99,15 @@ class Profile extends Authenticated
         } elseif ($this->user->hasPassword() && ($email !== $this->user->email || $password !== '')) {
             // Changing how you sign in needs your current password. An
             // account made with Google has none to give, and Google vouched for it
-            if (!password_verify((string) ($_POST['current_password'] ?? ''), $this->user->password_hash)) {
+            if (!password_verify($this->stringFrom($_POST, 'current_password'), $this->user->password_hash)) {
                 $this->refuse('Your current password is not right.', '/profile/show');
             }
         }
 
         // Guests stay "Guest" and a number, so they don't get a nickname
-        $nickname = $this->user->is_guest ? '' : (string) ($_POST['nickname'] ?? '');
+        $nickname = $this->user->is_guest ? '' : $this->stringFrom($_POST, 'nickname');
 
-        $data = ['name' => (string) ($_POST['name'] ?? ''), 'nickname' => $nickname, 'email' => $email, 'password' => $password];
+        $data = ['name' => $this->stringFrom($_POST, 'name'), 'nickname' => $nickname, 'email' => $email, 'password' => $password];
 
         if ($this->user->updateProfile($data)) {
             // A new password ends every session made before it, but not this one
@@ -124,8 +124,8 @@ class Profile extends Authenticated
     }
 
     /**
-     * Email a new email the link that proves it's theirs, as signing up
-     * does, and give the message that says the profile is saved
+     * Email a new email the link that proves it's theirs, and give the
+     * message that says the profile is saved
      */
     protected function sendNewEmailLink(): string
     {
@@ -134,7 +134,7 @@ class Profile extends Authenticated
             return 'Changes saved.';
         }
 
-        if (!$this->user->sendActivationEmail()) {
+        if (!$this->user->sendNewEmailConfirmation()) {
             return "Changes saved. We couldn't send the link that confirms your new email.";
         }
 
@@ -147,7 +147,7 @@ class Profile extends Authenticated
      */
     public function updateAvatarAction(): void
     {
-        if (!Config::arePhotoUploadsOn() || !$this->user->updateAvatar((string) ($_POST['avatar'] ?? ''))) {
+        if (!Config::arePhotoUploadsOn() || !$this->user->updateAvatar($this->stringFrom($_POST, 'avatar'))) {
             http_response_code(400);
         }
     }
@@ -179,7 +179,7 @@ class Profile extends Authenticated
      */
     public function deleteAction(): void
     {
-        $password = (string) ($_POST['current_password'] ?? '');
+        $password = $this->stringFrom($_POST, 'current_password');
         if ($this->user->hasKnownPassword() && !password_verify($password, $this->user->password_hash)) {
             $this->refuse('Your password is not right. Your profile is kept.', '/profile/show');
         }

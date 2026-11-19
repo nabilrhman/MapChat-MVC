@@ -8,7 +8,7 @@ const TOOLTIP_DELAY = 150;
 // Between the label and the screen's edge, and the label and its thing
 const TOOLTIP_EDGE_GAP = 8;
 const TOOLTIP_GAP = 6;
-const HAS_TOOLTIP = '[title], [data-tip]';
+const TOOLTIP_TARGETS_SELECTOR = '[title], [data-tip]';
 
 // Moves the element's title to data-tip and gives back the tip's text
 function moveTitleToTip(element) {
@@ -50,6 +50,7 @@ function setUpTooltips() {
 
     let tipTarget = null;
     let showTimer = null;
+    let isTooltipShown = false;
     const mousePosition = {x: 0, y: 0};
 
     document.addEventListener('mousemove', (event) => {
@@ -60,7 +61,7 @@ function setUpTooltips() {
     function showTooltip() {
         // Redrawn while we waited: use what's under the mouse now
         if (tipTarget && !tipTarget.isConnected) {
-            tipTarget = document.elementFromPoint(mousePosition.x, mousePosition.y)?.closest(HAS_TOOLTIP) ?? null;
+            tipTarget = document.elementFromPoint(mousePosition.x, mousePosition.y)?.closest(TOOLTIP_TARGETS_SELECTOR) ?? null;
         }
 
         const text = tipTarget && moveTitleToTip(tipTarget);
@@ -80,7 +81,7 @@ function setUpTooltips() {
             tooltip.classList.add('is-on-left');
             tooltip.style.left = `${leftOfBox}px`;
             tooltip.style.top = `${box.top + box.height / 2 - height / 2}px`;
-            tooltip.classList.add('is-shown');
+            setTooltipShown(true);
             return;
         }
 
@@ -97,22 +98,27 @@ function setUpTooltips() {
         tooltip.style.setProperty('--arrow-x', `${box.left + box.width / 2 - left}px`);
         tooltip.style.left = `${left}px`;
         tooltip.style.top = `${top}px`;
-        tooltip.classList.add('is-shown');
+        setTooltipShown(true);
+    }
+
+    function setTooltipShown(isShown) {
+        isTooltipShown = isShown;
+        tooltip.classList.toggle('is-shown', isShown);
     }
 
     function hideTooltip() {
         clearTimeout(showTimer);
         tipTarget = null;
-        tooltip.classList.remove('is-shown');
+        setTooltipShown(false);
     }
 
     document.addEventListener('mouseover', (event) => {
-        const element = event.target.closest(HAS_TOOLTIP);
+        const element = event.target.closest(TOOLTIP_TARGETS_SELECTOR);
         if (element === tipTarget) return;
 
         // A list that redraws itself (the people list) swaps the row under
         // the mouse for an identical one; keep the tooltip on the new row
-        if (element && tooltip.classList.contains('is-shown') && moveTitleToTip(element) === tooltip.textContent) {
+        if (element && isTooltipShown && moveTitleToTip(element) === tooltip.textContent) {
             tipTarget = element;
             return;
         }

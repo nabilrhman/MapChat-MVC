@@ -15,8 +15,8 @@ use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 /**
  * Writes MapChat's and the demo people's replies (App\Models\Bot) with
  * Groq's chat API, translates what people write with it, and turns voice
- * messages into text with its Whisper.
- * Both are on its free plan. Off until GROQ_API_KEY is set. With
+ * messages into text with its Whisper, all on its free plan. Off until
+ * GROQ_API_KEY is set. With
  * CEREBRAS_API_KEY set too, Cerebras writes a reply or a translation when
  * Groq is busy or down: it runs the same model, behind the same kind of API
  */

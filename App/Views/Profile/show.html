@@ -3,7 +3,7 @@
    notification switches, and deleting the profile (Profile::showAction) #}
 {% from '_form_fields.html' import text_field %}
 {% from '_loading_dots.html' import loading_dots %}
-{% from 'Profile/_settings_card.html' import card_head, edit_actions, switch %}
+{% from 'Profile/_settings_card.html' import card_head, edit_actions, setting_row %}
 {% types {
     user: '\\App\\Models\\User',
     place: 'array|null',
@@ -136,45 +136,28 @@
     <section class="settings-card appear-down">
         {{ card_head('Privacy') }}
 
-        <div class="privacy-setting">
-            <div>
-                <label class="name" for="share-location">Show me on the map</label>
-                {% if place and place.city %}
-                <p class="field-hint place-note" id="profile-place">
-                    <span class="when-shown">
-                        Others see you in
-                        <span class="city">
-                            {%- if place.country %}<span class="fi fi-{{ place.country|lower }}"></span>{% endif -%}
-                            {{ place.city -}}
-                        </span>
-                    </span>
-                    <span class="when-hidden">Your pin and city are hidden from everyone</span>
-                </p>
-                {% endif %}
-            </div>
-            {{ switch('share-location', is_on = user.share_location) }}
-        </div>
+        {# Captured as markup, so the flag and both states reach the hint unescaped #}
+        {% set place_hint %}
+            {%- if place and place.city -%}
+            <span class="when-shown">
+                Others see you in
+                <span class="city">
+                    {%- if place.country %}<span class="fi fi-{{ place.country|lower }}"></span>{% endif -%}
+                    {{ place.city -}}
+                </span>
+            </span>
+            <span class="when-hidden">Your pin and city are hidden from everyone</span>
+            {%- endif -%}
+        {% endset %}
+        {{ setting_row('share-location', 'Show me on the map', hint = place_hint, is_on = user.share_location, hint_id = 'profile-place', hint_class = 'place-note') }}
     </section>
 
     {# Per browser, so profile.js sets it from what this browser allows #}
     <section class="settings-card appear-down">
         {{ card_head('Notifications') }}
 
-        <div class="privacy-setting">
-            <div>
-                <label class="name" for="notifications">Private messages and mentions</label>
-                <p class="field-hint" id="notifications-hint">On this browser, when MapChat is open in a tab</p>
-            </div>
-            {{ switch('notifications') }}
-        </div>
-
-        <div class="privacy-setting">
-            <div>
-                <label class="name" for="ping-sound">Sound for private messages and mentions</label>
-                <p class="field-hint">On this browser, in chats you aren't looking at</p>
-            </div>
-            {{ switch('ping-sound') }}
-        </div>
+        {{ setting_row('notifications', 'Private messages and mentions', hint = 'On this browser, when MapChat is open in a tab') }}
+        {{ setting_row('ping-sound', 'Sound for private messages and mentions', hint = "On this browser, in chats you aren't looking at") }}
     </section>
 
     {# The button opens the dialog below, which asks first (profile.js) #}

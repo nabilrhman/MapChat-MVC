@@ -216,7 +216,7 @@ body
     }
 }
 
-/* The footer's GitHub icon, dark on the light map; the scope below stops at it */
+/* The footer's GitHub icon, white on the dark map; the scope below stops at it */
 .auth-page .source-link
 {
     color: var(--on-map-text);

@@ -70,6 +70,9 @@ namespace Tests\Core {
     use Core\Router;
     use PHPUnit\Framework\TestCase;
 
+    /**
+     * Which action a request reaches, with what parameters, and what stops it
+     */
     class RouterTest extends TestCase
     {
         private Router $router;
@@ -91,6 +94,11 @@ namespace Tests\Core {
             $this->router->get('/item/{id:\d+}', [Probe::class, 'showAction']);
             $this->router->get('/item/{id:\d+}/edit', [Probe::class, 'showAction']);
             $this->router->post('/item/{id:\d+}/edit', [Probe::class, 'saveAction']);
+        }
+
+        protected function tearDown(): void
+        {
+            unset($_SERVER['REQUEST_METHOD'], $_SERVER['HTTP_HOST'], $_SERVER['HTTP_ORIGIN']);
         }
 
         /**
@@ -244,11 +252,6 @@ namespace Tests\Core {
             $this->router->dispatch('GET', '/probe/list');
 
             $this->assertSame(['before', 'list', 'after'], array_column(Probe::$calls, 0));
-        }
-
-        protected function tearDown(): void
-        {
-            unset($_SERVER['HTTP_HOST'], $_SERVER['HTTP_ORIGIN']);
         }
 
         public function testBeforeFilterCanStopTheAction(): void

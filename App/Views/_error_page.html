@@ -1,0 +1,8 @@
+{# The body of the 404 and 500 pages: a title, a line on what happened and the way back #}
+{% types {title: 'string', message: 'string'} %}
+<section class="error-page">
+    <h1 class="title appear-down">{{ title }}</h1>
+    <div class="divider"></div>
+    <p>{{ message }}</p>
+    <a href="/" class="button primary">Back to MapChat</a>
+</section>

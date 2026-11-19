@@ -19,7 +19,8 @@
        (chat.js), the text takes the whole width and the tools go under it */
     .field
     {
-        --input-padding: 5px 6px 5px 0; /* the grid's gap is the space after the emoji */
+        --input-padding-block: 5px;
+        --input-padding-inline: 0 6px; /* the grid's gap is the space after the emoji */
         display: grid;
         grid-template-columns: auto minmax(0, 1fr) auto auto auto;
         grid-template-areas: "emoji box translate voice send";
@@ -38,7 +39,7 @@
 
         &.is-multiline
         {
-            --input-padding: 6px 6px 6px 0; /* room above and below, and between the text and its scrollbar */
+            --input-padding-block: 6px; /* room above and below; the 6px after is between the text and its scrollbar */
             grid-template-areas:
                 "box box box box box"
                 "emoji . translate voice send";
@@ -75,17 +76,6 @@
         color: transparent;
     }
 
-    /* For screen readers only */
-    .label
-    {
-        position: absolute;
-        width: 1px;
-        height: 1px;
-        overflow: hidden;
-        clip-path: inset(50%);
-        white-space: nowrap;
-    }
-
     /* A field that grows with the text up to five lines, then scrolls. Its
        border stays, see-through, so the mention chips line up with its text */
     .input
@@ -97,7 +87,8 @@
         min-height: 0;
         max-height: 120px;
         margin: 0;
-        padding: var(--input-padding);
+        padding-block: var(--input-padding-block);
+        padding-inline: var(--input-padding-inline);
         border: 1px solid transparent;
         border-radius: 4px;
         background-color: var(--composer-surface);
@@ -149,7 +140,8 @@
         position: absolute;
         inset: 0;
         box-sizing: border-box;
-        padding: var(--input-padding);
+        padding-block: var(--input-padding-block);
+        padding-inline: var(--input-padding-inline);
         border: 1px solid transparent;
         border-radius: 4px;
         background-color: var(--composer-surface);
@@ -413,7 +405,8 @@
         justify-content: space-between;
         /* The X sits as far in as the title; the room under them is where
            the emoji scroll out of sight, so none is cut off against the title */
-        padding: 6px 7px 6px 12px;
+        padding-block: 6px;
+        padding-inline: 12px 7px;
         border-block-end: 1px solid var(--hairline); /* as the language search has */
     }
 
@@ -656,7 +649,8 @@
         gap: 5px;
         inline-size: 100%;
         min-inline-size: 0;
-        padding: 4px 8px 4px 10px;
+        padding-block: 4px;
+        padding-inline: 10px 8px;
         border: 1px solid var(--composer-line);
         border-radius: 0; /* square, flush with the list it opens */
         background-color: var(--composer-surface);
@@ -784,7 +778,8 @@
     {
         box-sizing: border-box;
         inline-size: 100%;
-        padding: 8px 34px 8px 32px;
+        padding-block: 8px;
+        padding-inline: 32px 34px;
         border: none;
         background-color: transparent;
         color: var(--text-strong);

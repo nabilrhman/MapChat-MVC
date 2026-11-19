@@ -1,0 +1,14 @@
+{# The email that confirms a changed email address, as plain text -#}
+{% types {url: 'string', name: 'string', app_url: 'string'} -%}
+Confirm your new email
+
+Hi {{ name }},
+
+You changed your MapChat email to this one. Open this link to confirm that it's yours:
+{{ url }}
+
+Didn't change your email on MapChat? You can ignore this email.
+
+MapChat
+An open chat room on a map
+{{ app_url }}

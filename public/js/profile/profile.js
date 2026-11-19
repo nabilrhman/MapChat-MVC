@@ -206,25 +206,25 @@ function startEditing(card) {
 
 // Back to the saved values and out of edit mode
 function stopEditing(card) {
-    card.querySelectorAll('[data-part="field-input"]').forEach((input) => {
+    for (const input of card.querySelectorAll('[data-part="field-input"]')) {
         input.value = savedValues.get(input) ?? '';
-    });
+    }
     formChecks.clearProblems(card);
     card.classList.remove('is-editing');
     showCurrentPasswordIfNeeded();
 }
 
-document.querySelectorAll('[data-part="edit"]').forEach((editButton) => {
+for (const editButton of document.querySelectorAll('[data-part="edit"]')) {
     editButton.addEventListener('click', () => {
         const card = editButton.closest('[data-part="settings-card"]');
         startEditing(card);
         card.querySelector('[data-part="fields"] [data-part="field-input"]').focus();
     });
-});
+}
 
-document.querySelectorAll('[data-part="cancel"]').forEach((cancelButton) => {
+for (const cancelButton of document.querySelectorAll('[data-part="cancel"]')) {
     cancelButton.addEventListener('click', () => stopEditing(cancelButton.closest('[data-part="settings-card"]')));
-});
+}
 
 document.getElementById('keep-account')?.addEventListener('click', () => {
     startEditing(document.getElementById('card-account'));
@@ -241,10 +241,10 @@ let isSaving = false;
 profileForm.addEventListener('submit', (event) => {
     if (event.defaultPrevented) return;
     isSaving = true;
-    profileForm.querySelectorAll('[data-part="save"]').forEach((saveButton) => {
+    for (const saveButton of profileForm.querySelectorAll('[data-part="save"]')) {
         saveButton.disabled = true;
         saveButton.textContent = 'Saving…';
-    });
+    }
 });
 
 // Warn before leaving with unsaved changes
