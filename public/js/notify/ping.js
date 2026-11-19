@@ -1,6 +1,7 @@
 // A calm ping, one marimba note, for a private message or an @mention of
 // you in a chat you aren't looking at. The note is worked out in the
-// browser, so there's no sound file to load
+// browser, so there's no sound file to load. The profile's switch turns it
+// off and on for this browser
 
 // A4: warm, yet still clear on a phone's speaker
 const PING_HERTZ = 440;
@@ -26,6 +27,9 @@ const PING_ECHO_VOLUME = 0.22;
 // Pings that come while one plays wait their turn, but only this many, so
 // a burst of messages doesn't chime on and on
 const MOST_WAITING_PINGS = 3;
+
+// Per browser, like notifications; on until it's switched off
+const PING_OFF_KEY = 'pingSoundOff';
 
 let pingAudio = null;
 let pingNote = null;
@@ -91,22 +95,24 @@ function createPingEcho(audio) {
 }
 
 // Browsers hold sound back till the page is clicked or typed on, so the
-// first of those turns it on
+// first of those turns it on. Resolves once it's on
 function turnOnPingSound() {
     if (!pingAudio) {
         pingAudio = new AudioContext();
         pingNote = createMarimbaNote(pingAudio);
         pingEcho = createPingEcho(pingAudio);
     }
-    pingAudio.resume();
+    return pingAudio.resume();
 }
 
 document.addEventListener('pointerdown', turnOnPingSound, {once: true});
 document.addEventListener('keydown', turnOnPingSound, {once: true});
 
+const isPingSoundOn = () => !readFlag(PING_OFF_KEY);
+
 // Right away, or once the pings already playing or waiting have finished
 function playPing() {
-    if (pingAudio?.state !== 'running') return;
+    if (!isPingSoundOn() || pingAudio?.state !== 'running') return;
 
     const now = pingAudio.currentTime;
     const startsAt = Math.max(now, lastPingStartsAt + PING_SECONDS);

@@ -246,6 +246,12 @@
     gap: 16px;
 }
 
+/* Two settings in one card, as Notifications has */
+.privacy-setting + .privacy-setting
+{
+    margin-block-start: 16px;
+}
+
 @scope (.privacy-setting)
 {
     .name

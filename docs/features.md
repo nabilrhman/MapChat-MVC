@@ -16,7 +16,8 @@ Everything MapChat does, in full. Back to the [README](../README.md).
   Groq is off or its free plan is used up for the minute, the browser's own
   speech recognition listens instead (Chrome, Safari and Edge).
 - A calm ping for a private message or an @mention of you in a chat you
-  aren't looking at. The room's tab counts only @mentions.
+  aren't looking at. Your profile turns it off on that browser. The room's
+  tab counts only @mentions.
 - Notifications for private messages and @mentions, even with MapChat closed
   (Web Push). Turn them on from the chat or your profile. They're per
   browser, and logging out turns them off there.

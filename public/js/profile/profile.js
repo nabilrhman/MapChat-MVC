@@ -84,6 +84,20 @@ notificationsSwitch.addEventListener('change', async () => {
     if (isOn) showToast('Notifications are on');
 });
 
+/* Sound: this browser's own setting too. Switching it on plays the ping,
+   so you hear what it is */
+
+const pingSoundSwitch = document.getElementById('ping-sound');
+pingSoundSwitch.checked = isPingSoundOn();
+
+pingSoundSwitch.addEventListener('change', async () => {
+    writeFlag(PING_OFF_KEY, !pingSoundSwitch.checked);
+    if (pingSoundSwitch.checked) {
+        await turnOnPingSound();
+        playPing();
+    }
+});
+
 /* Photo: saves as soon as it's uploaded or removed */
 
 const avatar = document.getElementById('avatar');

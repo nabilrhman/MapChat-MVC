@@ -24,7 +24,9 @@ MySQL-compatible service.
    - `MAIL_FROM`, the sender, on a domain verified with Brevo, e.g.
      `MapChat <no-reply@mail.example.com>`. Brevo refuses the default,
      `MapChat <no-reply@localhost>`.
-   - `GROQ_API_KEY` for MapChat and the AI characters to chat back.
+   - `GROQ_API_KEY` for MapChat and the AI characters to chat back, and
+     `CEREBRAS_API_KEY` for Cerebras to write their replies while Groq is
+     busy.
    - `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` for notifications that reach
      people with MapChat closed. Make the pair once on your computer and keep
      it, since a new pair drops everyone's subscriptions:

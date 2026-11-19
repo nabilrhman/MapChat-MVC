@@ -5,7 +5,10 @@ Back to the [README](../README.md).
 
 Two kinds of AI share the room, and Groq's chat API (`openai/gpt-oss-120b` by
 default) writes what both say. Without `GROQ_API_KEY`, MapChat only greets and
-the characters only follow their script.
+the characters only follow their script. With `CEREBRAS_API_KEY` too,
+Cerebras writes a reply with the same model when Groq is busy (its free plan
+used up for the minute), down, or out of reach. A request Groq refuses isn't
+sent on, as Cerebras would refuse it too.
 
 **MapChat**, the room's own account. It has no pin on the map, and the
 people list places it on Null Island:
@@ -26,10 +29,12 @@ the day they play out stories from `database/demo-chat.php`, and:
 - Asked whether they're real, they say they're AI.
 
 Both keep replies short, tag who they're answering, and stop asking
-questions once someone's done chatting. A room reply reads only the room's
+questions once someone's done chatting. They write in English unless they're
+written to in another language: a bare "hi" gets English, wherever the
+character is from. A room reply reads only the room's
 recent messages, and a private reply only that chat. That text is sent to
 Groq, which [says](https://console.groq.com/docs/your-data) it doesn't train
-on what's sent to its API. The code is in `App/Models/Bot.php`.
+on what's sent to its API, or to Cerebras when it stands in. The code is in `App/Models/Bot.php`.
 
 The same key turns voice messages into text with Groq's
 `whisper-large-v3-turbo` (`App/Bot/Groq.php`, `public/js/messages/voice.js`). Its free plan
