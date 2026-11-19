@@ -723,17 +723,19 @@
         background-color: var(--md-surface-container-lowest);
         box-shadow: 0 6px 20px var(--raised-shadow);
         color: var(--text-strong);
-        animation: fade-in-up var(--dur) var(--ease-out);
+        /* A fade in place: rising or sinking, it slid over its own button
+           and the message box below */
+        animation: fade-in var(--dur) var(--ease-out);
 
         &[hidden]
         {
             display: none;
         }
 
-        /* Closing: it sinks back toward its button, then hides (translate.js) */
+        /* Closing: it fades where it is, then hides (translate.js) */
         &.is-closing
         {
-            animation: fade-out-down var(--dur-fast) var(--ease-out) forwards;
+            animation: fade-out var(--dur-fast) var(--ease-out) forwards;
             pointer-events: none;
         }
     }
