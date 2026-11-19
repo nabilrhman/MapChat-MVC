@@ -186,9 +186,8 @@ class Bot extends \Core\Model
     }
 
     /**
-     * Run the jobs that are due. The chat worker calls this every second,
-     * and so do chat pages on the HTTP fallback, so only one at a time does
-     * it; the rest skip it
+     * Run the jobs that are due. The chat worker calls this every second;
+     * the lock keeps a second worker, or a test, from running them at once
      */
     public static function runDue(): void
     {
@@ -359,6 +358,10 @@ class Bot extends \Core\Model
 
         static::getDB()->prepare('UPDATE mapchat_jobs SET posted_id = :posted WHERE id = :id')
             ->execute([':posted' => $postedId, ':id' => $job->id]);
+
+        // On the message too, so DemoChat still knows it from the script once the job goes with its guest
+        static::getDB()->prepare('UPDATE chats SET is_live_answer = TRUE WHERE id = :id')
+            ->execute([':id' => $postedId]);
 
         // A demo person who just spoke is in the room
         Whereabouts::markOnline($job->speaker);

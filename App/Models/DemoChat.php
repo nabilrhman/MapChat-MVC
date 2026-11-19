@@ -37,10 +37,11 @@ class DemoChat extends \Core\Model
     const OPENING = ['app_map', 'app_bot'];
 
     /**
-     * Leaves out the demo people's answers to someone who @mentioned them
-     * (Bot), which are written live, not from the day's script
+     * Leaves out MapChat's and the demo people's live answers (Bot), which
+     * aren't from the day's script. Marked on the message itself, as the job
+     * that posted it goes when the guest it answered does
      */
-    const NOT_REPLIES = 'id NOT IN (SELECT posted_id FROM mapchat_jobs WHERE posted_id IS NOT NULL)';
+    const NOT_REPLIES = 'NOT is_live_answer';
 
     /** A demo person shows as online from this many minutes before they speak... */
     const ARRIVE_MINUTES = 5;
@@ -84,9 +85,14 @@ class DemoChat extends \Core\Model
             $db->beginTransaction();
             static::catchUpLocked($db);
             $db->commit();
-        } catch (\PDOException $e) {
+        } catch (\Throwable $e) {
+            // Whatever went wrong, an open transaction would hold its rows locked
             if ($db->inTransaction()) {
                 $db->rollBack();
+            }
+            // A database hiccup passes; anything else is a bug to see
+            if (!$e instanceof \PDOException) {
+                throw $e;
             }
             error_log('Demo catch-up failed, the next request tries again: ' . $e->getMessage());
         } finally {
@@ -95,18 +101,20 @@ class DemoChat extends \Core\Model
     }
 
     /**
-     * catchUp()'s work, while it holds the lock
+     * catchUp()'s work, while it holds the lock. The demo clock is read
+     * once, as each reading looks up how long the story has waited
      */
     protected static function catchUpLocked(PDO $db): void
     {
         $today = static::today();
         $dayStart = static::dayStart($today);
         $schedule = static::schedule($today);
+        $demoNow = static::now();
 
         static::moveWelcomeToToday($db, $dayStart);
-        $postedUpTo = static::clearUnplannedLines($db, $schedule, $dayStart);
-        $lastSpokeAt = static::postDueLines($db, $schedule, $postedUpTo, $dayStart);
-        static::markSeen($db, $lastSpokeAt);
+        $postedUpTo = static::clearUnplannedLines($db, $schedule, $dayStart, $demoNow);
+        $lastSpokeAt = static::postDueLines($db, $schedule, $postedUpTo, $dayStart, $demoNow);
+        static::markSeen($db, $lastSpokeAt, $demoNow);
     }
 
     /**
@@ -144,13 +152,14 @@ class DemoChat extends \Core\Model
      *
      * @param array $schedule Today's, from schedule()
      * @param int $dayStart Unix time
+     * @param int $demoNow Unix time, on the demo clock
      *
      * @return int The last line of the schedule already posted, or -1 for none
      */
-    protected static function clearUnplannedLines(PDO $db, array $schedule, int $dayStart): int
+    protected static function clearUnplannedLines(PDO $db, array $schedule, int $dayStart, int $demoNow): int
     {
         $start = gmdate('Y-m-d H:i:s', $dayStart);
-        $now = gmdate('Y-m-d H:i:s', static::now());
+        $now = gmdate('Y-m-d H:i:s', $demoNow);
 
         // Today's lines are known by who said what, not when: a story that
         // waited for a guest goes out later than planned. Nobody says the
@@ -191,12 +200,13 @@ class DemoChat extends \Core\Model
      * @param array $schedule Today's, from schedule()
      * @param int $postedUpTo The last line already posted, or -1
      * @param int $dayStart Unix time
+     * @param int $demoNow Unix time, on the demo clock
      *
      * @return array<string, string> When each demo person last spoke, by email, on the demo clock
      */
-    protected static function postDueLines(PDO $db, array $schedule, int $postedUpTo, int $dayStart): array
+    protected static function postDueLines(PDO $db, array $schedule, int $postedUpTo, int $dayStart, int $demoNow): array
     {
-        $now = gmdate('Y-m-d H:i:s', static::now());
+        $now = gmdate('Y-m-d H:i:s', $demoNow);
 
         // Skip the same line if two requests catch up at once
         $insert = $db->prepare('INSERT INTO chats (email, body, original_body, timestamp)
@@ -213,7 +223,7 @@ class DemoChat extends \Core\Model
 
             if ($i > $postedUpTo) {
                 $insert->execute([
-                    ':email' => $email, ':body' => $body, ':original' => $original, ':time' => static::realTime($time),
+                    ':email' => $email, ':body' => $body, ':original' => $original, ':time' => static::realTime($time, $demoNow),
                     ':email2' => $email, ':body2' => $body, ':start' => gmdate('Y-m-d H:i:s', $dayStart),
                 ]);
             }
@@ -229,8 +239,9 @@ class DemoChat extends \Core\Model
      * just said would show them online
      *
      * @param array<string, string> $lastSpokeAt By email, on the demo clock
+     * @param int $demoNow Unix time, on the demo clock
      */
-    protected static function markSeen(PDO $db, array $lastSpokeAt): void
+    protected static function markSeen(PDO $db, array $lastSpokeAt, int $demoNow): void
     {
         $seen = $db->prepare('UPDATE userinfo SET online_at = :time
                               WHERE email = :email AND (online_at IS NULL OR online_at < :time2 OR online_at > NOW())');
@@ -240,7 +251,7 @@ class DemoChat extends \Core\Model
                 continue;
             }
 
-            $realTime = static::realTime($time);
+            $realTime = static::realTime($time, $demoNow);
             $seen->execute([':email' => $email, ':time' => $realTime, ':time2' => $realTime]);
         }
     }
@@ -567,12 +578,13 @@ class DemoChat extends \Core\Model
      * ago was a real second ago (the demo clock can run hours ahead)
      *
      * @param string $time UTC, Y-m-d H:i:s, on the demo clock
+     * @param int $demoNow Unix time, on the demo clock: now(), read once by the caller
      *
      * @return string UTC, Y-m-d H:i:s
      */
-    protected static function realTime(string $time): string
+    protected static function realTime(string $time, int $demoNow): string
     {
-        $demoSecondsAgo = static::now() - strtotime($time . ' UTC');
+        $demoSecondsAgo = $demoNow - strtotime($time . ' UTC');
         $realSecondsAgo = (int) round($demoSecondsAgo / static::speed());
 
         return gmdate('Y-m-d H:i:s', time() - $realSecondsAgo);

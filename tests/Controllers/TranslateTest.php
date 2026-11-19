@@ -64,36 +64,3 @@ class TranslateTest extends TestCase
     }
 }
 
-/**
- * Room, with its count of this session's translations open to the tests
- */
-class RoomForTests extends \App\Controllers\Room
-{
-    /**
-     * When this session asked for a translation in the last minute
-     *
-     * @return list<int> Unix times
-     */
-    public function recentTranslations(): array
-    {
-        return $this->translationsInLastMinute();
-    }
-}
-
-/**
- * Which of a session's translations count against the limit
- */
-class TranslationLimitTest extends TestCase
-{
-    protected function tearDown(): void
-    {
-        unset($_SESSION['translated_at']);
-    }
-
-    public function testOnlyTheLastMinutesTranslationsCount(): void
-    {
-        $_SESSION['translated_at'] = [time() - 90, time() - 61, time() - 30, time()];
-
-        $this->assertCount(2, (new RoomForTests([]))->recentTranslations());
-    }
-}

@@ -29,6 +29,9 @@ CREATE TABLE users (
   `google_id`                 VARCHAR(255) NULL DEFAULT NULL,
   -- Removed their photo, so signing in with Google doesn't bring its photo back
   `google_photo_declined`     BOOLEAN      NOT NULL DEFAULT FALSE,
+  -- Wrong passwords in a row, from failed_logins_since; too many stop tries for a while
+  `failed_logins`             INT          NOT NULL DEFAULT 0,
+  `failed_logins_since`       TIMESTAMP    NULL DEFAULT NULL,
   `created_at`                TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `email` (`email`),
@@ -77,6 +80,9 @@ CREATE TABLE chats (
   `client_id` VARCHAR(36)  NULL DEFAULT NULL,
   -- What the sender wrote, when the message box translated it into body
   `original_body` TEXT     NULL DEFAULT NULL,
+  -- Posted by MapChat or a demo person answering someone (App/Models/Bot.php),
+  -- not from the demo script; kept here as the job row goes with its guest
+  `is_live_answer` BOOLEAN NOT NULL DEFAULT FALSE,
   PRIMARY KEY (`id`),
   KEY `fk_m_email` (`email`),
   KEY `fk_m_to_email` (`to_email`),
@@ -169,6 +175,20 @@ CREATE TABLE push_subscriptions (
   CONSTRAINT `fk_p_email` FOREIGN KEY (`email`) REFERENCES users (`email`)
     ON DELETE CASCADE
     ON UPDATE CASCADE
+)
+  ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4;
+
+-- Each translation or recording someone asked Groq for, for the limit a
+-- minute (see App/Models/GroqUse.php); rows older than a minute are deleted
+CREATE TABLE groq_uses (
+  `user_id`  INT         NOT NULL,
+  -- translate or transcribe
+  `kind`     VARCHAR(10) NOT NULL,
+  `used_at`  TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY `recent` (`user_id`, `kind`, `used_at`),
+  CONSTRAINT `fk_g_user` FOREIGN KEY (`user_id`) REFERENCES users (`id`)
+    ON DELETE CASCADE
 )
   ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4;

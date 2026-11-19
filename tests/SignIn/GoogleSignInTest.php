@@ -2,6 +2,7 @@
 
 namespace Tests\SignIn;
 
+use App\Models\RememberedLogin;
 use App\Models\User;
 use App\SignIn\GoogleAccount;
 use App\SignIn\GoogleSignIn;
@@ -170,6 +171,54 @@ class GoogleSignInTest extends TestCase
         $this->assertNull($linked->activation_hash);
         $this->assertFalse($linked->hasPassword());
         $this->assertNull(User::authenticate('ann@gmail.test', 'secret123'));
+    }
+
+    /**
+     * How many browsers remember a login to this account
+     */
+    private function countRememberedLogins(User $user): int
+    {
+        $stmt = $this->db->prepare('SELECT COUNT(*) FROM remembered_logins WHERE user_id = ?');
+        $stmt->execute([$user->id]);
+
+        return (int) $stmt->fetchColumn();
+    }
+
+    public function testChangingYourEmailToSomeoneElsesCantKeepYourPasswordOnceTheyUseGoogle(): void
+    {
+        $taker = $this->passwordAccount('taker@test.local', isEmailProven: true);
+        $this->assertTrue($taker->updateProfile(['name' => 'Ann', 'nickname' => '', 'email' => 'ann@gmail.test', 'password' => '']));
+        $this->assertNotNull(User::findByID($taker->id)->activation_hash);
+        RememberedLogin::create($taker->id, time() + 3600);
+
+        $user = User::signInWithGoogle(new GoogleAccount('google-6', 'ann@gmail.test', 'Ann Lee'));
+
+        $this->assertFalse(User::findByID($user->id)->hasPassword());
+        $this->assertNull(User::authenticate('ann@gmail.test', 'secret123'));
+        $this->assertSame(0, $this->countRememberedLogins($taker));
+        $this->assertNotSame($taker->signInStamp(), User::findByID($taker->id)->signInStamp());
+    }
+
+    public function testAGuestKeepingTheirAccountWithSomeoneElsesEmailLosesThePasswordToo(): void
+    {
+        $guest = User::createGuest();
+        $this->assertTrue($guest->updateProfile(['name' => 'Guest', 'nickname' => '', 'email' => 'ann@gmail.test', 'password' => 'mine1234']));
+
+        User::signInWithGoogle(new GoogleAccount('google-7', 'ann@gmail.test', 'Ann Lee'));
+
+        $this->assertFalse(User::findByID($guest->id)->hasPassword());
+        $this->assertNull(User::authenticate('ann@gmail.test', 'mine1234'));
+    }
+
+    public function testAnEmailProvenByItsLinkKeepsItsPasswordWhenLinkedToGoogle(): void
+    {
+        $owner = $this->passwordAccount('old@test.local', isEmailProven: true);
+        $owner->updateProfile(['name' => 'Ann', 'nickname' => '', 'email' => 'ann@gmail.test', 'password' => '']);
+        $this->assertTrue(User::activate($owner->activationToken));
+
+        User::signInWithGoogle(new GoogleAccount('google-8', 'ann@gmail.test', 'Ann Lee'));
+
+        $this->assertNotNull(User::authenticate('ann@gmail.test', 'secret123'));
     }
 
     const PHOTO = 'https://lh3.googleusercontent.com/a/ACg8ocK-photo=s96-c';

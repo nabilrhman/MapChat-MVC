@@ -11,12 +11,14 @@ use PDO;
 class Schema extends \Core\Model
 {
     /**
-     * Columns added since the first release, with the statements that add
-     * each, kept in step with init.sql. One change per statement, since TiDB
-     * won't add a foreign key alongside other changes. to_email goes near the
-     * end: if its foreign key fails, the columns the pages need are already
-     * there. read_at needs to_email, and counts every private message from
-     * before it as read, so nobody's old ones come back as unread
+     * Columns added since the first release, kept in step with init.sql:
+     * each column's ALTER, then any data it starts with, run once when the
+     * column is added. Their keys are in ADDED_INDEXES and ADDED_CONSTRAINTS,
+     * each checked on its own, so one that fails is tried again next start.
+     * One change per statement, since TiDB won't add a foreign key alongside
+     * other changes. read_at needs to_email, and counts every private
+     * message from before it as read, so nobody's old ones come back as
+     * unread. is_live_answer starts on what the bot has posted so far
      */
     const ADDED_COLUMNS = [
         ['userinfo', 'country', ['ALTER TABLE userinfo ADD COLUMN country CHAR(2) AFTER city']],
@@ -25,18 +27,13 @@ class Schema extends \Core\Model
         ]],
         ['users', 'nickname', [
             'ALTER TABLE users ADD COLUMN nickname VARCHAR(20) NULL DEFAULT NULL AFTER name',
-            'ALTER TABLE users ADD UNIQUE KEY nickname (nickname)',
         ]],
         ['userinfo', 'timezone', ['ALTER TABLE userinfo ADD COLUMN timezone VARCHAR(64) AFTER country']],
         ['users', 'guest_token_hash', [
             'ALTER TABLE users ADD COLUMN guest_token_hash VARCHAR(64) NULL DEFAULT NULL AFTER is_guest',
-            'ALTER TABLE users ADD UNIQUE KEY guest_token_hash (guest_token_hash)',
         ]],
         ['chats', 'to_email', [
             'ALTER TABLE chats ADD COLUMN to_email VARCHAR(255) NULL DEFAULT NULL AFTER email',
-            'ALTER TABLE chats ADD KEY fk_m_to_email (to_email)',
-            'ALTER TABLE chats ADD CONSTRAINT fk_m_to_email FOREIGN KEY (to_email) REFERENCES users (email)
-               ON DELETE CASCADE ON UPDATE CASCADE',
         ]],
         ['chats', 'read_at', [
             'ALTER TABLE chats ADD COLUMN read_at TIMESTAMP NULL DEFAULT NULL AFTER timestamp',
@@ -44,12 +41,10 @@ class Schema extends \Core\Model
         ]],
         ['chats', 'client_id', [
             'ALTER TABLE chats ADD COLUMN client_id VARCHAR(36) NULL DEFAULT NULL AFTER read_at',
-            'ALTER TABLE chats ADD UNIQUE KEY client_id (email, client_id)',
         ]],
         ['mapchat_jobs', 'reply', ['ALTER TABLE mapchat_jobs ADD COLUMN reply TEXT NULL DEFAULT NULL AFTER posted_id']],
         ['users', 'google_id', [
             'ALTER TABLE users ADD COLUMN google_id VARCHAR(255) NULL DEFAULT NULL AFTER share_location',
-            'ALTER TABLE users ADD UNIQUE KEY google_id (google_id)',
         ]],
         ['users', 'google_photo_declined', [
             'ALTER TABLE users ADD COLUMN google_photo_declined BOOLEAN NOT NULL DEFAULT FALSE AFTER google_id',
@@ -60,11 +55,39 @@ class Schema extends \Core\Model
         ['mapchat_jobs', 'reply_original', [
             'ALTER TABLE mapchat_jobs ADD COLUMN reply_original TEXT NULL DEFAULT NULL AFTER reply',
         ]],
+        ['chats', 'is_live_answer', [
+            'ALTER TABLE chats ADD COLUMN is_live_answer BOOLEAN NOT NULL DEFAULT FALSE AFTER original_body',
+            'UPDATE chats SET is_live_answer = TRUE
+             WHERE id IN (SELECT posted_id FROM mapchat_jobs WHERE posted_id IS NOT NULL)',
+        ]],
+        ['users', 'failed_logins', [
+            'ALTER TABLE users ADD COLUMN failed_logins INT NOT NULL DEFAULT 0 AFTER google_photo_declined',
+        ]],
+        ['users', 'failed_logins_since', [
+            'ALTER TABLE users ADD COLUMN failed_logins_since TIMESTAMP NULL DEFAULT NULL AFTER failed_logins',
+        ]],
     ];
 
-    /** Indexes added since the first release, as in init.sql, by table and name */
+    /**
+     * Indexes added since the first release, as in init.sql, by table and
+     * name. After ADDED_COLUMNS, which adds the columns they're on
+     */
     const ADDED_INDEXES = [
+        ['users', 'nickname', 'ALTER TABLE users ADD UNIQUE KEY nickname (nickname)'],
+        ['users', 'guest_token_hash', 'ALTER TABLE users ADD UNIQUE KEY guest_token_hash (guest_token_hash)'],
+        ['chats', 'fk_m_to_email', 'ALTER TABLE chats ADD KEY fk_m_to_email (to_email)'],
+        ['chats', 'client_id', 'ALTER TABLE chats ADD UNIQUE KEY client_id (email, client_id)'],
+        ['users', 'google_id', 'ALTER TABLE users ADD UNIQUE KEY google_id (google_id)'],
         ['chats', 'pair', 'ALTER TABLE chats ADD KEY pair (to_email, email)'],
+    ];
+
+    /**
+     * Foreign keys added since the first release, as in init.sql, by table
+     * and name. After ADDED_INDEXES, which adds the key each one uses
+     */
+    const ADDED_CONSTRAINTS = [
+        ['chats', 'fk_m_to_email', 'ALTER TABLE chats ADD CONSTRAINT fk_m_to_email FOREIGN KEY (to_email) REFERENCES users (email)
+            ON DELETE CASCADE ON UPDATE CASCADE'],
     ];
 
     /** Tables added since the first release, as in init.sql */
@@ -106,6 +129,14 @@ class Schema extends \Core\Model
               ON DELETE CASCADE
               ON UPDATE CASCADE
           ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4',
+        'groq_uses' => 'CREATE TABLE groq_uses (
+            `user_id` INT         NOT NULL,
+            `kind`    VARCHAR(10) NOT NULL,
+            `used_at` TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            KEY `recent` (`user_id`, `kind`, `used_at`),
+            CONSTRAINT `fk_g_user` FOREIGN KEY (`user_id`) REFERENCES users (`id`)
+              ON DELETE CASCADE
+          ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4',
     ];
 
     /**
@@ -126,10 +157,10 @@ class Schema extends \Core\Model
     ];
 
     /**
-     * Add any of ADDED_TABLES, ADDED_COLUMNS and ADDED_INDEXES the database
-     * is missing. Safe to run every start
+     * Add any of ADDED_TABLES, ADDED_COLUMNS, ADDED_INDEXES and
+     * ADDED_CONSTRAINTS the database is missing. Safe to run every start
      *
-     * @return array What was added, as table, table.column or table index name
+     * @return string[] What was added, as table, table.column, table index name or table constraint name
      */
     public static function upgrade(): array
     {
@@ -157,6 +188,13 @@ class Schema extends \Core\Model
             if (!static::hasIndex($db, $table, $index)) {
                 $db->exec($sql);
                 $added[] = "$table index $index";
+            }
+        }
+
+        foreach (static::ADDED_CONSTRAINTS as [$table, $constraint, $sql]) {
+            if (!static::hasConstraint($db, $table, $constraint)) {
+                $db->exec($sql);
+                $added[] = "$table constraint $constraint";
             }
         }
 
@@ -222,6 +260,21 @@ class Schema extends \Core\Model
                               WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :table AND INDEX_NAME = :index');
         $stmt->bindValue(':table', $table, PDO::PARAM_STR);
         $stmt->bindValue(':index', $index, PDO::PARAM_STR);
+        $stmt->execute();
+
+        return $stmt->fetchColumn() > 0;
+    }
+
+    /**
+     * Whether a table has a foreign key of this name
+     */
+    protected static function hasConstraint(PDO $db, string $table, string $constraint): bool
+    {
+        $stmt = $db->prepare('SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS
+                              WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :table AND CONSTRAINT_NAME = :constraint
+                                AND CONSTRAINT_TYPE = \'FOREIGN KEY\'');
+        $stmt->bindValue(':table', $table, PDO::PARAM_STR);
+        $stmt->bindValue(':constraint', $constraint, PDO::PARAM_STR);
         $stmt->execute();
 
         return $stmt->fetchColumn() > 0;

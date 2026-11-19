@@ -31,10 +31,14 @@ class Login extends \Core\Controller
         $email = (string) ($_POST['email'] ?? '');
         $user = User::authenticate($email, (string) ($_POST['password'] ?? ''));
 
-        // Says only that the email has an account, as signing up already does
-        $isGoogleOnly = !$user && User::findByEmail($email)?->hasPassword() === false;
+        // These say only that the email has an account, as signing up already does
+        $account = $user ? null : User::findByEmail($email);
+        $isLocked = $account?->isLoginLocked() === true;
+        $isGoogleOnly = $account?->hasPassword() === false;
 
-        if ($isGoogleOnly) {
+        if ($isLocked) {
+            Flash::addMessage('Too many wrong passwords. Try again in ' . User::FAILED_LOGIN_MINUTES . ' minutes, or reset your password.', Flash::WARNING);
+        } elseif ($isGoogleOnly) {
             Flash::addMessage('This account signs in with Google. Use Continue with Google, or set a password with Forgot password.', Flash::WARNING);
         } elseif (!$user) {
             Flash::addMessage('Wrong email or password.', Flash::WARNING);
@@ -51,7 +55,7 @@ class Login extends \Core\Controller
         }
 
         View::renderTemplate('Login/new.html', [
-            'email' => $_POST['email'] ?? '',
+            'email' => $email,
             'remember_me' => $isRemembered
         ]);
     }

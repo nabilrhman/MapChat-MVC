@@ -169,7 +169,8 @@ function createHelloBubble(place, faceSrc) {
     const bubble = createElement('div', 'bubble');
 
     const face = createElement('img', 'face');
-    face.src = faceSrc;
+    // Only with a face: an undefined src asks for /undefined
+    if (faceSrc) face.src = faceSrc;
     face.alt = '';
     face.width = 32;
     face.height = 32;

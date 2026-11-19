@@ -26,6 +26,15 @@ class User extends \Core\Model
     /** The longest name, in characters */
     const MAX_NAME_LENGTH = 50;
 
+    /** Wrong passwords in a row that stop any more tries for a while */
+    const MAX_FAILED_LOGINS = 10;
+
+    /** How long a run of wrong passwords counts, and stops tries once too long */
+    const FAILED_LOGIN_MINUTES = 15;
+
+    /** The domain of the demo people, the guests and MapChat's bot, so nobody signs up with it */
+    const RESERVED_EMAIL_DOMAIN = 'mapchat.local';
+
     /** The columns, as the database has them */
     public ?int $id = null;
     public string $name = '';
@@ -47,6 +56,10 @@ class User extends \Core\Model
     public bool $google_photo_declined = false;
     /** UTC, Y-m-d H:i:s */
     public ?string $created_at = null;
+    /** Wrong passwords since failed_logins_since */
+    public int $failed_logins = 0;
+    /** UTC, Y-m-d H:i:s: when the run of wrong passwords began, or null for none */
+    public ?string $failed_logins_since = null;
 
     /** A new password, typed into a form; only its hash is stored */
     public ?string $password = null;
@@ -139,6 +152,8 @@ class User extends \Core\Model
 
         if (filter_var($this->email, FILTER_VALIDATE_EMAIL) === false) {
             $this->errors['email'][] = 'Enter a valid email.';
+        } elseif (static::isReservedEmail($this->email) && !$this->isOwnSavedEmail()) {
+            $this->errors['email'][] = 'That email belongs to MapChat. Use your own.';
         } elseif (static::isEmailTaken($this->email, $this->id)) {
             $this->errors['email'][] = 'That email is already registered.';
         }
@@ -164,6 +179,26 @@ class User extends \Core\Model
         $stmt->execute();
 
         return $stmt->fetchColumn() > 0;
+    }
+
+    /**
+     * Whether the email is at MapChat's own domain or under it, as the demo
+     * people's, the guests' and the bot's are
+     */
+    public static function isReservedEmail(string $email): bool
+    {
+        $domain = strtolower(substr(strrchr($email, '@') ?: '', 1));
+
+        return $domain === static::RESERVED_EMAIL_DOMAIN || str_ends_with($domain, '.' . static::RESERVED_EMAIL_DOMAIN);
+    }
+
+    /**
+     * Whether the email is the one this account has saved now, as a guest's
+     * placeholder is, so keeping it isn't refused
+     */
+    protected function isOwnSavedEmail(): bool
+    {
+        return $this->id !== null && static::findByEmail($this->email)?->id === $this->id;
     }
 
     /**
@@ -249,13 +284,84 @@ class User extends \Core\Model
     }
 
     /**
-     * The account with this email and password, if they match
+     * The account with this email and password, if they match. A wrong
+     * password is counted, and after MAX_FAILED_LOGINS of them no password
+     * is let in until FAILED_LOGIN_MINUTES pass, so it can't be guessed
      */
     public static function authenticate(string $email, string $password): ?static
     {
         $user = static::findByEmail($email);
+        if (!$user || $user->isLoginLocked()) {
+            return null;
+        }
 
-        return $user && password_verify($password, $user->password_hash) ? $user : null;
+        if (!password_verify($password, $user->password_hash)) {
+            $user->countFailedLogin();
+            return null;
+        }
+
+        if ($user->failed_logins > 0) {
+            $user->forgetFailedLogins();
+        }
+
+        return $user;
+    }
+
+    /**
+     * Whether MAX_FAILED_LOGINS wrong passwords in the last
+     * FAILED_LOGIN_MINUTES stop any more tries for now
+     */
+    public function isLoginLocked(): bool
+    {
+        if ($this->failed_logins < static::MAX_FAILED_LOGINS || $this->failed_logins_since === null) {
+            return false;
+        }
+
+        $lockedUntil = strtotime($this->failed_logins_since . ' UTC') + static::FAILED_LOGIN_MINUTES * 60;
+
+        return time() < $lockedUntil;
+    }
+
+    /**
+     * Count a wrong password, starting a new run if the last one began
+     * FAILED_LOGIN_MINUTES ago or more
+     */
+    protected function countFailedLogin(): void
+    {
+        // In SQL, so tries sent at the same time are each counted. The run's
+        // start is set last, as MySQL sets columns left to right
+        $isRunGoingSql = 'failed_logins_since > NOW() - INTERVAL ' . static::FAILED_LOGIN_MINUTES . ' MINUTE';
+        $sql = "UPDATE users
+                SET failed_logins = IF($isRunGoingSql, failed_logins + 1, 1),
+                    failed_logins_since = IF($isRunGoingSql, failed_logins_since, NOW())
+                WHERE id = :id";
+
+        $stmt = static::getDB()->prepare($sql);
+        $stmt->bindValue(':id', $this->id, PDO::PARAM_INT);
+        $stmt->execute();
+    }
+
+    /**
+     * Start the count of wrong passwords again, after the right one
+     */
+    protected function forgetFailedLogins(): void
+    {
+        $stmt = static::getDB()->prepare('UPDATE users SET failed_logins = 0, failed_logins_since = NULL WHERE id = :id');
+        $stmt->bindValue(':id', $this->id, PDO::PARAM_INT);
+        $stmt->execute();
+
+        $this->failed_logins = 0;
+        $this->failed_logins_since = null;
+    }
+
+    /**
+     * A hash of what signs in to this account, its password and its Google
+     * link. Each session keeps it from when it logged in, and stops working
+     * once either changes (see Auth::getUser)
+     */
+    public function signInStamp(): string
+    {
+        return hash('sha256', $this->password_hash . '|' . ($this->google_id ?? ''));
     }
 
     /**
@@ -315,7 +421,9 @@ class User extends \Core\Model
     /**
      * Link this account to a Google account with its email. Google checked
      * that email belongs to them; if this account never proved it did, a
-     * password someone else set at sign-up mustn't keep working
+     * password someone else set at sign-up or by changing their email to
+     * it mustn't keep working, nor their sessions (the changed signInStamp
+     * ends those)
      */
     protected function linkGoogle(GoogleAccount $google): void
     {
@@ -426,7 +534,7 @@ class User extends \Core\Model
 
     /**
      * Set a new password, unless it isn't valid (see errors), and log out
-     * every remembered browser
+     * every browser logged in with the old one
      */
     public function resetPassword(string $password): bool
     {
@@ -440,12 +548,16 @@ class User extends \Core\Model
         $stmt = static::getDB()->prepare('UPDATE users
                                           SET password_hash = :password_hash,
                                               password_reset_hash = NULL,
-                                              password_reset_expires_at = NULL
+                                              password_reset_expires_at = NULL,
+                                              failed_logins = 0,
+                                              failed_logins_since = NULL
                                           WHERE id = :id');
+        $this->password_hash = password_hash($this->password, PASSWORD_DEFAULT);
         $stmt->bindValue(':id', $this->id, PDO::PARAM_INT);
-        $stmt->bindValue(':password_hash', password_hash($this->password, PASSWORD_DEFAULT), PDO::PARAM_STR);
+        $stmt->bindValue(':password_hash', $this->password_hash, PDO::PARAM_STR);
         $stmt->execute();
 
+        // Sessions made before end at their next request, by the changed signInStamp
         $this->forgetRememberedLogins();
 
         return true;
@@ -593,14 +705,18 @@ class User extends \Core\Model
 
     /**
      * Save the profile form, unless it isn't valid (see errors). A new
-     * password logs out every remembered browser, and a guest who sets one
-     * keeps their account
+     * password logs out every other browser, and a guest who sets one keeps
+     * their account. A new email counts as unproven until its activation
+     * link is opened (activationToken is set for it), so signing in with
+     * Google as that email can't keep this account's password
      *
      * @param array{name: string, nickname: string, email: string, password: string} $data
      *        An empty password keeps the current one
      */
     public function updateProfile(array $data): bool
     {
+        $hasNewEmail = $data['email'] !== $this->email;
+
         $this->name = $data['name'];
         $this->nickname = $data['nickname'];
         $this->email = $data['email'];
@@ -617,6 +733,9 @@ class User extends \Core\Model
         if ($hasNewPassword) {
             $sql .= ', password_hash = :password_hash, is_guest = 0';
         }
+        if ($hasNewEmail) {
+            $sql .= ', activation_hash = :activation_hash';
+        }
         $sql .= ' WHERE id = :id';
 
         $stmt = static::getDB()->prepare($sql);
@@ -626,7 +745,14 @@ class User extends \Core\Model
         $stmt->bindValue(':email', $this->email, PDO::PARAM_STR);
         $stmt->bindValue(':id', $this->id, PDO::PARAM_INT);
         if ($hasNewPassword) {
-            $stmt->bindValue(':password_hash', password_hash($this->password, PASSWORD_DEFAULT), PDO::PARAM_STR);
+            $this->password_hash = password_hash($this->password, PASSWORD_DEFAULT);
+            $stmt->bindValue(':password_hash', $this->password_hash, PDO::PARAM_STR);
+        }
+        if ($hasNewEmail) {
+            $token = new Token();
+            $this->activationToken = $token->value;
+            $this->activation_hash = $token->getHash();
+            $stmt->bindValue(':activation_hash', $this->activation_hash, PDO::PARAM_STR);
         }
         $stmt->execute();
 
@@ -665,7 +791,8 @@ class User extends \Core\Model
     }
 
     /**
-     * Log out every remembered browser, after a password change
+     * Log out every remembered browser, after a password change or someone
+     * else proving the email is theirs
      */
     protected function forgetRememberedLogins(): void
     {

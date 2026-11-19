@@ -16,21 +16,32 @@ const getOpenPages = () => self.clients.matchAll({type: 'window', includeUncontr
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
 
+// Shown for a push that came with no message
+const NOTICE_WITHOUT_MESSAGE = {title: 'MapChat', body: 'You have a new message.', tag: 'chat-everyone', conversation: EVERYONE};
+
+// Every push shows a notification: the browser was promised one
+// (userVisibleOnly), and Chrome shows its own "updated in the background"
+// notice for a push that shows none. While the chat is in view it shows
+// the message itself, so this one is silent and closed at once
 async function showPushedMessage(message) {
     const pages = await getOpenPages();
-    if (pages.some((page) => isChat(page) && page.visibilityState === 'visible')) return;
+    const isChatInView = pages.some((page) => isChat(page) && page.visibilityState === 'visible');
 
     await self.registration.showNotification(message.title, {
         body: message.body,
         icon: message.icon,
         tag: message.tag,
+        silent: isChatInView,
         data: {conversation: message.conversation, name: message.name},
     });
+    if (!isChatInView) return;
+
+    const quietNotifications = await self.registration.getNotifications({tag: message.tag});
+    quietNotifications.forEach((notification) => notification.close());
 }
 
 self.addEventListener('push', (event) => {
-    const message = event.data?.json();
-    if (!message) return;
+    const message = event.data?.json() ?? NOTICE_WITHOUT_MESSAGE;
     event.waitUntil(showPushedMessage(message));
 });
 

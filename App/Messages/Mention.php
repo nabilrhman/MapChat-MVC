@@ -107,7 +107,8 @@ class Mention
 
     /**
      * A pattern for "@" and any of the names, whole, in any case. Longer
-     * names go first, so "@Maya Thompson" isn't taken for "@Maya"
+     * names go first, so "@Maya Thompson" isn't taken for "@Maya". The @
+     * starts a word, so an email like support@mapchat.com mentions nobody
      *
      * @param string[] $names
      */
@@ -116,6 +117,6 @@ class Mention
         usort($names, fn (string $a, string $b): int => mb_strlen($b) - mb_strlen($a));
         $alternatives = implode('|', array_map(fn (string $name): string => preg_quote($name, '/'), $names));
 
-        return '/@(' . $alternatives . ')(?![\p{L}\p{N}])/iu';
+        return '/(?<![\p{L}\p{N}._-])@(' . $alternatives . ')(?![\p{L}\p{N}])/iu';
     }
 }

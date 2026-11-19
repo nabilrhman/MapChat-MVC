@@ -56,6 +56,26 @@ class Hub implements WebsocketClientHandler
     /** How often to keep open pages' sessions from expiring (DatabaseSessionHandler::touch) */
     const SESSION_TOUCH_SECONDS = 600;
 
+    /**
+     * Pages of older messages one person gets at once, then each second.
+     * Each is a query and a render of a page that hold up every other page
+     */
+    const OLDER_BURST = 10;
+    const OLDER_PER_SECOND = 1;
+
+    /** Pages of catching up one person gets at once (every tab after a restart), then each second */
+    const CATCH_UP_BURST = 30;
+    const CATCH_UP_PER_SECOND = 2;
+
+    /**
+     * A page further behind than this many pages skips to the newest page,
+     * and loads older ones itself as the reader scrolls up
+     */
+    const CATCH_UP_PAGES = 10;
+
+    /** How often to forget the budgets of people who've used none lately */
+    const BUDGET_FORGET_SECONDS = 60;
+
     /** @var Tab[] By connection id */
     private array $tabs = [];
 
@@ -66,6 +86,12 @@ class Hub implements WebsocketClientHandler
     private NewMessageReader $newMessages;
 
     private bool $isTailQueued = false;
+
+    /** @var RateBudget[] Each person's pages of older messages, by email */
+    private array $olderBudgets = [];
+
+    /** @var RateBudget[] Each person's pages of catching up, by email */
+    private array $catchUpBudgets = [];
 
     /** Who's announced as online, as people rows by email */
     private array $announced = [];
@@ -106,6 +132,7 @@ class Hub implements WebsocketClientHandler
         EventLoop::repeat(static::MARK_ONLINE_SECONDS, fn () => $this->safely(fn () => Whereabouts::markOnlineNow(array_keys($this->tabsByEmail))));
         EventLoop::repeat($this->sessionCheckSeconds, fn () => $this->safely($this->closeLoggedOutTabs(...)));
         EventLoop::repeat(static::SESSION_TOUCH_SECONDS, fn () => $this->safely(fn () => DatabaseSessionHandler::touch($this->getSessionIds())));
+        EventLoop::repeat(static::BUDGET_FORGET_SECONDS, $this->forgetFullBudgets(...));
     }
 
     /**
@@ -184,6 +211,14 @@ class Hub implements WebsocketClientHandler
     public function handleClient(WebsocketClient $client, Request $request, Response $response): void
     {
         [$user, $sessionId] = $request->getAttribute(static::class);
+
+        // The Handshake checked the limits too, but handshakes at the same
+        // time all pass it before any of their pages is added here
+        if ($this->countTabs() >= Handshake::MAX_TABS || $this->countTabsOf($user->email) >= Handshake::MAX_TABS_PER_USER) {
+            $client->close(1008, 'Too many tabs');
+            return;
+        }
+
         $tab = new Tab($client, $user, $sessionId);
         $this->addTab($tab);
 
@@ -271,9 +306,9 @@ class Hub implements WebsocketClientHandler
                 MessageFromPage::Typing => $this->passOnTyping($tab, $message),
                 MessageFromPage::Ping => $this->answerPing($tab),
             };
-        } catch (\PDOException $e) {
+        } catch (\Throwable $e) {
             // The page reconnects and sends again; a send it repeats isn't saved twice
-            $this->forgetDatabase($e);
+            $this->recoverFrom($e);
             $tab->close(1011, 'Try again');
             return;
         }
@@ -316,33 +351,58 @@ class Hub implements WebsocketClientHandler
      * Send the page every message it may see after its cursor, a page at a
      * time, up to where the reader has got to; then it's live. Read up to the
      * reader's point, not beyond, so the live stream carries on exactly
-     * where catching up stopped
+     * where catching up stopped. Runs on its own, so a failure here ends
+     * only this page's socket
      */
     private function catchUp(Tab $tab): void
     {
-        while (!$tab->isClosed()) {
-            try {
+        try {
+            // A page with no messages yet starts at the newest, not the first message ever
+            if ($tab->cursor === 0) {
+                $this->skipToNewestPage($tab);
+            }
+
+            $pagesSent = 0;
+            while (!$tab->isClosed()) {
+                if ($pagesSent === static::CATCH_UP_PAGES) {
+                    $this->skipToNewestPage($tab);
+                }
+                if (!static::waitForBudget($this->catchUpBudgetOf($tab->user->email), $tab)) {
+                    return;
+                }
+
                 $chats = Chat::getAfter($tab->user->email, $tab->cursor, $this->newMessages->getLastReadId());
-            } catch (\PDOException $e) {
-                $this->forgetDatabase($e);
-                $tab->close(1011, 'Try again');
-                return;
-            }
+                if ($chats) {
+                    $tab->send(['type' => MessageToPage::Chats, 'html' => $this->render($chats, $tab->user, Mention::namesIn($chats))]);
+                    $tab->moveCursorTo(end($chats)['id']);
+                }
 
-            if ($chats) {
-                $tab->send(['type' => MessageToPage::Chats, 'html' => $this->render($chats, $tab->user, Mention::namesIn($chats))]);
-                $tab->moveCursorTo(end($chats)['id']);
-            }
+                if (count($chats) < Chat::HISTORY) {
+                    $tab->goLive($this->newMessages->getLastReadId());
+                    return;
+                }
+                $pagesSent++;
 
-            if (count($chats) < Chat::HISTORY) {
-                $tab->goLive($this->newMessages->getLastReadId());
-                return;
+                // Let others have a turn, and the page read what it has
+                do {
+                    delay(0.01);
+                } while ($tab->isBacklogged() && !$tab->isClosed());
             }
+        } catch (\Throwable $e) {
+            $this->recoverFrom($e);
+            $tab->close(1011, 'Try again');
+        }
+    }
 
-            // Let others have a turn, and the page read what it has
-            do {
-                delay(0.01);
-            } while ($tab->isBacklogged() && !$tab->isClosed());
+    /**
+     * Move the page's cursor to just before the newest page of messages it
+     * may see, so catching up sends that page and no more
+     */
+    private function skipToNewestPage(Tab $tab): void
+    {
+        $newestPage = Chat::getBefore($tab->user->email, $this->newMessages->getLastReadId() + 1);
+        if ($newestPage) {
+            $tab->moveCursorTo(array_first($newestPage)['id'] - 1);
         }
     }
 
@@ -367,7 +427,7 @@ class Hub implements WebsocketClientHandler
             return false;
         }
 
-        if (!Sessions::getStillLoggedIn([$tab->sessionId => $tab->user->id])) {
+        if (!Sessions::getStillLoggedIn([$tab->sessionId => $tab->user->id], [$tab->sessionId => $tab->user->signInStamp()])) {
             $tab->close(Tab::CLOSE_LOG_IN_AGAIN, 'Logged out');
             return true;
         }
@@ -432,11 +492,81 @@ class Hub implements WebsocketClientHandler
             return false;
         }
 
-        $chats = Chat::getOlder($tab->user->email, $conversation, $before);
-        $html = $chats ? $this->render($chats, $tab->user, Mention::namesIn($chats), isHistory: true) : '';
-        $tab->send(['type' => MessageToPage::Older, 'requestId' => $requestId, 'html' => $html, 'count' => count($chats)]);
+        // One at a time, as the page's own script asks: another meanwhile goes unanswered
+        if ($tab->isFetchingOlder) {
+            return true;
+        }
+        $tab->isFetchingOlder = true;
+        async(fn () => $this->answerOlder($tab, $requestId, $conversation, $before));
 
         return true;
+    }
+
+    /**
+     * Send the page of older messages once its person's budget allows,
+     * while the page's other messages go on being answered
+     *
+     * @param int $requestId The page's own id for the request, sent back with the answer
+     */
+    private function answerOlder(Tab $tab, int $requestId, Conversation $conversation, int $before): void
+    {
+        try {
+            if (!static::waitForBudget($this->olderBudgetOf($tab->user->email), $tab)) {
+                return;
+            }
+
+            $chats = Chat::getOlder($tab->user->email, $conversation, $before);
+            $html = $chats ? $this->render($chats, $tab->user, Mention::namesIn($chats), isHistory: true) : '';
+            $tab->send(['type' => MessageToPage::Older, 'requestId' => $requestId, 'html' => $html, 'count' => count($chats)]);
+        } catch (\Throwable $e) {
+            $this->recoverFrom($e);
+            $tab->close(1011, 'Try again');
+        } finally {
+            $tab->isFetchingOlder = false;
+        }
+    }
+
+    /**
+     * Wait until the budget has one to spend, and spend it
+     *
+     * @return bool False if the page closed meanwhile, and nothing was spent
+     */
+    private static function waitForBudget(RateBudget $budget, Tab $tab): bool
+    {
+        while (!$tab->isClosed()) {
+            if ($budget->trySpend()) {
+                return true;
+            }
+            delay($budget->secondsUntilNext());
+        }
+
+        return false;
+    }
+
+    /**
+     * One person's budget for pages of older messages
+     */
+    private function olderBudgetOf(string $email): RateBudget
+    {
+        return $this->olderBudgets[$email] ??= new RateBudget(static::OLDER_BURST, static::OLDER_PER_SECOND);
+    }
+
+    /**
+     * One person's budget for pages of catching up
+     */
+    private function catchUpBudgetOf(string $email): RateBudget
+    {
+        return $this->catchUpBudgets[$email] ??= new RateBudget(static::CATCH_UP_BURST, static::CATCH_UP_PER_SECOND);
+    }
+
+    /**
+     * Forget the budgets that have refilled: a new one is the same, and
+     * people who've gone needn't be kept
+     */
+    private function forgetFullBudgets(): void
+    {
+        $this->olderBudgets = array_filter($this->olderBudgets, fn (RateBudget $budget): bool => !$budget->isFull());
+        $this->catchUpBudgets = array_filter($this->catchUpBudgets, fn (RateBudget $budget): bool => !$budget->isFull());
     }
 
     /**
@@ -700,11 +830,14 @@ class Hub implements WebsocketClientHandler
     private function closeLoggedOutTabs(): void
     {
         $userIdsBySession = [];
+        $stampsBySession = [];
         foreach ($this->tabs as $tab) {
             $userIdsBySession[$tab->sessionId] = $tab->user->id;
+            // As it was when the page connected: a password changed since ends it
+            $stampsBySession[$tab->sessionId] = $tab->user->signInStamp();
         }
 
-        $stillLoggedIn = array_flip(Sessions::getStillLoggedIn($userIdsBySession));
+        $stillLoggedIn = array_flip(Sessions::getStillLoggedIn($userIdsBySession, $stampsBySession));
         foreach ($this->tabs as $tab) {
             if (!isset($stillLoggedIn[$tab->sessionId])) {
                 $tab->close(Tab::CLOSE_LOG_IN_AGAIN, 'Logged out');
@@ -723,24 +856,29 @@ class Hub implements WebsocketClientHandler
     }
 
     /**
-     * Run timed or signalled work; a database error is logged and the
-     * connection made again next time, so one failure doesn't stop the loop
+     * Run timed or signalled work; a failure is logged, so one doesn't stop the loop
      */
     private function safely(callable $work): void
     {
         try {
             $work();
-        } catch (\PDOException $e) {
-            $this->forgetDatabase($e);
+        } catch (\Throwable $e) {
+            $this->recoverFrom($e);
         }
     }
 
     /**
-     * Log a database error and drop the connection, so the next query makes a new one
+     * Log a failure. A database error also drops the connection, so the
+     * next query makes a new one
      */
-    private function forgetDatabase(\PDOException $e): void
+    private function recoverFrom(\Throwable $e): void
     {
-        error_log('Chat socket: database error, reconnecting: ' . $e->getMessage());
-        \Core\Model::disconnectDB();
+        if ($e instanceof \PDOException) {
+            error_log('Chat socket: database error, reconnecting: ' . $e->getMessage());
+            \Core\Model::disconnectDB();
+            return;
+        }
+
+        error_log('Chat socket: ' . $e);
     }
 }

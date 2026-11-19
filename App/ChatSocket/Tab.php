@@ -44,6 +44,9 @@ class Tab
     /** The newest message id the page has been given, or asked to start after */
     public private(set) int $cursor = 0;
 
+    /** Whether a page of older messages is on its way to it; the Hub fetches one at a time */
+    public bool $isFetchingOlder = false;
+
     /** Who the page says its person is typing to, or null */
     public private(set) ?int $typingTo = null;
 

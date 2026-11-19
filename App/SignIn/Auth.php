@@ -25,12 +25,22 @@ class Auth
         session_regenerate_id(true);
 
         $_SESSION['user_id'] = $user->id;
+        $_SESSION['sign_in_stamp'] = $user->signInStamp();
 
         if ($isRemembered) {
             $expiresAt = time() + static::REMEMBER_SECONDS;
             $token = RememberedLogin::create($user->id, $expiresAt);
             static::setCookie('remember_me', $token, $expiresAt);
         }
+    }
+
+    /**
+     * Keep this browser logged in after its own change to the password,
+     * which ends every other session made before it
+     */
+    public static function stayLoggedIn(User $user): void
+    {
+        $_SESSION['sign_in_stamp'] = $user->signInStamp();
     }
 
     /**
@@ -124,11 +134,29 @@ class Auth
         // Look again if someone logged in or out since
         if ($user === false || $user?->id !== $sessionUserId) {
             $user = $sessionUserId !== null
-                ? User::findByID($sessionUserId)
+                ? static::findSessionUser($sessionUserId)
                 : static::loginFromRememberCookie();
         }
 
         return $user && !$user->isExpiredGuest() ? $user : null;
+    }
+
+    /**
+     * The user this session logged in as, unless their password or Google
+     * link changed since, which logs it out: a password reset must end the
+     * sessions of whoever knew the old one
+     */
+    protected static function findSessionUser(int $userId): ?User
+    {
+        $user = User::findByID($userId);
+        $sessionStamp = (string) ($_SESSION['sign_in_stamp'] ?? '');
+
+        if (!$user || !hash_equals($user->signInStamp(), $sessionStamp)) {
+            unset($_SESSION['user_id'], $_SESSION['sign_in_stamp']);
+            return null;
+        }
+
+        return $user;
     }
 
     /**

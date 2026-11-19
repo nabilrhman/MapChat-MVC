@@ -87,9 +87,9 @@ function setTranslating(isOn, {isAtOnce = false} = {}) {
 
 // Gives the bar its room above the box, or takes it back. The page is laid
 // out once, then the messages in view slide by what that moved them
-function placeBar(isShown, {isAtOnce = false} = {}) {
+function placeBar(shouldShow, {isAtOnce = false} = {}) {
     const {bar} = translateParts;
-    if (bar.classList.contains('is-shown') === isShown) return;
+    if (bar.classList.contains('is-shown') === shouldShow) return;
     const list = document.getElementById('chat-list');
 
     // Read before changing anything: a read after a change makes the
@@ -98,7 +98,7 @@ function placeBar(isShown, {isAtOnce = false} = {}) {
     const isAtNewest = list.scrollHeight - oldScrollTop - list.clientHeight < 2;
 
     bar.classList.toggle('is-shown-at-once', isAtOnce);
-    bar.classList.toggle('is-shown', isShown);
+    bar.classList.toggle('is-shown', shouldShow);
 
     // The newest message stays in view, so the messages move up by the
     // bar's room; going, they move down by what the list can no longer scroll

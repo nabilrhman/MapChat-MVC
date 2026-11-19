@@ -45,6 +45,12 @@ $logger = new class extends Psr\Log\AbstractLogger {
     }
 };
 
+// A failure nothing else caught is logged, not the end of the process: one
+// page's bad turn mustn't close every other page's socket
+EventLoop::setErrorHandler(function (Throwable $e): void {
+    error_log('Chat socket: uncaught ' . $e);
+});
+
 $port = Config::chatSocketPort();
 $host = Config::get('CHAT_SOCKET_HOST', '127.0.0.1');
 
@@ -73,7 +79,7 @@ if (!$signals) {
     throw new RuntimeException("Can't listen for new-message signals on udp port $port: $errorMessage");
 }
 stream_set_blocking($signals, false);
-EventLoop::onReadable($signals, function () use ($signals, $hub) {
+EventLoop::onReadable($signals, function () use ($signals, $hub): void {
     // Take every waiting signal; one read of the database covers all the new-message ones
     $hasNewMessages = false;
     while (($datagram = @stream_socket_recvfrom($signals, 1024)) !== false && $datagram !== '') {

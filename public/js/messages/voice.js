@@ -47,6 +47,7 @@ const WAVE_TALL_PX = 16; // the mic icon's height, so the wave fills the same sp
 // The mic button's label in each state
 const MIC_LABELS = {
     idle: 'Voice typing',
+    starting: 'Voice typing',
     listening: 'Listening',
     transcribing: 'Typing it out',
 };
@@ -239,7 +240,8 @@ function moveWaveWith(wave, microphone) {
 /**
  * Lets `micButton` fill `input` by voice at the cursor. While it listens it
  * shows a moving wave, and `sendButton` beside it becomes its stop button;
- * while the words are written out, `writingDots` show in the box
+ * while the words are written out, `writingDots` show in the box. Gives back
+ * a function that says its state, which chat.js's updateSendButton reads
  */
 function setUpVoiceTyping(input, micButton, sendButton, writingDots) {
     const wave = micButton.querySelector('[data-part="voice-wave"]');
@@ -249,9 +251,9 @@ function setUpVoiceTyping(input, micButton, sendButton, writingDots) {
 
     let shouldUseBrowserSpeech = !canUseGroq;
     // No way to listen here: the mic stays hidden
-    if (shouldUseBrowserSpeech && !BrowserSpeech) return;
+    if (shouldUseBrowserSpeech && !BrowserSpeech) return () => 'idle';
 
-    // 'idle', 'listening' or 'transcribing'
+    // 'idle', 'starting' (waiting for the microphone), 'listening' or 'transcribing'
     let state = 'idle';
     // Ends the recording or the browser's listening
     let stopListening = null;
@@ -268,14 +270,13 @@ function setUpVoiceTyping(input, micButton, sendButton, writingDots) {
         showSendOrStop();
     }
 
-    // While it listens, Send stops it, empty box or not; while the words are
-    // written out it waits, and then it sends again
+    // While it listens, Send stops it. Whether it can be pressed is
+    // updateSendButton's, which also knows about a send in progress
     function showSendOrStop() {
         const sendLabel = state === 'listening' ? STOP_LABEL : 'Send';
         sendButton.setAttribute('aria-label', sendLabel);
         sendButton.title = sendLabel;
-        sendButton.disabled = state === 'transcribing'
-            || (state === 'idle' && input.value.trim() === '');
+        updateSendButton();
     }
 
     function putSpokenText(text) {
@@ -291,10 +292,14 @@ function setUpVoiceTyping(input, micButton, sendButton, writingDots) {
     }
 
     async function recordForGroq() {
+        // Set before the wait: a second tap during the permission prompt
+        // would start a second recorder
+        showState('starting');
         let microphone;
         try {
             microphone = await navigator.mediaDevices.getUserMedia({audio: true});
         } catch {
+            showState('idle');
             showToast('Allow the microphone first.', 'warning');
             return;
         }
@@ -414,9 +419,6 @@ function setUpVoiceTyping(input, micButton, sendButton, writingDots) {
         }
     }, {capture: true});
 
-    // chat.js's own input handler greys Send out when the box is empty, and
-    // it's added after this one, so this waits for it: a stop button stays on
-    input.addEventListener('input', () => queueMicrotask(showSendOrStop));
-
     micButton.hidden = false;
+    return () => state;
 }

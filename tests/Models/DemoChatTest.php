@@ -3,7 +3,9 @@
 namespace Tests\Models;
 
 use App\Bot\Characters;
+use App\Models\Chat;
 use App\Models\DemoChat;
+use PDO;
 use PHPUnit\Framework\TestCase;
 use Tests\Support\TestDb;
 
@@ -17,12 +19,18 @@ class TestDemoChat extends DemoChat
     /** Stamp lines on the demo clock rather than the real one (see the catch-up test) */
     public static bool $isStampedOnDemoClock = false;
 
+    /** How many times the demo clock was read */
+    public static int $clockReadings = 0;
+
+    /** What the catch-up throws after its first change, or null to run as usual */
+    public static ?\Throwable $failure = null;
+
     /**
      * When a line said at this demo time was seen, on the real clock
      */
     public static function seenAt(string $time): string
     {
-        return static::realTime($time);
+        return static::realTime($time, static::now());
     }
 
     /**
@@ -54,15 +62,31 @@ class TestDemoChat extends DemoChat
      */
     protected static function now(): int
     {
+        static::$clockReadings++;
+
         return static::$demoNow;
     }
 
     /**
      * The demo time itself while $isStampedOnDemoClock, else the real time
      */
-    protected static function realTime(string $time): string
+    protected static function realTime(string $time, int $demoNow): string
     {
-        return static::$isStampedOnDemoClock ? $time : parent::realTime($time);
+        return static::$isStampedOnDemoClock ? $time : parent::realTime($time, $demoNow);
+    }
+
+    /**
+     * The catch-up, or a line added and then $failure thrown
+     */
+    protected static function catchUpLocked(PDO $db): void
+    {
+        if (static::$failure === null) {
+            parent::catchUpLocked($db);
+            return;
+        }
+
+        $db->prepare('INSERT INTO chats (email, body) VALUES (?, ?)')->execute([Chat::BOT_EMAIL, 'half a catch-up']);
+        throw static::$failure;
     }
 }
 
@@ -77,6 +101,7 @@ class DemoChatTest extends TestCase
         putenv('DEMO_AWAY');
         putenv('DEMO_HERE');
         TestDemoChat::$isStampedOnDemoClock = false;
+        TestDemoChat::$failure = null;
     }
 
     public function testSomeoneDemoAwayNamesIsNeverInTheRoom(): void
@@ -155,7 +180,7 @@ class DemoChatTest extends TestCase
         $stmt = TestDb::get()->prepare("SELECT body FROM chats WHERE email LIKE '%@demo.mapchat.local' AND timestamp >= ? ORDER BY id");
         $stmt->execute([gmdate('Y-m-d H:i:s', TestDemoChat::todayStart())]);
 
-        return $stmt->fetchAll(\PDO::FETCH_COLUMN);
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
 
     /**
@@ -255,5 +280,78 @@ class DemoChatTest extends TestCase
         } finally {
             $db->rollBack();
         }
+    }
+
+    public function testALiveAnswerStaysPutAfterItsJobIsGone(): void
+    {
+        TestDemoChat::$isStampedOnDemoClock = true;
+
+        $db = TestDb::get();
+        $db->beginTransaction();
+        try {
+            $schedule = TestDemoChat::schedule(TestDemoChat::today());
+            foreach (array_unique(array_column($schedule, 'email')) as $email) {
+                TestDb::createUser(ucfirst(strtok($email, '@')), $email);
+            }
+            $schedule = TestDemoChat::schedule(TestDemoChat::today());
+
+            // A greeting from yesterday and a demo person's answer today, with
+            // no job left (it went with the guest they answered)
+            $addAnswer = $db->prepare('INSERT INTO chats (email, body, timestamp, is_live_answer) VALUES (?, ?, ?, TRUE)');
+            $addAnswer->execute([Chat::BOT_EMAIL, '@Guest welcome!', gmdate('Y-m-d H:i:s', TestDemoChat::todayStart() - 3600)]);
+            $greetingId = (int) $db->lastInsertId();
+            $addAnswer->execute([$schedule[0]['email'], '@Guest nice to meet you', $schedule[0]['time']]);
+            $answerId = (int) $db->lastInsertId();
+
+            $this->catchUpTo($schedule, 20);
+            $this->catchUpTo($schedule, 21);
+
+            $stillThere = $db->prepare('SELECT COUNT(*) FROM chats WHERE id IN (?, ?)');
+            $stillThere->execute([$greetingId, $answerId]);
+            $this->assertSame(2, (int) $stillThere->fetchColumn(), 'neither moved nor cleared as a script line');
+            $this->assertSame(array_column(array_slice($schedule, 0, 22), 'body'),
+                array_values(array_diff($this->postedToday(), ['@Guest nice to meet you'])), 'the script goes on');
+        } finally {
+            $db->rollBack();
+        }
+    }
+
+    public function testACatchUpReadsTheDemoClockOnce(): void
+    {
+        TestDemoChat::$isStampedOnDemoClock = true;
+
+        $db = TestDb::get();
+        $db->beginTransaction();
+        try {
+            $schedule = TestDemoChat::schedule(TestDemoChat::today());
+            foreach (array_unique(array_column($schedule, 'email')) as $email) {
+                TestDb::createUser(ucfirst(strtok($email, '@')), $email);
+            }
+            $schedule = TestDemoChat::schedule(TestDemoChat::today());
+            TestDemoChat::$clockReadings = 0;
+
+            $this->catchUpTo($schedule, 20);
+
+            $this->assertSame(1, TestDemoChat::$clockReadings);
+        } finally {
+            $db->rollBack();
+        }
+    }
+
+    public function testACatchUpThatBreaksIsUndoneAndReported(): void
+    {
+        $db = TestDb::get();
+        TestDemoChat::$failure = new \RuntimeException('a bad line in demo-chat.php');
+
+        try {
+            TestDemoChat::catchUp();
+            $this->fail('the error is passed on');
+        } catch (\RuntimeException $e) {
+            $this->assertSame('a bad line in demo-chat.php', $e->getMessage());
+        }
+
+        $this->assertFalse($db->inTransaction());
+        $this->assertSame(0, (int) $db->query("SELECT COUNT(*) FROM chats WHERE body = 'half a catch-up'")->fetchColumn());
+        $this->assertSame(1, (int) $db->query("SELECT IS_FREE_LOCK('demo_catch_up')")->fetchColumn(), 'the lock is let go');
     }
 }

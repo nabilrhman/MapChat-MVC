@@ -183,6 +183,20 @@ class BotTest extends TestCase
         $this->assertStringStartsWith('@Ann ', $said[0][1]);
     }
 
+    public function testAGreetingStaysMarkedAsLiveAfterTheGuestGoes(): void
+    {
+        TestBot::onArrival(self::CAT);
+        $this->wait(Bot::GREET_SECONDS + 1);
+        $greetingId = (int) $this->db->query('SELECT posted_id FROM mapchat_jobs WHERE posted_id IS NOT NULL')->fetchColumn();
+
+        // An expired guest is deleted, and their jobs with them
+        $this->db->prepare('DELETE FROM users WHERE email = ?')->execute([self::CAT]);
+
+        $stmt = $this->db->prepare('SELECT is_live_answer FROM chats WHERE id = ?');
+        $stmt->execute([$greetingId]);
+        $this->assertSame(1, (int) $stmt->fetchColumn(), 'DemoChat still leaves it out of the script');
+    }
+
     public function testBusyRoomGetsNoGreeting(): void
     {
         $this->send(self::BOB, 'anyone watching the match?');

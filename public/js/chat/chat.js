@@ -522,7 +522,7 @@ function placeMessages(chats) {
         chat.hidden = !isInOpenTab;
         if (tab && isUnseen) {
             if (isCounted) countUnread(tab);
-            notifyOf(chat, showConversation);
+            notifyOf(chat, openNotifiedChat);
         }
         if (shouldPingFor(chat, !isUnseen)) shouldPing = true;
     });
@@ -778,7 +778,8 @@ jumpButton.addEventListener('click', () => {
 const pageSize = Number(chatPanel.dataset.pageSize);
 // Per tab: false once the server has no older messages for it
 const hasOlderIn = {};
-let isLoadingOlder = false;
+// The tabs whose older page is on its way: one tab's load doesn't hold up another's
+const loadingOlderIn = new Set();
 
 const hasChatsIn = (conversation) => getChats().some((chat) => conversationOf(chat) === conversation);
 
@@ -826,15 +827,15 @@ async function loadOlderMessages(conversation) {
 }
 
 async function loadOlderIfAny(conversation) {
-    if (isLoadingOlder || hasOlderIn[conversation] === false) return;
+    if (loadingOlderIn.has(conversation) || hasOlderIn[conversation] === false) return;
 
-    isLoadingOlder = true;
+    loadingOlderIn.add(conversation);
     try {
         await loadOlderMessages(conversation);
     } catch {
         // The next scroll near the top tries again
     } finally {
-        isLoadingOlder = false;
+        loadingOlderIn.delete(conversation);
     }
 }
 
@@ -860,7 +861,7 @@ chatList.addEventListener('wheel', (event) => {
 // so nothing you're reading disappears; the scroll up fetches them again
 function trimOldMessages() {
     const chats = getChats();
-    if (chats.length <= MAX_MESSAGES || isLoadingOlder) return;
+    if (chats.length <= MAX_MESSAGES || loadingOlderIn.size > 0) return;
     // Nor while an open private chat would lose messages: its list could empty
     const toDrop = chats.slice(0, chats.length - MAX_MESSAGES);
     if (activeConversation !== EVERYONE && toDrop.some((chat) => conversationOf(chat) === activeConversation)) return;
@@ -917,8 +918,15 @@ function showNewChats(newChats, isAfterSending) {
 // Send stays off until the message is out, so a second Enter can't post it twice
 let isSending = false;
 
+// While voice typing listens, Send is its stop button, empty box or not;
+// while it writes the words out, Send waits
 function updateSendButton() {
-    sendButton.disabled = isSending || messageInput.value.trim() === '';
+    const voiceState = getVoiceState();
+    if (voiceState === 'listening') {
+        sendButton.disabled = false;
+        return;
+    }
+    sendButton.disabled = isSending || voiceState === 'transcribing' || messageInput.value.trim() === '';
 }
 
 // The box sits in one row with its buttons while the text fits there; once
@@ -957,16 +965,21 @@ composerForm.addEventListener('submit', async (event) => {
     if (isSending) return;
 
     const to = activeConversation === EVERYONE ? null : activeConversation;
+    const sentText = messageInput.value.trim();
 
     isSending = true;
     updateSendButton();
     stopTyping();
 
     try {
-        await sendMessage(await messageToSend(messageInput.value.trim()), to);
+        await sendMessage(await messageToSend(sentText), to);
         forgetTranslation();
-        messageInput.value = '';
-        messageInput.dispatchEvent(new Event('input'));
+        // The box stays open while it sends (a translation can take a while):
+        // anything typed meanwhile stays
+        if (messageInput.value.trim() === sentText) {
+            messageInput.value = '';
+            messageInput.dispatchEvent(new Event('input'));
+        }
         // Someone you called who was away comes online a moment later
         // (Bot::COME_ONLINE_SECONDS); look then, not on the next round
         setTimeout(refreshPeople, COME_ONLINE_DELAY);
@@ -983,7 +996,7 @@ composerForm.addEventListener('submit', async (event) => {
 setUpMentions(messageInput, () => activeConversation === EVERYONE, getPeopleToMention);
 
 setUpEmojiPicker(messageInput, document.getElementById('emoji-toggle'), document.getElementById('emoji-picker'));
-setUpVoiceTyping(messageInput, document.getElementById('voice-button'), sendButton, document.getElementById('voice-dots'));
+const getVoiceState = setUpVoiceTyping(messageInput, document.getElementById('voice-button'), sendButton, document.getElementById('voice-dots'));
 setUpTranslation(document.getElementById('translate-toggle'), document.getElementById('translate-band'));
 
 // Enter sends, Shift+Enter starts a new line. On a touch screen Enter is
@@ -1040,8 +1053,10 @@ function stopTyping() {
     typingTo = null;
 }
 
-// The people typing to you, with when it stops showing unless they type on
+// The people typing to you, with when it stops showing unless they type on,
+// and the one timer each that hides it then
 const partnerTypingUntil = {};
+const partnerTypingTimers = {};
 
 // Their face as the list or their messages show it
 function getPhotoSrc(userId) {
@@ -1088,7 +1103,8 @@ function showPartnerTyping() {
 function onPartnerTyping(from, isTyping) {
     if (isTyping) {
         partnerTypingUntil[from] = Date.now() + TYPING_SHOWN_FOR;
-        setTimeout(showPartnerTyping, TYPING_SHOWN_FOR + 50);
+        clearTimeout(partnerTypingTimers[from]);
+        partnerTypingTimers[from] = setTimeout(showPartnerTyping, TYPING_SHOWN_FOR + 50);
     } else {
         delete partnerTypingUntil[from];
     }
@@ -1143,23 +1159,55 @@ shouldAnimateNewTabs = true;
 setUpNotifications();
 keepPushUpToDate();
 
-// A notification's chat: from a click that opened this page
-// (public/service-worker.js adds ?chat=), or one in a page already open
-function openNotifiedChat(conversation, name) {
-    if (!conversation || conversation === EVERYONE) {
-        showConversation(EVERYONE);
-    } else {
-        openPrivateChat(conversation, name ?? '');
+// The room, or a person's id: anything else in a link is not a chat
+const isConversation = (conversation) => conversation === EVERYONE || /^[1-9][0-9]*$/.test(conversation);
+
+// A private chat partner's name as this page knows it: their tab, the people
+// list, or one of their messages here; null when none of those has them
+function knownNameOf(conversation) {
+    const tab = getTab(conversation);
+    if (tab) return getTabName(conversation);
+    const person = personWithId(conversation);
+    if (person) return person.shown_name;
+    const chat = getChats().find((chat) => conversationOf(chat) === conversation);
+    return chat?.dataset.partner ?? null;
+}
+
+// The server's people list, for a name this page doesn't know yet
+async function fetchNameOf(conversation) {
+    try {
+        const response = await postForm('/app/get-people', {timezone: Intl.DateTimeFormat().resolvedOptions().timeZone});
+        const row = response.data.find((person) => String(person.id) === conversation);
+        return row?.shown_name ?? null;
+    } catch {
+        return null;
     }
 }
 
-const notifiedChat = new URLSearchParams(location.search);
-if (notifiedChat.has('chat')) {
-    openNotifiedChat(notifiedChat.get('chat'), notifiedChat.get('name'));
+// A notification's chat: from a click that opened this page
+// (public/service-worker.js adds ?chat=), or one in a page already open.
+// Its name is never taken from the link, which anyone can write; a link
+// to no chat, or to someone the server doesn't know of, opens nothing
+async function openNotifiedChat(conversation) {
+    const chatToOpen = String(conversation ?? '');
+    // Not a private chat with yourself either
+    if (!isConversation(chatToOpen) || Number(chatToOpen) === myUserId) return;
+    if (chatToOpen === EVERYONE) {
+        showConversation(EVERYONE);
+        return;
+    }
+
+    const name = knownNameOf(chatToOpen) ?? await fetchNameOf(chatToOpen);
+    if (name !== null) openPrivateChat(chatToOpen, name);
+}
+
+const pageQuery = new URLSearchParams(location.search);
+if (pageQuery.has('chat')) {
+    openNotifiedChat(pageQuery.get('chat'));
     history.replaceState(null, '', location.pathname);
 }
 navigator.serviceWorker?.addEventListener('message', (event) => {
-    if (event.data?.openChat) openNotifiedChat(event.data.openChat, event.data.name);
+    if (event.data?.openChat) openNotifiedChat(event.data.openChat);
 });
 
 // A row in the people list opens their chat and, when the map shows, brings

@@ -7,7 +7,6 @@ use Amp\Http\Server\Request;
 use Amp\Http\Server\Response;
 use Amp\Websocket\Server\Rfc6455Acceptor;
 use Amp\Websocket\Server\WebsocketAcceptor;
-use App\Models\User;
 use Core\SameOrigin;
 
 /**
@@ -47,8 +46,7 @@ class Handshake implements WebsocketAcceptor
         }
 
         $sessionId = $request->getCookie(session_name())?->getValue() ?? '';
-        $userId = Sessions::getUserId($sessionId);
-        $user = $userId === null ? null : User::findByID($userId);
+        $user = Sessions::getUser($sessionId);
         if (!$user || $user->isExpiredGuest()) {
             return static::refusal(HttpStatus::UNAUTHORIZED);
         }

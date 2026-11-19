@@ -2,6 +2,7 @@
 
 namespace Tests\SignIn;
 
+use App\Models\User;
 use PDO;
 use PHPUnit\Framework\TestCase;
 use Tests\Support\DrivesTheSite;
@@ -575,7 +576,11 @@ class AccountTest extends TestCase
     public function testAnAccountWithNoPasswordSetsOneWithoutACurrentOne(): void
     {
         $this->logIn();
+        $stampBefore = User::findByEmail(self::EMAIL)->signInStamp();
         $this->db->prepare("UPDATE users SET password_hash = '' WHERE email = ?")->execute([self::EMAIL]);
+        // Its session stamped as signing in with Google stamps it, or the changed password would log it out
+        $this->db->prepare('UPDATE sessions SET data = REPLACE(data, ?, ?)')
+            ->execute([$stampBefore, User::findByEmail(self::EMAIL)->signInStamp()]);
 
         $response = $this->request('POST', '/profile/update', ['name' => 'Ann', 'email' => self::EMAIL, 'password' => 'newpass1']);
 
@@ -591,6 +596,57 @@ class AccountTest extends TestCase
         $this->assertStringContainsString('Wrong email or password.', $response['body']);
         $this->assertStringContainsString('value="' . self::EMAIL . '"', $response['body']);
         $this->assertFalse($this->isSignedIn());
+    }
+
+    public function testTooManyWrongPasswordsSaySoAndKeepTheRightOneOutForNow(): void
+    {
+        $this->db->prepare('UPDATE users SET failed_logins = ?, failed_logins_since = NOW() WHERE email = ?')
+            ->execute([User::MAX_FAILED_LOGINS, self::EMAIL]);
+
+        $response = $this->request('POST', '/login/create', ['email' => self::EMAIL, 'password' => self::PASSWORD]);
+
+        $this->assertSame(200, $response['status']);
+        $this->assertStringContainsString('Too many wrong passwords.', $response['body']);
+        $this->assertFalse($this->isSignedIn());
+    }
+
+    public function testAPasswordResetLogsOutSessionsMadeWithTheOldPassword(): void
+    {
+        $this->logIn();
+        $token = bin2hex(random_bytes(16));
+        $this->db->prepare('UPDATE users SET password_reset_hash = ?, password_reset_expires_at = DATE_ADD(NOW(), INTERVAL 1 HOUR) WHERE email = ?')
+            ->execute([(new \App\SignIn\Token($token))->getHash(), self::EMAIL]);
+
+        $this->request('POST', '/password/reset-password', ['token' => $token, 'password' => 'newpass123']);
+
+        $this->assertFalse($this->isSignedIn());
+    }
+
+    public function testChangingYourPasswordKeepsThisBrowserInAndLogsOutTheOthers(): void
+    {
+        $this->logIn();
+        $otherBrowser = $this->cookies;
+        $this->cookies = [];
+        $this->logIn();
+
+        $this->request('POST', '/profile/update', ['name' => 'Ann', 'email' => self::EMAIL,
+                                                   'password' => 'newpass123', 'current_password' => self::PASSWORD]);
+
+        $this->assertTrue($this->isSignedIn());
+        $this->cookies = $otherBrowser;
+        $this->assertFalse($this->isSignedIn());
+    }
+
+    public function testANewEmailIsUnprovenUntilItsLinkIsOpenedAndYouStayIn(): void
+    {
+        $this->logIn();
+
+        $this->request('POST', '/profile/update', ['name' => 'Ann', 'email' => self::NEW_EMAIL, 'current_password' => self::PASSWORD]);
+
+        $stmt = $this->db->prepare('SELECT activation_hash FROM users WHERE email = ?');
+        $stmt->execute([self::NEW_EMAIL]);
+        $this->assertNotEmpty($stmt->fetchColumn());
+        $this->assertTrue($this->isSignedIn());
     }
 
     public function testAnAccountNotYetActivatedIsAskedToActivateFirst(): void

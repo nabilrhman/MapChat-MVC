@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Bot\Groq;
+use App\Bot\GroqUseKind;
 use App\Config;
 use App\Messages\Conversation;
 use App\Messages\Language;
@@ -12,6 +13,7 @@ use App\Messages\VoiceClip;
 use App\Models\Bot;
 use App\Models\Chat;
 use App\Models\DemoChat;
+use App\Models\GroqUse;
 use App\Models\Whereabouts;
 use App\SignIn\Auth;
 use Core\View;
@@ -62,8 +64,9 @@ class Room extends Authenticated
             return;
         }
 
+        // Not Bot::runDue: the chat worker runs the replies every second, and a
+        // reply can wait on Groq longer than a poll should be held
         $this->catchUpDemoChat();
-        Bot::runDue();
 
         $chats = Chat::getAfter(Auth::getEmail(), (int) $_POST['after']);
 
@@ -109,8 +112,10 @@ class Room extends Authenticated
      */
     public function sendAction(): void
     {
-        // A page from before client ids sends an empty box quietly; keep that
-        if (trim($_POST['body'] ?? '') === '') {
+        // A page from before client ids sends an empty box quietly; keep that.
+        // A list in place of text (body[]=…) is no page's, and casting it would throw
+        $body = $_POST['body'] ?? '';
+        if (!is_string($body) || trim($body) === '') {
             return;
         }
 
@@ -118,7 +123,7 @@ class Room extends Authenticated
         $clientId = empty($_POST['client_id']) ? null : (string) $_POST['client_id'];
         $originalBody = empty($_POST['original']) ? null : (string) $_POST['original'];
 
-        $result = Chat::sendFrom(Auth::getUser(), new MessageText((string) $_POST['body'], $originalBody), $toUserId, $clientId);
+        $result = Chat::sendFrom(Auth::getUser(), new MessageText($body, $originalBody), $toUserId, $clientId);
 
         if (!$result->isSent()) {
             $this->json(['error' => $result->error], $result->status);
@@ -139,6 +144,12 @@ class Room extends Authenticated
             return;
         }
 
+        // Like translating, so recording without sending can't run up Groq's limits
+        if ($this->isMinuteLimitUsedUp(GroqUseKind::Transcribe)) {
+            $this->json(['error' => 'You are using voice typing too fast. Wait a moment and try again.'], 429);
+            return;
+        }
+
         $upload = $_FILES['audio'] ?? null;
         $problem = VoiceClip::problemWith($upload);
         if ($problem !== null) {
@@ -146,6 +157,11 @@ class Room extends Authenticated
             return;
         }
 
+        // Counted once it goes to Groq: a refused request uses none of the limit
+        if (!$this->claimGroqTurn(GroqUseKind::Transcribe)) {
+            $this->json(['error' => 'You are using voice typing too fast. Wait a moment and try again.'], 429);
+            return;
+        }
         $text = Groq::transcribe(VoiceClip::fromUpload($upload));
         if ($text === null) {
             // voice.js hears this and has the browser listen instead
@@ -167,11 +183,8 @@ class Room extends Authenticated
             return;
         }
 
-        // As many a minute as a person can send, so translating without
-        // sending can't run up Groq's limits; guests get fewer
-        $recentTranslations = $this->translationsInLastMinute();
-        $limit = Auth::getUser()->is_guest ? Chat::GUEST_PER_MINUTE : Chat::USER_PER_MINUTE;
-        if (count($recentTranslations) >= $limit) {
+        // So translating without sending can't run up Groq's limits
+        if ($this->isMinuteLimitUsedUp(GroqUseKind::Translate)) {
             $this->json(['error' => 'You are translating too fast. Wait a moment and try again.'], 429);
             return;
         }
@@ -187,7 +200,10 @@ class Room extends Authenticated
         }
 
         // Counted once it goes to Groq: a refused request uses none of the limit
-        $_SESSION['translated_at'] = [...$recentTranslations, time()];
+        if (!$this->claimGroqTurn(GroqUseKind::Translate)) {
+            $this->json(['error' => 'You are translating too fast. Wait a moment and try again.'], 429);
+            return;
+        }
         $translation = Groq::translate($text, $from, $to);
         if ($translation === null || $translation === '') {
             $this->json(['error' => 'Translation is busy. Try again in a moment.'], 503);
@@ -203,16 +219,35 @@ class Room extends Authenticated
     }
 
     /**
-     * When this session asked for a translation in the last minute
-     *
-     * @return list<int> Unix times
+     * Whether this person has asked Groq for this as many times in the last
+     * minute as a person can send messages; guests get fewer
      */
-    protected function translationsInLastMinute(): array
+    protected function isMinuteLimitUsedUp(GroqUseKind $kind): bool
     {
-        $minuteAgo = time() - 60;
-        $translatedAt = $_SESSION['translated_at'] ?? [];
+        return GroqUse::isUsedUp(Auth::getUser()->id, $kind, $this->groqLimitPerMinute());
+    }
 
-        return array_values(array_filter($translatedAt, fn (int $at): bool => $at > $minuteAgo));
+    /**
+     * Take one of this person's turns at Groq for the minute, then let the
+     * session go: Groq can take many seconds, and a held session would keep
+     * the person's other requests waiting
+     *
+     * @return bool Whether there was a turn left
+     */
+    protected function claimGroqTurn(GroqUseKind $kind): bool
+    {
+        $hasTurn = GroqUse::claim(Auth::getUser()->id, $kind, $this->groqLimitPerMinute());
+        session_write_close();
+
+        return $hasTurn;
+    }
+
+    /**
+     * Turns at Groq a person gets a minute: as many as they can send messages
+     */
+    protected function groqLimitPerMinute(): int
+    {
+        return Auth::getUser()->is_guest ? Chat::GUEST_PER_MINUTE : Chat::USER_PER_MINUTE;
     }
 
     /**
