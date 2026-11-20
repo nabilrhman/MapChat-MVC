@@ -387,7 +387,9 @@ class Bot extends \Core\Model
             return new MessageText($body);
         }
 
-        // A translation can run longer than what was written
+        // A translation can run longer than what was written, and may spell
+        // the name its own way
+        $translation = static::withAppNameAsMapChat($translation);
         return (new MessageText(static::fitLength($translation), $body))->trimmed();
     }
 
@@ -812,15 +814,27 @@ class Bot extends \Core\Model
     }
 
     /**
-     * Swap dashes the model wrote anyway for commas, and drop an opening
-     * self-introduction
+     * Swap dashes the model wrote anyway for commas, spell the app's name
+     * "MapChat", and drop an opening self-introduction
      */
     protected static function tidy(string $body): string
     {
         $body = trim(preg_replace('/\s*[—–]\s*/u', ', ', $body));
+        $body = static::withAppNameAsMapChat($body);
 
         // An opening "MapChat here, ..." just repeats the name shown above it
         return preg_replace('/^MapChat here\b[^.!?]*[.!?]\s*/iu', '', $body) ?: $body;
+    }
+
+    /**
+     * The text with the app's name written "MapChat" wherever the model
+     * spelled it another way ("map chat", "Map-Chat", "mapchat"), as the
+     * instructions ask but it doesn't always do. An @mention, a web or email
+     * address, and a longer word like "map chatter" keep their spelling
+     */
+    protected static function withAppNameAsMapChat(string $text): string
+    {
+        return preg_replace('/(?<![@#\w.\/-])map[ -]?chat(?![\w-]|\.\w)/iu', 'MapChat', $text);
     }
 
     /**

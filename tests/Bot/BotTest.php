@@ -498,6 +498,30 @@ class BotTest extends TestCase
         $this->assertSame([[self::ANN, 'The map shows pins for each city.']], $this->botSaid());
     }
 
+    public function testRepliesWriteTheAppsNameAsMapChat(): void
+    {
+        TestBot::useReply('love map chat, Map-Chat and MAPCHAT! see mapchat.swiftsolve.net, @mapchat or a map chatter');
+        $this->send(self::ANN, 'what is this?', Chat::BOT_EMAIL);
+
+        $this->wait(Bot::PRIVATE_SECONDS);
+
+        $expected = 'love MapChat, MapChat and MapChat! see mapchat.swiftsolve.net, @mapchat or a map chatter';
+        $this->assertSame([[self::ANN, $expected]], $this->botSaid());
+    }
+
+    public function testAReplyTranslatedBackWritesTheAppsNameAsMapChat(): void
+    {
+        TestBot::useTranslator(fn (): string => 'me encanta Map Chat');
+        $id = Chat::save(self::ANN, Chat::BOT_EMAIL, new MessageText('¿qué es esto?', 'what is this?'));
+        TestBot::onMessage(self::ANN, $id, Chat::BOT_EMAIL, '¿qué es esto?');
+
+        $this->wait(Bot::PRIVATE_SECONDS);
+
+        $stmt = $this->db->prepare('SELECT body FROM chats WHERE email = ? ORDER BY id DESC LIMIT 1');
+        $stmt->execute([Chat::BOT_EMAIL]);
+        $this->assertSame('me encanta MapChat', $stmt->fetchColumn());
+    }
+
     public function testMentionIsAnsweredEvenWhilePeopleTalk(): void
     {
         $this->send(self::ANN, 'anyone watching the match?');
