@@ -69,9 +69,15 @@ function lowestChosenTop(tabsTop) {
     return tabsTop - chatHeader.offsetHeight - messagesHeight - composerForm.offsetHeight;
 }
 
-// chat-panel.css places the sheet, and chat-map.css the map's credits, from this
+// What reads --sheet-top: chat-panel.css places the sheet from it, and
+// chat-map.css the map's loading dots and credits. It isn't inherited
+// (chat.css), so each gets it itself rather than the whole page
+const sheetTopReaders = ['chat', 'map', 'map-loading'].map((id) => document.getElementById(id));
+
 function setSheetTop(top) {
-    document.documentElement.style.setProperty('--sheet-top', `${top}px`);
+    for (const reader of sheetTopReaders) {
+        reader.style.setProperty('--sheet-top', `${top}px`);
+    }
 }
 
 // Down to its tabs, what's folded away can't be tabbed to
