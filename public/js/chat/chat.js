@@ -378,8 +378,15 @@ function createFlipToCountry(placeAndTime, person) {
 // Their time now, with a sun or moon, as their pin and messages show it
 function createLocalTime(person) {
     const time = createElement('span', 'time');
-    showLocalTime(time, localTimeOf(new Date(), person.timezone, parseFloat(person.lng)));
+    showLocalTime(time, personTimeOf(new Date(), person.country, person.timezone, person.lng));
     return time;
+}
+
+// The time where someone is, or was. Always midnight on Null Island, where
+// the time zones meet
+function personTimeOf(date, country, timezone, longitude) {
+    if (country === NULL_ISLAND) return {text: '00:00', hour: 0};
+    return localTimeOf(date, timezone, parseFloat(longitude));
 }
 
 // Keeps the time in the header current
@@ -448,11 +455,8 @@ function showSenderTime(chat) {
     if (!senderTimeLine) return;
 
     const timeInfo = chat.querySelector('[data-part="time"]');
-    // Always midnight on Null Island, where the time zones meet
-    const senderTime = timeInfo.dataset.country === NULL_ISLAND
-        ? {text: '00:00', hour: 0}
-        : localTimeOf(sentDateOf(chat), timeInfo.dataset.timezone, parseFloat(timeInfo.dataset.lng));
-    showLocalTime(senderTimeLine, senderTime);
+    const {country, timezone, lng} = timeInfo.dataset;
+    showLocalTime(senderTimeLine, personTimeOf(sentDateOf(chat), country, timezone, lng));
 }
 
 // Each message shows its time; hovering it slides to the sender's own time.
