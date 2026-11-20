@@ -69,14 +69,18 @@ function lowestChosenTop(tabsTop) {
     return tabsTop - chatHeader.offsetHeight - messagesHeight - composerForm.offsetHeight;
 }
 
-// What reads --sheet-top: chat-panel.css places the sheet from it, and
-// chat-map.css the map's loading dots and credits. It isn't inherited
-// (chat.css), so each gets it itself rather than the whole page
-const sheetTopReaders = ['chat', 'map', 'map-loading'].map((id) => document.getElementById(id));
+// What follows the sheet: chat-map.css places the map's loading dots and
+// credits from --sheet-top
+const sheetFollowers = ['map', 'map-loading'].map((id) => document.getElementById(id));
 
+// Moves the sheet `top` px below the header. The sheet gets its own top
+// rather than --sheet-top: a variable set on it, or on the page, reaches
+// every message, and restyling them all on each frame of a drag stutters
+// on a phone
 function setSheetTop(top) {
-    for (const reader of sheetTopReaders) {
-        reader.style.setProperty('--sheet-top', `${top}px`);
+    chatPanel.style.top = `calc(var(--header-height) + ${top}px)`;
+    for (const follower of sheetFollowers) {
+        follower.style.setProperty('--sheet-top', `${top}px`);
     }
 }
 
@@ -214,11 +218,13 @@ window.addEventListener('resize', () => {
     if (phoneScreen.matches) setSheetTop(sheetTopOf(sheetStop));
 });
 
-// Wider screens have no sheet, so nothing there is folded away
+// Wider screens have no sheet, so nothing there is folded away, and the
+// panel goes back to its place in chat-panel.css
 phoneScreen.addEventListener('change', () => {
     if (phoneScreen.matches) {
         moveSheetTo(sheetStop);
     } else {
         setChatFolded(false);
+        chatPanel.style.removeProperty('top');
     }
 });

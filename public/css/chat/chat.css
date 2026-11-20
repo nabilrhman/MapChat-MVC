@@ -149,30 +149,17 @@ body
     font-variant-numeric: tabular-nums;
 }
 
-/* Phones: the chat is a sheet over the map (chat-panel.css). chat-sheet.js
-   sets --sheet-top, the sheet's distance below the header, on the sheet and
-   on the map and its loading dots, which follow it (chat-map.css).
-   Not inherited: it changes on every frame of a drag, and one every element
-   inherits would restyle every message each time, which a phone can't keep up with */
-@property --sheet-top
-{
-    syntax: '<length>';
-    inherits: false;
-    initial-value: 0px;
-}
-
+/* Phones: the chat is a sheet over the map (chat-panel.css). --sheet-top is
+   the sheet's distance below the header; the map's loading dots and credits
+   follow it (chat-map.css). chat-sheet.js moves it on the map and the dots
+   only, and the sheet by its own top, as a value set on the sheet would
+   restyle every message on each frame of a drag */
 @media (max-width: 700px)
 {
     :root
     {
         --sheet-handle-height: 20px;
-    }
-
-    /* Halfway down the map, as chat-sheet.js puts it, so nothing moves when it takes over */
-    .chat-panel,
-    .map,
-    .map-loading
-    {
+        /* Halfway down the map, as chat-sheet.js puts it, so nothing moves when it takes over */
         --sheet-top: calc((100dvh - var(--header-height) - var(--footer-height)) * 0.45);
     }
 }

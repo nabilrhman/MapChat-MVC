@@ -257,20 +257,6 @@
         overflow: clip;
     }
 
-    /* --sheet-top isn't inherited (chat.css), so the credits take it from
-       the map one step at a time: the box the map library puts them in,
-       then the credits themselves. Without both they sit at its 0px */
-    .map
-    {
-        & .maplibregl-control-container,
-        & .leaflet-control-container,
-        & .maplibregl-ctrl-bottom-right,
-        & .leaflet-bottom.leaflet-right
-        {
-            --sheet-top: inherit;
-        }
-    }
-
     /* The map's credits sit just above the sheet, small, and ride with it,
        moved rather than placed so the slide only animates translate. The
        map libraries' CSS loads later and sets bottom: 0, hence .map */
