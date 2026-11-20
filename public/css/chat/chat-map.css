@@ -258,11 +258,17 @@
     }
 
     /* --sheet-top isn't inherited (chat.css), so the credits take it from
-       the map through the box the map library puts them in */
-    .map .maplibregl-control-container,
-    .map .leaflet-control-container
+       the map one step at a time: the box the map library puts them in,
+       then the credits themselves. Without both they sit at its 0px */
+    .map
     {
-        --sheet-top: inherit;
+        & .maplibregl-control-container,
+        & .leaflet-control-container,
+        & .maplibregl-ctrl-bottom-right,
+        & .leaflet-bottom.leaflet-right
+        {
+            --sheet-top: inherit;
+        }
     }
 
     /* The map's credits sit just above the sheet, small, and ride with it,
@@ -271,7 +277,6 @@
     .map .maplibregl-ctrl-bottom-right,
     .map .leaflet-bottom.leaflet-right
     {
-        --sheet-top: inherit;
         inset-block-start: 0;
         inset-block-end: auto;
         translate: 0 var(--sheet-top);
