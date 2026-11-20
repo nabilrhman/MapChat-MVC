@@ -4,6 +4,17 @@
 
 const STYLE_URL = 'https://tiles.openfreemap.org/styles/positron';
 const MAPLIBRE_URL = 'https://unpkg.com/maplibre-gl@4.7.1/dist/';
+// The tile map's, for browsers without WebGL (map.js)
+const LEAFLET_URL = 'https://unpkg.com/leaflet@1.9.4/dist/';
+// Each CDN file's SHA-384, so the browser refuses a copy that's been changed.
+// The preloads in base_login.html and base_chat.html carry the same, or the
+// preloaded copy goes unused
+const CDN_INTEGRITY = {
+    [`${MAPLIBRE_URL}maplibre-gl.js`]: 'sha384-SYKAG6cglRMN0RVvhNeBY0r3FYKNOJtznwA0v7B5Vp9tr31xAHsZC0DqkQ/pZDmj',
+    [`${MAPLIBRE_URL}maplibre-gl.css`]: 'sha384-MinO0mNliZ3vwppuPOUnGa+iq619pfMhLVUXfC4LHwSCvF9H+6P/KO4Q7qBOYV5V',
+    [`${LEAFLET_URL}leaflet.js`]: 'sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH',
+    [`${LEAFLET_URL}leaflet.css`]: 'sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H',
+};
 // Without the style by then, the tile map takes over
 const STYLE_TIMEOUT = 10000;
 // The map's credit, in place of the tiles' longer "OpenFreeMap © OpenMapTiles
@@ -226,7 +237,12 @@ function isWebGLSupported() {
 function loadAsset(tagName, attributes) {
     return new Promise((resolve, reject) => {
         const asset = document.createElement(tagName);
-        Object.assign(asset, attributes);
+        const assetUrl = attributes.src ?? attributes.href;
+        Object.assign(asset, attributes, {
+            integrity: CDN_INTEGRITY[assetUrl] ?? '',
+            crossOrigin: 'anonymous',
+            referrerPolicy: 'no-referrer',
+        });
         asset.onload = resolve;
         asset.onerror = reject;
         document.head.append(asset);
