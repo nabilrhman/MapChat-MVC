@@ -162,7 +162,9 @@ class Room extends Authenticated
             $this->json(['error' => 'You are using voice typing too fast. Wait a moment and try again.'], 429);
             return;
         }
-        $text = Groq::transcribe(VoiceClip::fromUpload($upload));
+        // The translate bar's From, when one is picked; null to tell from the sound
+        $language = Language::tryFrom($this->stringFrom($_POST, 'language'));
+        $text = Groq::transcribe(VoiceClip::fromUpload($upload), $language);
         if ($text === null) {
             // voice.js hears this and has the browser listen instead
             $this->json(['error' => 'Voice typing is busy.'], 503);
