@@ -45,9 +45,9 @@
                 <li>Chat with everyone who is signed in, in one shared room.</li>
                 <li>Click someone's name to chat privately, and see when they're typing to you.</li>
                 <li>Type @ to mention someone. Mentions of you are highlighted.</li>
-                <li>A calm ping sounds for a private message or a mention of you in a chat you aren't looking at.</li>
-                <li>Add emoji from the smile button, or press the mic to speak a message and read it over before sending.</li>
-                <li>Press the translate button, pick From and To, and your message is sent in that language. Others can tap See original to read what you typed. MapChat and the AI people answer in that language, translated back for you.</li>
+                <li>A calm ping for a private message or mention in a chat you aren't looking at.</li>
+                <li>Add emoji, or press the mic to speak a message and check it before sending.</li>
+                <li>Pick From and To with the translate button, and your message is sent in that language. Others can tap See original. AI replies come back translated for you.</li>
                 <li>Get notified of private messages and mentions, even with MapChat closed.</li>
             </ul>
         </section>
@@ -56,7 +56,7 @@
             <h3 class="title">{{ icon('map-point') }}The map</h3>
             <ul class="list">
                 <li>See where each person online is chatting from, and their local time.</li>
-                <li>Click someone in the online list, or a message's city, and the map flies to their pin.</li>
+                <li>Click a person or a message's city to fly to their pin.</li>
                 <li>Where it's night is shaded.</li>
                 <li>Hide yourself from the map whenever you want.</li>
                 <li>On a phone, the chat sits over the map. Drag it to the height you like.</li>
@@ -74,10 +74,10 @@
         <section class="about-card appear-down">
             <h3 class="title">{{ icon('user') }}Your account</h3>
             <ul class="list">
-                <li>Try it as a guest without signing up. Guest accounts disappear after 24 hours unless you keep them.</li>
+                <li>Try it as a guest. Guest accounts go after 24 hours unless you keep them.</li>
                 <li>Continue with Google instead of a password, where the site has it set up.</li>
                 <li>A profile with your name, an avatar and, if you like, a nickname.</li>
-                <li>Delete your profile whenever you like. Your messages and place on the map go with it.</li>
+                <li>Delete your profile any time, with your messages and pin.</li>
             </ul>
         </section>
 
@@ -95,9 +95,9 @@
         <section class="about-card appear-down">
             <h3 class="title">{{ icon('plain') }}Live chat</h3>
             <ul class="list">
-                <li>A WebSocket for each open chat, on amphp, so messages, who's online and who's typing arrive at once.</li>
-                <li>If it can't connect, the chat checks every second instead, or every 8 seconds in a hidden tab.</li>
-                <li>Notifications by Web Push, sent from the server and shown by a service worker, so they arrive with the page closed.</li>
+                <li>A WebSocket per open chat, on amphp, so messages and who's online or typing arrive at once.</li>
+                <li>Without it, the chat checks every second, or every 8 in a hidden tab.</li>
+                <li>Web Push and a service worker, so notifications arrive with the page closed.</li>
             </ul>
         </section>
 
@@ -105,7 +105,7 @@
             <h3 class="title">{{ icon('map') }}Map and AI</h3>
             <ul class="list">
                 <li>MapLibre and OpenStreetMap for the map.</li>
-                <li>Groq's API to write what MapChat and the digital characters say, with Cerebras's when Groq is busy, and Groq's Whisper to write out voice messages.</li>
+                <li>Groq writes what the AI says, or Cerebras when Groq is busy. Groq's Whisper writes out voice messages.</li>
             </ul>
         </section>
 
@@ -122,11 +122,11 @@
         <section class="about-card note appear-down">
             <h3 class="title">{{ icon('info-circle') }}Before you chat</h3>
             <ul class="list">
-                <li>Your location comes from your IP address, rounded to about a kilometre, so the map only knows roughly where you are. You can hide your pin and city from your profile.</li>
+                <li>Your location comes from your IP address, rounded to about a kilometre. You can hide your pin and city from your profile.</li>
                 <li>Anything you write in Everyone is visible to everyone signed in. Private chats are only shown to the two of you.</li>
                 <li>MapChat and some people on the map are AI. Groq writes their replies, or Cerebras when Groq is busy.</li>
-                <li>A message you translate is sent to Groq to be translated, or to Cerebras when Groq is busy.</li>
-                <li>A voice message is sent to Groq to be written out, or to your browser's speech service when Groq is busy. MapChat doesn't keep the recording.</li>
+                <li>Messages you translate go to Groq, or to Cerebras when Groq is busy.</li>
+                <li>Voice messages go to Groq to be written out, or to your browser's speech service when it's busy. The recording isn't kept.</li>
                 <li>This is a portfolio project, so please don't share anything private here.</li>
                 <li>What MapChat keeps, and who else sees it, is in the <a href="/privacy">privacy policy</a>.</li>
             </ul>
