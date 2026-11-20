@@ -862,7 +862,9 @@
 {
     /* top, not translate: the sheet's height changes with it, so its
        messages shrink and the box stays on screen. Physical, as chat.js
-       waits for this transition's end by the name top */
+       waits for this transition's end by the name top. Where it starts:
+       chat-sheet.js then sets it itself as the sheet moves, with this same
+       formula (setSheetTop), so change both together */
     .chat-panel
     {
         top: calc(var(--header-height) + var(--sheet-top));
