@@ -46,7 +46,7 @@
 
 {{ include('_footer.html', with_context = false) }}
 
-<script nonce="{{ csp_nonce }}" src="https://unpkg.com/axios@1.21.0/dist/axios.min.js"></script>
+<script nonce="{{ csp_nonce }}" src="https://unpkg.com/axios@1.21.0/dist/axios.min.js" integrity="sha384-p5EwRuz37ylAY9QrjGGIs9ngKVaIwppUFSourks9EIRp1CzoIDWoQkXrHxaAUhEB" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script nonce="{{ csp_nonce }}" src="{{ asset('/js/core/dom.js') }}"></script>
 <script nonce="{{ csp_nonce }}" src="{{ asset('/js/core/http.js') }}"></script>
 <script nonce="{{ csp_nonce }}" src="{{ asset('/js/notify/push.js') }}"></script>

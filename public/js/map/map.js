@@ -648,9 +648,8 @@ function boundTileMapToWorld(map) {
 }
 
 async function initializeTileMap() {
-    const leafletUrl = 'https://unpkg.com/leaflet@1.9.4/dist/';
-    loadAsset('link', {rel: 'stylesheet', href: `${leafletUrl}leaflet.css`});
-    await loadAsset('script', {src: `${leafletUrl}leaflet.js`});
+    loadAsset('link', {rel: 'stylesheet', href: `${LEAFLET_URL}leaflet.css`});
+    await loadAsset('script', {src: `${LEAFLET_URL}leaflet.js`});
 
     const map = L.map('map', {
         zoomControl: false,

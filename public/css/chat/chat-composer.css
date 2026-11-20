@@ -27,6 +27,7 @@
        (chat.js), the text takes the whole width and the tools go under it */
     .field
     {
+        --input-line-height: 32px; /* the box with one line of text */
         --input-padding-block: 5px;
         --input-padding-inline: 0 6px; /* the grid's gap is the space after the emoji */
         display: grid;
@@ -70,7 +71,7 @@
         position: absolute;
         inset-block-start: 0;
         inset-inline-start: 0;
-        height: 32px; /* the box's one line */
+        height: var(--input-line-height);
         align-items: center;
     }
 
@@ -92,7 +93,7 @@
         display: block;
         box-sizing: border-box;
         width: 100%;
-        height: 32px; /* one line; typing grows it (chat.js) */
+        height: var(--input-line-height); /* typing grows it */
         min-height: 0;
         max-height: 120px;
         margin: 0;
@@ -109,6 +110,14 @@
         overflow-y: hidden;
         overflow-wrap: anywhere;
         box-shadow: none;
+
+        /* The browser fits the box to its text; elsewhere chat.js sets the height */
+        @supports (field-sizing: content)
+        {
+            field-sizing: content;
+            height: auto;
+            min-height: var(--input-line-height);
+        }
 
         &.is-full
         {

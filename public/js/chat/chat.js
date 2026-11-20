@@ -929,6 +929,8 @@ function updateSendButton() {
     sendButton.disabled = isSending || voiceState === 'transcribing' || messageInput.value.trim() === '';
 }
 
+const canFieldFitText = CSS.supports('field-sizing', 'content');
+
 // The box sits in one row with its buttons while the text fits there; once
 // it wraps, the text gets the whole width and grows, up to its CSS max-height.
 // shouldWrap wraps it anyway, for voice typing's dots (voice.js)
@@ -949,7 +951,8 @@ function fitMessageInputToText({shouldWrap = false} = {}) {
     const neededHeight = messageInput.scrollHeight + borderHeight;
     const maxHeight = parseFloat(getComputedStyle(messageInput).maxHeight);
     messageInput.classList.toggle('is-full', neededHeight > maxHeight);
-    messageInput.style.height = `${neededHeight}px`;
+    // field-sizing grows the box itself (chat-composer.css); 'auto' above lets it
+    if (!canFieldFitText) messageInput.style.height = `${neededHeight}px`;
 }
 
 function showCharacterCount() {

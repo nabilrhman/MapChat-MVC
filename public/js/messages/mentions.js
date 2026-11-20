@@ -20,8 +20,8 @@ function matchesTyped(name, typed) {
 function withMentionChips(text, handles) {
     if (handles.length === 0) return [text];
 
-    const escaped = [...handles]
-        .sort((a, b) => b.length - a.length)
+    const escaped = handles
+        .toSorted((a, b) => b.length - a.length)
         .map((handle) => handle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
     const mention = new RegExp(`@(?:${escaped.join('|')})(?![\\p{L}\\p{N}])`, 'giu');
 
