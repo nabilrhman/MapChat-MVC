@@ -25,13 +25,11 @@ const nightTurnedPartOf = (slide) => ((slide?.currentTime ?? 0) / DAY_ANIMATION_
 const slidingMapTime = () => new Date(Date.now() + nightTurnedPartOf(nightSlide) * DAY_MS);
 // The login map is the chat's map gone dark, in the deep purples of the
 // old street-map picture the login pages had. The land is a step brighter
-// than the water and the borders are a dimmed take on the picture's violet
-// roads: enough to tell the continents apart, not so much they pull the eye
-// from the form
+// than the water: enough to tell the continents apart, not so much it pulls
+// the eye from the form. The roads are a dimmed take on the picture's violet
 const DARK_MAP = {
     water: '#1e0839',
     land: '#3a1678',
-    border: '#5f24b0',
     road: '#4a2196',
 };
 // Night on the dark map: near black, and stronger, so it still shows, but
@@ -42,7 +40,6 @@ const DARK_LAYER_COLOURS = [
     {isLayer: ({id}) => id === 'background', paint: {'background-color': DARK_MAP.land}},
     {isLayer: ({id}) => id === 'water', paint: {'fill-color': DARK_MAP.water}},
     {isLayer: ({id}) => id === 'waterway', paint: {'line-color': DARK_MAP.water}},
-    {isLayer: ({id}) => /^boundary/.test(id), paint: {'line-color': DARK_MAP.border}},
     {isLayer: ({type}) => type === 'fill', paint: {'fill-color': DARK_MAP.land, 'fill-outline-color': DARK_MAP.land}},
     {isLayer: ({type}) => type === 'line', paint: {'line-color': DARK_MAP.road}},
 ];
@@ -135,10 +132,11 @@ function worldFillingZoomOf(container) {
     return Math.log2(neededSize / WORLD_SIZE_AT_ZOOM_0);
 }
 
-// Just the shapes: the place names and road numbers would crowd the form
+// Just the shapes: the place names and road numbers would crowd the form,
+// and at this zoom the borders show only as faint broken lines
 async function loadNamelessStyle() {
     const style = await loadThemedStyle();
-    style.layers = style.layers.filter((layer) => layer.type !== 'symbol');
+    style.layers = style.layers.filter((layer) => layer.type !== 'symbol' && !/^boundary/.test(layer.id));
     return style;
 }
 
