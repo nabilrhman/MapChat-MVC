@@ -14,7 +14,9 @@ Everything MapChat does, in full. Back to the [README](../README.md).
 - Voice typing: the mic beside an empty box listens, and what you said goes
   into the box to read over before sending. Groq's Whisper writes it out; when
   Groq is off or its free plan is used up for the minute, the browser's own
-  speech recognition listens instead (Chrome, Safari and Edge).
+  speech recognition listens instead (Chrome, Safari and Edge). It listens
+  for the language last picked in the translate bar's From, even with the
+  bar closed; on Auto it guesses.
 - Translation: the translate button beside the mic opens From and To above
   the message box. From starts on Auto and To on English, and the choice is
   remembered. A message goes out in the To language, and readers see

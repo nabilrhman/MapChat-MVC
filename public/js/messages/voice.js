@@ -434,6 +434,8 @@ function setUpVoiceTyping(input, micButton, sendButton, writingDots) {
         showState('transcribing');
         const form = new FormData();
         form.append('audio', recording, 'voice');
+        // Left to guess, Whisper takes a short Bangla clip for Hindi or English
+        form.append('language', spokenLanguage());
 
         try {
             const response = await axios.post('/messages/transcribe', form, {timeout: TRANSCRIBE_TIME_LIMIT});
@@ -460,7 +462,7 @@ function setUpVoiceTyping(input, micButton, sendButton, writingDots) {
 
     async function listenWithBrowser() {
         const recognition = new BrowserSpeech();
-        recognition.lang = navigator.language;
+        recognition.lang = spokenLanguage() || navigator.language;
         // The wave's own hold on the mic, and what stops it; none until it's granted
         let microphone = null;
         let stopWave = () => {};

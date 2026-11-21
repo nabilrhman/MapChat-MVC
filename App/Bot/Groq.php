@@ -252,16 +252,21 @@ class Groq
     /**
      * What was said in a recording, in the language it was said in
      *
+     * @param Language|null $language The language it was said in; null to tell from the sound
      * @return string|null Null when the API couldn't answer, as when the free
      *                     plan's limit for the minute or the day is used up
      */
-    public static function transcribe(VoiceClip $clip): ?string
+    public static function transcribe(VoiceClip $clip, ?Language $language = null): ?string
     {
-        $form = new FormDataPart([
+        $fields = [
             'model' => static::TRANSCRIBE_MODEL,
             'response_format' => 'json',
             'file' => DataPart::fromPath($clip->path, $clip->fileName(), $clip->type),
-        ]);
+        ];
+        if ($language !== null) {
+            $fields['language'] = $language->value;
+        }
+        $form = new FormDataPart($fields);
 
         try {
             $response = HttpClient::create()->request('POST', static::TRANSCRIBE_URL, [

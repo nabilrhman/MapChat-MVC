@@ -369,6 +369,13 @@ function isTranslating() {
     return translateParts?.toggle.getAttribute('aria-pressed') === 'true';
 }
 
+// The language the person said they write in: From's code, kept even while
+// the bar is closed, so voice typing hears Bangla without translating.
+// '' on Auto, for the listener to guess
+function spokenLanguage() {
+    return translateParts?.fromPicker.dataset.value ?? '';
+}
+
 /**
  * What to send for `text`: its translation with `text` as the original
  * while translating is on, or `text` as it is. Rejects, with the server's
