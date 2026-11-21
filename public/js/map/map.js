@@ -158,7 +158,7 @@ function showMapOnce() {
 }
 
 async function loadLocations() {
-    const response = await postForm('/app/get-locations');
+    const response = await axios.get('/people/pins');
     return response.data;
 }
 
@@ -192,12 +192,12 @@ function keepPinsUpdated(addPin, fitPins) {
 
         for (const personLocation of locations) {
             const content = pinContentOf(personLocation);
-            const pin = pinsByUserId.get(personLocation.user_id);
-            shownUserIds.add(personLocation.user_id);
+            const pin = pinsByUserId.get(personLocation.id);
+            shownUserIds.add(personLocation.id);
 
             if (pin?.content === content) continue;
             pin?.removePin();
-            pinsByUserId.set(personLocation.user_id, {content, removePin: addPin(personLocation, !isFirstRound)});
+            pinsByUserId.set(personLocation.id, {content, removePin: addPin(personLocation, !isFirstRound)});
         }
 
         // Deleting the entry being visited is safe in a Map's for…of
@@ -320,7 +320,7 @@ function addVectorPin(map, personLocation, shouldAnimate) {
     const popupTime = label.querySelector('[data-part="pin-time"]');
     const popup = new maplibregl.Popup({closeButton: false, offset: vectorLabelOffsetsOf(PIN_LABEL_OFFSET)})
         .setDOMContent(label);
-    const marker = new maplibregl.Marker({element: createPinElement(personLocation.user_id), anchor: 'bottom'})
+    const marker = new maplibregl.Marker({element: createPinElement(personLocation.id), anchor: 'bottom'})
         .setLngLat(lngLat)
         .addTo(map);
 
@@ -345,7 +345,7 @@ function addVectorPin(map, personLocation, shouldAnimate) {
         showLabel();
     });
 
-    pinLabelsByUserId.set(String(personLocation.user_id), {
+    pinLabelsByUserId.set(String(personLocation.id), {
         show: showLabel,
         hide: () => popup.remove(),
         focus: () => {
@@ -363,7 +363,7 @@ function addVectorPin(map, personLocation, shouldAnimate) {
     });
 
     return () => {
-        pinLabelsByUserId.delete(String(personLocation.user_id));
+        pinLabelsByUserId.delete(String(personLocation.id));
         popup.remove();
         fadeOutPin(pin, () => marker.remove());
     };
@@ -575,7 +575,7 @@ function leafletPaddingOf(padding) {
 
 // Adds a Leaflet pin; returns a function that removes it
 function addTilePin(map, personLocation, shouldAnimate) {
-    const pin = createPinElement(personLocation.user_id);
+    const pin = createPinElement(personLocation.id);
     pin.classList.toggle('is-entering', shouldAnimate);
     const icon = L.divIcon({className: '', html: pin.outerHTML, iconSize: [20, PIN_HEIGHT], iconAnchor: [10, PIN_HEIGHT]});
     const marker = L.marker(latLngOf(personLocation), {icon})
@@ -590,7 +590,7 @@ function addTilePin(map, personLocation, shouldAnimate) {
         setTooltipOffset(offset);
         marker.openTooltip();
     };
-    pinLabelsByUserId.set(String(personLocation.user_id), {
+    pinLabelsByUserId.set(String(personLocation.id), {
         show: showTooltip,
         // Leaflet's own flight, which keeps its tiles in step; it slows into
         // place but doesn't ease off. Driving it frame by frame for that
@@ -613,7 +613,7 @@ function addTilePin(map, personLocation, shouldAnimate) {
     });
 
     return () => {
-        pinLabelsByUserId.delete(String(personLocation.user_id));
+        pinLabelsByUserId.delete(String(personLocation.id));
         marker.closeTooltip();
         fadeOutPin(marker.getElement().querySelector('[data-part="map-pin"]'), () => marker.remove());
     };

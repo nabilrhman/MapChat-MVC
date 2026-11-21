@@ -401,9 +401,9 @@ class ChatTest extends TestCase
 
     public function testSendFromAppliesTheChatsRules(): void
     {
-        $this->assertSame(400, Chat::sendFrom($this->user(self::ANN), new MessageText(str_repeat('x', Chat::MAX_LENGTH + 1)))->status);
-        $this->assertSame(400, Chat::sendFrom($this->user(self::ANN), new MessageText('   '))->status);
-        $this->assertSame(400, Chat::sendFrom($this->user(self::ANN), new MessageText('to me'), $this->userId(self::ANN))->status);
+        $this->assertSame(422, Chat::sendFrom($this->user(self::ANN), new MessageText(str_repeat('x', Chat::MAX_LENGTH + 1)))->status);
+        $this->assertSame(422, Chat::sendFrom($this->user(self::ANN), new MessageText('   '))->status);
+        $this->assertSame(422, Chat::sendFrom($this->user(self::ANN), new MessageText('to me'), $this->userId(self::ANN))->status);
         $this->assertSame(400, Chat::sendFrom($this->user(self::ANN), new MessageText('bad id'), null, 'not a valid id!')->status);
 
         $this->sendMany(self::ANN, Chat::USER_PER_MINUTE);
@@ -439,7 +439,7 @@ class ChatTest extends TestCase
     {
         $sent = Chat::sendFrom($this->user(self::ANN), new MessageText('Hello', str_repeat('x', Chat::MAX_LENGTH + 1)));
 
-        $this->assertSame(400, $sent->status);
+        $this->assertSame(422, $sent->status);
     }
 
     public function testAfterStopsAtTheGivenId(): void

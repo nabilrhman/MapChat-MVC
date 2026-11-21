@@ -73,18 +73,24 @@ abstract class Model
 
     /**
      * Rows as the database gives them (every value a string), with these
-     * columns made int or bool. A null stays null, as from a LEFT JOIN that
-     * found no row
+     * columns made int, bool or float. A null stays null, as from a LEFT
+     * JOIN that found no row
      *
      * @param array[] $rows
      * @param string[] $intColumns
      * @param string[] $boolColumns
+     * @param string[] $floatColumns
      *
      * @return array[]
      */
-    protected static function typedRows(array $rows, array $intColumns = [], array $boolColumns = []): array
+    protected static function typedRows(array $rows, array $intColumns = [], array $boolColumns = [], array $floatColumns = []): array
     {
         foreach ($rows as &$row) {
+            foreach ($floatColumns as $column) {
+                if (isset($row[$column])) {
+                    $row[$column] = (float) $row[$column];
+                }
+            }
             foreach ($intColumns as $column) {
                 if (isset($row[$column])) {
                     $row[$column] = (int) $row[$column];

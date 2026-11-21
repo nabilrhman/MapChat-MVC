@@ -8,6 +8,7 @@ require dirname(__DIR__) . '/vendor/autoload.php';
 require __DIR__ . '/Support/TestDb.php';
 require __DIR__ . '/Support/DrivesTheSite.php';
 require __DIR__ . '/Support/SocketClient.php';
+require __DIR__ . '/Support/ApiSpec.php';
 
 use App\Config;
 

@@ -44,6 +44,9 @@ class Whereabouts extends \Core\Model
     /** The columns of a people row that are yes or no, cast to bool as rows come in */
     const PERSON_BOOL_COLUMNS = ['is_demo', 'is_guest', 'is_bot', 'is_online'];
 
+    /** The columns of a people row that are numbers with a fraction, cast to float as rows come in */
+    const PERSON_FLOAT_COLUMNS = ['lng'];
+
     /**
      * Save a user's IP and look up where it is
      */
@@ -244,7 +247,7 @@ class Whereabouts extends \Core\Model
      * isn't a real place to chat from. Rounded to the city, as rows saved
      * before pins were rounded have more
      *
-     * @return array[] Each with lat, lng, city, country, timezone, user_id, name, nickname, is_guest, avatar, is_demo, avatar_src and shown_name
+     * @return array[] Each with lat, lng, city, country, timezone, id, name, nickname, is_guest, avatar, is_demo, avatar_src and shown_name
      */
     public static function getAllLocations(): array
     {
@@ -253,7 +256,7 @@ class Whereabouts extends \Core\Model
         $sql = 'SELECT ROUND(userinfo.lat, ' . static::PIN_DECIMALS . ') AS lat,
                        ROUND(userinfo.lng, ' . static::PIN_DECIMALS . ') AS lng,
                        userinfo.city, userinfo.country, userinfo.timezone,
-                       users.id AS user_id, users.name, users.nickname, users.is_guest, users.avatar,
+                       users.id, users.name, users.nickname, users.is_guest, users.avatar,
                        ' . Characters::isDemoSql() . ' AS is_demo
                 FROM userinfo
                 LEFT JOIN users
@@ -265,9 +268,9 @@ class Whereabouts extends \Core\Model
 
         $stmt = static::getDB()->prepare($sql);
         $stmt->execute([':bot_email' => Chat::BOT_EMAIL, ':online' => static::ONLINE_SECONDS] + $demoParams);
-        $pins = static::typedRows($stmt->fetchAll(PDO::FETCH_ASSOC), ['user_id'], ['is_demo', 'is_guest']);
+        $pins = static::typedRows($stmt->fetchAll(PDO::FETCH_ASSOC), ['id'], ['is_demo', 'is_guest'], floatColumns: ['lat', 'lng']);
 
-        return Mention::withShownNames(static::withAvatarSrc($pins, 'user_id'));
+        return Mention::withShownNames(static::withAvatarSrc($pins, 'id'));
     }
 
     /**
@@ -360,7 +363,7 @@ class Whereabouts extends \Core\Model
         $stmt = static::getDB()->prepare($sql);
         $stmt->execute([':online' => static::ONLINE_SECONDS, ':guest_online' => static::ONLINE_SECONDS] + $demoParams);
 
-        $people = static::typedRows($stmt->fetchAll(PDO::FETCH_ASSOC), static::PERSON_INT_COLUMNS, static::PERSON_BOOL_COLUMNS);
+        $people = static::typedRows($stmt->fetchAll(PDO::FETCH_ASSOC), static::PERSON_INT_COLUMNS, static::PERSON_BOOL_COLUMNS, floatColumns: static::PERSON_FLOAT_COLUMNS);
 
         return static::withNames(static::stripEmails($people));
     }
@@ -389,7 +392,7 @@ class Whereabouts extends \Core\Model
 
         $stmt = static::getDB()->prepare($sql);
         $stmt->execute($emailParams);
-        $people = static::typedRows($stmt->fetchAll(PDO::FETCH_ASSOC), static::PERSON_INT_COLUMNS, static::PERSON_BOOL_COLUMNS);
+        $people = static::typedRows($stmt->fetchAll(PDO::FETCH_ASSOC), static::PERSON_INT_COLUMNS, static::PERSON_BOOL_COLUMNS, floatColumns: static::PERSON_FLOAT_COLUMNS);
 
         return static::withNames($people);
     }

@@ -114,22 +114,22 @@ function onSocketMessage(message) {
             showArrivedChats(message.html, false);
             break;
         case 'sent':
-            settleSend(message.clientId, (send) => {
+            settleSend(message.client_id, (send) => {
                 sentIds.add(message.id);
                 send.resolve(message.id);
             });
             break;
         case 'refused':
-            settleSend(message.clientId, (send) => send.reject(createSendError(message.error, message.status)));
+            settleSend(message.client_id, (send) => send.reject(createSendError(message.error, message.status)));
             break;
         case 'older':
-            settleOlderRequest(message.requestId, (request) => request.resolve(message.html));
+            settleOlderRequest(message.request_id, (request) => request.resolve(message.html));
             break;
         case 'read':
-            chatHandlers.onRead(message.conversation, message.upTo);
+            chatHandlers.onRead(message.conversation, message.up_to);
             break;
         case 'typing':
-            chatHandlers.onTyping(String(message.from), message.isTyping);
+            chatHandlers.onTyping(String(message.from), message.is_typing);
             break;
         case 'presence':
             chatHandlers.onPresence(message.person);
@@ -188,13 +188,13 @@ function onSocketClosed(code) {
 }
 
 function sendOverSocket(clientId, send) {
-    socket.send(JSON.stringify({type: 'send', clientId, body: send.body, to: send.to, original: send.original}));
+    socket.send(JSON.stringify({type: 'send', client_id: clientId, body: send.body, to: send.to, original: send.original}));
 }
 
 /* The HTTP fallback */
 
 async function checkForMessages(isAfterSending = false) {
-    const response = await postForm('/app/get', {after: lastChatId});
+    const response = await axios.get('/messages/new', {params: {after: lastChatId}});
     chatHandlers.onBuild(response.headers['x-build']);
     showArrivedChats(response.data, isAfterSending);
 }
@@ -236,7 +236,7 @@ async function sendOverHttp(clientId, send) {
 
     let response;
     try {
-        response = await postForm('/app/send', message);
+        response = await postForm('/messages/send', message);
     } catch (error) {
         // No answer (a network error): it stays pending for the next try
         if (error.response) settleSend(clientId, (pending) => pending.reject(error));
@@ -345,10 +345,10 @@ async function fetchOlderChats(before, conversation) {
                 settleOlderRequest(requestId, () => reject(new Error('No answer from the server')));
             }, OLDER_TIMEOUT);
             olderRequests.set(requestId, request);
-            socket.send(JSON.stringify({type: 'older', requestId, before, conversation}));
+            socket.send(JSON.stringify({type: 'older', request_id: requestId, before, conversation}));
         });
     } else {
-        html = (await postForm('/app/get-older', {before, conversation})).data;
+        html = (await axios.get('/messages/older', {params: {before, conversation}})).data;
     }
 
     // Anything not yet shown arrives with the new ones instead
@@ -356,19 +356,19 @@ async function fetchOlderChats(before, conversation) {
         .filter((element) => element.dataset.part === 'message' && Number(element.dataset.id) <= lastChatId);
 }
 
-// Tells the server you've seen the private messages from a person, up to
-// an id; your other open tabs hear of it too
-function markChatRead(from, upTo) {
+// Tells the server you've seen a private chat's messages, up to an id;
+// your other open tabs hear of it too. The conversation is the other person's id
+function markChatRead(conversation, upTo) {
     if (isSocketOpen()) {
-        socket.send(JSON.stringify({type: 'read', from: Number(from), upTo}));
+        socket.send(JSON.stringify({type: 'read', conversation, up_to: upTo}));
         return Promise.resolve();
     }
-    return postForm('/app/mark-read', {from, up_to: upTo});
+    return postForm('/messages/mark-read', {conversation, up_to: upTo});
 }
 
 // Tells the person you're writing to privately that you are, or have
 // stopped. Only over the socket; the HTTP fallback goes without
 function sendTyping(to, isTyping) {
     if (!isSocketOpen()) return;
-    socket.send(JSON.stringify({type: 'typing', to: Number(to), isTyping}));
+    socket.send(JSON.stringify({type: 'typing', to: Number(to), is_typing: isTyping}));
 }

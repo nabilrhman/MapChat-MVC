@@ -4,6 +4,12 @@ How many open chat tabs the local Docker stack serves, and what gives out
 first. Run on 2026-11-15. The comparison of polling with the chat socket
 (WebSockets) was run on 2026-11-16 and comes first.
 
+The runs used the calls' names from then. On 2026-11-20 they were renamed:
+`POST /app/get` is now `GET /messages/new`, `/app/send` is
+`/messages/send`, `POST /app/get-people` is `GET /people`, and
+`POST /app/get-locations` is `GET /people/pins`. The load test script uses
+the new names.
+
 ## Polling against the chat socket: 50 private pairs (measured locally)
 
 100 guests chatting privately in 50 pairs, sending about 3 messages a second

@@ -1167,6 +1167,8 @@ showConversation(EVERYONE);
 shouldAnimateNewTabs = true;
 setUpNotifications();
 keepPushUpToDate();
+// So others see your local time, on the HTTP fallback too; the socket's hello says it again
+postForm('/profile/update-timezone', {timezone: Intl.DateTimeFormat().resolvedOptions().timeZone}).catch(() => {});
 
 // The room, or a person's id: anything else in a link is not a chat
 const isConversation = (conversation) => conversation === EVERYONE || /^[1-9][0-9]*$/.test(conversation);
@@ -1185,7 +1187,7 @@ function knownNameOf(conversation) {
 // The server's people list, for a name this page doesn't know yet
 async function fetchNameOf(conversation) {
     try {
-        const response = await postForm('/app/get-people', {timezone: Intl.DateTimeFormat().resolvedOptions().timeZone});
+        const response = await axios.get('/people');
         const row = response.data.find((person) => String(person.id) === conversation);
         return row?.shown_name ?? null;
     } catch {

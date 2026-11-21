@@ -61,7 +61,7 @@ $router->get('/login/show-deleted-message', [Login::class, 'showDeletedMessageAc
 // Signing in with Google, which makes the account the first time
 $router->get('/login/google', [Google::class, 'startAction']);
 $router->get('/login/google/callback', [Google::class, 'callbackAction']);
-$router->get('/account/validate-email', [Account::class, 'validateEmailAction']);
+$router->post('/account/check-email', [Account::class, 'checkEmailAction']);
 
 // Signup; activation is a GET, as people open it from an email
 $router->get('/signup/new', [Signup::class, 'newAction']);
@@ -82,18 +82,19 @@ $router->post('/profile/update', [Profile::class, 'updateAction']);
 $router->post('/profile/update-avatar', [Profile::class, 'updateAvatarAction']);
 $router->post('/profile/remove-avatar', [Profile::class, 'removeAvatarAction']);
 $router->post('/profile/update-location-sharing', [Profile::class, 'updateLocationSharingAction']);
+$router->post('/profile/update-timezone', [Profile::class, 'updateTimezoneAction']);
 $router->post('/profile/delete', [Profile::class, 'deleteAction']);
 $router->get('/avatar/{id:\d+}', [Avatar::class, 'showAction']);
 
-// Chat and map
-$router->post('/app/get', [Room::class, 'getAction']);
-$router->post('/app/get-older', [Room::class, 'getOlderAction']);
-$router->post('/app/send', [Room::class, 'sendAction']);
-$router->post('/app/transcribe', [Room::class, 'transcribeAction']);
-$router->post('/app/translate', [Room::class, 'translateAction']);
-$router->post('/app/mark-read', [Room::class, 'markReadAction']);
-$router->post('/app/get-people', [Room::class, 'getPeopleAction']);
-$router->post('/app/get-locations', [Room::class, 'getLocationsAction']);
+// The chat page's calls when the chat socket can't carry them (docs/api/openapi.yaml)
+$router->get('/messages/new', [Room::class, 'getNewAction']);
+$router->get('/messages/older', [Room::class, 'getOlderAction']);
+$router->post('/messages/send', [Room::class, 'sendAction']);
+$router->post('/messages/mark-read', [Room::class, 'markReadAction']);
+$router->post('/messages/translate', [Room::class, 'translateAction']);
+$router->post('/messages/transcribe', [Room::class, 'transcribeAction']);
+$router->get('/people', [Room::class, 'getPeopleAction']);
+$router->get('/people/pins', [Room::class, 'getPinsAction']);
 
 // Web Push for this browser (public/js/notify/notifications.js)
 $router->post('/push/subscribe', [Push::class, 'subscribeAction']);

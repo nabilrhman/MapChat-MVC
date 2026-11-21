@@ -53,7 +53,7 @@ class RoomTest extends TestCase
         $this->db->prepare("INSERT INTO mapchat_jobs (kind, email, dedupe_key, due_at) VALUES ('greet', ?, 'room-test-greet', NOW())")
             ->execute([self::EMAIL]);
 
-        $response = $this->request('POST', '/app/get', ['after' => 0]);
+        $response = $this->request('GET', '/messages/new?after=0');
 
         $stmt = $this->db->prepare('SELECT done_at FROM mapchat_jobs WHERE email = ?');
         $stmt->execute([self::EMAIL]);
@@ -61,19 +61,27 @@ class RoomTest extends TestCase
         $this->assertNull($stmt->fetchColumn());
     }
 
-    public function testAListInPlaceOfAMessageIsIgnoredNotAnError(): void
+    public function testAListInPlaceOfAMessageIsRefusedAsMalformed(): void
     {
-        $response = $this->request('POST', '/app/send', ['body' => ['hello']]);
+        $response = $this->request('POST', '/messages/send', ['body' => ['hello']]);
 
         $stmt = $this->db->prepare('SELECT COUNT(*) FROM chats WHERE email = ?');
         $stmt->execute([self::EMAIL]);
-        $this->assertSame(200, $response['status']);
+        $this->assertSame(400, $response['status']);
         $this->assertSame(0, (int) $stmt->fetchColumn());
+    }
+
+    public function testAnEmptyMessageIsRefusedWithAReason(): void
+    {
+        $response = $this->request('POST', '/messages/send', ['body' => '   ']);
+
+        $this->assertSame(422, $response['status']);
+        $this->assertSame('{"error":"Type a message first."}', $response['body']);
     }
 
     public function testAListInPlaceOfAClientIdOrTheOriginalSendsTheMessageWithout(): void
     {
-        $response = $this->request('POST', '/app/send', ['body' => 'hello', 'client_id' => ['a'], 'original' => ['b']]);
+        $response = $this->request('POST', '/messages/send', ['body' => 'hello', 'client_id' => ['a'], 'original' => ['b']]);
 
         $stmt = $this->db->prepare('SELECT COUNT(*) FROM chats WHERE email = ?');
         $stmt->execute([self::EMAIL]);
@@ -84,7 +92,7 @@ class RoomTest extends TestCase
     public function testARefusedRecordingUsesNoneOfTheLimit(): void
     {
         for ($i = 0; $i < Chat::USER_PER_MINUTE + 1; $i++) {
-            $response = $this->request('POST', '/app/transcribe');
+            $response = $this->request('POST', '/messages/transcribe');
         }
 
         $this->assertSame(422, $response['status']);

@@ -31,7 +31,7 @@ class Signal
      */
     public static function typing(string $fromEmail, string $toEmail, bool $isTyping): void
     {
-        static::send(json_encode(['typing' => ['from' => $fromEmail, 'to' => $toEmail, 'isTyping' => $isTyping]]));
+        static::send(json_encode(['typing' => ['from' => $fromEmail, 'to' => $toEmail, 'is_typing' => $isTyping]]));
     }
 
     /**
