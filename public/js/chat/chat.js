@@ -974,6 +974,7 @@ composerForm.addEventListener('submit', async (event) => {
     if (isSending) return;
 
     const to = activeConversation === EVERYONE ? null : activeConversation;
+    replaceLastEmoticonIn(messageInput);
     const sentText = messageInput.value.trim();
 
     isSending = true;
@@ -1005,6 +1006,7 @@ composerForm.addEventListener('submit', async (event) => {
 setUpMentions(messageInput, () => activeConversation === EVERYONE, getPeopleToMention);
 
 setUpEmojiPicker(messageInput, document.getElementById('emoji-toggle'), document.getElementById('emoji-picker'));
+setUpEmoticons(messageInput);
 const getVoiceState = setUpVoiceTyping(messageInput, document.getElementById('voice-button'), sendButton, document.getElementById('voice-dots'));
 setUpTranslation(document.getElementById('translate-toggle'), document.getElementById('translate-band'));
 
