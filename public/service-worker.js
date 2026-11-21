@@ -19,13 +19,19 @@ self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim(
 // Shown for a push that came with no message
 const NOTICE_WITHOUT_MESSAGE = {title: 'MapChat', body: 'You have a new message.', tag: 'chat-everyone', conversation: EVERYONE};
 
-// Every push shows a notification: the browser was promised one
-// (userVisibleOnly), and Chrome shows its own "updated in the background"
-// notice for a push that shows none. While the chat is in view it shows
-// the message itself, so this one is silent and closed at once
+// The browser was promised a notification for every push (userVisibleOnly).
+// Chrome waives it while one of the site's tabs is visible; Safari takes the
+// push subscription back after pushes that show none
+const canSkipNotificationWhileInView = self.navigator.userAgentData?.brands.some(({brand}) => brand === 'Chromium') ?? false;
+
+// A push shows the message, unless the chat is in view: that tab shows its
+// own, or none for the chat you're in. Chrome then shows nothing, as one
+// shown and closed at once still pops up on some desktops, like GNOME; other
+// browsers show it silently and close it at once
 async function showPushedMessage(message) {
     const pages = await getOpenPages();
     const isChatInView = pages.some((page) => isChat(page) && page.visibilityState === 'visible');
+    if (isChatInView && canSkipNotificationWhileInView) return;
 
     await self.registration.showNotification(message.title, {
         body: message.body,
