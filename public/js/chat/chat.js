@@ -4,8 +4,6 @@
 // chat-sheet.js. The server's values come from data attributes on #chat (see
 // base_chat.html)
 
-// Scrolling down to new messages; none for people who ask for less motion
-const SCROLL_BEHAVIOR = prefersLessMotion.matches ? 'instant' : 'smooth';
 // How far up you scroll before the "Latest" button shows
 const SCROLLED_UP_DISTANCE = 200;
 // A little after a demo person you called comes online (Bot::COME_ONLINE_SECONDS)
@@ -47,31 +45,38 @@ const getChats = () => [...chatList.querySelectorAll('[data-part="message"]')];
 const getNewestId = () => Number(getChats().at(-1)?.dataset.id ?? 0);
 const getDistanceFromBottom = () => chatList.scrollHeight - chatList.scrollTop - chatList.clientHeight;
 
-// True while the list scrolls itself down, so the "Latest" button doesn't
-// flash up during the smooth scroll
-let isScrollingToNewest = false;
-let scrollToNewestTimer = null;
+// At once: any motion is slideUpToNewest's
+function scrollToNewest() {
+    chatList.scrollTop = chatList.scrollHeight;
+}
 
-function stopScrollingToNewest() {
-    if (!isScrollingToNewest) return;
-    clearTimeout(scrollToNewestTimer);
-    isScrollingToNewest = false;
+// True while the newest messages slide up into place. The list then reads as
+// scrolled up by the slide, as it scrolls over the shifted messages too, so
+// the "Latest" button waits till the slide ends
+let isSlidingToNewest = false;
+let slideEndTimer = null;
+
+function endSlideToNewest() {
+    clearTimeout(slideEndTimer);
+    isSlidingToNewest = false;
     updateJumpButton();
 }
 
-function scrollToNewest(behavior = SCROLL_BEHAVIOR) {
-    // Only when it will move, or nothing would end it until the timer
-    if (getDistanceFromBottom() > 1) {
-        isScrollingToNewest = true;
-        clearTimeout(scrollToNewestTimer);
-        // scrollend ends it; the timer is for browsers without scrollend and
-        // hidden tabs, which don't animate the scroll
-        scrollToNewestTimer = setTimeout(stopScrollingToNewest, 1000);
-    }
-    chatList.scrollTo({top: chatList.scrollHeight, behavior});
-}
+function startSlideToNewest(shifts) {
+    const [firstItem] = shifts.keys();
+    if (!firstItem) return;
 
-chatList.addEventListener('scrollend', stopScrollingToNewest);
+    isSlidingToNewest = true;
+    clearTimeout(slideEndTimer);
+    firstItem.addEventListener('transitionend', function onSlid(event) {
+        if (event.target !== firstItem || event.propertyName !== 'translate') return;
+        firstItem.removeEventListener('transitionend', onSlid);
+        endSlideToNewest();
+    });
+    // For a hidden page, which runs no transitions
+    slideEndTimer = setTimeout(endSlideToNewest, 1000);
+    slideFromShifts(shifts);
+}
 
 /* Tabs */
 
@@ -239,7 +244,7 @@ function showConversation(conversation) {
     showChatHeader();
     messageInput.placeholder = isPrivate ? `Message ${getTabName(activeConversation)}` : 'Your message';
     addDayDividers();
-    scrollToNewest('instant');
+    scrollToNewest();
     newMessagesWhileScrolledUp = 0;
 
     showPartnerTyping();
@@ -722,7 +727,7 @@ function changeJumpLabel(count) {
 }
 
 function updateJumpButton() {
-    const isScrolledUp = !isScrollingToNewest && getDistanceFromBottom() > SCROLLED_UP_DISTANCE;
+    const isScrolledUp = !isSlidingToNewest && getDistanceFromBottom() > SCROLLED_UP_DISTANCE;
     if (!isScrolledUp) {
         newMessagesWhileScrolledUp = 0;
         hideJumpButton();
@@ -771,7 +776,7 @@ chatList.addEventListener('scroll', updateJumpButton);
 // composer instead of falling back to the top of the page. Taps leave
 // focus alone so a phone's keyboard doesn't pop up
 jumpButton.addEventListener('click', () => {
-    scrollToNewest();
+    slideUpToNewest();
     if (jumpButton.matches(':focus-visible')) messageInput.focus();
 });
 
@@ -901,12 +906,13 @@ function getTopsInView() {
     return tops;
 }
 
-// Adds messages at the bottom and shows them: the list jumps there, and what's
-// on screen slides up as one, in the app's easing. Only translate moves
-function slideUpToNewest(addMessages) {
+// Adds messages at the bottom, if any, and shows the newest: the list jumps
+// there, and what's on screen slides up as one, in the app's easing. Only
+// translate moves
+function slideUpToNewest(addMessages = () => {}) {
     if (prefersLessMotion.matches || document.hidden) {
         addMessages();
-        scrollToNewest('instant');
+        scrollToNewest();
         return;
     }
 
@@ -919,13 +925,18 @@ function slideUpToNewest(addMessages) {
         item.classList.remove('is-shifting');
         item.style.translate = '';
     }
-    scrollToNewest('instant');
+    scrollToNewest();
 
     // How far the list rose: new messages start that far down, with the rest
     const rise = lastBefore?.isConnected ? topsBefore.get(lastBefore) - lastBefore.getBoundingClientRect().top : 0;
-    // From further up than a screen, a slide would sweep a blank gap up the list
-    if (rise > chatList.clientHeight) return;
     const shifts = new Map();
+    // From further up than a screen, only the last screen slides, up from
+    // below: sliding the whole way would sweep a blank gap up the list
+    if (rise > chatList.clientHeight) {
+        for (const item of getTopsInView().keys()) shifts.set(item, {y: chatList.clientHeight});
+        startSlideToNewest(shifts);
+        return;
+    }
     // Ones that rose out of view slide too, or a gap would open at the top
     const itemsToSlide = new Set([...topsBefore.keys(), ...getTopsInView().keys()]);
     for (const item of itemsToSlide) {
@@ -934,7 +945,7 @@ function slideUpToNewest(addMessages) {
         const shift = topBefore === undefined ? rise : topBefore - item.getBoundingClientRect().top;
         if (Math.round(shift) !== 0) shifts.set(item, {y: shift});
     }
-    slideFromShifts(shifts);
+    startSlideToNewest(shifts);
 }
 
 // The messages that came in last, laid out at once (.is-new)

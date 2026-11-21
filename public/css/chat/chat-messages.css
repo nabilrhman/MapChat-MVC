@@ -23,10 +23,12 @@
         display: none;
     }
 
-    /* A message from the poll eases in (see Room/chat.html) */
+    /* A message from the poll fades in (see Room/chat.html). It rises with
+       the list (slideUpToNewest in chat.js): a rise of its own would count in
+       the list's scroll height and leave it a few pixels short */
     &.is-entering
     {
-        animation: fade-in-up var(--dur) var(--ease-out) backwards;
+        animation: fade-in var(--dur) var(--ease-out) backwards;
     }
 
     &:hover
