@@ -889,8 +889,59 @@ function reloadIfUpdated(liveBuild) {
     }
 }
 
-// Scrolls down for new messages only if you're at the bottom already, or
-// after you send; someone reading older messages stays where they are
+// Where each message and day divider on screen is now, by element
+function getTopsInView() {
+    const listBox = chatList.getBoundingClientRect();
+    const tops = new Map();
+    for (const item of chatList.children) {
+        if (item.hidden) continue;
+        const box = item.getBoundingClientRect();
+        if (box.bottom > listBox.top && box.top < listBox.bottom) tops.set(item, box.top);
+    }
+    return tops;
+}
+
+// Adds messages at the bottom and shows them: the list jumps there, and what's
+// on screen slides up as one, in the app's easing. Only translate moves
+function slideUpToNewest(addMessages) {
+    if (prefersLessMotion.matches || document.hidden) {
+        addMessages();
+        scrollToNewest('instant');
+        return;
+    }
+
+    const topsBefore = getTopsInView();
+    const lastBefore = [...topsBefore.keys()].at(-1);
+    addMessages();
+    // Ones still sliding from the last arrival snap to their places, so the
+    // places read below are where they really are
+    for (const item of topsBefore.keys()) {
+        item.classList.remove('is-shifting');
+        item.style.translate = '';
+    }
+    scrollToNewest('instant');
+
+    // How far the list rose: new messages start that far down, with the rest
+    const rise = lastBefore?.isConnected ? topsBefore.get(lastBefore) - lastBefore.getBoundingClientRect().top : 0;
+    // From further up than a screen, a slide would sweep a blank gap up the list
+    if (rise > chatList.clientHeight) return;
+    const shifts = new Map();
+    // Ones that rose out of view slide too, or a gap would open at the top
+    const itemsToSlide = new Set([...topsBefore.keys(), ...getTopsInView().keys()]);
+    for (const item of itemsToSlide) {
+        if (!item.isConnected) continue;
+        const topBefore = topsBefore.get(item);
+        const shift = topBefore === undefined ? rise : topBefore - item.getBoundingClientRect().top;
+        if (Math.round(shift) !== 0) shifts.set(item, {y: shift});
+    }
+    slideFromShifts(shifts);
+}
+
+// The messages that came in last, laid out at once (.is-new)
+let newestChats = [];
+
+// Shows new messages at the bottom if you're there already, or after you
+// send; someone reading older messages stays where they are
 function showNewChats(newChats, isAfterSending) {
     const wasAtBottom = getDistanceFromBottom() < AT_BOTTOM_DISTANCE;
 
@@ -902,15 +953,24 @@ function showNewChats(newChats, isAfterSending) {
     newChats.forEach((chat) => hidePartnerTyping(chat.dataset.senderId));
 
     showTimes(newChats);
-    chatList.append(...newChats);
-    fadeInPhotos(newChats.map((chat) => chat.querySelector('[data-part="sender-photo"]')));
-    placeMessages(newChats);
-    addDayDividers();
+    const addNewChats = () => {
+        // Only the latest are laid out at once; the rest skip layout again
+        newestChats.forEach((chat) => chat.classList.remove('is-new'));
+        newestChats = newChats;
+        newChats.forEach((chat) => chat.classList.add('is-new'));
+        chatList.append(...newChats);
+        fadeInPhotos(newChats.map((chat) => chat.querySelector('[data-part="sender-photo"]')));
+        placeMessages(newChats);
+        addDayDividers();
+    };
 
     if (wasAtBottom || isAfterSending) {
-        trimOldMessages();
-        scrollToNewest();
+        slideUpToNewest(() => {
+            addNewChats();
+            trimOldMessages();
+        });
     } else {
+        addNewChats();
         // Only ones in the open tab; the others get a count on their tab
         newMessagesWhileScrolledUp += newChats.filter((chat) => !chat.hidden).length;
         updateJumpButton();
