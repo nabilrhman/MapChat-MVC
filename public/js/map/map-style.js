@@ -1,6 +1,7 @@
 // MapChat's map look, shared by the chat's map (map.js) and the one behind
 // the login pages (login-map.js): OpenFreeMap's positron style recoloured
-// lavender, and a purple shade wherever the sun has set
+// lavender, with a game map's tinted coasts and bold region names, and a
+// purple shade wherever the sun has set
 
 const STYLE_URL = 'https://tiles.openfreemap.org/styles/positron';
 const MAPLIBRE_URL = 'https://unpkg.com/maplibre-gl@4.7.1/dist/';
@@ -23,15 +24,20 @@ const STYLE_TIMEOUT = 10000;
 const MAP_CREDIT = '&copy; <a href="https://www.openmaptiles.org/" target="_blank">OpenMapTiles</a>'
     + ', <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>';
 
-// MapChat's purple map, by map layer: near-white land, lavender water, and
-// text in purples from deep (countries) to light (small places)
+// MapChat's purple map, by map layer: near-white land, lavender water (the
+// open sea a shade deeper than lakes), pink-lilac coasts, and text in purples
+// from deep (countries) to light (small places)
 const THEME = {
     land: '#fcfaff',
     residential: '#f8f4ff',
     park: '#ece3fe',
     building: '#f1eafd',
     buildingEdge: '#e0d4f9',
-    water: '#d2c5fd',
+    deepSea: '#c3b2fb',
+    sea: '#d2c5fd',
+    shallowSea: '#e4dcfe',
+    lake: '#ddd3fe',
+    shore: '#e8c8f0',
     road: '#ffffff',
     roadCasing: '#d9cbf7',
     path: '#e8dffb',
@@ -40,7 +46,8 @@ const THEME = {
     rail: '#d9cbf7',
     boundary: '#9d84e6',
     stateBoundary: '#c9b8f2',
-    countryText: '#3a2580',
+    regionText: '#ffffff',
+    regionTextHalo: 'rgba(58, 37, 128, 0.8)',
     cityText: '#3d2f6b',
     townText: '#5c4b8f',
     otherText: '#7a68b0',
@@ -54,14 +61,24 @@ const THEME = {
 
 /* The vector map's colours */
 
+// The open sea a shade deeper than lakes and rivers, as on a game's map
+const waterColourOf = (seaColour) => ['match', ['get', 'class'], 'ocean', seaColour, THEME.lake];
+// And deeper still zoomed out, easing to the usual sea by zoom 10, still
+// deeper than lakes and the shallow water's glow. MapLibre only takes zoom
+// at the top of an expression, so the match sits inside
+const WATER_COLOUR = ['interpolate', ['linear'], ['zoom'],
+    2, waterColourOf(THEME.deepSea),
+    10, waterColourOf(THEME.sea),
+];
+
 // The positron style's layers that change colour, by layer id; the first
 // match wins
 const LAYER_COLOURS = [
     {isLayer: (id) => id === 'background', paint: {'background-color': THEME.land}},
     {isLayer: (id) => id === 'landuse_residential', paint: {'fill-color': THEME.residential}},
     {isLayer: (id) => id === 'park' || id === 'landcover_wood', paint: {'fill-color': THEME.park}},
-    {isLayer: (id) => id === 'water', paint: {'fill-color': THEME.water}},
-    {isLayer: (id) => id === 'waterway', paint: {'line-color': THEME.water}},
+    {isLayer: (id) => id === 'water', paint: {'fill-color': WATER_COLOUR}},
+    {isLayer: (id) => id === 'waterway', paint: {'line-color': THEME.lake}},
     {isLayer: (id) => id === 'building', paint: {'fill-color': THEME.building, 'fill-outline-color': THEME.buildingEdge}},
     {isLayer: (id) => id === 'road_area_pier', paint: {'fill-color': THEME.land}},
     {isLayer: (id) => id === 'road_pier', paint: {'line-color': THEME.land}},
@@ -79,9 +96,62 @@ const LAYER_COLOURS = [
     {isLayer: (id) => /^boundary/.test(id), paint: {'line-color': THEME.boundary}},
 ];
 
+/* The coast's bands: a shore on land and shallow water out at sea */
+
+// The sea's shapes are cut at the date line, and a line drawn along a coast
+// traces the cut too, from pole to pole. So the coast's bands only fade in
+// from COAST_BANDS_FROM_ZOOM, where the date line is rarely on screen. Over
+// two zoom levels, so one scroll doesn't pop them in
+const COAST_BANDS_FROM_ZOOM = 4;
+const COAST_BANDS_OPACITY = ['interpolate', ['linear'], ['zoom'], COAST_BANDS_FROM_ZOOM, 0, COAST_BANDS_FROM_ZOOM + 2, 1];
+
+// A pink-lilac band along the coast, as a game's map draws its beaches: under
+// the sea, so only its landward half shows
+const COAST_LAYER = {
+    id: 'coast',
+    minzoom: COAST_BANDS_FROM_ZOOM,
+    type: 'line',
+    source: 'openmaptiles',
+    'source-layer': 'water',
+    filter: ['==', ['get', 'class'], 'ocean'],
+    layout: {'line-join': 'round'},
+    paint: {
+        'line-color': THEME.shore,
+        'line-width': ['interpolate', ['linear'], ['zoom'], 4, 1, 8, 3, 12, 6, 16, 12],
+        'line-opacity': COAST_BANDS_OPACITY,
+    },
+};
+
+// Shallow water: a wide blurred band of pale lavender just off the coast, so
+// the sea fades from light at the shore to its full colour further out. On
+// the sea's own edge, pushed out to sea by half its width
+const SHALLOW_SEA_WIDTH = ['interpolate', ['exponential', 1.5], ['zoom'], 4, 6, 8, 16, 12, 40, 16, 90];
+const SHALLOW_SEA_LAYER = {
+    id: 'shallow_sea',
+    minzoom: COAST_BANDS_FROM_ZOOM,
+    type: 'line',
+    source: 'openmaptiles',
+    'source-layer': 'water',
+    filter: ['==', ['get', 'class'], 'ocean'],
+    layout: {'line-join': 'round'},
+    paint: {
+        'line-color': THEME.shallowSea,
+        'line-width': SHALLOW_SEA_WIDTH,
+        // Half SHALLOW_SEA_WIDTH's stops: MapLibre can't halve a zoom expression
+        'line-offset': ['interpolate', ['exponential', 1.5], ['zoom'], 4, 3, 8, 8, 12, 20, 16, 45],
+        'line-blur': SHALLOW_SEA_WIDTH,
+        'line-opacity': COAST_BANDS_OPACITY,
+    },
+};
+
+/* Place names */
+
+// Countries and states, named in bold white capitals with a soft purple halo
+const isRegionLabel = (id) => /^label_(country|state)/.test(id);
+
 // The colour of each kind of place name, by layer id; the first match wins
 const LABEL_COLOURS = [
-    {isLayer: (id) => /^label_country/.test(id), colour: THEME.countryText},
+    {isLayer: isRegionLabel, colour: THEME.regionText},
     {isLayer: (id) => /^label_city/.test(id), colour: THEME.cityText},
     {isLayer: (id) => /^label_(town|village)$/.test(id), colour: THEME.townText},
     {isLayer: (id) => /^water/.test(id), colour: THEME.waterText},
@@ -99,11 +169,17 @@ function themeLabel(layer) {
     layer.paint['text-halo-color'] = /^water/.test(layer.id) ? THEME.waterTextHalo : THEME.textHalo;
     layer.paint['text-halo-width'] = 1.2;
 
-    // Spaced capitals, so country names read as a level above cities
-    if (/^label_country/.test(layer.id)) {
+    // Bold capitals, so countries and states read as a level above cities
+    if (isRegionLabel(layer.id)) {
+        layer.layout['text-font'] = ['Noto Sans Bold'];
         layer.layout['text-transform'] = 'uppercase';
-        layer.layout['text-letter-spacing'] = 0.12;
-        layer.layout['text-size'] = ['interpolate', ['linear'], ['zoom'], 1, 8, 4, 13, 7, 15];
+        layer.layout['text-letter-spacing'] = 0.04;
+        layer.paint['text-halo-color'] = THEME.regionTextHalo;
+        layer.paint['text-halo-width'] = 1.4;
+        layer.paint['text-halo-blur'] = 0.5;
+    }
+    if (/^label_country/.test(layer.id)) {
+        layer.layout['text-size'] = ['interpolate', ['linear'], ['zoom'], 1, 9, 4, 14, 7, 16];
     }
 }
 
@@ -212,12 +288,22 @@ function addNightShade(map, look = NIGHT_LOOK) {
     }, NIGHT_INTERVAL);
 }
 
+// The shore under the sea, so only its landward half shows, and the shallow
+// water over it
+function addCoastBands(style) {
+    const seaLayerIndex = style.layers.findIndex(({id}) => id === 'water');
+    if (seaLayerIndex === -1) return;
+    const seaLayer = style.layers[seaLayerIndex];
+    style.layers.splice(seaLayerIndex, 1, COAST_LAYER, seaLayer, SHALLOW_SEA_LAYER);
+}
+
 async function loadThemedStyle() {
     const response = await fetch(STYLE_URL, {signal: AbortSignal.timeout(STYLE_TIMEOUT)});
     if (!response.ok) throw new Error(`Map style ${response.status}`);
 
     const style = await response.json();
     style.layers.forEach(themeLayer);
+    addCoastBands(style);
     // A source's own credit takes the place of the one its tiles describe
     style.sources.openmaptiles.attribution = MAP_CREDIT;
     return style;
