@@ -129,10 +129,11 @@ function getMapPadding() {
     // Zero while the people list is a closed drawer
     const peopleWidth = document.getElementById('people').getBoundingClientRect().width;
 
-    // On phones the chat sits below the map instead of beside it
+    // On phones the chat sits below the map instead of beside it. Its height
+    // is the stop it's going to: the panel's own top is still sliding there
     const isChatBelowMap = chatPanel.width >= window.innerWidth * 0.9;
     if (isChatBelowMap) {
-        return {top: 40, bottom: window.innerHeight - chatPanel.top + 40, left: 40, right: 40};
+        return {top: 40, bottom: heightUnderChat() + 40, left: 40, right: 40};
     }
     return {top: 60, bottom: 60, left: chatPanel.width + 60, right: peopleWidth + 60};
 }
@@ -454,7 +455,12 @@ function centreMapBesideChat(map) {
     const clearWidth = container.clientWidth - padding.left - padding.right;
     const clearHeight = container.clientHeight - padding.top - padding.bottom;
     const clearMiddle = [padding.left + clearWidth / 2, padding.top + clearHeight / 2];
-    map.jumpTo({center: map.unproject(clearMiddle), padding});
+    const clearCentre = map.unproject(clearMiddle);
+    // The padding first: MapLibre keeps the centre in bounds as it moves it,
+    // but not as the padding changes after, which could leave the world's
+    // edge short of the screen's
+    map.jumpTo({padding});
+    map.jumpTo({center: clearCentre});
 }
 
 // Credits as a small (i) beside the people list (see chat-map.css)
