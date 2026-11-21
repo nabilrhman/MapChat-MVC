@@ -385,20 +385,53 @@ function fitVectorPins(map, locations) {
     }
 }
 
-// Dragging goes up and down until the map's centre is on the world's edge:
-// MapLibre on its own stops at the edge, leaving the far north and south
-// under the chat. It bounds the map as if it had no padding, hence half the
-// map's height past each edge at the furthest zoom
-function boundVectorMapToWorld(map) {
-    const smallestWorldHeight = VECTOR_TILE_SIZE * 2 ** map.getMinZoom();
-    const worldsPastEdge = map.getContainer().clientHeight / 2 / smallestWorldHeight;
+// The latitudes MapLibre may let the screen's top and bottom reach at a zoom,
+// so the world's edge stops at the middle of the part you can see: pixels
+// past each edge, so a different latitude at each zoom. MapLibre takes the
+// screen as centred on the map's centre, which padding moves (centreOffsetY,
+// up from the screen's middle), so the limits move by as much
+function vectorDragLimitsAt(zoom, mapHeight, heightUnderChat, centreOffsetY) {
+    const worldHeight = VECTOR_TILE_SIZE * 2 ** zoom;
+    const visibleMiddleY = (mapHeight - heightUnderChat) / 2;
+    const heightBelowVisibleMiddle = mapHeight - visibleMiddleY;
     const [south] = WORLD_BOUNDS[0];
     const [north] = WORLD_BOUNDS[1];
-    const northLimitY = maplibregl.MercatorCoordinate.fromLngLat([0, north]).y - worldsPastEdge;
-    const southLimitY = maplibregl.MercatorCoordinate.fromLngLat([0, south]).y + worldsPastEdge;
+    const northOverhang = (visibleMiddleY - centreOffsetY) / worldHeight;
+    const southOverhang = (heightBelowVisibleMiddle + centreOffsetY) / worldHeight;
+    const northLimitY = maplibregl.MercatorCoordinate.fromLngLat([0, north]).y - northOverhang;
+    const southLimitY = maplibregl.MercatorCoordinate.fromLngLat([0, south]).y + southOverhang;
     const northLimit = new maplibregl.MercatorCoordinate(0, northLimitY).toLngLat().lat;
     const southLimit = new maplibregl.MercatorCoordinate(0, southLimitY).toLngLat().lat;
-    map.setMaxBounds([[-Infinity, southLimit], [Infinity, northLimit]]);
+    return [southLimit, northLimit];
+}
+
+// Dragging goes up and down until the world's edge reaches the middle of the
+// part you can see, so any place comes out from behind the chat
+function boundVectorMapToWorld(map) {
+    // Set by hand, MapLibre's bounds would be a zoom behind while zooming
+    // (zooming out at the edge would creep in) and a size behind while
+    // resizing. Its own check, MapLibre 4's private getConstrained, is handed
+    // the zoom and size it's about to use, so the bounds are worked out there
+    const transform = map.transform;
+    const constrainWithinBounds = transform.getConstrained.bind(transform);
+    let heightUnderChat = 0;
+    transform.getConstrained = (center, zoom) => {
+        const zoomInRange = Math.min(Math.max(zoom, transform.minZoom), transform.maxZoom);
+        transform.latRange = vectorDragLimitsAt(zoomInRange, transform.height, heightUnderChat, transform.centerOffset.y);
+        return constrainWithinBounds(center, zoom);
+    };
+
+    // The chat sheet covers the map's bottom on phones; setMaxBounds checks
+    // the map against the new bounds at once
+    const measureChat = () => {
+        heightUnderChat = map.getContainer().clientHeight - visibleMapHeight();
+        const [south, north] = vectorDragLimitsAt(map.getZoom(), transform.height, heightUnderChat, transform.centerOffset.y);
+        map.setMaxBounds([[-Infinity, south], [Infinity, north]]);
+    };
+    measureChat();
+    document.addEventListener('sheet-moved', measureChat);
+    window.addEventListener('resize', measureChat);
+    phoneScreen.addEventListener('change', measureChat);
 }
 
 // Puts the map's centre in the middle of the part you can see, without moving
@@ -453,11 +486,7 @@ async function initializeVectorMap() {
     vectorMap = map;
     addVectorCredits(map);
     keepMinZoomFilled(map, VECTOR_TILE_SIZE, LOWEST_VECTOR_ZOOM);
-    // After keepMinZoomFilled's listeners, as the bounds follow the furthest zoom
-    const boundToWorld = () => boundVectorMapToWorld(map);
-    boundToWorld();
-    document.addEventListener('sheet-moved', boundToWorld);
-    window.addEventListener('resize', boundToWorld);
+    boundVectorMapToWorld(map);
     const centreBesideChat = () => centreMapBesideChat(map);
     centreBesideChat();
     document.addEventListener('sheet-moved', centreBesideChat);
