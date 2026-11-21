@@ -94,19 +94,32 @@ function createPingEcho(audio) {
     return echo;
 }
 
-// Browsers hold sound back till the page is clicked or typed on, so the
-// first of those turns it on. Resolves once it's on
+// Browsers hold sound back till the page is clicked or typed on, so a
+// click or key turns it on (onFirstPress). Resolves once it's on
 function turnOnPingSound() {
-    if (!pingAudio) {
-        pingAudio = new AudioContext();
-        pingNote = createMarimbaNote(pingAudio);
-        pingEcho = createPingEcho(pingAudio);
-    }
+    pingAudio ??= new AudioContext();
     return pingAudio.resume();
 }
 
-document.addEventListener('pointerdown', turnOnPingSound, {once: true});
-document.addEventListener('keydown', turnOnPingSound, {once: true});
+// Built at the first ping rather than up front, as it takes a frame or two
+function preparePingSound() {
+    if (pingNote) return;
+    pingNote = createMarimbaNote(pingAudio);
+    pingEcho = createPingEcho(pingAudio);
+}
+
+// Not a press on the map: making the AudioContext takes a frame or two,
+// which would stutter the start of a drag. Pings come with the chat, which
+// gets clicked or typed in soon enough
+function onFirstPress(event) {
+    if (event.target.closest('#map')) return;
+    document.removeEventListener('pointerdown', onFirstPress);
+    document.removeEventListener('keydown', onFirstPress);
+    turnOnPingSound();
+}
+
+document.addEventListener('pointerdown', onFirstPress);
+document.addEventListener('keydown', onFirstPress);
 
 const isPingSoundOn = () => !readFlag(PING_OFF_KEY);
 
@@ -114,6 +127,7 @@ const isPingSoundOn = () => !readFlag(PING_OFF_KEY);
 function playPing() {
     if (!isPingSoundOn() || pingAudio?.state !== 'running') return;
 
+    preparePingSound();
     const now = pingAudio.currentTime;
     const startsAt = Math.max(now, lastPingStartsAt + PING_SECONDS);
     const waitingPings = Math.ceil((startsAt - now) / PING_SECONDS);
