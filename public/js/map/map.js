@@ -8,6 +8,8 @@
 // its tiles, while Leaflet has no tiles below zoom 0
 const LOWEST_VECTOR_ZOOM = -2;
 const LOWEST_TILE_ZOOM = 0;
+// The vector map's tiles, so its world is this many pixels tall at zoom 0
+const VECTOR_TILE_SIZE = 512;
 // The top and bottom of the world, as far as the map draws it
 const WORLD_BOUNDS = [[-85, -Infinity], [85, Infinity]];
 
@@ -383,6 +385,42 @@ function fitVectorPins(map, locations) {
     }
 }
 
+// Dragging goes up and down until the map's centre is on the world's edge:
+// MapLibre on its own stops at the edge, leaving the far north and south
+// under the chat. It bounds the map as if it had no padding, hence half the
+// map's height past each edge at the furthest zoom
+function boundVectorMapToWorld(map) {
+    const smallestWorldHeight = VECTOR_TILE_SIZE * 2 ** map.getMinZoom();
+    const worldsPastEdge = map.getContainer().clientHeight / 2 / smallestWorldHeight;
+    const [south] = WORLD_BOUNDS[0];
+    const [north] = WORLD_BOUNDS[1];
+    const northLimitY = maplibregl.MercatorCoordinate.fromLngLat([0, north]).y - worldsPastEdge;
+    const southLimitY = maplibregl.MercatorCoordinate.fromLngLat([0, south]).y + worldsPastEdge;
+    const northLimit = new maplibregl.MercatorCoordinate(0, northLimitY).toLngLat().lat;
+    const southLimit = new maplibregl.MercatorCoordinate(0, southLimitY).toLngLat().lat;
+    map.setMaxBounds([[-Infinity, southLimit], [Infinity, northLimit]]);
+}
+
+// Puts the map's centre in the middle of the part you can see, without moving
+// the map: dragging brings any place to the centre but no further
+function centreMapBesideChat(map) {
+    const padding = getMapPadding();
+    const currentPadding = map.getPadding();
+    const isPaddingSame = ['top', 'bottom', 'left', 'right'].every((side) => currentPadding[side] === padding[side]);
+    if (isPaddingSame) return;
+    // Jumping would stop a move under way, like focusing a pin
+    if (map.isMoving()) {
+        map.once('moveend', () => centreMapBesideChat(map));
+        return;
+    }
+
+    const container = map.getContainer();
+    const clearWidth = container.clientWidth - padding.left - padding.right;
+    const clearHeight = container.clientHeight - padding.top - padding.bottom;
+    const clearMiddle = [padding.left + clearWidth / 2, padding.top + clearHeight / 2];
+    map.jumpTo({center: map.unproject(clearMiddle), padding});
+}
+
 // Credits as a small (i) beside the people list (see chat-map.css)
 function addVectorCredits(map) {
     map.addControl(new maplibregl.AttributionControl({compact: true}), 'bottom-right');
@@ -409,12 +447,21 @@ async function initializeVectorMap() {
         style,
         center: [START.lng, START.lat],
         zoom: START.zoom,
-        minZoom: minZoomToFill(512, LOWEST_VECTOR_ZOOM),
+        minZoom: minZoomToFill(VECTOR_TILE_SIZE, LOWEST_VECTOR_ZOOM),
         attributionControl: false,
     });
     vectorMap = map;
     addVectorCredits(map);
-    keepMinZoomFilled(map, 512, LOWEST_VECTOR_ZOOM);
+    keepMinZoomFilled(map, VECTOR_TILE_SIZE, LOWEST_VECTOR_ZOOM);
+    // After keepMinZoomFilled's listeners, as the bounds follow the furthest zoom
+    const boundToWorld = () => boundVectorMapToWorld(map);
+    boundToWorld();
+    document.addEventListener('sheet-moved', boundToWorld);
+    window.addEventListener('resize', boundToWorld);
+    const centreBesideChat = () => centreMapBesideChat(map);
+    centreBesideChat();
+    document.addEventListener('sheet-moved', centreBesideChat);
+    window.addEventListener('resize', centreBesideChat);
 
     map.on('load', () => {
         addNightShade(map);
