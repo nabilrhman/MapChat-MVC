@@ -10,8 +10,10 @@ const SCROLLED_UP_DISTANCE = 200;
 const COME_ONLINE_DELAY = 7000;
 // Closer to the bottom than this, new messages scroll into view
 const AT_BOTTOM_DISTANCE = 80;
-// Closer to the top than this, the next page of older messages loads
-const LOAD_OLDER_DISTANCE = 200;
+// Within this many screens of the top, the next page of older messages
+// loads: early enough that a quick scroll up doesn't hit the top and stop
+// while they come
+const LOAD_OLDER_SCREENS = 5;
 // "Typing" goes to the other person at most this often while you type,
 // and stops after this long without a key
 const TYPING_SEND_INTERVAL = 2000;
@@ -849,7 +851,7 @@ async function loadOlderIfAny(conversation) {
 }
 
 function loadOlderIfNearTop() {
-    if (chatList.scrollTop <= LOAD_OLDER_DISTANCE) loadOlderIfAny(activeConversation);
+    if (chatList.scrollTop <= chatList.clientHeight * LOAD_OLDER_SCREENS) loadOlderIfAny(activeConversation);
 }
 
 // Only when you scroll up: a short tab sits at the top while it scrolls
