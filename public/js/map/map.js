@@ -491,7 +491,15 @@ async function initializeVectorMap() {
         zoom: START.zoom,
         minZoom: minZoomToFill(VECTOR_TILE_SIZE, LOWEST_VECTOR_ZOOM),
         attributionControl: false,
+        // North stays up and the map flat: the world's edges, the drag
+        // bounds and the night shade all assume it. Pinching still zooms
+        dragRotate: false,
+        pitchWithRotate: false,
+        touchPitch: false,
+        maxPitch: 0,
     });
+    map.touchZoomRotate.disableRotation();
+    map.keyboard.disableRotation();
     vectorMap = map;
     addVectorCredits(map);
     keepMinZoomFilled(map, VECTOR_TILE_SIZE, LOWEST_VECTOR_ZOOM);
