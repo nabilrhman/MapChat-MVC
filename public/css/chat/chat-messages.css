@@ -11,6 +11,11 @@
     border-block-end: 1px solid var(--hairline);
     background-color: var(--chat-surface);
     transition: background-color var(--dur-fast) var(--ease-out);
+    /* Messages out of view skip layout, so a change anywhere on the page
+       (a new message, someone joining) doesn't lay out the whole history and
+       stutter the map. auto keeps each one's real height once it's been seen */
+    content-visibility: auto;
+    contain-intrinsic-size: auto 96px;
 
     /* A message in another tab (chat.js); the grid above would beat [hidden] */
     &[hidden]
