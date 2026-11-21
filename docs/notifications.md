@@ -46,6 +46,9 @@ Two places can show a notification, and only one does for each message:
 
 The service worker (`public/service-worker.js`) receives every push, and
 stays quiet only while a chat page is in view, since that page shows its own.
+There, Chrome shows nothing, as it asks for no notification while one of the
+site's tabs is visible. Other browsers get one shown silently and closed at
+once: Safari takes back the push subscription after pushes that show none.
 Without Web Push set up, the page shows them whenever it's open, in view or
 not. A new version of `service-worker.js` takes over at once, without waiting
 for every MapChat tab to close.
