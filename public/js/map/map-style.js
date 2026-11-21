@@ -164,7 +164,35 @@ function labelColourOf(layerId) {
     return LABEL_COLOURS.find(({isLayer}) => isLayer(layerId))?.colour ?? THEME.otherText;
 }
 
+// The style names a place in Latin, then again in its own script. MapLibre
+// can't shape Bengali, Hindi, Myanmar and the like, so their letters come out
+// broken: those places keep only the Latin name
+const HAS_LOCAL_NAME = ['has', 'name:nonlatin'];
+const CAN_DRAW_LOCAL_NAME = ['all', HAS_LOCAL_NAME, ['is-supported-script', ['get', 'name:nonlatin']]];
+// The same Latin name the two-line label shows
+const LATIN_NAME = ['coalesce', ['get', 'name:latin'], ['get', 'name_en']];
+
+// Compared as JSON, as the style's condition is its own array, not ours
+const isTwoScriptName = (textField) => Array.isArray(textField)
+    && textField[0] === 'case'
+    && JSON.stringify(textField[1]) === JSON.stringify(HAS_LOCAL_NAME);
+
+function dropUndrawableLocalName(layer) {
+    const textField = layer.layout['text-field'];
+    if (!isTwoScriptName(textField)) return;
+
+    const bothNames = textField[2];
+    const nameWithoutLocalScript = textField[3];
+    layer.layout['text-field'] = [
+        'case',
+        CAN_DRAW_LOCAL_NAME, bothNames,
+        HAS_LOCAL_NAME, LATIN_NAME,
+        nameWithoutLocalScript,
+    ];
+}
+
 function themeLabel(layer) {
+    dropUndrawableLocalName(layer);
     layer.paint['text-color'] = labelColourOf(layer.id);
     layer.paint['text-halo-color'] = /^water/.test(layer.id) ? THEME.waterTextHalo : THEME.textHalo;
     layer.paint['text-halo-width'] = 1.2;
