@@ -80,6 +80,8 @@ const CAPTURE_EXTENSION = join(import.meta.dirname, 'capture-extension');
 // encode, which makes the video, starts from near what was on screen
 const CAPTURE_BITS_PER_SECOND = 60_000_000;
 const FPS = 60;
+// How long a page takes to scroll to its bottom, however far that is
+const SCROLL_SECONDS = 1.2;
 // A frame unchanged for longer than this is shown for only this long
 const LONGEST_STILL_SECONDS = 1.0;
 const SEED = 7;
@@ -346,12 +348,27 @@ async function speakMessage(page: Page, person: Person, composer: Locator): Prom
     await person.pressEnter();
 }
 
-/** Scrolls the page down to its bottom with the mouse wheel, a notch at a time */
+/**
+ * Scrolls the page down to its bottom with the mouse wheel, a small step each
+ * frame, easing in and out as a trackpad does. Chrome doesn't animate wheel
+ * events sent from here, so a few big notches would show as jumps. A step
+ * waits about a frame for Chrome to take it, so the next goes straight out:
+ * a pause between them too halved the rate, and the scroll juddered
+ */
 async function scrollToBottom(page: Page): Promise<void> {
     const distance = await page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight - window.scrollY);
-    for (let scrolled = 0; scrolled < distance; scrolled += 100) {
-        await page.mouse.wheel(0, 100);
-        await waitSeconds(0.12);
+    const startedAt = performance.now();
+    let scrolled = 0;
+    while (scrolled < distance) {
+        const progress = Math.min(1, (performance.now() - startedAt) / (SCROLL_SECONDS * 1000));
+        const easedProgress = progress * progress * (3 - 2 * progress);
+        const step = Math.round(distance * easedProgress) - scrolled;
+        if (step > 0) {
+            await page.mouse.wheel(0, step);
+            scrolled += step;
+        } else {
+            await waitSeconds(1 / FPS / 4);
+        }
     }
 }
 
