@@ -383,11 +383,14 @@ function fitVectorPins(map, locations) {
         bounds.extend(lngLatOf(personLocation));
     }
 
-    const padding = getMapPadding();
+    // On the map itself, not as fitBounds's padding: MapLibre adds that to
+    // the map's own, which centreMapBesideChat has already set to the same,
+    // and the doubled room is more than the map has, so nothing would fit
+    map.jumpTo({padding: getMapPadding()});
     if (locations.length === 1) {
-        map.jumpTo({center: bounds.getCenter(), zoom: MAX_PIN_ZOOM, padding});
+        map.jumpTo({center: bounds.getCenter(), zoom: MAX_PIN_ZOOM});
     } else if (locations.length > 1) {
-        map.fitBounds(bounds, {padding, maxZoom: MAX_PIN_ZOOM, animate: false});
+        map.fitBounds(bounds, {maxZoom: MAX_PIN_ZOOM, animate: false});
     }
 }
 
