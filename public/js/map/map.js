@@ -103,6 +103,11 @@ function visibleMapHeight() {
     return document.getElementById('map').clientHeight;
 }
 
+// The part of the map the chat sheet covers: none on desktop
+function heightUnderChat() {
+    return document.getElementById('map').clientHeight - visibleMapHeight();
+}
+
 // The furthest out you can zoom: the world (a square tileSize pixels tall at
 // zoom 0) must be at least as tall as the part of the map you can see, so it
 // never ends mid-screen. Never further out than lowestZoom
@@ -386,27 +391,25 @@ function fitVectorPins(map, locations) {
 }
 
 // The latitudes MapLibre may let the screen's top and bottom reach at a zoom,
-// so the world's edge stops at the middle of the part you can see: pixels
-// past each edge, so a different latitude at each zoom. MapLibre takes the
-// screen as centred on the map's centre, which padding moves (centreOffsetY,
-// up from the screen's middle), so the limits move by as much
-function vectorDragLimitsAt(zoom, mapHeight, heightUnderChat, centreOffsetY) {
+// so the world's top stops at the screen's top and its bottom at the chat's.
+// MapLibre takes the screen as centred on the map's centre, but padding moves
+// that centre (centreOffsetY, down from the screen's middle), so both shift
+function vectorDragLimitsAt(zoom, coveredHeight, centreOffsetY) {
     const worldHeight = VECTOR_TILE_SIZE * 2 ** zoom;
-    const visibleMiddleY = (mapHeight - heightUnderChat) / 2;
-    const heightBelowVisibleMiddle = mapHeight - visibleMiddleY;
     const [south] = WORLD_BOUNDS[0];
     const [north] = WORLD_BOUNDS[1];
-    const northOverhang = (visibleMiddleY - centreOffsetY) / worldHeight;
-    const southOverhang = (heightBelowVisibleMiddle + centreOffsetY) / worldHeight;
-    const northLimitY = maplibregl.MercatorCoordinate.fromLngLat([0, north]).y - northOverhang;
-    const southLimitY = maplibregl.MercatorCoordinate.fromLngLat([0, south]).y + southOverhang;
+    const northShift = -centreOffsetY / worldHeight;
+    const southShift = (coveredHeight + centreOffsetY) / worldHeight;
+    const northLimitY = maplibregl.MercatorCoordinate.fromLngLat([0, north]).y - northShift;
+    const southLimitY = maplibregl.MercatorCoordinate.fromLngLat([0, south]).y + southShift;
     const northLimit = new maplibregl.MercatorCoordinate(0, northLimitY).toLngLat().lat;
     const southLimit = new maplibregl.MercatorCoordinate(0, southLimitY).toLngLat().lat;
     return [southLimit, northLimit];
 }
 
-// Dragging goes up and down until the world's edge reaches the middle of the
-// part you can see, so any place comes out from behind the chat
+// Dragging stops at the world's top and bottom, so no blank shows past them.
+// On phones the chat sheet covers the map's bottom, so there the world's
+// bottom comes up to the sheet, and every place can come out from under it
 function boundVectorMapToWorld(map) {
     // Set by hand, MapLibre's bounds would be a zoom behind while zooming
     // (zooming out at the edge would creep in) and a size behind while
@@ -414,18 +417,18 @@ function boundVectorMapToWorld(map) {
     // the zoom and size it's about to use, so the bounds are worked out there
     const transform = map.transform;
     const constrainWithinBounds = transform.getConstrained.bind(transform);
-    let heightUnderChat = 0;
+    let coveredHeight = 0;
     transform.getConstrained = (center, zoom) => {
         const zoomInRange = Math.min(Math.max(zoom, transform.minZoom), transform.maxZoom);
-        transform.latRange = vectorDragLimitsAt(zoomInRange, transform.height, heightUnderChat, transform.centerOffset.y);
+        transform.latRange = vectorDragLimitsAt(zoomInRange, coveredHeight, transform.centerOffset.y);
         return constrainWithinBounds(center, zoom);
     };
 
     // The chat sheet covers the map's bottom on phones; setMaxBounds checks
     // the map against the new bounds at once
     const measureChat = () => {
-        heightUnderChat = map.getContainer().clientHeight - visibleMapHeight();
-        const [south, north] = vectorDragLimitsAt(map.getZoom(), transform.height, heightUnderChat, transform.centerOffset.y);
+        coveredHeight = heightUnderChat();
+        const [south, north] = vectorDragLimitsAt(map.getZoom(), coveredHeight, transform.centerOffset.y);
         map.setMaxBounds([[-Infinity, south], [Infinity, north]]);
     };
     measureChat();
@@ -435,7 +438,7 @@ function boundVectorMapToWorld(map) {
 }
 
 // Puts the map's centre in the middle of the part you can see, without moving
-// the map: dragging brings any place to the centre but no further
+// the map, so zooming and focusing a pin centre there, not behind the chat
 function centreMapBesideChat(map) {
     const padding = getMapPadding();
     const currentPadding = map.getPadding();
@@ -704,28 +707,25 @@ function fitTilePins(map, locations) {
     });
 }
 
-// Leaflet's usual map, but places past the world's top or bottom edge are
-// drawn there, not on the edge, so the drag bounds can reach past it. Any
+// Leaflet's usual map, but places past the world's bottom edge are drawn
+// there, not on the edge, so the bounds can reach under the chat sheet. Any
 // closer to the pole than about two worlds past the edge rounds to infinity
 function mapCrsPastWorldEdge() {
     const projection = {...L.Projection.SphericalMercator, MAX_LATITUDE: 89.99999};
     return {...L.CRS.EPSG3857, projection};
 }
 
-// Dragging goes up and down until the world's edge reaches the middle of the
-// part you can see, so any place comes out from behind the chat. The bounds
-// are pixels past each edge, so a different latitude at each zoom
+// Dragging stops at the world's top and bottom, so no blank shows past them.
+// On phones the chat sheet covers the map's bottom, so there the world's
+// bottom comes up to the sheet: that many pixels further south, which is a
+// different latitude at each zoom
 function boundTileMapToWorld(map) {
-    const visibleMiddleY = visibleMapHeight() / 2;
-    const heightBelowVisibleMiddle = document.getElementById('map').clientHeight - visibleMiddleY;
     const zoom = map.getZoom();
     const [south, west] = WORLD_BOUNDS[0];
     const [north, east] = WORLD_BOUNDS[1];
-    const northLimitPoint = map.project([north, 0], zoom).subtract([0, visibleMiddleY]);
-    const southLimitPoint = map.project([south, 0], zoom).add([0, heightBelowVisibleMiddle]);
-    const northLimit = map.unproject(northLimitPoint, zoom).lat;
+    const southLimitPoint = map.project([south, 0], zoom).add([0, heightUnderChat()]);
     const southLimit = map.unproject(southLimitPoint, zoom).lat;
-    map.setMaxBounds([[southLimit, west], [northLimit, east]]);
+    map.setMaxBounds([[southLimit, west], [north, east]]);
 }
 
 async function initializeTileMap() {
