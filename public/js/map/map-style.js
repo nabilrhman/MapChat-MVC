@@ -212,7 +212,9 @@ const NIGHT_LOOK = {colour: THEME.night, opacity: 0.32};
 // Sunset is when the sun's centre is 0.8° below the horizon; twilight ends at 18°
 const SUNSET_ALTITUDE = -0.8;
 const NIGHT_ALTITUDE = -18;
-const NIGHT_SHADE_SIZE = 512;
+// The shade is a soft gradient MapLibre stretches anyway, and the sun moves
+// about a pixel of it every five minutes: more would only cost drawing time
+const NIGHT_SHADE_SIZE = 256;
 // Web Mercator stops here, so the shade covers the whole drawn world
 const MERCATOR_MAX_LAT = 85.0511;
 const NIGHT_SHADE_CORNERS = [
@@ -262,9 +264,12 @@ function drawNightShade(date, look) {
 
     for (let y = 0; y < NIGHT_SHADE_SIZE; y++) {
         const lat = Math.atan(Math.sinh(Math.PI * (1 - (2 * (y + 0.5)) / NIGHT_SHADE_SIZE)));
+        // The row's two terms of the sun's altitude, worked out once a row for speed
+        const rowSinTerm = Math.sin(lat) * sinSunLat;
+        const rowCosTerm = Math.cos(lat) * cosSunLat;
         for (let x = 0; x < NIGHT_SHADE_SIZE; x++) {
             const lng = -180 + (360 * (x + 0.5)) / NIGHT_SHADE_SIZE;
-            const sinAltitude = Math.sin(lat) * sinSunLat + Math.cos(lat) * cosSunLat * Math.cos((lng - sun.lng) * DEGREES);
+            const sinAltitude = rowSinTerm + rowCosTerm * Math.cos((lng - sun.lng) * DEGREES);
             const pixel = (y * NIGHT_SHADE_SIZE + x) * 4;
             shade.data[pixel] = red;
             shade.data[pixel + 1] = green;
@@ -283,8 +288,23 @@ function addNightShade(map, look = NIGHT_LOOK) {
     const firstLabel = map.getStyle().layers.find(hasText)?.id;
     map.addLayer({id: 'night', type: 'raster', source: 'night', paint: {'raster-fade-duration': 0}}, firstLabel);
 
-    setInterval(() => {
+    const redrawNightShade = () => {
         map.getSource('night').updateImage({url: drawNightShade(new Date(), look), coordinates: NIGHT_SHADE_CORNERS});
+    };
+    // Never while the map moves: drawing it would cost that frame. One wait
+    // at a time, so a move longer than the interval still redraws once
+    let isWaitingForMapToStop = false;
+    setInterval(() => {
+        if (!map.isMoving()) {
+            redrawNightShade();
+            return;
+        }
+        if (isWaitingForMapToStop) return;
+        isWaitingForMapToStop = true;
+        map.once('moveend', () => {
+            isWaitingForMapToStop = false;
+            redrawNightShade();
+        });
     }, NIGHT_INTERVAL);
 }
 
