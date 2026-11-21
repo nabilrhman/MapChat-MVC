@@ -41,7 +41,7 @@ In 2026 I came back to it to bring parts of it up to date.
 sleeps when nobody visits, so the first visit after a quiet spell takes about
 a minute to load.
 
-https://github.com/user-attachments/assets/cb4fb5fa-f05c-47e6-af61-1a936b31db98
+https://github.com/user-attachments/assets/800b3b19-1b6d-4343-968c-bcfbc76be836
 
 <sub>A quick tour of MapChat.</sub>
 
