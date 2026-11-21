@@ -675,23 +675,28 @@ function fitTilePins(map, locations) {
     });
 }
 
-// Dragging stops at the top and bottom of the world. On phones the chat
-// sheet covers the map's bottom, so there the world's south edge stops at
-// the sheet instead: the bound goes that many pixels further south, which
-// is a different latitude at each zoom
-function boundTileMapToWorld(map) {
-    if (!phoneScreen.matches) {
-        map.setMaxBounds(WORLD_BOUNDS);
-        return;
-    }
+// Leaflet's usual map, but places past the world's top or bottom edge are
+// drawn there, not on the edge, so the drag bounds can reach past it. Any
+// closer to the pole than about two worlds past the edge rounds to infinity
+function mapCrsPastWorldEdge() {
+    const projection = {...L.Projection.SphericalMercator, MAX_LATITUDE: 89.99999};
+    return {...L.CRS.EPSG3857, projection};
+}
 
-    const coveredHeight = document.getElementById('map').clientHeight - visibleMapHeight();
+// Dragging goes up and down until the world's edge reaches the middle of the
+// part you can see, so any place comes out from behind the chat. The bounds
+// are pixels past each edge, so a different latitude at each zoom
+function boundTileMapToWorld(map) {
+    const visibleMiddleY = visibleMapHeight() / 2;
+    const heightBelowVisibleMiddle = document.getElementById('map').clientHeight - visibleMiddleY;
     const zoom = map.getZoom();
     const [south, west] = WORLD_BOUNDS[0];
     const [north, east] = WORLD_BOUNDS[1];
-    const southEdgeUnderSheet = map.project([south, 0], zoom).add([0, coveredHeight]);
-    const southUnderSheet = map.unproject(southEdgeUnderSheet, zoom).lat;
-    map.setMaxBounds([[southUnderSheet, west], [north, east]]);
+    const northLimitPoint = map.project([north, 0], zoom).subtract([0, visibleMiddleY]);
+    const southLimitPoint = map.project([south, 0], zoom).add([0, heightBelowVisibleMiddle]);
+    const northLimit = map.unproject(northLimitPoint, zoom).lat;
+    const southLimit = map.unproject(southLimitPoint, zoom).lat;
+    map.setMaxBounds([[southLimit, west], [northLimit, east]]);
 }
 
 async function initializeTileMap() {
@@ -699,6 +704,7 @@ async function initializeTileMap() {
     await loadAsset('script', {src: `${LEAFLET_URL}leaflet.js`});
 
     const map = L.map('map', {
+        crs: mapCrsPastWorldEdge(),
         zoomControl: false,
         attributionControl: false,
         worldCopyJump: true,
