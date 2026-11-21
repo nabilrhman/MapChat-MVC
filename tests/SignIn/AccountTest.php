@@ -266,7 +266,7 @@ class AccountTest extends TestCase
 
     public function testPostOnlyUrlsRefuseGet(): void
     {
-        foreach (['/login/guest', '/signup/create', '/password/request-reset', '/password/reset-password', '/app/get', '/app/send', '/app/get-locations', '/profile/update-avatar', '/profile/delete'] as $path) {
+        foreach (['/login/guest', '/signup/create', '/password/request-reset', '/password/reset-password', '/messages/send', '/messages/mark-read', '/account/check-email', '/profile/update-avatar', '/profile/delete'] as $path) {
             $this->assertRefusedMethod($this->request('GET', $path), 'POST');
         }
     }
@@ -276,6 +276,8 @@ class AccountTest extends TestCase
         $this->assertRefusedMethod($this->request('POST', '/login'), 'GET, HEAD');
         $this->assertRefusedMethod($this->request('POST', '/profile/show'), 'GET, HEAD');
         $this->assertRefusedMethod($this->request('DELETE', '/about'), 'GET, HEAD');
+        $this->assertRefusedMethod($this->request('POST', '/messages/new'), 'GET, HEAD');
+        $this->assertRefusedMethod($this->request('POST', '/people'), 'GET, HEAD');
     }
 
     public function testAPostWithNeitherOriginNorRefererIsRefused(): void
@@ -485,10 +487,10 @@ class AccountTest extends TestCase
         $this->assertTrue(password_verify('newpass123', $this->user()['password_hash']));
     }
 
-    public function testEmailCheckReadsTheQueryString(): void
+    public function testEmailCheckReadsThePostedEmail(): void
     {
-        $taken = $this->request('GET', '/account/validate-email?' . http_build_query(['email' => self::EMAIL]));
-        $free = $this->request('GET', '/account/validate-email?' . http_build_query(['email' => 'free@test.local']));
+        $taken = $this->request('POST', '/account/check-email', ['email' => self::EMAIL]);
+        $free = $this->request('POST', '/account/check-email', ['email' => 'free@test.local']);
 
         $this->assertSame('false', $taken['body']);
         $this->assertSame('true', $free['body']);
@@ -496,8 +498,8 @@ class AccountTest extends TestCase
 
     public function testEmailCheckSaysAnEmailAtMapChatsOwnDomainIsNotFree(): void
     {
-        $demoDomain = $this->request('GET', '/account/validate-email?' . http_build_query(['email' => 'nobody@demo.mapchat.local']));
-        $ownDomain = $this->request('GET', '/account/validate-email?' . http_build_query(['email' => 'nobody@mapchat.local']));
+        $demoDomain = $this->request('POST', '/account/check-email', ['email' => 'nobody@demo.mapchat.local']);
+        $ownDomain = $this->request('POST', '/account/check-email', ['email' => 'nobody@mapchat.local']);
 
         $this->assertSame('false', $demoDomain['body']);
         $this->assertSame('false', $ownDomain['body']);
@@ -510,8 +512,8 @@ class AccountTest extends TestCase
         $guestId = (int) $this->db->lastInsertId();
 
         try {
-            $query = http_build_query(['email' => 'account-guest@guest.mapchat.local', 'ignore_id' => $guestId]);
-            $this->assertSame('true', $this->request('GET', "/account/validate-email?$query")['body']);
+            $question = ['email' => 'account-guest@guest.mapchat.local', 'ignore_id' => $guestId];
+            $this->assertSame('true', $this->request('POST', '/account/check-email', $question)['body']);
         } finally {
             $this->db->prepare('DELETE FROM users WHERE id = ?')->execute([$guestId]);
         }
@@ -521,7 +523,7 @@ class AccountTest extends TestCase
     {
         $login = $this->request('POST', '/login/create', ['email' => [self::EMAIL], 'password' => [self::PASSWORD]]);
         $signup = $this->request('POST', '/signup/create', ['name' => ['Ann'], 'email' => ['x@test.local'], 'password' => ['a']]);
-        $check = $this->request('GET', '/account/validate-email?' . http_build_query(['email' => [self::EMAIL]]));
+        $check = $this->request('POST', '/account/check-email', ['email' => [self::EMAIL]]);
         $reset = $this->request('POST', '/password/request-reset', ['email' => [self::EMAIL]]);
 
         $this->assertNotSame(500, $login['status']);
@@ -567,7 +569,7 @@ class AccountTest extends TestCase
     {
         $headers = ['X-Requested-With' => 'XMLHttpRequest'];
 
-        $response = $this->request('POST', '/app/get-people', [], $headers);
+        $response = $this->request('GET', '/people', [], $headers);
         $this->assertSame(401, $response['status']);
         $this->assertSame(['error' => 'Please log in again.'], json_decode($response['body'], true));
 
@@ -578,7 +580,7 @@ class AccountTest extends TestCase
         $this->assertSame(0, (int) $this->db->query("SELECT share_location FROM users WHERE email = '" . self::EMAIL . "'")->fetchColumn());
 
         $this->logIn();
-        $response = $this->request('POST', '/app/get-people', [], $headers);
+        $response = $this->request('GET', '/people', [], $headers);
         $this->assertSame(200, $response['status']);
         $this->assertIsArray(json_decode($response['body'], true));
     }
@@ -782,10 +784,10 @@ class AccountTest extends TestCase
         $userId = (int) $this->db->query("SELECT id FROM users WHERE email = '" . self::EMAIL . "'")->fetchColumn();
 
         $this->assertSame(['share_location' => false], json_decode($this->request('POST', '/profile/update-location-sharing', ['share' => ''])['body'], true));
-        $this->assertNotContains($userId, array_column($this->locations(), 'user_id'));
+        $this->assertNotContains($userId, array_column($this->locations(), 'id'));
 
         $this->assertSame(['share_location' => true], json_decode($this->request('POST', '/profile/update-location-sharing', ['share' => '1'])['body'], true));
-        $this->assertContains($userId, array_column($this->locations(), 'user_id'));
+        $this->assertContains($userId, array_column($this->locations(), 'id'));
     }
 
     /**
@@ -795,7 +797,7 @@ class AccountTest extends TestCase
      */
     private function locations(): array
     {
-        $response = $this->request('POST', '/app/get-locations');
+        $response = $this->request('GET', '/people/pins');
         $this->assertSame(200, $response['status']);
 
         return json_decode($response['body'], true);
@@ -809,20 +811,23 @@ class AccountTest extends TestCase
 
         $userId = (int) $this->db->query("SELECT id FROM users WHERE email = '" . self::EMAIL . "'")->fetchColumn();
 
-        $pins = array_values(array_filter($this->locations(), fn (array $pin): bool => $pin['user_id'] === $userId));
+        $pins = array_values(array_filter($this->locations(), fn (array $pin): bool => $pin['id'] === $userId));
 
         $this->assertCount(1, $pins);
         $this->assertSame('Dhaka', $pins[0]['city']);
         $this->assertSame('BD', $pins[0]['country']);
         $this->assertArrayNotHasKey('email', $pins[0]);
-        $this->assertStringNotContainsString(self::EMAIL, $this->request('POST', '/app/get-locations')['body']);
+        $this->assertStringNotContainsString(self::EMAIL, $this->request('GET', '/people/pins')['body']);
     }
 
     public function testThePeopleListHasYouOnlineWithYourTimeZoneButNoEmails(): void
     {
         $this->logIn();
 
-        $response = $this->request('POST', '/app/get-people', ['timezone' => 'Asia/Dhaka']);
+        // As the chat page does: opening it marks you online, then it sends your time zone
+        $this->request('GET', '/app');
+        $this->request('POST', '/profile/update-timezone', ['timezone' => 'Asia/Dhaka']);
+        $response = $this->request('GET', '/people');
 
         $this->assertSame(200, $response['status']);
         $userId = (int) $this->db->query("SELECT id FROM users WHERE email = '" . self::EMAIL . "'")->fetchColumn();

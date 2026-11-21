@@ -174,6 +174,15 @@ class Profile extends Authenticated
     }
 
     /**
+     * Save the time zone the browser reports, so others see the user's
+     * local time (for AJAX). The chat socket's hello saves it too
+     */
+    public function updateTimezoneAction(): void
+    {
+        Whereabouts::saveTimezone($this->user->email, $this->stringFrom($_POST, 'timezone'));
+    }
+
+    /**
      * Delete the account and everything in it, then sign out. An account
      * with a password needs it, as changing the email does
      */

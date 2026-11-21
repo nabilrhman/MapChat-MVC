@@ -58,6 +58,21 @@ readonly class Conversation
     }
 
     /**
+     * The private chat a page named, for what only a private chat has, like
+     * read marks
+     *
+     * @param mixed $pageName The other person's id, as the page sent it
+     *
+     * @return self|null Null for the open room or anything that isn't a chat
+     */
+    public static function privateFromPageName(mixed $pageName): ?self
+    {
+        $conversation = is_string($pageName) ? static::fromPageName($pageName) : null;
+
+        return $conversation?->isRoom() ? null : $conversation;
+    }
+
+    /**
      * Whether it's the open room
      */
     public function isRoom(): bool

@@ -315,7 +315,7 @@ let nextPeopleLoad = null;
 
 async function loadPeople() {
     try {
-        const response = await postForm('/app/get-people', {timezone: Intl.DateTimeFormat().resolvedOptions().timeZone});
+        const response = await axios.get('/people');
         if (isPollingPeople) setPeople(response.data);
     } catch {
         // Try again on the next round

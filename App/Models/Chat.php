@@ -82,6 +82,7 @@ class Chat extends \Core\Model
      */
     public static function sendFrom(User $sender, MessageText $text, ?int $toUserId = null, ?string $clientId = null): SendResult
     {
+        // 400 for a request no page of ours sends; 422 for one refused as it stands
         if ($clientId !== null && !preg_match(static::CLIENT_ID_PATTERN, $clientId)) {
             return SendResult::refused(400, 'Your message could not be sent.');
         }
@@ -94,11 +95,11 @@ class Chat extends \Core\Model
 
         $text = $text->trimmed();
         if ($text->body === '') {
-            return SendResult::refused(400, 'Type a message first.');
+            return SendResult::refused(422, 'Type a message first.');
         }
 
         if ($text->isLongerThan(static::MAX_LENGTH)) {
-            return SendResult::refused(400, 'Messages can be up to ' . static::MAX_LENGTH . ' characters.');
+            return SendResult::refused(422, 'Messages can be up to ' . static::MAX_LENGTH . ' characters.');
         }
 
         // Keep one person from flooding the room; guests get a lower limit
@@ -114,7 +115,7 @@ class Chat extends \Core\Model
             $recipient = User::findByID($toUserId);
 
             if (!$recipient || $recipient->id === $sender->id || ($recipient->email === static::BOT_EMAIL && !Bot::canReply())) {
-                return SendResult::refused(400, 'You can\'t message this person.');
+                return SendResult::refused(422, 'You can\'t message this person.');
             }
 
             $toEmail = $recipient->email;

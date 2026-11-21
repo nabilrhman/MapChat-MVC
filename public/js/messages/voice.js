@@ -436,7 +436,7 @@ function setUpVoiceTyping(input, micButton, sendButton, writingDots) {
         form.append('audio', recording, 'voice');
 
         try {
-            const response = await axios.post('/app/transcribe', form, {timeout: TRANSCRIBE_TIME_LIMIT});
+            const response = await axios.post('/messages/transcribe', form, {timeout: TRANSCRIBE_TIME_LIMIT});
             putSpokenText(response.data.text);
         } catch (error) {
             onGroqFailed(error);

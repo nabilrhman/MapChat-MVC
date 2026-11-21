@@ -49,14 +49,14 @@ class TranslateTest extends TestCase
 
     public function testATranslationIntoNoKnownLanguageIsRefused(): void
     {
-        $response = $this->request('POST', '/app/translate', ['text' => 'hello', 'from' => '', 'to' => 'xx']);
+        $response = $this->request('POST', '/messages/translate', ['text' => 'hello', 'from' => '', 'to' => 'xx']);
 
         $this->assertSame(422, $response['status']);
     }
 
     public function testAListInPlaceOfTheTextIsRefusedNotAnError(): void
     {
-        $response = $this->request('POST', '/app/translate', ['text' => ['hello'], 'from' => [''], 'to' => ['en']]);
+        $response = $this->request('POST', '/messages/translate', ['text' => ['hello'], 'from' => [''], 'to' => ['en']]);
 
         $this->assertSame(422, $response['status']);
     }
@@ -64,7 +64,7 @@ class TranslateTest extends TestCase
     public function testARefusedTranslationUsesNoneOfTheLimit(): void
     {
         for ($i = 0; $i < Chat::USER_PER_MINUTE + 1; $i++) {
-            $response = $this->request('POST', '/app/translate', ['text' => '', 'to' => 'en']);
+            $response = $this->request('POST', '/messages/translate', ['text' => '', 'to' => 'en']);
         }
 
         $this->assertSame(422, $response['status']);

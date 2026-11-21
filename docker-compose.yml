@@ -46,6 +46,8 @@ services:
       - ./tests:/var/www/html/tests
       # The chat socket tests start it from here
       - ./bin:/var/www/html/bin
+      # The API specs the tests check answers against; .dockerignore leaves docs out
+      - ./docs/api:/var/www/html/docs/api
     depends_on:
       db:
         condition: service_healthy

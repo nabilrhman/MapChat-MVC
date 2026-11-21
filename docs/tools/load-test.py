@@ -1,8 +1,8 @@
 """Simulate N open MapChat chat tabs against the local stack.
 
 Each client is one guest with its own session and one keep-alive connection,
-like a browser tab: POST /app/get 1s after each reply, and /app/get-people and
-/app/get-locations every 15s. Prints latency percentiles per endpoint.
+like a browser tab: GET /messages/new 1s after each reply, and /people and
+/people/pins every 15s. Prints latency percentiles per endpoint.
 
 usage: python3 docs/tools/load-test.py CLIENTS SECONDS COOKIES_FILE AFTER [ROOM_MESSAGES_PER_SECOND]
        python3 docs/tools/load-test.py --pairs [--socket] CLIENTS SECONDS COOKIES_FILE [MESSAGES_PER_SECOND]
@@ -74,22 +74,30 @@ def parse_chats(html):
     return chats
 
 
-def post(conn, path, body, cookie):
-    headers = {'Cookie': cookie, 'Origin': f'http://{HOST}:{PORT}', 'X-Requested-With': 'XMLHttpRequest',
-               'Content-Type': 'application/x-www-form-urlencoded'}
+def send_request(conn, method, path, fields, cookie):
+    """A GET with the fields as its query, or a POST with them as a form, as the page sends it"""
+    headers = {'Cookie': cookie, 'Origin': f'http://{HOST}:{PORT}', 'X-Requested-With': 'XMLHttpRequest'}
+    form = urllib.parse.urlencode(fields)
+    address = path
+    body = None
+    if method == 'GET' and form:
+        address = f'{path}?{form}'
+    if method == 'POST':
+        body = form
+        headers['Content-Type'] = 'application/x-www-form-urlencoded'
     start = time.monotonic()
     try:
-        conn.request('POST', path, urllib.parse.urlencode(body), headers)
+        conn.request(method, address, body, headers)
         response = conn.getresponse()
-        body = response.read().decode()
+        answer = response.read().decode()
         status = response.status
     except Exception as error:
-        body = ''
+        answer = ''
         status = type(error).__name__
         conn.close()
     with lock:
         results.append((path, time.monotonic() - start, status))
-    return body, status
+    return answer, status
 
 
 def open_page(cookie):
@@ -111,15 +119,15 @@ def client(cookie):
     next_send = time.monotonic() + random.expovariate(1 / send_gap) if send_gap else float('inf')
     while time.monotonic() < stop_at:
         if time.monotonic() >= next_send:
-            post(conn, '/app/send', {'body': f'load test {random.randrange(10**6)}'}, cookie)
+            send_request(conn, 'POST', '/messages/send', {'body': f'load test {random.randrange(10**6)}'}, cookie)
             next_send = time.monotonic() + random.expovariate(1 / send_gap)
-        html, _ = post(conn, '/app/get', {'after': last_id}, cookie)
+        html, _ = send_request(conn, 'GET', '/messages/new', {'after': last_id}, cookie)
         ids = [int(i) for i in re.findall(r'data-id="(\d+)"', html)]
         if ids:
             last_id = max(ids)
         if time.monotonic() >= next_slow:
-            post(conn, '/app/get-people', {'timezone': 'UTC'}, cookie)
-            post(conn, '/app/get-locations', {}, cookie)
+            send_request(conn, 'GET', '/people', {}, cookie)
+            send_request(conn, 'GET', '/people/pins', {}, cookie)
             next_slow = time.monotonic() + 15
         time.sleep(1)
 
@@ -135,7 +143,7 @@ class PairClient:
     def check(self, conn):
         with self.state:
             asked = self.last_id
-        html, _ = post(conn, '/app/get', {'after': asked}, self.cookie)
+        html, _ = send_request(conn, 'GET', '/messages/new', {'after': asked}, self.cookie)
         self.show(html)
 
     def show(self, html):
@@ -164,7 +172,7 @@ class PairClient:
             now = time.monotonic()
             if now >= next_send and now < stop_sending_at:
                 token = uuid.uuid4().hex
-                _, status = post(conn, '/app/send', {'body': f'pair {self.index // 2} {token}', 'to': self.partner_id},
+                _, status = send_request(conn, 'POST', '/messages/send', {'body': f'pair {self.index // 2} {token}', 'to': self.partner_id},
                                  self.cookie)
                 if status == 200:
                     with lock:
@@ -177,8 +185,8 @@ class PairClient:
             except Exception:
                 pass
             if time.monotonic() >= next_slow:
-                post(conn, '/app/get-people', {'timezone': 'UTC'}, self.cookie)
-                post(conn, '/app/get-locations', {}, self.cookie)
+                send_request(conn, 'GET', '/people', {}, self.cookie)
+                send_request(conn, 'GET', '/people/pins', {}, self.cookie)
                 next_slow = time.monotonic() + 15
             time.sleep(1)
 
@@ -288,7 +296,7 @@ class SocketPairClient(PairClient):
                 with self.state:
                     self.unanswered[client_id] = (token, now)
                 try:
-                    self.socket.send({'type': 'send', 'clientId': client_id, 'body': f'pair {self.index // 2} {token}',
+                    self.socket.send({'type': 'send', 'client_id': client_id, 'body': f'pair {self.index // 2} {token}',
                                       'to': self.partner_id})
                 except OSError as error:
                     with lock:
@@ -312,7 +320,7 @@ class SocketPairClient(PairClient):
                 self.show(message['html'])
             elif kind in ('sent', 'refused'):
                 with self.state:
-                    token, sent_at = self.unanswered.pop(message['clientId'], (None, None))
+                    token, sent_at = self.unanswered.pop(message['client_id'], (None, None))
                 if token is None:
                     continue
                 with lock:
@@ -363,7 +371,7 @@ for t in threads:
 elapsed = time.monotonic() - began
 
 report = {'clients': clients, 'over': 'socket' if over_socket else 'polling', 'seconds': round(elapsed, 1), 'endpoints': {}}
-for path in ['/app/get', '/app/send', '/app/get-people', '/app/get-locations', 'ws connect', 'ws send']:
+for path in ['/messages/new', '/messages/send', '/people', '/people/pins', 'ws connect', 'ws send']:
     rows = [r for r in results if r[0] == path]
     if not rows:
         continue

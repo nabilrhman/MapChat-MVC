@@ -200,6 +200,7 @@ public/css/        Styles by part: core/ on every page, chat/, and pages/ for th
 database/          The schema, the demo people and their day, and migrate.php
 tests/             PHPUnit tests, in folders like App/'s and Core/'s; tests/Support/ their helpers; tests/browser/ the Playwright checks (npm run a11y)
 docs/              How each part works, deploying, and the load test
+docs/api/          The specs for the pages' HTTP calls (OpenAPI) and the chat socket (AsyncAPI)
 docs/images/       The video, screenshots and diagram in this README
 docs/tools/        The tools behind the docs: the tour and screenshots (npm run tour, npm run screenshots), the diagrams and the load test
 AGENTS.md          The coding rules, for people and AI agents alike

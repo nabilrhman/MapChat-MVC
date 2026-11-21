@@ -1,0 +1,730 @@
+# The HTTP calls MapChat's own pages make. It's the site's internal API, not
+# a public one: every call needs the session cookie, and a post needs an
+# Origin from the site itself. The live chat is in asyncapi.yaml
+openapi: 3.1.1
+
+info:
+  title: MapChat HTTP API
+  version: "1"
+  summary: The calls the chat page and profile page make over HTTP.
+  description: |
+    The chat page talks to the chat socket (asyncapi.yaml) while it's
+    connected. These calls are for what the socket doesn't carry
+    (translating, voice typing, the map's pins, notifications), and for the
+    HTTP fallback: when the socket can't connect twice in a row, the page
+    asks `GET /messages/new` every second instead.
+
+    **Names.** Each call is named for what it does: reads are GETs that
+    change nothing but who's online, and anything else is a POST. Fields
+    are snake_case, as on the socket.
+
+    **Signing in.** A call carries the `PHPSESSID` cookie from signing in on
+    the site. Without one, a call that sends `X-Requested-With: XMLHttpRequest`
+    gets a 401 with `{"error": "Please log in again."}`; any other is sent to
+    `/login` with a 303.
+
+    **Origin.** Every POST needs an `Origin` (or else `Referer`) with the
+    scheme, host and port of `APP_URL` or of the address it came to, or it
+    gets an empty 403. That is the site's guard against cross-site posts.
+
+    **Bodies.** Posts are form-encoded, as the browser's `FormData` and
+    `URLSearchParams` send them, not JSON. A GET's fields are its query.
+
+    **Statuses.** 400 is a request no page of MapChat's sends, such as a
+    malformed id. 422 is a well-formed one that's refused as it stands,
+    such as an empty or too long message, with a sentence in `error` to
+    show the person. 429 is over a limit, and 503 is a service that's off
+    or busy.
+  license:
+    name: MIT
+    url: https://github.com/nabilrhman/MapChat-MVC/blob/master/LICENSE
+
+servers:
+  - url: https://mapchat.swiftsolve.net
+    description: The live site
+  - url: http://localhost:8080
+    description: Docker Compose on your own machine
+
+security:
+  - session: []
+
+tags:
+  - name: Messages
+    description: Reading and sending messages on the HTTP fallback
+  - name: Message box
+    description: Translating and voice typing before a message is sent
+  - name: People
+    description: Who's here, and the map's pins
+  - name: Notifications
+    description: Web Push for this browser
+  - name: Account
+    description: The profile and sign-up forms' checks
+
+paths:
+  /messages/new:
+    get:
+      tags: [Messages]
+      operationId: getNewMessages
+      summary: The messages after the newest one the page has
+      description: |
+        The HTTP fallback's poll. Each page says which message it saw last,
+        so two open tabs don't take each other's messages. Being the poll,
+        it also keeps the person online. The answer is the messages as HTML
+        for the page to add, not JSON, and is empty when there are none.
+      parameters:
+        - name: after
+          in: query
+          required: true
+          schema:
+            $ref: "#/components/schemas/MessageId"
+      responses:
+        "200":
+          description: The new messages, rendered. Empty when nothing is new
+          headers:
+            X-Build:
+              description: The build the server runs. The page reloads when it changes
+              schema:
+                type: string
+          content:
+            text/html:
+              schema:
+                $ref: "#/components/schemas/MessagesHtml"
+        "400":
+          description: No `after`, or one that isn't a message id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          $ref: "#/components/responses/LogInAgain"
+
+  /messages/older:
+    get:
+      tags: [Messages]
+      operationId: getOlderMessages
+      summary: The page of messages before one, as the reader scrolls up
+      parameters:
+        - name: before
+          in: query
+          required: true
+          schema:
+            $ref: "#/components/schemas/MessageId"
+        - name: conversation
+          in: query
+          description: The tab scrolled. Left out, all the reader may see
+          schema:
+            $ref: "#/components/schemas/Conversation"
+      responses:
+        "200":
+          description: Up to 100 messages, rendered, oldest first. Empty when there are no more
+          content:
+            text/html:
+              schema:
+                $ref: "#/components/schemas/MessagesHtml"
+        "401":
+          $ref: "#/components/responses/LogInAgain"
+
+  /messages/send:
+    post:
+      tags: [Messages]
+      operationId: sendMessage
+      summary: Send a message to the room or to one person
+      description: |
+        The same rules as sending over the socket. A message sent again with
+        the same `client_id` gets back the first one's id instead of a
+        second copy, so a page can safely retry after a lost answer.
+
+        A person can send 30 messages a minute, or 10 as a guest.
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [body]
+              properties:
+                body:
+                  type: string
+                  minLength: 1
+                  maxLength: 500
+                to:
+                  type: integer
+                  description: The person's id for a private message. Left out for the room
+                client_id:
+                  $ref: "#/components/schemas/ClientId"
+                original:
+                  type: string
+                  description: What was typed, when `body` is its translation
+            example:
+              body: Morning from Boise!
+              client_id: 6f1c2a9e-4b7d-4e0a-9c3f-2d5b8a1e7c40
+      responses:
+        "200":
+          description: Saved
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id]
+                properties:
+                  id:
+                    $ref: "#/components/schemas/MessageId"
+              example:
+                id: 48211
+        "400":
+          description: A malformed client id, or a list in place of the text
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          $ref: "#/components/responses/LogInAgain"
+        "403":
+          $ref: "#/components/responses/NotFromThisSite"
+        "422":
+          description: Empty, too long, or to someone you can't message
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: Messages can be up to 500 characters.
+        "429":
+          description: Over the minute's limit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: You are sending messages too fast. Wait a moment and try again.
+
+  /messages/mark-read:
+    post:
+      tags: [Messages]
+      operationId: markRead
+      summary: Mark a private chat read up to a message
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [conversation, up_to]
+              properties:
+                conversation:
+                  $ref: "#/components/schemas/PrivateConversation"
+                up_to:
+                  $ref: "#/components/schemas/MessageId"
+      responses:
+        "200":
+          description: Marked. No content
+        "400":
+          description: Not a private chat, as the open room has no read marks, or no message id in `up_to`
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          $ref: "#/components/responses/LogInAgain"
+        "403":
+          $ref: "#/components/responses/NotFromThisSite"
+
+  /messages/translate:
+    post:
+      tags: [Message box]
+      operationId: translate
+      summary: Translate the message box's text before it's sent
+      description: |
+        The page then sends the translation, with what was typed as
+        `original`. Each person gets as many a minute as they can send
+        messages. Needs `GROQ_API_KEY` on the server.
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [text, to]
+              properties:
+                text:
+                  type: string
+                  minLength: 1
+                  maxLength: 500
+                from:
+                  description: The text's language. Empty or left out to tell it from the text
+                  oneOf:
+                    - $ref: "#/components/schemas/Language"
+                    - const: ""
+                to:
+                  $ref: "#/components/schemas/Language"
+      responses:
+        "200":
+          $ref: "#/components/responses/Text"
+        "401":
+          $ref: "#/components/responses/LogInAgain"
+        "403":
+          $ref: "#/components/responses/NotFromThisSite"
+        "422":
+          description: No text, too long, an unknown language, or a translation over 500 characters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: This message could not be translated.
+        "429":
+          $ref: "#/components/responses/TooFast"
+        "503":
+          $ref: "#/components/responses/AiUnavailable"
+
+  /messages/transcribe:
+    post:
+      tags: [Message box]
+      operationId: transcribe
+      summary: Turn a voice recording into text for the message box
+      description: |
+        The person reads the text over before sending it. Each person gets as
+        many a minute as they can send messages. Needs `GROQ_API_KEY` on the
+        server; on a 503 the page lets the browser listen instead.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [audio]
+              properties:
+                audio:
+                  type: string
+                  contentMediaType: audio/*
+                  description: |
+                    Up to 2 MB of WebM, Ogg, MP4/M4A, MP3 or WAV, checked by
+                    its content, not its name
+            encoding:
+              audio:
+                contentType: audio/webm, audio/ogg, audio/mp4, audio/x-m4a, audio/mpeg, audio/wav, audio/x-wav
+      responses:
+        "200":
+          $ref: "#/components/responses/Text"
+        "401":
+          $ref: "#/components/responses/LogInAgain"
+        "403":
+          $ref: "#/components/responses/NotFromThisSite"
+        "422":
+          description: No recording, too big, or not audio
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "429":
+          $ref: "#/components/responses/TooFast"
+        "503":
+          $ref: "#/components/responses/AiUnavailable"
+
+  /people:
+    get:
+      tags: [People]
+      operationId: getPeople
+      summary: Who is online, and who was here in the last day
+      description: Most recent first. Guests show only while they're online
+      responses:
+        "200":
+          description: The people list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Person"
+        "401":
+          $ref: "#/components/responses/LogInAgain"
+
+  /people/pins:
+    get:
+      tags: [People]
+      operationId: getPins
+      summary: The map's pins
+      description: |
+        Everyone online who shows on the map, rounded to their city. Leaves
+        out people who hide from the map, and MapChat itself.
+      responses:
+        "200":
+          description: One pin per person
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Pin"
+        "401":
+          $ref: "#/components/responses/LogInAgain"
+
+  /push/subscribe:
+    post:
+      tags: [Notifications]
+      operationId: subscribeToPush
+      summary: Save this browser's push subscription
+      description: |
+        Only a known push service's https address is taken: Chrome's,
+        Firefox's, Safari's and Edge's. The chat worker posts to it, so any
+        other host could point it at an address inside the network.
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [endpoint, p256dh, auth]
+              properties:
+                endpoint:
+                  type: string
+                  format: uri
+                  maxLength: 2000
+                  examples: [https://fcm.googleapis.com/fcm/send/abc123]
+                p256dh:
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+                auth:
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+      responses:
+        "200":
+          $ref: "#/components/responses/Subscribed"
+        "400":
+          description: Not a push service's address, or a key missing. No browser's subscription is
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: Not a push subscription.
+        "401":
+          $ref: "#/components/responses/LogInAgain"
+        "403":
+          $ref: "#/components/responses/NotFromThisSite"
+
+  /push/unsubscribe:
+    post:
+      tags: [Notifications]
+      operationId: unsubscribeFromPush
+      summary: Forget this browser's push subscription
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [endpoint]
+              properties:
+                endpoint:
+                  type: string
+      responses:
+        "200":
+          $ref: "#/components/responses/Subscribed"
+        "401":
+          $ref: "#/components/responses/LogInAgain"
+        "403":
+          $ref: "#/components/responses/NotFromThisSite"
+
+  /profile/update-location-sharing:
+    post:
+      tags: [Account]
+      operationId: setLocationSharing
+      summary: Show or hide the person on the map
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                share:
+                  type: string
+                  description: Any non-empty value but "0" shows them. Left out or empty hides them
+      responses:
+        "200":
+          description: Whether they show now
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [share_location]
+                properties:
+                  share_location:
+                    type: boolean
+        "401":
+          $ref: "#/components/responses/LogInAgain"
+        "403":
+          $ref: "#/components/responses/NotFromThisSite"
+
+  /profile/update-timezone:
+    post:
+      tags: [Account]
+      operationId: setTimezone
+      summary: Save the browser's time zone, so others see the person's local time
+      description: The chat page sends it as it loads. One that isn't a real time zone is ignored
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [timezone]
+              properties:
+                timezone:
+                  type: string
+                  description: An IANA time zone
+                  examples: [America/Boise]
+      responses:
+        "200":
+          description: Saved, or ignored. No content
+        "401":
+          $ref: "#/components/responses/LogInAgain"
+        "403":
+          $ref: "#/components/responses/NotFromThisSite"
+
+  /account/check-email:
+    post:
+      tags: [Account]
+      operationId: isEmailFree
+      summary: Whether an email is free to sign up or change to
+      description: |
+        Needs no sign-in. An address at MapChat's own domain is never free.
+        A POST, so the email stays out of the address and the server's logs.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                ignore_id:
+                  type: integer
+                  description: The profile form's own user id, so keeping your own email isn't a clash
+      responses:
+        "200":
+          description: true when free
+          content:
+            application/json:
+              schema:
+                type: boolean
+        "403":
+          $ref: "#/components/responses/NotFromThisSite"
+
+components:
+  securitySchemes:
+    session:
+      type: apiKey
+      in: cookie
+      name: PHPSESSID
+      description: The session cookie from signing in on the site
+
+  schemas:
+    MessageId:
+      type: integer
+      minimum: 0
+      description: A message's id. Ids only grow, so a higher one is newer
+
+    ClientId:
+      type: string
+      pattern: "^[A-Za-z0-9-]{8,36}$"
+      description: An id the page makes for each message, so a resend isn't saved twice
+
+    Conversation:
+      type: string
+      pattern: "^(everyone|[0-9]+)$"
+      description: |
+        A chat tab: "everyone" for the open room, or the other person's id
+        for a private chat
+
+    PrivateConversation:
+      type: string
+      pattern: "^[0-9]+$"
+      description: A private chat, by the other person's id
+
+    Language:
+      type: string
+      enum: [ar, bn, zh, nl, en, fr, de, hi, id, it, ja, ko, ms, ne, fa, pl, pt, ru, es, sw, ta, th, tr, ur, vi]
+      description: An ISO 639-1 code
+
+    MessagesHtml:
+      type: string
+      description: |
+        The messages as the page shows them: one `li` each, escaped by Twig.
+        The chat page's script adds them as they are
+
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          description: A sentence to show the person
+
+    Person:
+      type: object
+      description: A person in the people list. Never their email
+      required: [id, name, avatar, is_demo, nickname, is_guest, is_bot, city, country, lng, timezone, is_online, minutes_ago, avatar_src, shown_name]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        nickname:
+          type: [string, "null"]
+        shown_name:
+          type: string
+          description: The nickname, or else the first name, as messages and pins show it
+        avatar:
+          type: [string, "null"]
+          description: The uploaded photo's address, or null for the drawn avatar
+        avatar_src:
+          type: string
+          description: What to put in an img's src, a `data:` URI for a drawn avatar
+        is_demo:
+          type: boolean
+          description: One of the AI characters
+        is_guest:
+          type: boolean
+        is_bot:
+          type: boolean
+          description: MapChat, the room's own account
+        is_online:
+          type: boolean
+        minutes_ago:
+          type: [integer, "null"]
+          description: Minutes since they were last online
+        city:
+          type: [string, "null"]
+          description: Null when they hide from the map
+        country:
+          type: [string, "null"]
+          description: ISO 3166-1 alpha-2. Null when they hide from the map
+        lng:
+          type: [number, "null"]
+          description: |
+            Their longitude to the city, for their daylight. No latitude: only
+            the map's pins show where people are. Null when they hide from the map
+          examples: [-116.2]
+        timezone:
+          type: [string, "null"]
+          description: IANA time zone, for their local time. Null when they hide from the map
+      example:
+        id: 9
+        name: Jae-won Park
+        nickname: null
+        shown_name: Jae-won
+        avatar: null
+        avatar_src: data:image/svg+xml;base64,…
+        is_demo: true
+        is_guest: false
+        is_bot: false
+        is_online: true
+        minutes_ago: 0
+        city: Seoul
+        country: KR
+        lng: 126.98
+        timezone: Asia/Seoul
+
+    Pin:
+      type: object
+      description: A person's pin on the map, rounded to their city
+      required: [id, lat, lng, city, country, timezone, name, nickname, is_guest, avatar, is_demo, avatar_src, shown_name]
+      properties:
+        id:
+          type: integer
+          description: The person's id, as in the people list
+        lat:
+          type: number
+        lng:
+          type: number
+        city:
+          type: [string, "null"]
+        country:
+          type: [string, "null"]
+        timezone:
+          type: [string, "null"]
+        name:
+          type: string
+        nickname:
+          type: [string, "null"]
+        shown_name:
+          type: string
+        avatar:
+          type: [string, "null"]
+        avatar_src:
+          type: string
+        is_guest:
+          type: boolean
+        is_demo:
+          type: boolean
+      example:
+        id: 2
+        lat: 35.68
+        lng: 139.65
+        city: Tokyo
+        country: JP
+        timezone: Asia/Tokyo
+        name: Aiko Tanaka
+        nickname: null
+        shown_name: Aiko
+        avatar: null
+        avatar_src: data:image/svg+xml;base64,…
+        is_guest: false
+        is_demo: true
+
+  responses:
+    LogInAgain:
+      description: |
+        Not signed in, or the session ended. Only for a call sending
+        `X-Requested-With: XMLHttpRequest`; any other is sent to /login
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: Please log in again.
+
+    NotFromThisSite:
+      description: A post whose Origin isn't the site's own. No content
+
+    Text:
+      description: The text for the message box
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [text]
+            properties:
+              text:
+                type: string
+
+    TooFast:
+      description: Over the minute's limit, the same as for sending messages
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+    AiUnavailable:
+      description: Off (no GROQ_API_KEY) or busy
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+    Subscribed:
+      description: Whether this browser gets notifications now
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [subscribed]
+            properties:
+              subscribed:
+                type: boolean

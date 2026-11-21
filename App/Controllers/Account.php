@@ -12,12 +12,13 @@ class Account extends \Core\Controller
     /**
      * Answer whether an email is free to use (for AJAX): true or false. One
      * at MapChat's own domain never is. The profile form passes ignore_id,
-     * its own user's id, so keeping your own email isn't a clash
+     * its own user's id, so keeping your own email isn't a clash. A post, so
+     * the email stays out of the address and the access logs
      */
-    public function validateEmailAction(): void
+    public function checkEmailAction(): void
     {
-        $ignoreId = isset($_GET['ignore_id']) ? (int) $_GET['ignore_id'] : null;
-        $email = $this->stringFrom($_GET, 'email');
+        $ignoreId = isset($_POST['ignore_id']) ? (int) $_POST['ignore_id'] : null;
+        $email = $this->stringFrom($_POST, 'email');
 
         $owner = User::findByEmail($email);
         // A guest keeps their placeholder at MapChat's domain; nobody may take a new one

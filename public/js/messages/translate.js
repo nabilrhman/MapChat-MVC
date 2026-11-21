@@ -387,7 +387,7 @@ async function messageToSend(text) {
 
     toggle.classList.add('is-translating');
     try {
-        const response = await axios.post('/app/translate', new URLSearchParams(request), {timeout: TRANSLATE_TIME_LIMIT});
+        const response = await axios.post('/messages/translate', new URLSearchParams(request), {timeout: TRANSLATE_TIME_LIMIT});
         lastTranslation = {...request, translation: response.data.text};
         return {body: response.data.text, original: text};
     } finally {

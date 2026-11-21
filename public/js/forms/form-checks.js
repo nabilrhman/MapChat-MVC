@@ -33,10 +33,15 @@ const FIELD_CHECKS = {
 const EMAIL_CHECK_TIMEOUT = 8000;
 const emailFreeAnswers = new Map();
 
-// The server's answer, or null when it gave none in time
-async function askIfEmailIsFree(query) {
+// The server's answer, or null when it gave none in time. Posted, so the
+// email stays out of the address and the server's logs
+async function askIfEmailIsFree(question) {
     try {
-        const response = await fetch(`/account/validate-email?${query}`, {signal: AbortSignal.timeout(EMAIL_CHECK_TIMEOUT)});
+        const response = await fetch('/account/check-email', {
+            method: 'POST',
+            body: new URLSearchParams(question),
+            signal: AbortSignal.timeout(EMAIL_CHECK_TIMEOUT),
+        });
         if (!response.ok) return null;
         return await response.json();
     } catch {
@@ -48,13 +53,13 @@ async function askIfEmailIsFree(query) {
 // failed check isn't kept, so the next one asks again, and lets the email
 // through for now: the server decides again on submit
 async function isEmailFree(email, ownUserId) {
-    const query = new URLSearchParams({email, ignore_id: ownUserId}).toString();
-    if (!emailFreeAnswers.has(query)) {
-        const answer = askIfEmailIsFree(query);
-        emailFreeAnswers.set(query, answer);
-        if ((await answer) === null) emailFreeAnswers.delete(query);
+    const question = new URLSearchParams({email, ignore_id: ownUserId}).toString();
+    if (!emailFreeAnswers.has(question)) {
+        const answer = askIfEmailIsFree(question);
+        emailFreeAnswers.set(question, answer);
+        if ((await answer) === null) emailFreeAnswers.delete(question);
     }
-    return (await emailFreeAnswers.get(query)) ?? true;
+    return (await emailFreeAnswers.get(question)) ?? true;
 }
 
 function setUpFormChecks(form, checksByFieldName) {

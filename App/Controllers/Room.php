@@ -49,26 +49,29 @@ class Room extends Authenticated
     }
 
     /**
-     * Send the new chats (for AJAX). Each page says which message it saw
-     * last, so two open tabs don't take each other's messages
+     * Send the messages after the one the page saw last, so two open tabs
+     * don't take each other's (for AJAX). It's the HTTP fallback's poll, so
+     * it also keeps the person online
      */
-    public function getAction(): void
+    public function getNewAction(): void
     {
         // The page reloads when this changes, so it never mixes old and new code
         header('X-Build: ' . Config::buildId());
 
-        Whereabouts::markOnline(Auth::getEmail());
-
-        // A page from before this change doesn't send it; don't flood it with old messages
-        if (!isset($_POST['after'])) {
+        // Without it, every message the reader may see would come at once
+        $after = $this->stringFrom($_GET, 'after');
+        if (!ctype_digit($after)) {
+            $this->json(['error' => 'Say which message the page has last.'], 400);
             return;
         }
+
+        Whereabouts::markOnline(Auth::getEmail());
 
         // Not Bot::runDue: the chat worker runs the replies every second, and a
         // reply can wait on Groq longer than a poll should be held
         $this->catchUpDemoChat();
 
-        $chats = Chat::getAfter(Auth::getEmail(), (int) $_POST['after']);
+        $chats = Chat::getAfter(Auth::getEmail(), (int) $after);
 
         if ($chats) {
             View::renderTemplate('Room/chat.html', [
@@ -84,9 +87,9 @@ class Room extends Authenticated
      */
     public function getOlderAction(): void
     {
-        // A page from before tabs loaded their own sends none, and gets all it may see
-        $conversation = Conversation::fromPageName($this->stringFrom($_POST, 'conversation'));
-        $chats = Chat::getOlder(Auth::getEmail(), $conversation, (int) ($_POST['before'] ?? 0));
+        // Without one, all the reader may see
+        $conversation = Conversation::fromPageName($this->stringFrom($_GET, 'conversation'));
+        $chats = Chat::getOlder(Auth::getEmail(), $conversation, (int) ($_GET['before'] ?? 0));
 
         if ($chats) {
             // Older messages appear at once, without the new-message ease-in
@@ -103,7 +106,14 @@ class Room extends Authenticated
      */
     public function markReadAction(): void
     {
-        Chat::markRead(Auth::getEmail(), (int) ($_POST['from'] ?? 0), (int) ($_POST['up_to'] ?? 0));
+        $conversation = Conversation::privateFromPageName($_POST['conversation'] ?? null);
+        $upTo = $this->stringFrom($_POST, 'up_to');
+        if ($conversation === null || !ctype_digit($upTo)) {
+            $this->json(['error' => 'Only a private chat can be marked read, up to a message.'], 400);
+            return;
+        }
+
+        Chat::markRead(Auth::getEmail(), $conversation->partnerId, (int) $upTo);
     }
 
     /**
@@ -112,13 +122,12 @@ class Room extends Authenticated
      */
     public function sendAction(): void
     {
-        // A page from before client ids sends an empty box quietly; keep that.
         // A list in place of text (body[]=…) is no page's, and casting it would throw
-        $body = $_POST['body'] ?? '';
-        if (!is_string($body) || trim($body) === '') {
+        if (isset($_POST['body']) && !is_string($_POST['body'])) {
+            $this->json(['error' => 'Your message could not be sent.'], 400);
             return;
         }
-
+        $body = $this->stringFrom($_POST, 'body');
         $toUserId = empty($_POST['to']) ? null : (int) $_POST['to'];
         $clientId = $this->stringFrom($_POST, 'client_id') ?: null;
         $originalBody = $this->stringFrom($_POST, 'original') ?: null;
@@ -277,23 +286,18 @@ class Room extends Authenticated
     }
 
     /**
-     * Who is online and who was here in the last day (for AJAX)
+     * Who is online and who was here in the last day (for AJAX). The chat
+     * page marked them online as it loaded, so they're in it from the first
      */
     public function getPeopleAction(): void
     {
-        // So others can see your local time
-        Whereabouts::saveTimezone(Auth::getEmail(), $_POST['timezone'] ?? null);
-
-        // So you're in the list from the first load, not after the next check
-        Whereabouts::markOnline(Auth::getEmail());
-
         $this->json(Whereabouts::getRecentPeople());
     }
 
     /**
      * Everyone's pin for the map (for AJAX)
      */
-    public function getLocationsAction(): void
+    public function getPinsAction(): void
     {
         $this->json(Whereabouts::getAllLocations());
     }

@@ -1,0 +1,522 @@
+# The chat socket: what a chat page and the server say to each other over
+# /ws. Like openapi.yaml, it's the site's internal API, for MapChat's own
+# pages. How the socket works is in docs/live-chat.md
+asyncapi: 3.0.0
+
+info:
+  title: MapChat chat socket
+  version: "1"
+  description: |
+    Each open chat page keeps one WebSocket to `/ws`. Every message either
+    way is one JSON text frame with a `type`. Frames over 16 KB, binary
+    frames and anything that isn't JSON are refused.
+
+    **Letting a page in.** The handshake needs the `PHPSESSID` cookie of a
+    signed-in person and an `Origin` from the site itself. It's refused
+    with 403 for another origin, 401 for no session or a guest whose day
+    is up, 429 for a person with 20 pages open, and 503 when the socket has
+    2000.
+
+    **Names.** Fields are snake_case, as in the HTTP calls
+    (openapi.yaml), and a chat is a `conversation` wherever it's named.
+
+    **The order of things.** The page says `hello` first; anything but
+    `hello` or `ping` before it closes the socket. The server answers
+    `welcome`, then sends `chats` until the page is caught up, then `live`.
+    From there new messages come as `chats` as they're saved.
+
+    **Closing.** A malformed message closes the socket with 1008 "Bad
+    message". The server closes with 1011 "Try again" when it fails, 1012
+    "Restarting" on a deploy, 4401 "Logged out" when the session ends, and
+    4408 "Too slow" for a page that can't keep up. The page reconnects and
+    says `hello` again from the last message it has, so nothing is lost.
+  license:
+    name: MIT
+    url: https://github.com/nabilrhman/MapChat-MVC/blob/master/LICENSE
+
+defaultContentType: application/json
+
+servers:
+  live:
+    host: mapchat.swiftsolve.net
+    protocol: wss
+    pathname: /ws
+    description: The live site
+    security:
+      - $ref: "#/components/securitySchemes/session"
+  local:
+    host: localhost:8080
+    protocol: ws
+    pathname: /ws
+    description: Docker Compose on your own machine
+    security:
+      - $ref: "#/components/securitySchemes/session"
+
+channels:
+  chat:
+    address: /ws
+    title: A chat page's socket
+    messages:
+      hello:
+        $ref: "#/components/messages/hello"
+      send:
+        $ref: "#/components/messages/send"
+      readFromPage:
+        $ref: "#/components/messages/readFromPage"
+      older:
+        $ref: "#/components/messages/older"
+      typingFromPage:
+        $ref: "#/components/messages/typingFromPage"
+      ping:
+        $ref: "#/components/messages/ping"
+      welcome:
+        $ref: "#/components/messages/welcome"
+      live:
+        $ref: "#/components/messages/live"
+      chats:
+        $ref: "#/components/messages/chats"
+      sent:
+        $ref: "#/components/messages/sent"
+      refused:
+        $ref: "#/components/messages/refused"
+      readToPage:
+        $ref: "#/components/messages/readToPage"
+      olderPage:
+        $ref: "#/components/messages/olderPage"
+      typingToPage:
+        $ref: "#/components/messages/typingToPage"
+      pong:
+        $ref: "#/components/messages/pong"
+      presence:
+        $ref: "#/components/messages/presence"
+
+# Written from the server's side: it receives what a page says, and sends
+# what the page hears
+operations:
+  receiveHello:
+    action: receive
+    channel:
+      $ref: "#/channels/chat"
+    summary: A page says where it is, and is caught up from there
+    messages:
+      - $ref: "#/channels/chat/messages/hello"
+    reply:
+      channel:
+        $ref: "#/channels/chat"
+      messages:
+        - $ref: "#/channels/chat/messages/welcome"
+
+  receiveSend:
+    action: receive
+    channel:
+      $ref: "#/channels/chat"
+    summary: A page sends a message
+    description: |
+      The same rules as POST /messages/send: up to 500 characters, 30 a
+      minute or 10 as a guest. A message sent again with the same `client_id` gets
+      back the first one's id instead of a second copy.
+    messages:
+      - $ref: "#/channels/chat/messages/send"
+    reply:
+      channel:
+        $ref: "#/channels/chat"
+      messages:
+        - $ref: "#/channels/chat/messages/sent"
+        - $ref: "#/channels/chat/messages/refused"
+
+  receiveRead:
+    action: receive
+    channel:
+      $ref: "#/channels/chat"
+    summary: A page has read a private chat up to a message
+    description: The person's other pages hear `read`, so their unread counts clear too
+    messages:
+      - $ref: "#/channels/chat/messages/readFromPage"
+
+  receiveOlder:
+    action: receive
+    channel:
+      $ref: "#/channels/chat"
+    summary: A page asks for the messages before one, as the reader scrolls up
+    description: |
+      One at a time per page: another asked for meanwhile goes unanswered.
+      Over the person's budget, about one a second after a burst of 10, it
+      waits its turn rather than being refused.
+    messages:
+      - $ref: "#/channels/chat/messages/older"
+    reply:
+      channel:
+        $ref: "#/channels/chat"
+      messages:
+        - $ref: "#/channels/chat/messages/olderPage"
+
+  receiveTyping:
+    action: receive
+    channel:
+      $ref: "#/channels/chat"
+    summary: A page is typing to someone, or stopped
+    description: |
+      Passed on at most every 2 seconds. If the stop is lost, the server
+      ends it after 6 seconds.
+    messages:
+      - $ref: "#/channels/chat/messages/typingFromPage"
+
+  receivePing:
+    action: receive
+    channel:
+      $ref: "#/channels/chat"
+    summary: A page checks the connection is still there
+    messages:
+      - $ref: "#/channels/chat/messages/ping"
+    reply:
+      channel:
+        $ref: "#/channels/chat"
+      messages:
+        - $ref: "#/channels/chat/messages/pong"
+
+  sendLive:
+    action: send
+    channel:
+      $ref: "#/channels/chat"
+    summary: The page is caught up
+    messages:
+      - $ref: "#/channels/chat/messages/live"
+
+  sendChats:
+    action: send
+    channel:
+      $ref: "#/channels/chat"
+    summary: Messages for the page to show
+    description: |
+      While catching up, a page of up to 100 at a time. Once live, each new
+      message the person may see as it's saved: the room's to everyone, a
+      private one only to its two people.
+    messages:
+      - $ref: "#/channels/chat/messages/chats"
+
+  sendRead:
+    action: send
+    channel:
+      $ref: "#/channels/chat"
+    summary: A private chat was read on another of the person's pages
+    messages:
+      - $ref: "#/channels/chat/messages/readToPage"
+
+  sendTyping:
+    action: send
+    channel:
+      $ref: "#/channels/chat"
+    summary: Someone is typing to this person, or stopped
+    messages:
+      - $ref: "#/channels/chat/messages/typingToPage"
+
+  sendPresence:
+    action: send
+    channel:
+      $ref: "#/channels/chat"
+    summary: Someone came online, went, or deleted their account
+    description: |
+      Someone is online while any of their pages has a socket open, and for
+      10 seconds after their last one closes.
+    messages:
+      - $ref: "#/channels/chat/messages/presence"
+
+components:
+  securitySchemes:
+    session:
+      type: httpApiKey
+      in: cookie
+      name: PHPSESSID
+      description: The session cookie from signing in on the site
+
+  messages:
+    hello:
+      name: hello
+      title: Hello
+      payload:
+        type: object
+        required: [type, after]
+        additionalProperties: false
+        properties:
+          type:
+            const: hello
+          after:
+            $ref: "#/components/schemas/MessageId"
+            description: The newest message the page has. 0 for none, to start at the newest page
+          timezone:
+            type: string
+            description: The browser's IANA time zone, so others see the person's local time
+      examples:
+        - payload:
+            type: hello
+            after: 48210
+            timezone: America/Boise
+
+    send:
+      name: send
+      title: Send a message
+      payload:
+        type: object
+        required: [type, client_id, body]
+        properties:
+          type:
+            const: send
+          client_id:
+            $ref: "#/components/schemas/ClientId"
+          body:
+            type: string
+            maxLength: 500
+          to:
+            type: [integer, "null"]
+            description: The person's id for a private message. Null or left out for the room
+          original:
+            type: [string, "null"]
+            description: What was typed, when `body` is its translation
+      examples:
+        - payload:
+            type: send
+            client_id: 6f1c2a9e-4b7d-4e0a-9c3f-2d5b8a1e7c40
+            body: Morning from Boise!
+            to: null
+
+    readFromPage:
+      name: read
+      title: Read up to a message
+      payload:
+        type: object
+        required: [type, conversation, up_to]
+        properties:
+          type:
+            const: read
+          conversation:
+            $ref: "#/components/schemas/PrivateConversation"
+          up_to:
+            $ref: "#/components/schemas/MessageId"
+
+    older:
+      name: older
+      title: Ask for older messages
+      payload:
+        type: object
+        required: [type, request_id, before, conversation]
+        properties:
+          type:
+            const: older
+          request_id:
+            type: integer
+            description: Any number the page picks. The answer carries it back
+          before:
+            $ref: "#/components/schemas/MessageId"
+          conversation:
+            $ref: "#/components/schemas/Conversation"
+
+    typingFromPage:
+      name: typing
+      title: Typing to someone
+      payload:
+        type: object
+        required: [type, to, is_typing]
+        properties:
+          type:
+            const: typing
+          to:
+            type: integer
+            description: The person's id
+          is_typing:
+            type: boolean
+
+    ping:
+      name: ping
+      title: Ping
+      payload:
+        type: object
+        required: [type]
+        properties:
+          type:
+            const: ping
+
+    welcome:
+      name: welcome
+      title: Welcome
+      summary: The answer to hello
+      payload:
+        type: object
+        required: [type, build, people]
+        properties:
+          type:
+            const: welcome
+          build:
+            type: string
+            description: The build the server runs. The page reloads when it differs from its own
+          people:
+            type: array
+            description: The people list, as GET /people gives it
+            items:
+              $ref: "#/components/schemas/Person"
+
+    live:
+      name: live
+      title: Live
+      payload:
+        type: object
+        required: [type]
+        properties:
+          type:
+            const: live
+
+    chats:
+      name: chats
+      title: Messages
+      payload:
+        type: object
+        required: [type, html]
+        properties:
+          type:
+            const: chats
+          html:
+            $ref: "#/components/schemas/MessagesHtml"
+
+    sent:
+      name: sent
+      title: Sent
+      payload:
+        type: object
+        required: [type, client_id, id]
+        properties:
+          type:
+            const: sent
+          client_id:
+            $ref: "#/components/schemas/ClientId"
+          id:
+            $ref: "#/components/schemas/MessageId"
+      examples:
+        - payload:
+            type: sent
+            client_id: 6f1c2a9e-4b7d-4e0a-9c3f-2d5b8a1e7c40
+            id: 48211
+
+    refused:
+      name: refused
+      title: Refused
+      payload:
+        type: object
+        required: [type, client_id, status, error]
+        properties:
+          type:
+            const: refused
+          client_id:
+            $ref: "#/components/schemas/ClientId"
+          status:
+            type: integer
+            enum: [400, 422, 429]
+            description: As POST /messages/send would answer. 422 is refused as it stands, 429 over the minute's limit
+          error:
+            type: string
+            description: A sentence to show the person
+      examples:
+        - payload:
+            type: refused
+            client_id: 6f1c2a9e-4b7d-4e0a-9c3f-2d5b8a1e7c40
+            status: 429
+            error: You are sending messages too fast. Wait a moment and try again.
+
+    readToPage:
+      name: read
+      title: Read on another page
+      payload:
+        type: object
+        required: [type, conversation, up_to]
+        properties:
+          type:
+            const: read
+          conversation:
+            $ref: "#/components/schemas/PrivateConversation"
+          up_to:
+            $ref: "#/components/schemas/MessageId"
+
+    olderPage:
+      name: older
+      title: Older messages
+      payload:
+        type: object
+        required: [type, request_id, html, count]
+        properties:
+          type:
+            const: older
+          request_id:
+            type: integer
+            description: The request's own request_id
+          html:
+            $ref: "#/components/schemas/MessagesHtml"
+          count:
+            type: integer
+            description: How many messages. Fewer than 100 means there are no more
+
+    typingToPage:
+      name: typing
+      title: Someone typing
+      payload:
+        type: object
+        required: [type, from, is_typing]
+        properties:
+          type:
+            const: typing
+          from:
+            type: integer
+            description: The typer's id
+          is_typing:
+            type: boolean
+
+    pong:
+      name: pong
+      title: Pong
+      payload:
+        type: object
+        required: [type]
+        properties:
+          type:
+            const: pong
+
+    presence:
+      name: presence
+      title: Presence
+      payload:
+        type: object
+        required: [type, person]
+        properties:
+          type:
+            const: presence
+          person:
+            allOf:
+              - $ref: "#/components/schemas/Person"
+              - type: object
+                properties:
+                  is_deleted:
+                    const: true
+                    description: Only on someone who deleted their account, to take them off the list
+
+  schemas:
+    MessageId:
+      type: integer
+      minimum: 0
+      description: A message's id. Ids only grow, so a higher one is newer
+
+    ClientId:
+      type: string
+      pattern: "^[A-Za-z0-9-]{8,36}$"
+      description: An id the page makes for each message, so a resend isn't saved twice
+
+    Conversation:
+      type: string
+      pattern: "^(everyone|[0-9]+)$"
+      description: A chat tab, "everyone" for the open room or the other person's id
+
+    PrivateConversation:
+      $ref: "./openapi.yaml#/components/schemas/PrivateConversation"
+
+    MessagesHtml:
+      type: string
+      description: The messages as the page shows them, one `li` each, escaped by Twig
+
+    Person:
+      $ref: "./openapi.yaml#/components/schemas/Person"

@@ -9,6 +9,7 @@ use App\Models\Chat;
 use App\Models\User;
 use PDO;
 use PHPUnit\Framework\TestCase;
+use Tests\Support\ApiSpec;
 use Tests\Support\SocketClient;
 use Tests\Support\TestDb;
 
@@ -175,9 +176,9 @@ class ChatSocketTest extends TestCase
     private function sendOver(SocketClient $client, string $body, ?string $to = null, ?string $clientId = null): array
     {
         $clientId ??= bin2hex(random_bytes(8));
-        $client->send(['type' => 'send', 'clientId' => $clientId, 'body' => $body, 'to' => $to === null ? null : (int) $this->users[$to]->id]);
+        $client->send(['type' => 'send', 'client_id' => $clientId, 'body' => $body, 'to' => $to === null ? null : (int) $this->users[$to]->id]);
 
-        return $client->waitFor('sent', 5, fn ($message) => $message['clientId'] === $clientId)
+        return $client->waitFor('sent', 5, fn ($message) => $message['client_id'] === $clientId)
             ?? $this->fail("No answer to sending \"$body\"");
     }
 
@@ -254,7 +255,7 @@ class ChatSocketTest extends TestCase
         // The page sends, and the connection drops before the answer arrives
         $lost = $this->connect('ann');
         $lost->hello($before);
-        $lost->send(['type' => 'send', 'clientId' => 'lost-answer-1', 'body' => 'only once', 'to' => (int) $this->users['bob']->id]);
+        $lost->send(['type' => 'send', 'client_id' => 'lost-answer-1', 'body' => 'only once', 'to' => (int) $this->users['bob']->id]);
         $lost->close();
         usleep(300000);
 
@@ -275,8 +276,8 @@ class ChatSocketTest extends TestCase
     public function testATranslatedMessageKeepsWhatWasTyped(): void
     {
         $ann = $this->openPage('ann');
-        $ann->send(['type' => 'send', 'clientId' => 'translated-1', 'body' => 'Hello', 'to' => null, 'original' => 'হ্যালো']);
-        $ann->waitFor('sent', 5, fn ($message) => $message['clientId'] === 'translated-1') ?? $this->fail('No answer to sending');
+        $ann->send(['type' => 'send', 'client_id' => 'translated-1', 'body' => 'Hello', 'to' => null, 'original' => 'হ্যালো']);
+        $ann->waitFor('sent', 5, fn ($message) => $message['client_id'] === 'translated-1') ?? $this->fail('No answer to sending');
 
         $stmt = $this->db->prepare("SELECT body, original_body FROM chats WHERE client_id = 'translated-1'");
         $stmt->execute();
@@ -293,7 +294,7 @@ class ChatSocketTest extends TestCase
 
         $this->assertSame($first['id'], $this->sendOver($ann, 'first try', null, 'retry-limit-1')['id']);
 
-        $ann->send(['type' => 'send', 'clientId' => 'retry-limit-2', 'body' => 'one too many', 'to' => null]);
+        $ann->send(['type' => 'send', 'client_id' => 'retry-limit-2', 'body' => 'one too many', 'to' => null]);
         $this->assertSame(429, $ann->waitFor('refused')['status']);
     }
 
@@ -378,8 +379,8 @@ class ChatSocketTest extends TestCase
 
         $startedAt = microtime(true);
         for ($requestId = 1; $requestId <= Hub::OLDER_BURST + $extraCount; $requestId++) {
-            $bob->send(['type' => 'older', 'requestId' => $requestId, 'before' => Chat::getNewestId() + 1, 'conversation' => 'everyone']);
-            $this->assertNotNull($bob->waitFor('older', 5, fn ($message) => $message['requestId'] === $requestId), "older page $requestId");
+            $bob->send(['type' => 'older', 'request_id' => $requestId, 'before' => Chat::getNewestId() + 1, 'conversation' => 'everyone']);
+            $this->assertNotNull($bob->waitFor('older', 5, fn ($message) => $message['request_id'] === $requestId), "older page $requestId");
         }
 
         // Each one past the burst waited for the budget to refill
@@ -452,8 +453,8 @@ class ChatSocketTest extends TestCase
 
         // Both send without waiting for answers, interleaved
         for ($i = 1; $i <= 10; $i++) {
-            $ann->send(['type' => 'send', 'clientId' => "concurrent-ann-$i", 'body' => "ann $i", 'to' => (int) $this->users['bob']->id]);
-            $cat->send(['type' => 'send', 'clientId' => "concurrent-cat-$i", 'body' => "cat $i", 'to' => (int) $this->users['bob']->id]);
+            $ann->send(['type' => 'send', 'client_id' => "concurrent-ann-$i", 'body' => "ann $i", 'to' => (int) $this->users['bob']->id]);
+            $cat->send(['type' => 'send', 'client_id' => "concurrent-cat-$i", 'body' => "cat $i", 'to' => (int) $this->users['bob']->id]);
         }
 
         $received = self::chatsIn($bob->collect(2));
@@ -474,8 +475,8 @@ class ChatSocketTest extends TestCase
         }
         $bob = $this->openPage('bob');
 
-        $bob->send(['type' => 'older', 'requestId' => 7, 'before' => Chat::getNewestId() + 1, 'conversation' => (string) $this->users['ann']->id]);
-        $older = $bob->waitFor('older', 5, fn ($message) => $message['requestId'] === 7);
+        $bob->send(['type' => 'older', 'request_id' => 7, 'before' => Chat::getNewestId() + 1, 'conversation' => (string) $this->users['ann']->id]);
+        $older = $bob->waitFor('older', 5, fn ($message) => $message['request_id'] === 7);
 
         $this->assertSame([[$old, 'old private']], self::chatsIn([['type' => 'chats', 'html' => $older['html']]]));
     }
@@ -487,12 +488,55 @@ class ChatSocketTest extends TestCase
         $bobSecondTab = $this->openPage('bob');
         $sent = $this->sendOver($ann, 'read me', 'bob');
 
-        $bobFirstTab->send(['type' => 'read', 'from' => (int) $this->users['ann']->id, 'upTo' => $sent['id']]);
+        $bobFirstTab->send(['type' => 'read', 'conversation' => (string) $this->users['ann']->id, 'up_to' => $sent['id']]);
 
         $read = $bobSecondTab->waitFor('read');
-        $this->assertSame([(string) $this->users['ann']->id, $sent['id']], [$read['conversation'], $read['upTo']]);
+        $this->assertSame([(string) $this->users['ann']->id, $sent['id']], [$read['conversation'], $read['up_to']]);
         $this->assertNull($ann->waitFor('read', 0.5));
         $this->assertSame(0, (int) Chat::getConversations($this->emails['bob'], PHP_INT_MAX)[0]['unread']);
+    }
+
+    public function testEverythingTheSocketSaysMatchesTheAsyncApiSpec(): void
+    {
+        $ann = $this->openPage('ann');
+        $sent = $this->sendOver($ann, 'spec me', 'bob');
+        $ann->send(['type' => 'send', 'client_id' => 'too-long-01', 'body' => str_repeat('a', Chat::MAX_LENGTH + 1)]);
+        $refused = $ann->waitFor('refused');
+
+        // Said by hand, as SocketClient::hello keeps the chats and live to itself
+        $bob = $this->connect('bob');
+        $bob->send(['type' => 'hello', 'after' => $sent['id'] - 1]);
+        $welcome = $bob->waitFor('welcome');
+        $chats = $bob->waitFor('chats');
+        $live = $bob->waitFor('live');
+
+        $bobSecondTab = $this->openPage('bob');
+        $bob->send(['type' => 'read', 'conversation' => (string) $this->users['ann']->id, 'up_to' => $sent['id']]);
+        $read = $bobSecondTab->waitFor('read');
+
+        $ann->send(['type' => 'typing', 'to' => (int) $this->users['bob']->id, 'is_typing' => true]);
+        $typing = $bob->waitFor('typing');
+
+        $ann->send(['type' => 'older', 'request_id' => 7, 'before' => $sent['id'] + 1, 'conversation' => 'everyone']);
+        $older = $ann->waitFor('older');
+
+        $ann->send(['type' => 'ping']);
+        $pong = $ann->waitFor('pong');
+
+        $this->openPage('cat');
+        $presence = $ann->waitFor('presence', 5, fn ($message) => $message['person']['id'] === (int) $this->users['cat']->id);
+
+        // Each is checked against the message the spec has for it, by its name there
+        $framesBySpecName = [
+            'welcome' => $welcome, 'chats' => $chats, 'live' => $live, 'sent' => $sent, 'refused' => $refused,
+            'readToPage' => $read, 'typingToPage' => $typing, 'olderPage' => $older, 'pong' => $pong, 'presence' => $presence,
+        ];
+        foreach ($framesBySpecName as $specName => $frame) {
+            $this->assertNotNull($frame, "No $specName frame came");
+            // As a page decodes it: objects as objects, which the validator needs
+            $asDecoded = json_decode(json_encode($frame));
+            $this->assertSame([], ApiSpec::errorsIn($asDecoded, 'asyncapi.yaml', "/components/messages/$specName/payload"), $specName);
+        }
     }
 
     public function testTypingGoesOnlyToThePartnerAndExpires(): void
@@ -501,28 +545,28 @@ class ChatSocketTest extends TestCase
         $bob = $this->openPage('bob');
         $cat = $this->openPage('cat');
 
-        $ann->send(['type' => 'typing', 'to' => (int) $this->users['bob']->id, 'isTyping' => true]);
+        $ann->send(['type' => 'typing', 'to' => (int) $this->users['bob']->id, 'is_typing' => true]);
 
         $typing = $bob->waitFor('typing');
-        $this->assertSame([(int) $this->users['ann']->id, true], [$typing['from'], $typing['isTyping']]);
+        $this->assertSame([(int) $this->users['ann']->id, true], [$typing['from'], $typing['is_typing']]);
         $this->assertArrayNotHasKey('body', $typing);
         $this->assertNull($cat->waitFor('typing', 0.5));
 
         // Nothing more from ann: it stops by itself
         $stopped = $bob->waitFor('typing', 8);
-        $this->assertFalse($stopped['isTyping']);
+        $this->assertFalse($stopped['is_typing']);
     }
 
     public function testTypingStopsWhenTheTabCloses(): void
     {
         $ann = $this->openPage('ann');
         $bob = $this->openPage('bob');
-        $ann->send(['type' => 'typing', 'to' => (int) $this->users['bob']->id, 'isTyping' => true]);
+        $ann->send(['type' => 'typing', 'to' => (int) $this->users['bob']->id, 'is_typing' => true]);
         $bob->waitFor('typing');
 
         $ann->close();
 
-        $this->assertFalse($bob->waitFor('typing', 2)['isTyping']);
+        $this->assertFalse($bob->waitFor('typing', 2)['is_typing']);
     }
 
     public function testWorkerTypingReachesOnlyThatPerson(): void
@@ -535,7 +579,7 @@ class ChatSocketTest extends TestCase
         \App\ChatSocket\Signal::typing(Chat::BOT_EMAIL, $this->emails['ann'], true);
 
         $typing = $ann->waitFor('typing');
-        $this->assertSame([$botId, true], [$typing['from'], $typing['isTyping']]);
+        $this->assertSame([$botId, true], [$typing['from'], $typing['is_typing']]);
         $this->assertNull($bob->waitFor('typing', 0.5));
     }
 
@@ -606,7 +650,7 @@ class ChatSocketTest extends TestCase
         $this->assertSame(1009, $tooBig->waitForClose());
 
         $beforeHello = $this->connect('cat');
-        $beforeHello->send(['type' => 'send', 'clientId' => 'early-1', 'body' => 'hi', 'to' => null]);
+        $beforeHello->send(['type' => 'send', 'client_id' => 'early-1', 'body' => 'hi', 'to' => null]);
         $this->assertSame(1008, $beforeHello->waitForClose());
     }
 }

@@ -186,7 +186,7 @@ class Hub implements WebsocketClientHandler
     public function onWorkerTyping(string $datagram): void
     {
         $typing = json_decode($datagram, true)['typing'] ?? null;
-        if (!is_string($typing['from'] ?? null) || !is_string($typing['to'] ?? null) || !is_bool($typing['isTyping'] ?? null)) {
+        if (!is_string($typing['from'] ?? null) || !is_string($typing['to'] ?? null) || !is_bool($typing['is_typing'] ?? null)) {
             return;
         }
         if (empty($this->tabsByEmail[$typing['to']])) {
@@ -200,7 +200,7 @@ class Hub implements WebsocketClientHandler
             }
             $this->sendToTabs(
                 $this->tabsByEmail[$typing['to']] ?? [],
-                ['type' => MessageToPage::Typing, 'from' => $speaker->id, 'isTyping' => $typing['isTyping']]
+                ['type' => MessageToPage::Typing, 'from' => $speaker->id, 'is_typing' => $typing['is_typing']]
             );
         });
     }
@@ -411,14 +411,14 @@ class Hub implements WebsocketClientHandler
      * why not), and send it out at once. Its client id makes a repeat of the
      * same send answer with the first one's message
      *
-     * @param array $message ['clientId' => string, 'body' => string, 'to' => int|null,
+     * @param array $message ['client_id' => string, 'body' => string, 'to' => int|null,
      *                        'original' => what was typed when body is its translation, or null]
      *
      * @return bool Whether the message was well formed
      */
     private function sendMessage(Tab $tab, array $message): bool
     {
-        $clientId = $message['clientId'] ?? null;
+        $clientId = $message['client_id'] ?? null;
         $body = $message['body'] ?? null;
         $to = $message['to'] ?? null;
         $originalBody = $message['original'] ?? null;
@@ -439,11 +439,11 @@ class Hub implements WebsocketClientHandler
         $result = Chat::sendFrom($tab->user, new MessageText($body, $originalBody), $to, $clientId);
 
         if (!$result->isSent()) {
-            $tab->send(['type' => MessageToPage::Refused, 'clientId' => $clientId, 'status' => $result->status, 'error' => $result->error]);
+            $tab->send(['type' => MessageToPage::Refused, 'client_id' => $clientId, 'status' => $result->status, 'error' => $result->error]);
             return true;
         }
 
-        $tab->send(['type' => MessageToPage::Sent, 'clientId' => $clientId, 'id' => $result->id]);
+        $tab->send(['type' => MessageToPage::Sent, 'client_id' => $clientId, 'id' => $result->id]);
         $this->readNewMessages();
 
         return true;
@@ -453,24 +453,24 @@ class Hub implements WebsocketClientHandler
      * Mark a private chat read up to an id, and tell the person's other
      * pages, so their unread counts go too
      *
-     * @param array $message ['from' => the other person's id, 'upTo' => int]
+     * @param array $message ['conversation' => the other person's id, as a string, 'up_to' => int]
      *
      * @return bool Whether the message was well formed
      */
     private function markRead(Tab $tab, array $message): bool
     {
-        $from = $message['from'] ?? null;
-        $upTo = $message['upTo'] ?? null;
-        if (!is_int($from) || !is_int($upTo)) {
+        $conversation = Conversation::privateFromPageName($message['conversation'] ?? null);
+        $upTo = $message['up_to'] ?? null;
+        if ($conversation === null || !is_int($upTo)) {
             return false;
         }
 
-        Chat::markRead($tab->user->email, $from, $upTo);
+        Chat::markRead($tab->user->email, $conversation->partnerId, $upTo);
 
         $otherTabs = array_filter($this->tabsByEmail[$tab->user->email] ?? [], fn (Tab $otherTab): bool => $otherTab !== $tab);
         $this->sendToTabs(
             $otherTabs,
-            ['type' => MessageToPage::Read, 'conversation' => Conversation::with($from)->pageName(), 'upTo' => $upTo]
+            ['type' => MessageToPage::Read, 'conversation' => $conversation->pageName(), 'up_to' => $upTo]
         );
 
         return true;
@@ -479,13 +479,13 @@ class Hub implements WebsocketClientHandler
     /**
      * The page of a tab's messages before an id, when the reader scrolls up
      *
-     * @param array $message ['requestId' => int, 'before' => int, 'conversation' => "everyone" or an id]
+     * @param array $message ['request_id' => int, 'before' => int, 'conversation' => "everyone" or an id]
      *
      * @return bool Whether the message was well formed
      */
     private function sendOlder(Tab $tab, array $message): bool
     {
-        $requestId = $message['requestId'] ?? null;
+        $requestId = $message['request_id'] ?? null;
         $before = $message['before'] ?? null;
         $pageName = $message['conversation'] ?? null;
         $conversation = is_string($pageName) ? Conversation::fromPageName($pageName) : null;
@@ -518,7 +518,7 @@ class Hub implements WebsocketClientHandler
 
             $chats = Chat::getOlder($tab->user->email, $conversation, $before);
             $html = $chats ? $this->render($chats, $tab->user, Mention::namesIn($chats), isHistory: true) : '';
-            $tab->send(['type' => MessageToPage::Older, 'requestId' => $requestId, 'html' => $html, 'count' => count($chats)]);
+            $tab->send(['type' => MessageToPage::Older, 'request_id' => $requestId, 'html' => $html, 'count' => count($chats)]);
         } catch (\Throwable $e) {
             $this->recoverFrom($e);
             $tab->close(1011, 'Try again');
@@ -574,14 +574,14 @@ class Hub implements WebsocketClientHandler
      * Tell the person the page is typing to, and nobody else, that it is or
      * has stopped. Only who, never what: the draft stays in the page
      *
-     * @param array $message ['to' => int, 'isTyping' => bool]
+     * @param array $message ['to' => int, 'is_typing' => bool]
      *
      * @return bool Whether the message was well formed
      */
     private function passOnTyping(Tab $tab, array $message): bool
     {
         $to = $message['to'] ?? null;
-        $isTyping = $message['isTyping'] ?? null;
+        $isTyping = $message['is_typing'] ?? null;
         if (!is_int($to) || !is_bool($isTyping)) {
             return false;
         }
@@ -597,7 +597,7 @@ class Hub implements WebsocketClientHandler
         }
 
         if ($tab->noteTyping($to)) {
-            $this->sendToUser($to, ['type' => MessageToPage::Typing, 'from' => $tab->user->id, 'isTyping' => true]);
+            $this->sendToUser($to, ['type' => MessageToPage::Typing, 'from' => $tab->user->id, 'is_typing' => true]);
         }
 
         return true;
@@ -622,7 +622,7 @@ class Hub implements WebsocketClientHandler
     {
         $wasTypingTo = $tab->stopTyping();
         if ($wasTypingTo !== null) {
-            $this->sendToUser($wasTypingTo, ['type' => MessageToPage::Typing, 'from' => $tab->user->id, 'isTyping' => false]);
+            $this->sendToUser($wasTypingTo, ['type' => MessageToPage::Typing, 'from' => $tab->user->id, 'is_typing' => false]);
         }
     }
 

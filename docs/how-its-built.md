@@ -21,6 +21,11 @@ Each part of MapChat and what it's made with. Back to the
   jQuery, and axios for requests to the server.
 - **Live chat:** one WebSocket per open chat page, served by a PHP process of
   its own on [amphp](https://amphp.org); see [live-chat.md](live-chat.md).
+- **API:** the calls the pages make are written up as specs. The HTTP calls
+  are in [api/openapi.yaml](api/openapi.yaml) (OpenAPI 3.1), and what goes
+  over the socket is in [api/asyncapi.yaml](api/asyncapi.yaml) (AsyncAPI 3).
+  It's the site's own API, not a public one: every call needs a signed-in
+  session and an Origin from the site.
 - **Notifications:** while a chat page is in view it shows them itself; with
   MapChat closed they come by Web Push, sent by the chat worker with
   [minishlink/web-push](https://github.com/web-push-libs/web-push-php) and
