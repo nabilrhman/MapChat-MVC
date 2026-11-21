@@ -33,6 +33,19 @@
     {
         background-color: var(--md-surface-container-lowest);
     }
+
+    /* One that just came in is laid out at once, not at the size guessed
+       above, so the list can move to it in one go (slideUpToNewest in chat.js) */
+    &.is-new
+    {
+        content-visibility: visible;
+    }
+
+    /* Rising with the list as new messages come in (slideUpToNewest in chat.js) */
+    &.is-shifting
+    {
+        transition: background-color var(--dur-fast) var(--ease-out), translate var(--dur) var(--ease-out);
+    }
 }
 
 /* A message that @mentions you: a lavender tint and a thin purple edge, on
@@ -283,6 +296,12 @@
     padding: 8px 16px;
     border-block-end: 1px solid var(--hairline);
     background-color: var(--day-divider-surface);
+
+    /* Rising with the messages (slideUpToNewest in chat.js) */
+    &.is-shifting
+    {
+        transition: translate var(--dur) var(--ease-out);
+    }
 }
 
 @scope (.day-divider)
